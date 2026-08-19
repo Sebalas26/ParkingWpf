@@ -1,6 +1,8 @@
 using System;
+using System.IO;
 using System.Net.Http;
 using System.Windows;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Parking.Data.Factories;
 using Parking.Services.Contracts;
@@ -13,10 +15,21 @@ namespace Parking;
 public partial class App : Application
 {
     private IServiceProvider _serviceProvider = null!;
+    private IConfiguration _configuration = null!;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Development";
+
+        var builder = new ConfigurationBuilder()
+            .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: true)
+            .AddEnvironmentVariables();
+
+        _configuration = builder.Build();
 
         var services = new ServiceCollection();
         ConfigureServices(services);
@@ -30,8 +43,19 @@ public partial class App : Application
 
     private void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton(_configuration);
+
+        var apiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5135";
+
         services.AddSingleton<HttpClient>();
-        services.AddSingleton<IApiClientService, ParkingApiClient>();
+        services.AddSingleton<IApiClientService>(sp =>
+        {
+            var httpClient = sp.GetRequiredService<HttpClient>();
+            return new ParkingApiClient(httpClient)
+            {
+                BaseUrl = apiBaseUrl
+            };
+        });
         services.AddSingleton<ISyncEngineService, SyncEngineService>();
         services.AddSingleton<IBackgroundSyncScheduler, BackgroundSyncScheduler>();
 

@@ -14,4 +14,7 @@ public interface IApiClientService
     Task<ParkingTicket?> CheckOutAsync(CheckOutApiRequest request);
     Task<FinancialSummary?> GetFinancialSummaryAsync();
     Task<LoginApiResponse?> LoginAsync(string username, string password);
+    Task LogoutAsync();
+    void SetAuthToken(string token);
+    void ClearAuthToken();
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -18,12 +19,25 @@ public class ParkingApiClient : IApiClientService
         PropertyNameCaseInsensitive = true
     };
 
-    public string BaseUrl { get; set; } = "http://localhost:5000";
+    public string BaseUrl { get; set; } = "http://localhost:5135";
 
     public ParkingApiClient(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _httpClient.Timeout = TimeSpan.FromSeconds(4);
+        _httpClient.Timeout = TimeSpan.FromSeconds(5);
+    }
+
+    public void SetAuthToken(string token)
+    {
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+    }
+
+    public void ClearAuthToken()
+    {
+        _httpClient.DefaultRequestHeaders.Authorization = null;
     }
 
     public async Task<bool> PingAsync()
@@ -115,13 +129,33 @@ public class ParkingApiClient : IApiClientService
             var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/auth/login", request);
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<LoginApiResponse>(JsonOptions);
+                var result = await response.Content.ReadFromJsonAsync<LoginApiResponse>(JsonOptions);
+                if (result != null && !string.IsNullOrEmpty(result.Token))
+                {
+                    SetAuthToken(result.Token);
+                }
+                return result;
             }
             return null;
         }
         catch
         {
             return null;
+        }
+    }
+
+    public async Task LogoutAsync()
+    {
+        try
+        {
+            await _httpClient.PostAsync($"{BaseUrl}/api/auth/logout", null);
+        }
+        catch
+        {
+        }
+        finally
+        {
+            ClearAuthToken();
         }
     }
 }

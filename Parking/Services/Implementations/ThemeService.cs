@@ -15,12 +15,12 @@ public class ThemeService : IThemeService
 
     private static readonly List<ThemeInfo> AvailableThemes = new()
     {
-        new(AppTheme.FigmaTeal, "Teal PWA Figma", "#0D4E5B", "#F4F7F9"),
-        new(AppTheme.PureLight, "Blanco / Claro Empresarial", "#2563EB", "#FFFFFF"),
+        new(AppTheme.FigmaTeal, "Teal PWA Figma", "#174B5C", "#F4F7F6"),
+        new(AppTheme.PureLight, "Blanco / Claro Empresarial", "#2563EB", "#F8FAFC"),
         new(AppTheme.MidnightDark, "Oscuro Midnight", "#6366F1", "#0B0F19"),
-        new(AppTheme.OceanBlue, "Azul Océano Zafiro", "#0284C7", "#060D1A"),
-        new(AppTheme.ForestEmerald, "Verde Esmeralda Menta", "#10B981", "#04140F"),
-        new(AppTheme.RoyalPurple, "Púrpura Real Neón", "#A855F7", "#0F071A")
+        new(AppTheme.OceanBlue, "Azul Océano Zafiro", "#0284C7", "#F0F9FF"),
+        new(AppTheme.ForestEmerald, "Verde Esmeralda Menta", "#10B981", "#ECFDF5"),
+        new(AppTheme.RoyalPurple, "Púrpura Real Neón", "#9333EA", "#FAF5FF")
     };
 
     public IReadOnlyList<ThemeInfo> GetAvailableThemes() => AvailableThemes;
@@ -43,281 +43,316 @@ public class ThemeService : IThemeService
         switch (theme)
         {
             case AppTheme.FigmaTeal:
-                SetBrush(app, "BrushAppBackground", Color.FromRgb(244, 247, 249));
-                SetBrush(app, "BrushSurfaceBackground", Color.FromRgb(255, 255, 255));
-                SetBrush(app, "BrushSurfaceElevated", Color.FromRgb(248, 250, 252));
-                SetBrush(app, "BrushSurfaceLight", Color.FromRgb(237, 242, 247));
-                SetBrush(app, "BrushInputBackground", Color.FromRgb(255, 255, 255));
-                SetBrush(app, "BrushSidebarBackground", Color.FromRgb(11, 60, 73));
-                SetBrush(app, "BrushSidebarItemActive", Color.FromRgb(7, 44, 54));
-                SetBrush(app, "BrushSidebarText", Color.FromRgb(148, 163, 184));
-                SetBrush(app, "BrushSidebarTextActive", Color.FromRgb(255, 255, 255));
+                // 1. Teal PWA Figma (Verde Azulado Original)
+                SetBrushHex(app, "BrushAppBackground", "#F4F7F6");
+                SetBrushHex(app, "BrushSurfaceBackground", "#FFFFFF");
+                SetBrushHex(app, "BrushSurfaceElevated", "#F8FAFC");
+                SetBrushHex(app, "BrushSurfaceLight", "#EBF6F8");
+                SetBrushHex(app, "BrushInputBackground", "#FFFFFF");
+                SetBrushHex(app, "BrushSidebarBackground", "#174B5C");
+                SetBrushHex(app, "BrushSidebarItemActive", "#123B49");
+                SetBrushHex(app, "BrushSidebarText", "#94A3B8");
+                SetBrushHex(app, "BrushSidebarTextActive", "#FFFFFF");
 
-                SetBrush(app, "BrushBorderSubtle", Color.FromRgb(226, 232, 240));
-                SetBrush(app, "BrushBorderMedium", Color.FromRgb(203, 213, 225));
-                SetBrush(app, "BrushBorderFocused", Color.FromRgb(13, 78, 91));
+                SetBrushHex(app, "BrushBorderSubtle", "#E2E8F0");
+                SetBrushHex(app, "BrushBorderMedium", "#CBD5E1");
+                SetBrushHex(app, "BrushBorderFocused", "#174B5C");
 
-                SetBrush(app, "BrushPrimary", Color.FromRgb(13, 78, 91));
-                SetBrush(app, "BrushPrimaryHover", Color.FromRgb(9, 57, 67));
-                SetBrush(app, "BrushPrimaryActive", Color.FromRgb(6, 40, 48));
-                SetBrush(app, "BrushPrimaryLight", Color.FromRgb(21, 115, 133));
-                SetBrush(app, "BrushPrimaryGlow", Color.FromArgb(34, 13, 78, 91));
+                SetBrushHex(app, "BrushPrimary", "#174B5C");
+                SetBrushHex(app, "BrushPrimaryHover", "#123B49");
+                SetBrushHex(app, "BrushPrimaryActive", "#0E2E38");
+                SetBrushHex(app, "BrushPrimaryLight", "#1F647B");
+                SetBrushHex(app, "BrushPrimaryGlow", "#22174B5C");
 
-                SetBrush(app, "BrushTextPrimary", Color.FromRgb(15, 23, 42));
-                SetBrush(app, "BrushTextSecondary", Color.FromRgb(100, 116, 139));
-                SetBrush(app, "BrushTextMuted", Color.FromRgb(148, 163, 184));
-                SetBrush(app, "BrushTextWhite", Color.FromRgb(255, 255, 255));
+                SetBrushHex(app, "BrushTableHeaderBackground", "#F8FAFC");
+                SetBrushHex(app, "BrushTableRowHover", "#F1F5F9");
+                SetBrushHex(app, "BrushTableRowSelected", "#E2E8F0");
 
-                SetBrush(app, "BrushSuccess", Color.FromRgb(22, 163, 74));
-                SetBrush(app, "BrushSuccessHover", Color.FromRgb(21, 128, 61));
-                SetBrush(app, "BrushSuccessBg", Color.FromRgb(220, 252, 231));
-                SetBrush(app, "BrushSuccessText", Color.FromRgb(22, 101, 52));
+                SetBrushHex(app, "BrushTextPrimary", "#1E293B");
+                SetBrushHex(app, "BrushTextSecondary", "#64748B");
+                SetBrushHex(app, "BrushTextMuted", "#94A3B8");
+                SetBrushHex(app, "BrushTextWhite", "#FFFFFF");
 
-                SetBrush(app, "BrushWarning", Color.FromRgb(217, 119, 6));
-                SetBrush(app, "BrushWarningHover", Color.FromRgb(180, 83, 9));
-                SetBrush(app, "BrushWarningBg", Color.FromRgb(254, 243, 199));
-                SetBrush(app, "BrushWarningText", Color.FromRgb(146, 64, 14));
+                SetBrushHex(app, "BrushSuccess", "#16A34A");
+                SetBrushHex(app, "BrushSuccessHover", "#15803D");
+                SetBrushHex(app, "BrushSuccessBg", "#DCFCE7");
+                SetBrushHex(app, "BrushSuccessText", "#166534");
 
-                SetBrush(app, "BrushDanger", Color.FromRgb(220, 38, 38));
-                SetBrush(app, "BrushDangerHover", Color.FromRgb(185, 28, 28));
-                SetBrush(app, "BrushDangerBg", Color.FromRgb(254, 226, 226));
-                SetBrush(app, "BrushDangerText", Color.FromRgb(153, 27, 27));
+                SetBrushHex(app, "BrushWarning", "#D97706");
+                SetBrushHex(app, "BrushWarningHover", "#B45309");
+                SetBrushHex(app, "BrushWarningBg", "#FEF3C7");
+                SetBrushHex(app, "BrushWarningText", "#92400E");
 
-                SetBrush(app, "BrushCyan", Color.FromRgb(2, 132, 199));
-                SetBrush(app, "BrushViolet", Color.FromRgb(124, 58, 237));
+                SetBrushHex(app, "BrushDanger", "#DC2626");
+                SetBrushHex(app, "BrushDangerHover", "#B91C1C");
+                SetBrushHex(app, "BrushDangerBg", "#FEE2E2");
+                SetBrushHex(app, "BrushDangerText", "#991B1B");
+
+                SetBrushHex(app, "BrushCyan", "#0284C7");
+                SetBrushHex(app, "BrushViolet", "#7C3AED");
                 break;
 
             case AppTheme.PureLight:
-                SetBrush(app, "BrushAppBackground", Color.FromRgb(241, 245, 249));
-                SetBrush(app, "BrushSurfaceBackground", Color.FromRgb(255, 255, 255));
-                SetBrush(app, "BrushSurfaceElevated", Color.FromRgb(248, 250, 252));
-                SetBrush(app, "BrushSurfaceLight", Color.FromRgb(226, 232, 240));
-                SetBrush(app, "BrushInputBackground", Color.FromRgb(255, 255, 255));
-                SetBrush(app, "BrushSidebarBackground", Color.FromRgb(255, 255, 255));
-                SetBrush(app, "BrushSidebarItemActive", Color.FromRgb(237, 242, 247));
-                SetBrush(app, "BrushSidebarText", Color.FromRgb(100, 116, 139));
-                SetBrush(app, "BrushSidebarTextActive", Color.FromRgb(37, 99, 235));
+                // 2. Blanco / Claro Empresarial (Azul Corporativo Limpio)
+                SetBrushHex(app, "BrushAppBackground", "#F8FAFC");
+                SetBrushHex(app, "BrushSurfaceBackground", "#FFFFFF");
+                SetBrushHex(app, "BrushSurfaceElevated", "#F1F5F9");
+                SetBrushHex(app, "BrushSurfaceLight", "#E2E8F0");
+                SetBrushHex(app, "BrushInputBackground", "#FFFFFF");
+                SetBrushHex(app, "BrushSidebarBackground", "#1E293B");
+                SetBrushHex(app, "BrushSidebarItemActive", "#0F172A");
+                SetBrushHex(app, "BrushSidebarText", "#94A3B8");
+                SetBrushHex(app, "BrushSidebarTextActive", "#FFFFFF");
 
-                SetBrush(app, "BrushBorderSubtle", Color.FromRgb(226, 232, 240));
-                SetBrush(app, "BrushBorderMedium", Color.FromRgb(203, 213, 225));
-                SetBrush(app, "BrushBorderFocused", Color.FromRgb(37, 99, 235));
+                SetBrushHex(app, "BrushBorderSubtle", "#CBD5E1");
+                SetBrushHex(app, "BrushBorderMedium", "#94A3B8");
+                SetBrushHex(app, "BrushBorderFocused", "#2563EB");
 
-                SetBrush(app, "BrushPrimary", Color.FromRgb(37, 99, 235));
-                SetBrush(app, "BrushPrimaryHover", Color.FromRgb(29, 78, 216));
-                SetBrush(app, "BrushPrimaryActive", Color.FromRgb(30, 64, 175));
-                SetBrush(app, "BrushPrimaryLight", Color.FromRgb(59, 130, 246));
-                SetBrush(app, "BrushPrimaryGlow", Color.FromArgb(40, 37, 99, 235));
+                SetBrushHex(app, "BrushPrimary", "#2563EB");
+                SetBrushHex(app, "BrushPrimaryHover", "#1D4ED8");
+                SetBrushHex(app, "BrushPrimaryActive", "#1E40AF");
+                SetBrushHex(app, "BrushPrimaryLight", "#3B82F6");
+                SetBrushHex(app, "BrushPrimaryGlow", "#222563EB");
 
-                SetBrush(app, "BrushTextPrimary", Color.FromRgb(15, 23, 42));
-                SetBrush(app, "BrushTextSecondary", Color.FromRgb(71, 85, 105));
-                SetBrush(app, "BrushTextMuted", Color.FromRgb(100, 116, 139));
-                SetBrush(app, "BrushTextWhite", Color.FromRgb(255, 255, 255));
+                SetBrushHex(app, "BrushTableHeaderBackground", "#F1F5F9");
+                SetBrushHex(app, "BrushTableRowHover", "#E2E8F0");
+                SetBrushHex(app, "BrushTableRowSelected", "#DBEAFE");
 
-                SetBrush(app, "BrushSuccess", Color.FromRgb(16, 185, 129));
-                SetBrush(app, "BrushSuccessHover", Color.FromRgb(5, 150, 105));
-                SetBrush(app, "BrushSuccessBg", Color.FromRgb(220, 252, 231));
-                SetBrush(app, "BrushSuccessText", Color.FromRgb(22, 101, 52));
+                SetBrushHex(app, "BrushTextPrimary", "#0F172A");
+                SetBrushHex(app, "BrushTextSecondary", "#64748B");
+                SetBrushHex(app, "BrushTextMuted", "#94A3B8");
+                SetBrushHex(app, "BrushTextWhite", "#FFFFFF");
 
-                SetBrush(app, "BrushWarning", Color.FromRgb(245, 158, 11));
-                SetBrush(app, "BrushWarningHover", Color.FromRgb(217, 119, 6));
-                SetBrush(app, "BrushWarningBg", Color.FromRgb(254, 243, 199));
-                SetBrush(app, "BrushWarningText", Color.FromRgb(146, 64, 14));
+                SetBrushHex(app, "BrushSuccess", "#16A34A");
+                SetBrushHex(app, "BrushSuccessHover", "#15803D");
+                SetBrushHex(app, "BrushSuccessBg", "#DCFCE7");
+                SetBrushHex(app, "BrushSuccessText", "#166534");
 
-                SetBrush(app, "BrushDanger", Color.FromRgb(239, 68, 68));
-                SetBrush(app, "BrushDangerHover", Color.FromRgb(220, 38, 38));
-                SetBrush(app, "BrushDangerBg", Color.FromRgb(254, 226, 226));
-                SetBrush(app, "BrushDangerText", Color.FromRgb(153, 27, 27));
+                SetBrushHex(app, "BrushWarning", "#D97706");
+                SetBrushHex(app, "BrushWarningHover", "#B45309");
+                SetBrushHex(app, "BrushWarningBg", "#FEF3C7");
+                SetBrushHex(app, "BrushWarningText", "#92400E");
 
-                SetBrush(app, "BrushCyan", Color.FromRgb(2, 132, 199));
-                SetBrush(app, "BrushViolet", Color.FromRgb(124, 58, 237));
+                SetBrushHex(app, "BrushDanger", "#DC2626");
+                SetBrushHex(app, "BrushDangerHover", "#B91C1C");
+                SetBrushHex(app, "BrushDangerBg", "#FEE2E2");
+                SetBrushHex(app, "BrushDangerText", "#991B1B");
+
+                SetBrushHex(app, "BrushCyan", "#0284C7");
+                SetBrushHex(app, "BrushViolet", "#7C3AED");
+                break;
+
+            case AppTheme.MidnightDark:
+                // 3. Oscuro Midnight (Modo Oscuro Elegante)
+                SetBrushHex(app, "BrushAppBackground", "#0B0F19");
+                SetBrushHex(app, "BrushSurfaceBackground", "#111827");
+                SetBrushHex(app, "BrushSurfaceElevated", "#1F2937");
+                SetBrushHex(app, "BrushSurfaceLight", "#374151");
+                SetBrushHex(app, "BrushInputBackground", "#1F2937");
+                SetBrushHex(app, "BrushSidebarBackground", "#030712");
+                SetBrushHex(app, "BrushSidebarItemActive", "#1F2937");
+                SetBrushHex(app, "BrushSidebarText", "#94A3B8");
+                SetBrushHex(app, "BrushSidebarTextActive", "#FFFFFF");
+
+                SetBrushHex(app, "BrushBorderSubtle", "#1F2937");
+                SetBrushHex(app, "BrushBorderMedium", "#374151");
+                SetBrushHex(app, "BrushBorderFocused", "#6366F1");
+
+                SetBrushHex(app, "BrushPrimary", "#6366F1");
+                SetBrushHex(app, "BrushPrimaryHover", "#4F46E5");
+                SetBrushHex(app, "BrushPrimaryActive", "#4338CA");
+                SetBrushHex(app, "BrushPrimaryLight", "#818CF8");
+                SetBrushHex(app, "BrushPrimaryGlow", "#226366F1");
+
+                SetBrushHex(app, "BrushTableHeaderBackground", "#1F2937");
+                SetBrushHex(app, "BrushTableRowHover", "#374151");
+                SetBrushHex(app, "BrushTableRowSelected", "#4F46E5");
+
+                SetBrushHex(app, "BrushTextPrimary", "#F8FAFC");
+                SetBrushHex(app, "BrushTextSecondary", "#94A3B8");
+                SetBrushHex(app, "BrushTextMuted", "#64748B");
+                SetBrushHex(app, "BrushTextWhite", "#FFFFFF");
+
+                SetBrushHex(app, "BrushSuccess", "#10B981");
+                SetBrushHex(app, "BrushSuccessHover", "#059669");
+                SetBrushHex(app, "BrushSuccessBg", "#064E3B");
+                SetBrushHex(app, "BrushSuccessText", "#6EE7B7");
+
+                SetBrushHex(app, "BrushWarning", "#F59E0B");
+                SetBrushHex(app, "BrushWarningHover", "#D97706");
+                SetBrushHex(app, "BrushWarningBg", "#451A03");
+                SetBrushHex(app, "BrushWarningText", "#FCD34D");
+
+                SetBrushHex(app, "BrushDanger", "#EF4444");
+                SetBrushHex(app, "BrushDangerHover", "#DC2626");
+                SetBrushHex(app, "BrushDangerBg", "#450A0A");
+                SetBrushHex(app, "BrushDangerText", "#FCA5A5");
+
+                SetBrushHex(app, "BrushCyan", "#06B6D4");
+                SetBrushHex(app, "BrushViolet", "#8B5CF6");
                 break;
 
             case AppTheme.OceanBlue:
-                SetBrush(app, "BrushAppBackground", Color.FromRgb(6, 13, 26));
-                SetBrush(app, "BrushSurfaceBackground", Color.FromRgb(12, 24, 43));
-                SetBrush(app, "BrushSurfaceElevated", Color.FromRgb(20, 37, 64));
-                SetBrush(app, "BrushSurfaceLight", Color.FromRgb(29, 53, 87));
-                SetBrush(app, "BrushInputBackground", Color.FromRgb(8, 19, 36));
-                SetBrush(app, "BrushSidebarBackground", Color.FromRgb(7, 16, 31));
-                SetBrush(app, "BrushSidebarItemActive", Color.FromRgb(14, 30, 56));
-                SetBrush(app, "BrushSidebarText", Color.FromRgb(147, 197, 253));
-                SetBrush(app, "BrushSidebarTextActive", Color.FromRgb(255, 255, 255));
+                // 4. Azul Océano Zafiro (Zafiro Fresco)
+                SetBrushHex(app, "BrushAppBackground", "#F0F9FF");
+                SetBrushHex(app, "BrushSurfaceBackground", "#FFFFFF");
+                SetBrushHex(app, "BrushSurfaceElevated", "#E0F2FE");
+                SetBrushHex(app, "BrushSurfaceLight", "#BAE6FD");
+                SetBrushHex(app, "BrushInputBackground", "#FFFFFF");
+                SetBrushHex(app, "BrushSidebarBackground", "#0C4A6E");
+                SetBrushHex(app, "BrushSidebarItemActive", "#075985");
+                SetBrushHex(app, "BrushSidebarText", "#BAE6FD");
+                SetBrushHex(app, "BrushSidebarTextActive", "#FFFFFF");
 
-                SetBrush(app, "BrushBorderSubtle", Color.FromRgb(29, 53, 87));
-                SetBrush(app, "BrushBorderMedium", Color.FromRgb(46, 80, 125));
-                SetBrush(app, "BrushBorderFocused", Color.FromRgb(2, 132, 199));
+                SetBrushHex(app, "BrushBorderSubtle", "#BAE6FD");
+                SetBrushHex(app, "BrushBorderMedium", "#7DD3FC");
+                SetBrushHex(app, "BrushBorderFocused", "#0284C7");
 
-                SetBrush(app, "BrushPrimary", Color.FromRgb(2, 132, 199));
-                SetBrush(app, "BrushPrimaryHover", Color.FromRgb(3, 105, 161));
-                SetBrush(app, "BrushPrimaryActive", Color.FromRgb(7, 89, 133));
-                SetBrush(app, "BrushPrimaryLight", Color.FromRgb(56, 189, 248));
-                SetBrush(app, "BrushPrimaryGlow", Color.FromArgb(40, 2, 132, 199));
+                SetBrushHex(app, "BrushPrimary", "#0284C7");
+                SetBrushHex(app, "BrushPrimaryHover", "#0369A1");
+                SetBrushHex(app, "BrushPrimaryActive", "#075985");
+                SetBrushHex(app, "BrushPrimaryLight", "#38BDF8");
+                SetBrushHex(app, "BrushPrimaryGlow", "#220284C7");
 
-                SetBrush(app, "BrushTextPrimary", Color.FromRgb(241, 245, 249));
-                SetBrush(app, "BrushTextSecondary", Color.FromRgb(147, 197, 253));
-                SetBrush(app, "BrushTextMuted", Color.FromRgb(96, 165, 250));
-                SetBrush(app, "BrushTextWhite", Color.FromRgb(255, 255, 255));
+                SetBrushHex(app, "BrushTableHeaderBackground", "#E0F2FE");
+                SetBrushHex(app, "BrushTableRowHover", "#BAE6FD");
+                SetBrushHex(app, "BrushTableRowSelected", "#7DD3FC");
 
-                SetBrush(app, "BrushSuccess", Color.FromRgb(16, 185, 129));
-                SetBrush(app, "BrushSuccessHover", Color.FromRgb(5, 150, 105));
-                SetBrush(app, "BrushSuccessBg", Color.FromRgb(6, 46, 36));
-                SetBrush(app, "BrushSuccessText", Color.FromRgb(52, 211, 153));
+                SetBrushHex(app, "BrushTextPrimary", "#0F172A");
+                SetBrushHex(app, "BrushTextSecondary", "#475569");
+                SetBrushHex(app, "BrushTextMuted", "#64748B");
+                SetBrushHex(app, "BrushTextWhite", "#FFFFFF");
 
-                SetBrush(app, "BrushWarning", Color.FromRgb(245, 158, 11));
-                SetBrush(app, "BrushWarningHover", Color.FromRgb(217, 119, 6));
-                SetBrush(app, "BrushWarningBg", Color.FromRgb(59, 43, 17));
-                SetBrush(app, "BrushWarningText", Color.FromRgb(251, 191, 36));
+                SetBrushHex(app, "BrushSuccess", "#10B981");
+                SetBrushHex(app, "BrushSuccessHover", "#059669");
+                SetBrushHex(app, "BrushSuccessBg", "#DCFCE7");
+                SetBrushHex(app, "BrushSuccessText", "#166534");
 
-                SetBrush(app, "BrushDanger", Color.FromRgb(239, 68, 68));
-                SetBrush(app, "BrushDangerHover", Color.FromRgb(220, 38, 38));
-                SetBrush(app, "BrushDangerBg", Color.FromRgb(59, 24, 24));
-                SetBrush(app, "BrushDangerText", Color.FromRgb(248, 113, 113));
+                SetBrushHex(app, "BrushWarning", "#F59E0B");
+                SetBrushHex(app, "BrushWarningHover", "#D97706");
+                SetBrushHex(app, "BrushWarningBg", "#FEF3C7");
+                SetBrushHex(app, "BrushWarningText", "#92400E");
 
-                SetBrush(app, "BrushCyan", Color.FromRgb(56, 189, 248));
-                SetBrush(app, "BrushViolet", Color.FromRgb(139, 92, 246));
+                SetBrushHex(app, "BrushDanger", "#EF4444");
+                SetBrushHex(app, "BrushDangerHover", "#DC2626");
+                SetBrushHex(app, "BrushDangerBg", "#FEE2E2");
+                SetBrushHex(app, "BrushDangerText", "#991B1B");
+
+                SetBrushHex(app, "BrushCyan", "#38BDF8");
+                SetBrushHex(app, "BrushViolet", "#8B5CF6");
                 break;
 
             case AppTheme.ForestEmerald:
-                SetBrush(app, "BrushAppBackground", Color.FromRgb(4, 20, 15));
-                SetBrush(app, "BrushSurfaceBackground", Color.FromRgb(9, 34, 27));
-                SetBrush(app, "BrushSurfaceElevated", Color.FromRgb(17, 53, 43));
-                SetBrush(app, "BrushSurfaceLight", Color.FromRgb(27, 77, 62));
-                SetBrush(app, "BrushInputBackground", Color.FromRgb(6, 27, 21));
-                SetBrush(app, "BrushSidebarBackground", Color.FromRgb(5, 24, 18));
-                SetBrush(app, "BrushSidebarItemActive", Color.FromRgb(12, 45, 36));
-                SetBrush(app, "BrushSidebarText", Color.FromRgb(134, 239, 172));
-                SetBrush(app, "BrushSidebarTextActive", Color.FromRgb(255, 255, 255));
+                // 5. Verde Esmeralda Menta (Esmeralda & Menta)
+                SetBrushHex(app, "BrushAppBackground", "#ECFDF5");
+                SetBrushHex(app, "BrushSurfaceBackground", "#FFFFFF");
+                SetBrushHex(app, "BrushSurfaceElevated", "#D1FAE5");
+                SetBrushHex(app, "BrushSurfaceLight", "#A7F3D0");
+                SetBrushHex(app, "BrushInputBackground", "#FFFFFF");
+                SetBrushHex(app, "BrushSidebarBackground", "#064E3B");
+                SetBrushHex(app, "BrushSidebarItemActive", "#065F46");
+                SetBrushHex(app, "BrushSidebarText", "#A7F3D0");
+                SetBrushHex(app, "BrushSidebarTextActive", "#FFFFFF");
 
-                SetBrush(app, "BrushBorderSubtle", Color.FromRgb(27, 77, 62));
-                SetBrush(app, "BrushBorderMedium", Color.FromRgb(39, 107, 87));
-                SetBrush(app, "BrushBorderFocused", Color.FromRgb(16, 185, 129));
+                SetBrushHex(app, "BrushBorderSubtle", "#A7F3D0");
+                SetBrushHex(app, "BrushBorderMedium", "#6EE7B7");
+                SetBrushHex(app, "BrushBorderFocused", "#10B981");
 
-                SetBrush(app, "BrushPrimary", Color.FromRgb(16, 185, 129));
-                SetBrush(app, "BrushPrimaryHover", Color.FromRgb(5, 150, 105));
-                SetBrush(app, "BrushPrimaryActive", Color.FromRgb(4, 120, 87));
-                SetBrush(app, "BrushPrimaryLight", Color.FromRgb(52, 211, 153));
-                SetBrush(app, "BrushPrimaryGlow", Color.FromArgb(40, 16, 185, 129));
+                SetBrushHex(app, "BrushPrimary", "#10B981");
+                SetBrushHex(app, "BrushPrimaryHover", "#059669");
+                SetBrushHex(app, "BrushPrimaryActive", "#047857");
+                SetBrushHex(app, "BrushPrimaryLight", "#34D399");
+                SetBrushHex(app, "BrushPrimaryGlow", "#2210B981");
 
-                SetBrush(app, "BrushTextPrimary", Color.FromRgb(240, 253, 244));
-                SetBrush(app, "BrushTextSecondary", Color.FromRgb(134, 239, 172));
-                SetBrush(app, "BrushTextMuted", Color.FromRgb(74, 222, 128));
-                SetBrush(app, "BrushTextWhite", Color.FromRgb(255, 255, 255));
+                SetBrushHex(app, "BrushTableHeaderBackground", "#D1FAE5");
+                SetBrushHex(app, "BrushTableRowHover", "#A7F3D0");
+                SetBrushHex(app, "BrushTableRowSelected", "#6EE7B7");
 
-                SetBrush(app, "BrushSuccess", Color.FromRgb(16, 185, 129));
-                SetBrush(app, "BrushSuccessHover", Color.FromRgb(5, 150, 105));
-                SetBrush(app, "BrushSuccessBg", Color.FromRgb(6, 46, 36));
-                SetBrush(app, "BrushSuccessText", Color.FromRgb(52, 211, 153));
+                SetBrushHex(app, "BrushTextPrimary", "#064E3B");
+                SetBrushHex(app, "BrushTextSecondary", "#475569");
+                SetBrushHex(app, "BrushTextMuted", "#64748B");
+                SetBrushHex(app, "BrushTextWhite", "#FFFFFF");
 
-                SetBrush(app, "BrushWarning", Color.FromRgb(245, 158, 11));
-                SetBrush(app, "BrushWarningHover", Color.FromRgb(217, 119, 6));
-                SetBrush(app, "BrushWarningBg", Color.FromRgb(59, 43, 17));
-                SetBrush(app, "BrushWarningText", Color.FromRgb(251, 191, 36));
+                SetBrushHex(app, "BrushSuccess", "#10B981");
+                SetBrushHex(app, "BrushSuccessHover", "#059669");
+                SetBrushHex(app, "BrushSuccessBg", "#D1FAE5");
+                SetBrushHex(app, "BrushSuccessText", "#065F46");
 
-                SetBrush(app, "BrushDanger", Color.FromRgb(239, 68, 68));
-                SetBrush(app, "BrushDangerHover", Color.FromRgb(220, 38, 38));
-                SetBrush(app, "BrushDangerBg", Color.FromRgb(59, 24, 24));
-                SetBrush(app, "BrushDangerText", Color.FromRgb(248, 113, 113));
+                SetBrushHex(app, "BrushWarning", "#F59E0B");
+                SetBrushHex(app, "BrushWarningHover", "#D97706");
+                SetBrushHex(app, "BrushWarningBg", "#FEF3C7");
+                SetBrushHex(app, "BrushWarningText", "#92400E");
 
-                SetBrush(app, "BrushCyan", Color.FromRgb(52, 211, 153));
-                SetBrush(app, "BrushViolet", Color.FromRgb(139, 92, 246));
+                SetBrushHex(app, "BrushDanger", "#EF4444");
+                SetBrushHex(app, "BrushDangerHover", "#DC2626");
+                SetBrushHex(app, "BrushDangerBg", "#FEE2E2");
+                SetBrushHex(app, "BrushDangerText", "#991B1B");
+
+                SetBrushHex(app, "BrushCyan", "#34D399");
+                SetBrushHex(app, "BrushViolet", "#8B5CF6");
                 break;
 
             case AppTheme.RoyalPurple:
-                SetBrush(app, "BrushAppBackground", Color.FromRgb(15, 7, 26));
-                SetBrush(app, "BrushSurfaceBackground", Color.FromRgb(26, 13, 46));
-                SetBrush(app, "BrushSurfaceElevated", Color.FromRgb(39, 20, 68));
-                SetBrush(app, "BrushSurfaceLight", Color.FromRgb(61, 32, 104));
-                SetBrush(app, "BrushInputBackground", Color.FromRgb(19, 9, 34));
-                SetBrush(app, "BrushSidebarBackground", Color.FromRgb(17, 8, 30));
-                SetBrush(app, "BrushSidebarItemActive", Color.FromRgb(33, 16, 58));
-                SetBrush(app, "BrushSidebarText", Color.FromRgb(216, 180, 254));
-                SetBrush(app, "BrushSidebarTextActive", Color.FromRgb(255, 255, 255));
+                // 6. Púrpura Real Neón (Púrpura Neón)
+                SetBrushHex(app, "BrushAppBackground", "#FAF5FF");
+                SetBrushHex(app, "BrushSurfaceBackground", "#FFFFFF");
+                SetBrushHex(app, "BrushSurfaceElevated", "#F3E8FF");
+                SetBrushHex(app, "BrushSurfaceLight", "#E9D5FF");
+                SetBrushHex(app, "BrushInputBackground", "#FFFFFF");
+                SetBrushHex(app, "BrushSidebarBackground", "#3B0764");
+                SetBrushHex(app, "BrushSidebarItemActive", "#581C87");
+                SetBrushHex(app, "BrushSidebarText", "#E9D5FF");
+                SetBrushHex(app, "BrushSidebarTextActive", "#FFFFFF");
 
-                SetBrush(app, "BrushBorderSubtle", Color.FromRgb(61, 32, 104));
-                SetBrush(app, "BrushBorderMedium", Color.FromRgb(91, 48, 153));
-                SetBrush(app, "BrushBorderFocused", Color.FromRgb(168, 85, 247));
+                SetBrushHex(app, "BrushBorderSubtle", "#E9D5FF");
+                SetBrushHex(app, "BrushBorderMedium", "#D8B4FE");
+                SetBrushHex(app, "BrushBorderFocused", "#9333EA");
 
-                SetBrush(app, "BrushPrimary", Color.FromRgb(168, 85, 247));
-                SetBrush(app, "BrushPrimaryHover", Color.FromRgb(147, 51, 234));
-                SetBrush(app, "BrushPrimaryActive", Color.FromRgb(126, 34, 206));
-                SetBrush(app, "BrushPrimaryLight", Color.FromRgb(192, 132, 252));
-                SetBrush(app, "BrushPrimaryGlow", Color.FromArgb(40, 168, 85, 247));
+                SetBrushHex(app, "BrushPrimary", "#9333EA");
+                SetBrushHex(app, "BrushPrimaryHover", "#7E22CE");
+                SetBrushHex(app, "BrushPrimaryActive", "#6B21A8");
+                SetBrushHex(app, "BrushPrimaryLight", "#A855F7");
+                SetBrushHex(app, "BrushPrimaryGlow", "#229333EA");
 
-                SetBrush(app, "BrushTextPrimary", Color.FromRgb(250, 245, 255));
-                SetBrush(app, "BrushTextSecondary", Color.FromRgb(216, 180, 254));
-                SetBrush(app, "BrushTextMuted", Color.FromRgb(192, 132, 252));
-                SetBrush(app, "BrushTextWhite", Color.FromRgb(255, 255, 255));
+                SetBrushHex(app, "BrushTableHeaderBackground", "#F3E8FF");
+                SetBrushHex(app, "BrushTableRowHover", "#E9D5FF");
+                SetBrushHex(app, "BrushTableRowSelected", "#D8B4FE");
 
-                SetBrush(app, "BrushSuccess", Color.FromRgb(16, 185, 129));
-                SetBrush(app, "BrushSuccessHover", Color.FromRgb(5, 150, 105));
-                SetBrush(app, "BrushSuccessBg", Color.FromRgb(6, 46, 36));
-                SetBrush(app, "BrushSuccessText", Color.FromRgb(52, 211, 153));
+                SetBrushHex(app, "BrushTextPrimary", "#3B0764");
+                SetBrushHex(app, "BrushTextSecondary", "#6B21A8");
+                SetBrushHex(app, "BrushTextMuted", "#9333EA");
+                SetBrushHex(app, "BrushTextWhite", "#FFFFFF");
 
-                SetBrush(app, "BrushWarning", Color.FromRgb(245, 158, 11));
-                SetBrush(app, "BrushWarningHover", Color.FromRgb(217, 119, 6));
-                SetBrush(app, "BrushWarningBg", Color.FromRgb(59, 43, 17));
-                SetBrush(app, "BrushWarningText", Color.FromRgb(251, 191, 36));
+                SetBrushHex(app, "BrushSuccess", "#10B981");
+                SetBrushHex(app, "BrushSuccessHover", "#059669");
+                SetBrushHex(app, "BrushSuccessBg", "#D1FAE5");
+                SetBrushHex(app, "BrushSuccessText", "#065F46");
 
-                SetBrush(app, "BrushDanger", Color.FromRgb(239, 68, 68));
-                SetBrush(app, "BrushDangerHover", Color.FromRgb(220, 38, 38));
-                SetBrush(app, "BrushDangerBg", Color.FromRgb(59, 24, 24));
-                SetBrush(app, "BrushDangerText", Color.FromRgb(248, 113, 113));
+                SetBrushHex(app, "BrushWarning", "#F59E0B");
+                SetBrushHex(app, "BrushWarningHover", "#D97706");
+                SetBrushHex(app, "BrushWarningBg", "#FEF3C7");
+                SetBrushHex(app, "BrushWarningText", "#92400E");
 
-                SetBrush(app, "BrushCyan", Color.FromRgb(192, 132, 252));
-                SetBrush(app, "BrushViolet", Color.FromRgb(168, 85, 247));
-                break;
+                SetBrushHex(app, "BrushDanger", "#EF4444");
+                SetBrushHex(app, "BrushDangerHover", "#DC2626");
+                SetBrushHex(app, "BrushDangerBg", "#FEE2E2");
+                SetBrushHex(app, "BrushDangerText", "#991B1B");
 
-            default:
-                SetBrush(app, "BrushAppBackground", Color.FromRgb(11, 15, 25));
-                SetBrush(app, "BrushSurfaceBackground", Color.FromRgb(21, 29, 46));
-                SetBrush(app, "BrushSurfaceElevated", Color.FromRgb(30, 41, 59));
-                SetBrush(app, "BrushSurfaceLight", Color.FromRgb(41, 53, 72));
-                SetBrush(app, "BrushInputBackground", Color.FromRgb(15, 23, 42));
-                SetBrush(app, "BrushSidebarBackground", Color.FromRgb(13, 19, 34));
-                SetBrush(app, "BrushSidebarItemActive", Color.FromRgb(25, 36, 58));
-                SetBrush(app, "BrushSidebarText", Color.FromRgb(148, 163, 184));
-                SetBrush(app, "BrushSidebarTextActive", Color.FromRgb(255, 255, 255));
-
-                SetBrush(app, "BrushBorderSubtle", Color.FromRgb(42, 55, 78));
-                SetBrush(app, "BrushBorderMedium", Color.FromRgb(59, 77, 104));
-                SetBrush(app, "BrushBorderFocused", Color.FromRgb(99, 102, 241));
-
-                SetBrush(app, "BrushPrimary", Color.FromRgb(99, 102, 241));
-                SetBrush(app, "BrushPrimaryHover", Color.FromRgb(79, 70, 229));
-                SetBrush(app, "BrushPrimaryActive", Color.FromRgb(67, 56, 202));
-                SetBrush(app, "BrushPrimaryLight", Color.FromRgb(129, 140, 248));
-                SetBrush(app, "BrushPrimaryGlow", Color.FromArgb(40, 99, 102, 241));
-
-                SetBrush(app, "BrushTextPrimary", Color.FromRgb(248, 250, 252));
-                SetBrush(app, "BrushTextSecondary", Color.FromRgb(148, 163, 184));
-                SetBrush(app, "BrushTextMuted", Color.FromRgb(100, 116, 139));
-                SetBrush(app, "BrushTextWhite", Color.FromRgb(255, 255, 255));
-
-                SetBrush(app, "BrushSuccess", Color.FromRgb(16, 185, 129));
-                SetBrush(app, "BrushSuccessHover", Color.FromRgb(5, 150, 105));
-                SetBrush(app, "BrushSuccessBg", Color.FromRgb(21, 56, 43));
-                SetBrush(app, "BrushSuccessText", Color.FromRgb(52, 211, 153));
-
-                SetBrush(app, "BrushWarning", Color.FromRgb(245, 158, 11));
-                SetBrush(app, "BrushWarningHover", Color.FromRgb(217, 119, 6));
-                SetBrush(app, "BrushWarningBg", Color.FromRgb(59, 43, 17));
-                SetBrush(app, "BrushWarningText", Color.FromRgb(251, 191, 36));
-
-                SetBrush(app, "BrushDanger", Color.FromRgb(239, 68, 68));
-                SetBrush(app, "BrushDangerHover", Color.FromRgb(220, 38, 38));
-                SetBrush(app, "BrushDangerBg", Color.FromRgb(59, 24, 24));
-                SetBrush(app, "BrushDangerText", Color.FromRgb(248, 113, 113));
-
-                SetBrush(app, "BrushCyan", Color.FromRgb(6, 182, 212));
-                SetBrush(app, "BrushViolet", Color.FromRgb(139, 92, 246));
+                SetBrushHex(app, "BrushCyan", "#C084FC");
+                SetBrushHex(app, "BrushViolet", "#9333EA");
                 break;
         }
     }
 
-    private static void SetBrush(Application app, string key, Color color)
+    private static void SetBrushHex(Application app, string key, string hex)
     {
-        var brush = new SolidColorBrush(color);
-        brush.Freeze();
-        app.Resources[key] = brush;
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(hex);
+            var brush = new SolidColorBrush(color);
+            brush.Freeze();
+            app.Resources[key] = brush;
+        }
+        catch { }
     }
 }

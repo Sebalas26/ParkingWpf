@@ -396,8 +396,8 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="rootBorder" Property="Background" Value="#0E4B5B"/>
-                            <Setter Property="Foreground" Value="#FFFFFF"/>
+                            <Setter TargetName="rootBorder" Property="Background" Value="{DynamicResource BrushSidebarItemActive}"/>
+                            <Setter Property="Foreground" Value="{DynamicResource BrushSidebarTextActive}"/>
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="rootBorder" Property="Background" Value="{DynamicResource BrushSidebarItemActive}"/>
@@ -603,7 +603,7 @@
     </Style>
 
     <Style TargetType="DataGridColumnHeader">
-        <Setter Property="Background" Value="#F8FAFC"/>
+        <Setter Property="Background" Value="{DynamicResource BrushTableHeaderBackground}"/>
         <Setter Property="Foreground" Value="{DynamicResource BrushTextSecondary}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="FontSize" Value="11"/>
@@ -616,10 +616,10 @@
         <Setter Property="BorderThickness" Value="0"/>
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="{DynamicResource BrushSurfaceLight}"/>
+                <Setter Property="Background" Value="{DynamicResource BrushTableRowHover}"/>
             </Trigger>
             <Trigger Property="IsSelected" Value="True">
-                <Setter Property="Background" Value="#E0F2FE"/>
+                <Setter Property="Background" Value="{DynamicResource BrushTableRowSelected}"/>
                 <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
             </Trigger>
         </Style.Triggers>

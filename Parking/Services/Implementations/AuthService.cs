@@ -105,6 +105,12 @@ public class AuthService : IAuthService
     {
         if (CurrentUser != null)
         {
+            try
+            {
+                await _apiClient.LogoutAsync();
+            }
+            catch { }
+
             using var db = _connectionManager.CreateDbContext();
             var session = await db.UserSessions
                 .FirstOrDefaultAsync(s => s.SessionToken == CurrentUser.SessionToken);
