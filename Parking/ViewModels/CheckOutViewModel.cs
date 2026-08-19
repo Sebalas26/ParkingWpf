@@ -1,0 +1,427 @@
+using System;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using Parking.Core.Enums;
+using Parking.Entities;
+using Parking.Services.Contracts;
+
+namespace Parking.ViewModels;
+
+public partial class CheckOutViewModel : ViewModelBase
+{
+    private readonly IParkingTicketService _ticketService;
+    private readonly IPricingCalculatorService _pricingCalculator;
+    private readonly IStoreService _storeService;
+    private readonly IAgreementService _agreementService;
+    private readonly IDialogService _dialogService;
+    private readonly DispatcherTimer _liveCalculationTimer;
+
+    [ObservableProperty]
+    private string _searchQuery = string.Empty;
+
+    [ObservableProperty]
+    private ParkingTicket? _selectedTicket;
+
+    [ObservableProperty]
+    private decimal _grossFee;
+
+    [ObservableProperty]
+    private decimal _discountAmount;
+
+    [ObservableProperty]
+    private decimal _calculatedFee;
+
+    [ObservableProperty]
+    private string _elapsedTimeString = "0min 0seg";
+
+    [ObservableProperty]
+    private PaymentMethod _selectedPaymentMethod = PaymentMethod.Cash;
+
+    [ObservableProperty]
+    private decimal _amountTendered;
+
+    [ObservableProperty]
+    private decimal _changeDue;
+
+    [ObservableProperty]
+    private bool _hasAgreementDiscount;
+
+    [ObservableProperty]
+    private Store? _selectedStore;
+
+    [ObservableProperty]
+    private CommercialAgreement? _selectedAgreement;
+
+    [ObservableProperty]
+    private decimal _customerPurchaseAmount;
+
+    [ObservableProperty]
+    private string _invoiceNumber = string.Empty;
+
+    [ObservableProperty]
+    private string? _discountRuleDescription;
+
+    [ObservableProperty]
+    private string? _feedbackMessage;
+
+    [ObservableProperty]
+    private bool _hasFeedback;
+
+    [ObservableProperty]
+    private bool _isSuccessFeedback;
+
+    public ObservableCollection<ParkingTicket> ActiveVehicles { get; } = new();
+    public ObservableCollection<Store> AvailableStores { get; } = new();
+    public ObservableCollection<CommercialAgreement> AvailableAgreements { get; } = new();
+
+    public CheckOutViewModel(
+        IParkingTicketService ticketService,
+        IPricingCalculatorService pricingCalculator,
+        IStoreService storeService,
+        IAgreementService agreementService,
+        IDialogService dialogService)
+    {
+        _ticketService = ticketService;
+        _pricingCalculator = pricingCalculator;
+        _storeService = storeService;
+        _agreementService = agreementService;
+        _dialogService = dialogService;
+
+        _liveCalculationTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+        _liveCalculationTimer.Tick += (s, e) => RecalculateLiveFee();
+
+        _ticketService.TicketRegistered += (s, t) => _ = LoadActiveVehiclesAsync();
+        _ticketService.TicketCompleted += (s, t) => _ = LoadActiveVehiclesAsync();
+    }
+
+    public override async Task InitializeAsync()
+    {
+        await LoadActiveVehiclesAsync();
+        await LoadStoresAsync();
+    }
+
+    private async Task LoadActiveVehiclesAsync()
+    {
+        var active = await _ticketService.GetActiveTicketsAsync();
+        ActiveVehicles.Clear();
+        foreach (var ticket in active)
+        {
+            ActiveVehicles.Add(ticket);
+        }
+    }
+
+    private async Task LoadStoresAsync()
+    {
+        var stores = await _storeService.GetActiveStoresAsync();
+        AvailableStores.Clear();
+        foreach (var s in stores)
+        {
+            AvailableStores.Add(s);
+        }
+    }
+
+    partial void OnSearchQueryChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return;
+        }
+
+        _ = SearchTicketAsync();
+    }
+
+    async partial void OnSelectedStoreChanged(Store? value)
+    {
+        AvailableAgreements.Clear();
+        SelectedAgreement = null;
+        DiscountRuleDescription = null;
+
+        if (value != null)
+        {
+            var agreements = await _agreementService.GetAgreementsByStoreAsync(value.StoreId);
+            foreach (var a in agreements)
+            {
+                AvailableAgreements.Add(a);
+            }
+
+            if (AvailableAgreements.Count > 0)
+            {
+                SelectedAgreement = AvailableAgreements[0];
+            }
+        }
+
+        RecalculateLiveFee();
+    }
+
+    partial void OnSelectedAgreementChanged(CommercialAgreement? value)
+    {
+        if (value != null)
+        {
+            var rule = value.DiscountPercentage.HasValue
+                ? $"{value.DiscountPercentage.Value:F0}% dcto. en compras > ${value.MinPurchaseAmount:N0}"
+                : $"${value.DiscountFixedAmount:N0} dcto. fijo en compras > ${value.MinPurchaseAmount:N0}";
+
+            DiscountRuleDescription = rule;
+        }
+        else
+        {
+            DiscountRuleDescription = null;
+        }
+
+        RecalculateLiveFee();
+    }
+
+    partial void OnCustomerPurchaseAmountChanged(decimal value)
+    {
+        RecalculateLiveFee();
+    }
+
+    partial void OnHasAgreementDiscountChanged(bool value)
+    {
+        if (!value)
+        {
+            SelectedStore = null;
+            SelectedAgreement = null;
+            CustomerPurchaseAmount = 0m;
+            InvoiceNumber = string.Empty;
+            DiscountAmount = 0m;
+        }
+
+        RecalculateLiveFee();
+    }
+
+    partial void OnSelectedTicketChanged(ParkingTicket? value)
+    {
+        if (value != null)
+            {
+            _liveCalculationTimer.Start();
+            HasAgreementDiscount = false;
+            RecalculateLiveFee();
+            AmountTendered = CalculatedFee;
+        }
+        else
+        {
+            _liveCalculationTimer.Stop();
+            GrossFee = 0m;
+            DiscountAmount = 0m;
+            CalculatedFee = 0m;
+            ElapsedTimeString = "0min 0seg";
+            AmountTendered = 0m;
+            ChangeDue = 0m;
+            HasAgreementDiscount = false;
+        }
+    }
+
+    partial void OnAmountTenderedChanged(decimal value)
+    {
+        CalculateChange();
+    }
+
+    partial void OnCalculatedFeeChanged(decimal value)
+    {
+        CalculateChange();
+    }
+
+    private void CalculateChange()
+    {
+        ChangeDue = Math.Max(0m, AmountTendered - CalculatedFee);
+    }
+
+    private void RecalculateLiveFee()
+    {
+        if (SelectedTicket == null)
+        {
+            return;
+        }
+
+        var now = DateTime.UtcNow;
+        var duration = now - SelectedTicket.EntryTimeUtc;
+        if (duration.TotalDays >= 1)
+        {
+            ElapsedTimeString = $"{(int)duration.TotalDays}d {duration.Hours}h {duration.Minutes}min {duration.Seconds}seg";
+        }
+        else if (duration.TotalHours >= 1)
+        {
+            ElapsedTimeString = $"{(int)duration.TotalHours}h {duration.Minutes}min {duration.Seconds}seg";
+        }
+        else
+        {
+            ElapsedTimeString = $"{duration.Minutes}min {duration.Seconds}seg";
+        }
+
+        GrossFee = _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, now);
+
+        if (HasAgreementDiscount && SelectedAgreement != null)
+        {
+            DiscountAmount = _agreementService.CalculateDiscount(SelectedAgreement, CustomerPurchaseAmount, GrossFee);
+        }
+        else
+        {
+            DiscountAmount = 0m;
+        }
+
+        CalculatedFee = Math.Max(0m, GrossFee - DiscountAmount);
+
+        if (AmountTendered < CalculatedFee && SelectedPaymentMethod != PaymentMethod.Cash)
+        {
+            AmountTendered = CalculatedFee;
+        }
+    }
+
+    [RelayCommand]
+    private async Task SearchTicketAsync()
+    {
+        HasFeedback = false;
+        FeedbackMessage = null;
+
+        if (string.IsNullOrWhiteSpace(SearchQuery))
+        {
+            return;
+        }
+
+        var ticket = await _ticketService.FindActiveTicketAsync(SearchQuery);
+        if (ticket != null)
+        {
+            SelectedTicket = ticket;
+        }
+        else
+        {
+            HasFeedback = true;
+            IsSuccessFeedback = false;
+            FeedbackMessage = $"No se encontró ningún tiquete activo con el criterio '{SearchQuery}'.";
+        }
+    }
+
+    [RelayCommand]
+    private void SelectTicket(ParkingTicket ticket)
+    {
+        SelectedTicket = ticket;
+        SearchQuery = ticket.PlateNumber;
+        HasFeedback = false;
+        FeedbackMessage = null;
+    }
+
+    [RelayCommand]
+    private void SetQuickAmount(string amountString)
+    {
+        if (amountString.Equals("Exact", StringComparison.OrdinalIgnoreCase) || amountString.Equals("Exacto", StringComparison.OrdinalIgnoreCase))
+        {
+            AmountTendered = CalculatedFee;
+        }
+        else if (decimal.TryParse(amountString, out var amount))
+        {
+            AmountTendered = amount;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ProcessPaymentAsync()
+    {
+        if (SelectedTicket == null)
+        {
+            return;
+        }
+
+        if (HasAgreementDiscount)
+        {
+            if (SelectedStore == null || SelectedAgreement == null)
+            {
+                HasFeedback = true;
+                IsSuccessFeedback = false;
+                FeedbackMessage = "Debe seleccionar un almacén y convenio válido.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(InvoiceNumber))
+            {
+                HasFeedback = true;
+                IsSuccessFeedback = false;
+                FeedbackMessage = "El número de factura del comercio es obligatorio para aplicar el convenio.";
+                return;
+            }
+
+            if (CustomerPurchaseAmount < SelectedAgreement.MinPurchaseAmount)
+            {
+                HasFeedback = true;
+                IsSuccessFeedback = false;
+                FeedbackMessage = $"El valor de compra (${CustomerPurchaseAmount:N0}) no alcanza el mínimo requerido (${SelectedAgreement.MinPurchaseAmount:N0}) para este convenio.";
+                return;
+            }
+        }
+
+        if (SelectedPaymentMethod == PaymentMethod.Cash && AmountTendered < CalculatedFee)
+        {
+            HasFeedback = true;
+            IsSuccessFeedback = false;
+            FeedbackMessage = $"El monto en efectivo recibido (${AmountTendered:F2}) es menor al total neto (${CalculatedFee:F2}).";
+            return;
+        }
+
+        IsBusy = true;
+        BusyMessage = "Procesando cobro, convenio y liberando cupo...";
+
+        try
+        {
+            var paidAmount = SelectedPaymentMethod == PaymentMethod.Cash ? AmountTendered : CalculatedFee;
+
+            var completedTicket = await _ticketService.ProcessExitAsync(
+                SelectedTicket.TicketId,
+                SelectedPaymentMethod,
+                paidAmount,
+                HasAgreementDiscount ? SelectedStore?.StoreId : null,
+                HasAgreementDiscount ? SelectedAgreement?.AgreementId : null,
+                HasAgreementDiscount ? InvoiceNumber : null,
+                HasAgreementDiscount ? CustomerPurchaseAmount : null,
+                DiscountAmount);
+
+            if (completedTicket != null)
+            {
+                var clearedPlate = completedTicket.PlateNumber;
+                var totalPaid = completedTicket.NetAmount;
+                var change = completedTicket.ChangeGiven;
+
+                SelectedTicket = null;
+                SearchQuery = string.Empty;
+                AmountTendered = 0m;
+                ChangeDue = 0m;
+                HasAgreementDiscount = false;
+
+                HasFeedback = true;
+                IsSuccessFeedback = true;
+                FeedbackMessage = $"Pago procesado para {clearedPlate}. Total Neto: ${totalPaid:F2}. Cambio: ${change:F2}. Cupo liberado.";
+
+                await _dialogService.ShowReceiptPreviewAsync(completedTicket);
+            }
+        }
+        catch (Exception ex)
+        {
+            HasFeedback = true;
+            IsSuccessFeedback = false;
+            FeedbackMessage = $"Error al procesar el pago: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+            BusyMessage = null;
+        }
+    }
+
+    [RelayCommand]
+    private void CancelSelection()
+    {
+        SelectedTicket = null;
+        SearchQuery = string.Empty;
+        AmountTendered = 0m;
+        ChangeDue = 0m;
+        HasAgreementDiscount = false;
+        HasFeedback = false;
+        FeedbackMessage = null;
+    }
+}

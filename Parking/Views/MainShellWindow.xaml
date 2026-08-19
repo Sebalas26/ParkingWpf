@@ -1,0 +1,285 @@
+<Window x:Class="Parking.Views.MainShellWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:Parking.ViewModels"
+        xmlns:views="clr-namespace:Parking.Views"
+        xmlns:conv="clr-namespace:Parking.Core.Converters"
+        xmlns:enums="clr-namespace:Parking.Core.Enums"
+        mc:Ignorable="d"
+        Title="ParkFlow - Sistema de Gestión de Parqueadero"
+        Height="850"
+        Width="1380"
+        MinHeight="700"
+        MinWidth="1100"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BrushAppBackground}">
+
+    <Window.Resources>
+        <conv:CurrencyConverter x:Key="CurrencyConv"/>
+        <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:OccupancyToColorConverter x:Key="OccupancyColorConv"/>
+        <conv:ConnectionStatusToColorConverter x:Key="ConnColorConv"/>
+
+        <DataTemplate DataType="{x:Type vm:CheckInViewModel}">
+            <views:CheckInView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CheckOutViewModel}">
+            <views:CheckOutView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AnalyticsViewModel}">
+            <views:AnalyticsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:StoreSettingsViewModel}">
+            <views:StoreSettingsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AgreementSettingsViewModel}">
+            <views:AgreementSettingsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SettingsViewModel}">
+            <views:SettingsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:SecuritySettingsViewModel}">
+            <views:SecuritySettingsView/>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="64"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0" Background="{DynamicResource BrushSurfaceBackground}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,0,1" Padding="20,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{DynamicResource BrushPrimary}" CornerRadius="8" Width="36" Height="36" Margin="0,0,12,0">
+                        <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushTextWhite}" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="PARKFLOW" FontSize="18" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <TextBlock Text="CONTROL DE ACCESO Y CONVENIOS" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border Background="{DynamicResource BrushInputBackground}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="20" Padding="14,6" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconClock}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0"/>
+                            <TextBlock Text="{Binding CurrentTimeString}" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="{DynamicResource BrushInputBackground}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="20" Padding="14,6" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Fill="{Binding Occupancy.OccupancyPercentage, Converter={StaticResource OccupancyColorConv}}" Margin="0,0,8,0"/>
+                            <TextBlock Text="{Binding Occupancy.OccupancySummary}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="{DynamicResource BrushInputBackground}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="20" Padding="14,6">
+                        <StackPanel Orientation="Horizontal">
+                            <Ellipse Width="8" Height="8" Fill="{Binding IsOnlineMode, Converter={StaticResource ConnColorConv}}" Margin="0,0,8,0"/>
+                            <TextBlock Text="{Binding DatabaseStatusText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Background="{DynamicResource BrushSurfaceElevated}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="6,2" Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource IconPalette}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="6,0,6,0"/>
+                            <ComboBox ItemsSource="{Binding AvailableThemes}"
+                                      SelectedItem="{Binding SelectedTheme}"
+                                      Style="{StaticResource ModernComboBox}"
+                                      Width="165"
+                                      Height="32">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Border Width="10" Height="10" CornerRadius="5" Background="{Binding PrimaryHex}" Margin="0,0,8,0"/>
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="{DynamicResource BrushSurfaceElevated}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="12,6" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource IconUser}" Fill="{DynamicResource BrushCyan}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0"/>
+                            <StackPanel>
+                                <TextBlock Text="{Binding CurrentUser.FullName, FallbackValue='Operador General'}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                <TextBlock Text="{Binding CurrentUser.RoleName, FallbackValue='Operador'}" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Button Command="{Binding LogoutCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="10,8"
+                            ToolTip="Cerrar sesión y cambiar de operador">
+                        <Path Data="{StaticResource IconLogout}" Fill="{DynamicResource BrushDanger}" Width="14" Height="14" Stretch="Uniform"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="{DynamicResource BrushSidebarBackground}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="0,0,1,0" Padding="14,18">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="MÓDULOS DEL SISTEMA" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="12,0,0,14"/>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <RadioButton Content="Ingreso de Vehículos"
+                                         Command="{Binding NavigateToCheckInCommand}"
+                                         IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=CheckIn, Mode=OneWay}"
+                                         Visibility="{Binding CanViewCheckIn, Converter={StaticResource BoolToVis}}"
+                                         Style="{StaticResource NavRadioButton}"
+                                         Margin="0,0,0,4">
+                                <RadioButton.Tag>
+                                    <Path Data="{StaticResource IconCheckIn}" Fill="{DynamicResource BrushPrimary}" Width="18" Height="18" Stretch="Uniform"/>
+                                </RadioButton.Tag>
+                            </RadioButton>
+
+                            <RadioButton Content="Salida y Cobro"
+                                         Command="{Binding NavigateToCheckOutCommand}"
+                                         IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=CheckOut, Mode=OneWay}"
+                                         Visibility="{Binding CanViewCheckOut, Converter={StaticResource BoolToVis}}"
+                                         Style="{StaticResource NavRadioButton}"
+                                         Margin="0,0,0,4">
+                                <RadioButton.Tag>
+                                    <Path Data="{StaticResource IconCheckOut}" Fill="{DynamicResource BrushSuccess}" Width="18" Height="18" Stretch="Uniform"/>
+                                </RadioButton.Tag>
+                            </RadioButton>
+
+                            <RadioButton Content="Panel Financiero"
+                                         Command="{Binding NavigateToAnalyticsCommand}"
+                                         IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=Analytics, Mode=OneWay}"
+                                         Visibility="{Binding CanViewAnalytics, Converter={StaticResource BoolToVis}}"
+                                         Style="{StaticResource NavRadioButton}"
+                                         Margin="0,0,0,4">
+                                <RadioButton.Tag>
+                                    <Path Data="{StaticResource IconAnalytics}" Fill="{DynamicResource BrushCyan}" Width="18" Height="18" Stretch="Uniform"/>
+                                </RadioButton.Tag>
+                            </RadioButton>
+
+                            <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="10,12,10,14"/>
+
+                            <TextBlock Text="CONFIGURACIÓN Y CONVENIOS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="12,0,0,10"/>
+
+                            <RadioButton Content="Almacenes Aliados"
+                                         Command="{Binding NavigateToStoresCommand}"
+                                         IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=Stores, Mode=OneWay}"
+                                         Visibility="{Binding CanViewStores, Converter={StaticResource BoolToVis}}"
+                                         Style="{StaticResource NavRadioButton}"
+                                         Margin="0,0,0,4">
+                                <RadioButton.Tag>
+                                    <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushTextSecondary}" Width="18" Height="18" Stretch="Uniform"/>
+                                </RadioButton.Tag>
+                            </RadioButton>
+
+                            <RadioButton Content="Convenios y Reglas"
+                                         Command="{Binding NavigateToAgreementsCommand}"
+                                         IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=Agreements, Mode=OneWay}"
+                                         Visibility="{Binding CanViewAgreements, Converter={StaticResource BoolToVis}}"
+                                         Style="{StaticResource NavRadioButton}"
+                                         Margin="0,0,0,4">
+                                <RadioButton.Tag>
+                                    <Path Data="{StaticResource IconShield}" Fill="{DynamicResource BrushPrimary}" Width="18" Height="18" Stretch="Uniform"/>
+                                </RadioButton.Tag>
+                            </RadioButton>
+
+                            <RadioButton Content="Gestión de Tarifas"
+                                         Command="{Binding NavigateToSettingsCommand}"
+                                         IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=Rates, Mode=OneWay}"
+                                         Visibility="{Binding CanViewRates, Converter={StaticResource BoolToVis}}"
+                                         Style="{StaticResource NavRadioButton}"
+                                         Margin="0,0,0,4">
+                                <RadioButton.Tag>
+                                    <Path Data="{StaticResource IconCash}" Fill="{DynamicResource BrushTextSecondary}" Width="18" Height="18" Stretch="Uniform"/>
+                                </RadioButton.Tag>
+                            </RadioButton>
+
+                            <RadioButton Content="Usuarios y Seguridad"
+                                         Command="{Binding NavigateToSecurityCommand}"
+                                         IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=Security, Mode=OneWay}"
+                                         Visibility="{Binding CanViewSecurity, Converter={StaticResource BoolToVis}}"
+                                         Style="{StaticResource NavRadioButton}"
+                                         Margin="0,0,0,4">
+                                <RadioButton.Tag>
+                                    <Path Data="{StaticResource IconKey}" Fill="{DynamicResource BrushCyan}" Width="18" Height="18" Stretch="Uniform"/>
+                                </RadioButton.Tag>
+                            </RadioButton>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Border Grid.Row="2" Background="{DynamicResource BrushSurfaceElevated}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Text="TEMAS Y APARIENCIA" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0" HorizontalAlignment="Center">
+                                <Button Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static enums:AppTheme.MidnightDark}" Width="24" Height="24" Margin="3,0" ToolTip="Oscuro Midnight" Cursor="Hand">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="#6366F1" CornerRadius="12" BorderBrush="#FFFFFF" BorderThickness="1"/>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                <Button Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static enums:AppTheme.PureLight}" Width="24" Height="24" Margin="3,0" ToolTip="Blanco / Claro Empresarial" Cursor="Hand">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="#F8FAFC" CornerRadius="12" BorderBrush="#2563EB" BorderThickness="2"/>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                <Button Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static enums:AppTheme.OceanBlue}" Width="24" Height="24" Margin="3,0" ToolTip="Azul Océano Zafiro" Cursor="Hand">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="#0284C7" CornerRadius="12" BorderBrush="#38BDF8" BorderThickness="1"/>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                <Button Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static enums:AppTheme.ForestEmerald}" Width="24" Height="24" Margin="3,0" ToolTip="Verde Esmeralda Menta" Cursor="Hand">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="#10B981" CornerRadius="12" BorderBrush="#34D399" BorderThickness="1"/>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                                <Button Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static enums:AppTheme.RoyalPurple}" Width="24" Height="24" Margin="3,0" ToolTip="Púrpura Real Neón" Cursor="Hand">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="#A855F7" CornerRadius="12" BorderBrush="#C084FC" BorderThickness="1"/>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <ContentControl Grid.Column="1" Content="{Binding ActiveView}"/>
+        </Grid>
+    </Grid>
+</Window>

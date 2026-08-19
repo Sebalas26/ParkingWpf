@@ -1,0 +1,221 @@
+<Window x:Class="Parking.Views.ReceiptPreviewDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:conv="clr-namespace:Parking.Core.Converters"
+        mc:Ignorable="d"
+        Title="Vista Previa del Tiquete"
+        Height="680"
+        Width="460"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
+
+    <Window.Resources>
+        <conv:CurrencyConverter x:Key="CurrencyConv"/>
+        <conv:VehicleTypeToStringConverter x:Key="VehicleTypeStrConv"/>
+        <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:NullToVisibilityConverter x:Key="NullToVis"/>
+    </Window.Resources>
+
+    <Border Background="{DynamicResource BrushAppBackground}"
+            BorderBrush="{DynamicResource BrushBorderMedium}"
+            BorderThickness="1"
+            CornerRadius="16"
+            Padding="24">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,16">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushPrimary}" Width="18" Height="18" Stretch="Uniform" Margin="0,0,10,0"/>
+                    <TextBlock Text="Vista Previa de Tiquete Térmico" Style="{StaticResource TextHeaderSmall}"/>
+                </StackPanel>
+                <Button HorizontalAlignment="Right"
+                        Command="{Binding CloseCommand}"
+                        Style="{StaticResource SecondaryButton}"
+                        Padding="6"
+                        Width="28"
+                        Height="28">
+                    <Path Data="{StaticResource IconClose}" Fill="{DynamicResource BrushTextSecondary}" Width="10" Height="10" Stretch="Uniform"/>
+                </Button>
+            </Grid>
+
+            <Border Grid.Row="1"
+                    Background="{DynamicResource BrushSurfaceBackground}"
+                    BorderBrush="{DynamicResource BrushBorderSubtle}"
+                    BorderThickness="1"
+                    CornerRadius="10"
+                    Padding="20"
+                    Margin="0,0,0,16">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel HorizontalAlignment="Center" Width="360">
+                        <StackPanel HorizontalAlignment="Center" Margin="0,0,0,12">
+                            <TextBlock Text="PARQUEADERO PARKFLOW" FontSize="16" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="SISTEMA DE CONTROL DE ACCESO" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            <TextBlock Text="Terminal 01 • Entrada Principal" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
+                        </StackPanel>
+
+                        <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,4,0,12"/>
+
+                        <StackPanel Margin="0,0,0,14" HorizontalAlignment="Center">
+                            <TextBlock Text="NÚMERO DE TIQUETE" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding Ticket.TicketNumber}" FontSize="16" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center"/>
+                        </StackPanel>
+
+                        <Border Background="{DynamicResource BrushInputBackground}"
+                                BorderBrush="{DynamicResource BrushBorderMedium}"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="16,10"
+                                Margin="0,0,0,16">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock Text="PLACA DEL VEHÍCULO" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding Ticket.PlateNumber}" FontSize="24" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding Ticket.VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="12" Foreground="{DynamicResource BrushCyan}" HorizontalAlignment="Center" Margin="0,4,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Bahía / Espacio Asignado:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Ticket.BayNumber}" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="Bold" FontSize="12"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Fecha y Hora de Ingreso:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Ticket.EntryTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,8" Visibility="{Binding Ticket.ExitTime, Converter={StaticResource NullToVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Fecha y Hora de Salida:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Ticket.ExitTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,8" Visibility="{Binding Ticket.ExitTime, Converter={StaticResource NullToVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Duración Total:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Ticket.FormattedDuration}" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" FontSize="12"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Tarifa Base por Hora:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Ticket.HourlyRate, Converter={StaticResource CurrencyConv}}" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,8" Visibility="{Binding Ticket.ExitTime, Converter={StaticResource NullToVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Total Pagado:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="13" FontWeight="Bold"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Ticket.TotalAmount, Converter={StaticResource CurrencyConv}}" Foreground="{DynamicResource BrushSuccess}" FontWeight="Bold" FontSize="15"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Operador en Turno:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Ticket.OperatorName}" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12"/>
+                        </Grid>
+
+                        <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,4,0,14"/>
+
+                        <StackPanel HorizontalAlignment="Center" Margin="0,0,0,12">
+                            <Border Background="#FFFFFF" BorderBrush="{DynamicResource BrushBorderMedium}" BorderThickness="1" CornerRadius="4" Padding="12,8" HorizontalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Rectangle Width="2" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="4" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="1" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="3" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="5" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="2" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="1" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="4" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="2" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="3" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="1" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="5" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="2" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="4" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="1" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="3" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="2" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="4" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="2" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="1" Height="36" Fill="#000000" Margin="1,0"/>
+                                    <Rectangle Width="4" Height="36" Fill="#000000" Margin="1,0"/>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Text="* ESCANEE AL SALIR O EN CAJA *" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center" Margin="0,6,0,0"/>
+                        </StackPanel>
+
+                        <TextBlock Text="Conserve este tiquete para retirar su vehículo. En caso de pérdida se cobrará tarifa plena más costo administrativo de reposición."
+                                   FontSize="10"
+                                   Foreground="{DynamicResource BrushTextMuted}"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Center"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding PrintSuccess, Converter={StaticResource BoolToVis}}">
+                    <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushSuccess}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,8,0"/>
+                    <TextBlock Text="Trabajo de impresión enviado a la impresora térmica" Foreground="{DynamicResource BrushSuccess}" FontSize="12" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Command="{Binding PrintTicketCommand}"
+                            Style="{StaticResource ModernButton}"
+                            Margin="0,0,10,0"
+                            Padding="18,8">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource IconPrint}" Fill="{DynamicResource BrushTextWhite}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0"/>
+                                    <TextBlock Text="Imprimir Tiquete" Foreground="{DynamicResource BrushTextWhite}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+                    <Button Content="Cerrar"
+                            Command="{Binding CloseCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="18,8"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

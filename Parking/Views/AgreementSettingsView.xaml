@@ -1,0 +1,212 @@
+<UserControl x:Class="Parking.Views.AgreementSettingsView"
+              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+              xmlns:conv="clr-namespace:Parking.Core.Converters"
+              xmlns:enums="clr-namespace:Parking.Core.Enums"
+              mc:Ignorable="d"
+              d:DesignHeight="700" d:DesignWidth="1000">
+
+    <UserControl.Resources>
+        <conv:CurrencyConverter x:Key="CurrencyConv"/>
+        <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </UserControl.Resources>
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Configuración de Convenios y Descuentos" Style="{StaticResource TextHeaderMedium}"/>
+            <TextBlock Text="Defina reglas de descuento asociadas a compras mínimas en comercios aliados" Style="{StaticResource TextBodySecondary}" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="1.5*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource ModernCard}" Margin="0,0,16,0">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="REGLA DE CONVENIO COMERCIAL" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,16"/>
+
+                        <StackPanel Margin="0,0,0,14">
+                            <TextBlock Text="Almacén Aliado *" Style="{StaticResource TextBodySecondary}" Margin="0,0,0,6"/>
+                            <ComboBox ItemsSource="{Binding AvailableStores}"
+                                      SelectedItem="{Binding SelectedStore}"
+                                      DisplayMemberPath="Name"
+                                      Style="{StaticResource ModernComboBox}"/>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,14">
+                            <TextBlock Text="Nombre de la Regla / Convenio *" Style="{StaticResource TextBodySecondary}" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}"/>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,14">
+                            <TextBlock Text="Valor Mínimo de Compra Requerido ($) *" Style="{StaticResource TextBodySecondary}" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding MinPurchaseAmount, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}"/>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,14">
+                            <TextBlock Text="Tipo y Valor de Descuento *" Style="{StaticResource TextBodySecondary}" Margin="0,0,0,6"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0"
+                                          SelectedValue="{Binding DiscountType}"
+                                          SelectedValuePath="Tag"
+                                          Style="{StaticResource ModernComboBox}"
+                                          Margin="0,0,6,0">
+                                    <ComboBoxItem Content="Porcentaje (%)" Tag="{x:Static enums:DiscountType.Percentage}"/>
+                                    <ComboBoxItem Content="Valor Fijo ($)" Tag="{x:Static enums:DiscountType.FixedAmount}"/>
+                                </ComboBox>
+                                <TextBox Grid.Column="1"
+                                         Text="{Binding DiscountValue, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{StaticResource ModernTextBox}"
+                                         Margin="6,0,0,0"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <StackPanel Margin="0,0,0,14">
+                            <TextBlock Text="Límite Máximo de Horas Aplicables (Opcional)" Style="{StaticResource TextBodySecondary}" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding MaxHoursApplicable, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}"/>
+                        </StackPanel>
+
+                        <CheckBox Content="Convenio Activo para Liquidación"
+                                  IsChecked="{Binding IsActive}"
+                                  Foreground="{DynamicResource BrushTextPrimary}"
+                                  FontSize="13"
+                                  Margin="0,6,0,20"/>
+
+                        <Border Visibility="{Binding HasFeedback, Converter={StaticResource BoolToVis}}"
+                                CornerRadius="8"
+                                Padding="12"
+                                Margin="0,0,0,16">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource BrushSuccessBg}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource BrushSuccess}"/>
+                                    <Setter Property="BorderThickness" Value="1"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSuccessFeedback}" Value="False">
+                                            <Setter Property="Background" Value="{DynamicResource BrushDangerBg}"/>
+                                            <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock Text="{Binding FeedbackMessage}" FontSize="12" TextWrapping="Wrap">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{DynamicResource BrushSuccess}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSuccessFeedback}" Value="False">
+                                                <Setter Property="Foreground" Value="{DynamicResource BrushDanger}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Border>
+
+                        <Button Command="{Binding SaveAgreementCommand}"
+                                Style="{StaticResource ModernButton}"
+                                Height="44"
+                                Margin="0,0,0,10">
+                            <Button.ContentTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="Guardar Convenio" Foreground="{DynamicResource BrushTextWhite}" FontWeight="Bold"/>
+                                </DataTemplate>
+                            </Button.ContentTemplate>
+                        </Button>
+
+                        <Button Content="Limpiar Formulario"
+                                Command="{Binding ClearFormCommand}"
+                                Style="{StaticResource SecondaryButton}"
+                                Height="38"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+
+            <Border Grid.Column="1" Style="{StaticResource ModernCard}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Text="REGLAS DE CONVENIOS REGISTRADAS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,14"/>
+
+                    <DataGrid Grid.Row="1"
+                              ItemsSource="{Binding Agreements}"
+                              SelectedItem="{Binding SelectedAgreement}"
+                              Style="{StaticResource ModernDataGrid}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ALMACÉN" Binding="{Binding Store.Name}" Width="1.2*"/>
+                            <DataGridTextColumn Header="NOMBRE CONVENIO" Binding="{Binding Name}" Width="1.5*"/>
+                            <DataGridTextColumn Header="COMPRA MÍNIMA" Binding="{Binding MinPurchaseAmount, Converter={StaticResource CurrencyConv}}" Width="*"/>
+                            <DataGridTemplateColumn Header="DESCUENTO" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock FontWeight="Bold" Foreground="{DynamicResource BrushCyan}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="{Binding DiscountFixedAmount, StringFormat='${0:N0} Fijo'}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding DiscountPercentage, Converter={StaticResource BoolToVis}}" Value="Visible">
+                                                            <Setter Property="Text" Value="{Binding DiscountPercentage, StringFormat='{}{0:F0}%'}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="ESTADO" Width="Auto">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="4" Padding="8,3" HorizontalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{DynamicResource BrushSuccessBg}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                                            <Setter Property="Background" Value="{DynamicResource BrushDangerBg}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock FontSize="11" FontWeight="Bold">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text" Value="ACTIVO"/>
+                                                        <Setter Property="Foreground" Value="{DynamicResource BrushSuccess}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                                                <Setter Property="Text" Value="INACTIVO"/>
+                                                                <Setter Property="Foreground" Value="{DynamicResource BrushDanger}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
