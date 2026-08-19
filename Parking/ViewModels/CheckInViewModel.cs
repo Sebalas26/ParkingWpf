@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -46,7 +44,8 @@ public partial class CheckInViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSuccessFeedback;
 
-    public ObservableCollection<ParkingTicket> RecentEntries { get; } = new();
+    [ObservableProperty]
+    private bool _isVirtualKeyboardVisible;
 
     public CheckInViewModel(
         IParkingTicketService ticketService,
@@ -58,15 +57,12 @@ public partial class CheckInViewModel : ViewModelBase
         _pricingCalculator = pricingCalculator;
         _authService = authService;
         _dialogService = dialogService;
-
-        _ticketService.TicketRegistered += OnTicketRegistered;
     }
 
     public override async Task InitializeAsync()
     {
         AvailableRates = await _pricingCalculator.GetAllRatesAsync();
         UpdateCurrentRate();
-        await LoadRecentEntriesAsync();
     }
 
     partial void OnSelectedVehicleTypeChanged(VehicleType value)
@@ -79,29 +75,42 @@ public partial class CheckInViewModel : ViewModelBase
         CurrentRate = _pricingCalculator.GetRate(SelectedVehicleType);
     }
 
-    private async Task LoadRecentEntriesAsync()
-    {
-        var active = await _ticketService.GetActiveTicketsAsync();
-        RecentEntries.Clear();
-        foreach (var ticket in active.Take(6))
-        {
-            RecentEntries.Add(ticket);
-        }
-    }
-
-    private void OnTicketRegistered(object? sender, ParkingTicket ticket)
-    {
-        RecentEntries.Insert(0, ticket);
-        if (RecentEntries.Count > 6)
-        {
-            RecentEntries.RemoveAt(RecentEntries.Count - 1);
-        }
-    }
-
     [RelayCommand]
     private void SelectVehicleType(VehicleType type)
     {
         SelectedVehicleType = type;
+    }
+
+    [RelayCommand]
+    private void ToggleVirtualKeyboard()
+    {
+        IsVirtualKeyboardVisible = !IsVirtualKeyboardVisible;
+    }
+
+    [RelayCommand]
+    private void AppendVirtualKey(string key)
+    {
+        if (string.IsNullOrEmpty(key)) return;
+
+        if (key.Equals("BACKSPACE", StringComparison.OrdinalIgnoreCase) || key.Equals("DEL", StringComparison.OrdinalIgnoreCase))
+        {
+            if (PlateNumber.Length > 0)
+            {
+                PlateNumber = PlateNumber[..^1];
+            }
+        }
+        else if (key.Equals("CLEAR", StringComparison.OrdinalIgnoreCase))
+        {
+            PlateNumber = string.Empty;
+        }
+        else if (key.Equals("SPACE", StringComparison.OrdinalIgnoreCase))
+        {
+            PlateNumber += " ";
+        }
+        else
+        {
+            PlateNumber = (PlateNumber + key).ToUpperInvariant();
+        }
     }
 
     [RelayCommand]
@@ -128,7 +137,7 @@ public partial class CheckInViewModel : ViewModelBase
         }
 
         IsBusy = true;
-        BusyMessage = "Registrando ingreso de vehículo y generando tiquete...";
+        BusyMessage = "Registrando ingreso de vehículo y emitiendo tiquete...";
 
         try
         {
@@ -144,7 +153,7 @@ public partial class CheckInViewModel : ViewModelBase
 
             HasFeedback = true;
             IsSuccessFeedback = true;
-            FeedbackMessage = $"Vehículo {ticket.PlateNumber} registrado exitosamente en la Bahía {ticket.BayNumber} (Tiquete #{ticket.TicketNumber}).";
+            FeedbackMessage = $"Vehículo {ticket.PlateNumber} registrado exitosamente (Tiquete #{ticket.TicketNumber}).";
 
             await _dialogService.ShowReceiptPreviewAsync(ticket);
         }

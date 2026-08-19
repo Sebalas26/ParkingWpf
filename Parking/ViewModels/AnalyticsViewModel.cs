@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -18,6 +19,18 @@ public partial class AnalyticsViewModel : ViewModelBase
 
     [ObservableProperty]
     private FinancialSummary _summary = new();
+
+    [ObservableProperty]
+    private int _totalCapacity = 120;
+
+    [ObservableProperty]
+    private int _occupiedSpaces = 0;
+
+    [ObservableProperty]
+    private int _availableSpaces = 120;
+
+    [ObservableProperty]
+    private double _occupancyPercentage = 0.0;
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -54,10 +67,7 @@ public partial class AnalyticsViewModel : ViewModelBase
         await RefreshDataAsync();
     }
 
-    partial void OnSearchTextChanged(string value)
-    {
-        _ = FilterTransactionsAsync();
-    }
+    partial void OnSearchTextChanged(string value) => _ = FilterTransactionsAsync();
 
     partial void OnSelectedStatusFilterChanged(TicketStatus? value)
     {
@@ -88,6 +98,13 @@ public partial class AnalyticsViewModel : ViewModelBase
         try
         {
             Summary = await _analyticsService.GetDailySummaryAsync();
+            var occupancyStats = await _ticketService.GetOccupancyStatsAsync();
+
+            TotalCapacity = occupancyStats.TotalCapacity > 0 ? occupancyStats.TotalCapacity : 120;
+            OccupiedSpaces = occupancyStats.OccupiedSpots;
+            AvailableSpaces = occupancyStats.AvailableSpots;
+            OccupancyPercentage = occupancyStats.OccupancyPercentage;
+
             await FilterTransactionsAsync();
         }
         finally

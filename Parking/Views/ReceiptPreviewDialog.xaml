@@ -87,15 +87,6 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Bahía / Espacio Asignado:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Ticket.BayNumber}" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="Bold" FontSize="12"/>
-                        </Grid>
-
-                        <Grid Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="Fecha y Hora de Ingreso:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12"/>
                             <TextBlock Grid.Column="1" Text="{Binding Ticket.EntryTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12"/>
                         </Grid>

@@ -7,6 +7,7 @@ using Parking.Core.Enums;
 using Parking.Data.Factories;
 using Parking.Entities;
 using Parking.Models;
+using Parking.Models.ApiModels;
 using Parking.Services.Contracts;
 
 namespace Parking.Services.Implementations;
@@ -15,16 +16,24 @@ public class EfParkingTicketService : IParkingTicketService
 {
     private readonly IDbConnectionManager _connectionManager;
     private readonly IPricingCalculatorService _pricingCalculator;
+    private readonly IApiClientService _apiClient;
+    private readonly ISyncEngineService _syncEngine;
     private int _totalCapacity = 120;
 
     public event EventHandler<ParkingTicket>? TicketRegistered;
     public event EventHandler<ParkingTicket>? TicketCompleted;
     public event EventHandler<OccupancyStats>? OccupancyChanged;
 
-    public EfParkingTicketService(IDbConnectionManager connectionManager, IPricingCalculatorService pricingCalculator)
+    public EfParkingTicketService(
+        IDbConnectionManager connectionManager,
+        IPricingCalculatorService pricingCalculator,
+        IApiClientService apiClient,
+        ISyncEngineService syncEngine)
     {
         _connectionManager = connectionManager;
         _pricingCalculator = pricingCalculator;
+        _apiClient = apiClient;
+        _syncEngine = syncEngine;
     }
 
     public async Task<ParkingTicket> RegisterEntryAsync(string plateNumber, VehicleType vehicleType, string? phoneNumber, string? notes, string operatorName)
@@ -53,13 +62,46 @@ public class EfParkingTicketService : IParkingTicketService
             VehicleType = vehicleType,
             CustomerPhone = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim(),
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
-            BayNumber = GenerateBayNumber(vehicleType),
             EntryTimeUtc = DateTime.UtcNow,
             HourlyRate = rate.HourRate,
             Status = TicketStatus.Active,
             OperatorName = operatorName,
-            IsSynchronized = _connectionManager.IsOnlineMode
+            IsSynchronized = false
         };
+
+        // Intentar registrar en el API si está en línea
+        if (_syncEngine.IsOnline)
+        {
+            try
+            {
+                var apiResponse = await _apiClient.CheckInAsync(new CheckInApiRequest
+                {
+                    PlateNumber = ticket.PlateNumber,
+                    VehicleType = ticket.VehicleType,
+                    PhoneNumber = ticket.CustomerPhone,
+                    Notes = ticket.Notes,
+                    OperatorName = operatorName,
+                    EntryTimeUtc = ticket.EntryTimeUtc
+                });
+
+                if (apiResponse != null)
+                {
+                    ticket.IsSynchronized = true;
+                }
+                else
+                {
+                    await _syncEngine.EnqueueOfflineCheckInAsync(ticket);
+                }
+            }
+            catch
+            {
+                await _syncEngine.EnqueueOfflineCheckInAsync(ticket);
+            }
+        }
+        else
+        {
+            await _syncEngine.EnqueueOfflineCheckInAsync(ticket);
+        }
 
         db.ParkingTickets.Add(ticket);
         await db.SaveChangesAsync();
@@ -100,7 +142,44 @@ public class EfParkingTicketService : IParkingTicketService
         ticket.ChangeGiven = Math.Max(0m, amountPaid - net);
         ticket.PaymentMethod = paymentMethod;
         ticket.Status = TicketStatus.Completed;
-        ticket.IsSynchronized = _connectionManager.IsOnlineMode;
+        ticket.IsSynchronized = false;
+
+        // Intentar registrar en el API si está en línea
+        if (_syncEngine.IsOnline)
+        {
+            try
+            {
+                var apiResponse = await _apiClient.CheckOutAsync(new CheckOutApiRequest
+                {
+                    TicketId = ticket.TicketId,
+                    PaymentMethod = paymentMethod,
+                    AmountPaid = amountPaid,
+                    StoreId = storeId,
+                    AgreementId = agreementId,
+                    InvoiceNumber = invoiceNumber,
+                    PurchaseAmount = purchaseAmount,
+                    DiscountAmount = discountAmount,
+                    ExitTimeUtc = exitTime
+                });
+
+                if (apiResponse != null)
+                {
+                    ticket.IsSynchronized = true;
+                }
+                else
+                {
+                    await _syncEngine.EnqueueOfflineCheckOutAsync(ticket);
+                }
+            }
+            catch
+            {
+                await _syncEngine.EnqueueOfflineCheckOutAsync(ticket);
+            }
+        }
+        else
+        {
+            await _syncEngine.EnqueueOfflineCheckOutAsync(ticket);
+        }
 
         if (storeId.HasValue && agreementId.HasValue && !string.IsNullOrWhiteSpace(invoiceNumber) && discountAmount > 0)
         {
@@ -114,7 +193,7 @@ public class EfParkingTicketService : IParkingTicketService
                 PurchaseAmount = purchaseAmount ?? 0m,
                 AppliedDiscountAmount = discountAmount,
                 ValidatedAtUtc = DateTime.UtcNow,
-                IsSynchronized = _connectionManager.IsOnlineMode
+                IsSynchronized = ticket.IsSynchronized
             };
 
             db.TicketDiscounts.Add(discountRecord);
@@ -142,7 +221,6 @@ public class EfParkingTicketService : IParkingTicketService
         using var db = _connectionManager.CreateDbContext();
         return await db.ParkingTickets
             .Where(t => t.Status == TicketStatus.Completed)
-            .Include(t => t.Discounts)
             .OrderByDescending(t => t.ExitTimeUtc)
             .ToListAsync();
     }
@@ -151,33 +229,25 @@ public class EfParkingTicketService : IParkingTicketService
     {
         using var db = _connectionManager.CreateDbContext();
         return await db.ParkingTickets
-            .Include(t => t.Discounts)
             .OrderByDescending(t => t.EntryTimeUtc)
             .ToListAsync();
     }
 
     public async Task<ParkingTicket?> FindActiveTicketAsync(string query)
     {
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            return null;
-        }
+        if (string.IsNullOrWhiteSpace(query)) return null;
 
         var normalized = query.Trim().ToUpperInvariant();
         using var db = _connectionManager.CreateDbContext();
 
-        return await db.ParkingTickets
-            .FirstOrDefaultAsync(t =>
-                t.Status == TicketStatus.Active &&
-                (t.PlateNumber == normalized || t.TicketNumber == normalized));
+        return await db.ParkingTickets.FirstOrDefaultAsync(t =>
+            t.Status == TicketStatus.Active &&
+            (t.PlateNumber == normalized || t.TicketNumber == normalized));
     }
 
     public async Task<bool> IsPlateCurrentlyParkedAsync(string plateNumber)
     {
-        if (string.IsNullOrWhiteSpace(plateNumber))
-        {
-            return false;
-        }
+        if (string.IsNullOrWhiteSpace(plateNumber)) return false;
 
         var normalized = plateNumber.Trim().ToUpperInvariant();
         using var db = _connectionManager.CreateDbContext();
@@ -190,12 +260,12 @@ public class EfParkingTicketService : IParkingTicketService
     public async Task<OccupancyStats> GetOccupancyStatsAsync()
     {
         using var db = _connectionManager.CreateDbContext();
-        var activeCount = await db.ParkingTickets.CountAsync(t => t.Status == TicketStatus.Active);
+        var occupied = await db.ParkingTickets.CountAsync(t => t.Status == TicketStatus.Active);
 
         return new OccupancyStats
         {
             TotalCapacity = _totalCapacity,
-            OccupiedSpots = activeCount
+            OccupiedSpots = occupied
         };
     }
 
@@ -204,28 +274,6 @@ public class EfParkingTicketService : IParkingTicketService
         if (newCapacity > 0)
         {
             _totalCapacity = newCapacity;
-            _ = NotifyOccupancyChangedAsync();
         }
-    }
-
-    private async Task NotifyOccupancyChangedAsync()
-    {
-        var stats = await GetOccupancyStatsAsync();
-        OccupancyChanged?.Invoke(this, stats);
-    }
-
-    private static string GenerateBayNumber(VehicleType vehicleType)
-    {
-        var random = Random.Shared.Next(1, 40);
-        var prefix = vehicleType switch
-        {
-            VehicleType.Motorcycle => "M",
-            VehicleType.Car => "A",
-            VehicleType.Suv => "B",
-            VehicleType.Van => "C",
-            VehicleType.HeavyTruck => "T",
-            _ => "P"
-        };
-        return $"{prefix}-{random:D2}";
     }
 }

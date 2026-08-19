@@ -1,15 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Parking.Core.Constants;
 using Parking.Core.Enums;
-using Parking.Data.Factories;
 using Parking.Entities;
 using Parking.Models;
 using Parking.Services.Contracts;
@@ -22,9 +19,8 @@ public partial class MainShellViewModel : ViewModelBase
     private readonly IAuthService _authService;
     private readonly IParkingTicketService _ticketService;
     private readonly INavigationService _navigationService;
-    private readonly IPermissionService _permissionService;
-    private readonly ISessionHeartbeatService _heartbeatService;
-    private readonly IDbConnectionManager _connectionManager;
+    private readonly ISyncEngineService _syncEngine;
+    private readonly IBackgroundSyncScheduler _backgroundSync;
     private readonly IThemeService _themeService;
     private readonly IDialogService _dialogService;
     private readonly DispatcherTimer _clockTimer;
@@ -48,34 +44,16 @@ public partial class MainShellViewModel : ViewModelBase
     private bool _isOnlineMode;
 
     [ObservableProperty]
-    private string _databaseStatusText = string.Empty;
+    private string _syncStatusText = "Conectando al API Central...";
 
     [ObservableProperty]
-    private AppTheme _currentAppTheme = AppTheme.MidnightDark;
+    private bool _isSyncing;
+
+    [ObservableProperty]
+    private AppTheme _currentAppTheme = AppTheme.FigmaTeal;
 
     [ObservableProperty]
     private ThemeInfo? _selectedTheme;
-
-    [ObservableProperty]
-    private bool _canViewCheckIn;
-
-    [ObservableProperty]
-    private bool _canViewCheckOut;
-
-    [ObservableProperty]
-    private bool _canViewAnalytics;
-
-    [ObservableProperty]
-    private bool _canViewStores;
-
-    [ObservableProperty]
-    private bool _canViewAgreements;
-
-    [ObservableProperty]
-    private bool _canViewRates;
-
-    [ObservableProperty]
-    private bool _canViewSecurity;
 
     public IReadOnlyList<ThemeInfo> AvailableThemes => _themeService.GetAvailableThemes();
 
@@ -85,18 +63,16 @@ public partial class MainShellViewModel : ViewModelBase
         IAuthService authService,
         IParkingTicketService ticketService,
         INavigationService navigationService,
-        IPermissionService permissionService,
-        ISessionHeartbeatService heartbeatService,
-        IDbConnectionManager connectionManager,
+        ISyncEngineService syncEngine,
+        IBackgroundSyncScheduler backgroundSync,
         IThemeService themeService,
         IDialogService dialogService)
     {
         _authService = authService;
         _ticketService = ticketService;
         _navigationService = navigationService;
-        _permissionService = permissionService;
-        _heartbeatService = heartbeatService;
-        _connectionManager = connectionManager;
+        _syncEngine = syncEngine;
+        _backgroundSync = backgroundSync;
         _themeService = themeService;
         _dialogService = dialogService;
 
@@ -114,22 +90,16 @@ public partial class MainShellViewModel : ViewModelBase
             Occupancy = stats;
         };
 
-        _connectionManager.ConnectionStateChanged += (s, isOnline) =>
+        _syncEngine.SyncStatusChanged += (s, status) =>
         {
-            IsOnlineMode = isOnline;
-            DatabaseStatusText = _connectionManager.StatusDescription;
+            IsOnlineMode = _syncEngine.IsOnline;
+            SyncStatusText = status;
         };
 
         _themeService.ThemeChanged += (s, theme) =>
         {
             CurrentAppTheme = theme;
             SelectedTheme = AvailableThemes.FirstOrDefault(t => t.Theme == theme);
-        };
-
-        _heartbeatService.SessionRevoked += async (s, message) =>
-        {
-            await _dialogService.ShowAlertAsync("Sesión Finalizada", message);
-            LogoutRequested?.Invoke();
         };
 
         _clockTimer = new DispatcherTimer
@@ -153,54 +123,20 @@ public partial class MainShellViewModel : ViewModelBase
     public override async Task InitializeAsync()
     {
         CurrentUser = _authService.CurrentUser;
-        IsOnlineMode = _connectionManager.IsOnlineMode;
-        DatabaseStatusText = _connectionManager.StatusDescription;
-
         Occupancy = await _ticketService.GetOccupancyStatsAsync();
 
-        if (CurrentUser != null)
-        {
-            var accessibleModules = await _permissionService.GetAccessibleModulesAsync(CurrentUser.UserId);
-            var moduleKeys = accessibleModules.Select(m => m.ModuleKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        // Iniciar programador de sincronización en segundo plano (cada 1 hora)
+        _backgroundSync.Start();
 
-            CanViewCheckIn = CurrentUser.IsAdmin || moduleKeys.Contains(ModuleKeys.CheckIn);
-            CanViewCheckOut = CurrentUser.IsAdmin || moduleKeys.Contains(ModuleKeys.CheckOut);
-            CanViewAnalytics = CurrentUser.IsAdmin || moduleKeys.Contains(ModuleKeys.Analytics);
-            CanViewStores = CurrentUser.IsAdmin || moduleKeys.Contains(ModuleKeys.Stores);
-            CanViewAgreements = CurrentUser.IsAdmin || moduleKeys.Contains(ModuleKeys.Agreements);
-            CanViewRates = CurrentUser.IsAdmin || moduleKeys.Contains(ModuleKeys.Rates);
-            CanViewSecurity = CurrentUser.IsAdmin || moduleKeys.Contains(ModuleKeys.Security);
-        }
-        else
-        {
-            CanViewCheckIn = true;
-            CanViewCheckOut = true;
-            CanViewAnalytics = true;
-            CanViewStores = true;
-            CanViewAgreements = true;
-            CanViewRates = true;
-            CanViewSecurity = true;
-        }
+        // Ejecutar primera sincronización con el API al abrir la app
+        await ManualSyncAsync();
 
-        _heartbeatService.StartMonitoring();
-
-        if (CanViewCheckIn)
-        {
-            NavigateToCheckIn();
-        }
-        else if (CanViewCheckOut)
-        {
-            NavigateToCheckOut();
-        }
-        else
-        {
-            NavigateToAnalytics();
-        }
+        NavigateToCheckIn();
     }
 
     private void UpdateClock()
     {
-        CurrentTimeString = DateTime.Now.ToString("dddd, dd 'de' MMMM 'de' yyyy • HH:mm:ss", SpanishCulture);
+        CurrentTimeString = DateTime.Now.ToString("ddd, dd MMM yyyy • HH:mm:ss", SpanishCulture);
     }
 
     private void UpdateSelectedNavSection(ViewModelBase vm)
@@ -209,13 +145,30 @@ public partial class MainShellViewModel : ViewModelBase
         {
             CheckInViewModel => "CheckIn",
             CheckOutViewModel => "CheckOut",
+            RecentEntriesViewModel => "RecentEntries",
             AnalyticsViewModel => "Analytics",
-            StoreSettingsViewModel => "Stores",
-            AgreementSettingsViewModel => "Agreements",
-            SettingsViewModel => "Rates",
-            SecuritySettingsViewModel => "Security",
             _ => "CheckIn"
         };
+    }
+
+    [RelayCommand]
+    public async Task ManualSyncAsync()
+    {
+        if (IsSyncing) return;
+        IsSyncing = true;
+        SyncStatusText = "Sincronizando con API Central...";
+
+        try
+        {
+            await _backgroundSync.TriggerManualSyncAsync();
+            IsOnlineMode = _syncEngine.IsOnline;
+            SyncStatusText = _syncEngine.SyncStatusDescription;
+            Occupancy = await _ticketService.GetOccupancyStatsAsync();
+        }
+        finally
+        {
+            IsSyncing = false;
+        }
     }
 
     [RelayCommand]
@@ -237,39 +190,21 @@ public partial class MainShellViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void NavigateToRecentEntries()
+    {
+        _navigationService.NavigateTo<RecentEntriesViewModel>();
+    }
+
+    [RelayCommand]
     private void NavigateToAnalytics()
     {
         _navigationService.NavigateTo<AnalyticsViewModel>();
     }
 
     [RelayCommand]
-    private void NavigateToStores()
-    {
-        _navigationService.NavigateTo<StoreSettingsViewModel>();
-    }
-
-    [RelayCommand]
-    private void NavigateToAgreements()
-    {
-        _navigationService.NavigateTo<AgreementSettingsViewModel>();
-    }
-
-    [RelayCommand]
-    private void NavigateToSettings()
-    {
-        _navigationService.NavigateTo<SettingsViewModel>();
-    }
-
-    [RelayCommand]
-    private void NavigateToSecurity()
-    {
-        _navigationService.NavigateTo<SecuritySettingsViewModel>();
-    }
-
-    [RelayCommand]
     private async Task LogoutAsync()
     {
-        _heartbeatService.StopMonitoring();
+        _backgroundSync.Stop();
         await _authService.LogoutAsync();
         LogoutRequested?.Invoke();
     }

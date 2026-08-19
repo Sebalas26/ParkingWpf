@@ -72,8 +72,7 @@ public class EfAnalyticsService : IAnalyticsService
             query = query.Where(t =>
                 t.PlateNumber.Contains(term) ||
                 t.TicketNumber.Contains(term) ||
-                (t.CustomerPhone != null && t.CustomerPhone.Contains(term)) ||
-                (t.BayNumber != null && t.BayNumber.Contains(term)));
+                (t.CustomerPhone != null && t.CustomerPhone.Contains(term)));
         }
 
         if (statusFilter.HasValue)

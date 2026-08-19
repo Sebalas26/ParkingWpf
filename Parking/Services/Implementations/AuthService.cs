@@ -13,13 +13,17 @@ namespace Parking.Services.Implementations;
 public class AuthService : IAuthService
 {
     private readonly IDbConnectionManager _connectionManager;
+    private readonly IApiClientService _apiClient;
 
     public UserSessionModel? CurrentUser { get; private set; }
     public bool IsAuthenticated => CurrentUser != null;
 
-    public AuthService(IDbConnectionManager connectionManager)
+    public AuthService(
+        IDbConnectionManager connectionManager,
+        IApiClientService apiClient)
     {
         _connectionManager = connectionManager;
+        _apiClient = apiClient;
     }
 
     public async Task<bool> LoginAsync(string username, string password)
@@ -29,8 +33,33 @@ public class AuthService : IAuthService
             return false;
         }
 
-        using var db = _connectionManager.CreateDbContext();
         var normalizedUser = username.Trim().ToLowerInvariant();
+
+        // 1. Intentar autenticar contra el API
+        try
+        {
+            var apiLogin = await _apiClient.LoginAsync(username, password);
+            if (apiLogin != null && apiLogin.Success)
+            {
+                CurrentUser = new UserSessionModel
+                {
+                    UserId = apiLogin.UserId,
+                    Username = apiLogin.Username,
+                    FullName = apiLogin.FullName,
+                    RoleName = apiLogin.RoleName,
+                    SessionToken = apiLogin.Token ?? Guid.NewGuid().ToString(),
+                    LoginTime = DateTime.Now
+                };
+                return true;
+            }
+        }
+        catch
+        {
+            // Falla de red, continuar con verificación local
+        }
+
+        // 2. Autenticación contra Caché Local SQLite (Modo Offline)
+        using var db = _connectionManager.CreateDbContext();
         var passwordHash = DbConnectionManager.HashPassword(password);
 
         var user = await db.Users
@@ -40,15 +69,6 @@ public class AuthService : IAuthService
         if (user == null || user.PasswordHash != passwordHash)
         {
             return false;
-        }
-
-        var activeSessions = await db.UserSessions
-            .Where(s => s.UserId == user.UserId && s.IsActive)
-            .ToListAsync();
-
-        foreach (var session in activeSessions)
-        {
-            session.IsActive = false;
         }
 
         var sessionToken = Guid.NewGuid().ToString();
@@ -67,23 +87,15 @@ public class AuthService : IAuthService
         db.UserSessions.Add(newSession);
         await db.SaveChangesAsync();
 
-        var grantedPerms = await db.RolePermissions
-            .Where(rp => rp.RoleId == user.RoleId && rp.IsGranted)
-            .Include(rp => rp.Permission)
-            .ThenInclude(p => p.Module)
-            .Select(rp => $"{rp.Permission.Module.ModuleKey}.{rp.Permission.ActionKey}")
-            .ToListAsync();
-
         CurrentUser = new UserSessionModel
         {
             UserId = user.UserId,
             Username = user.Username,
             FullName = user.FullName,
-            RoleName = user.Role.Name,
+            RoleName = user.Role?.Name ?? "Operador",
             RoleId = user.RoleId,
             SessionToken = sessionToken,
-            LoginTime = DateTime.Now,
-            GrantedPermissions = new HashSet<string>(grantedPerms, StringComparer.OrdinalIgnoreCase)
+            LoginTime = DateTime.Now
         };
 
         return true;

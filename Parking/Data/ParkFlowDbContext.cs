@@ -20,6 +20,7 @@ public class ParkFlowDbContext : DbContext
     public DbSet<VehicleRate> VehicleRates => Set<VehicleRate>();
     public DbSet<ParkingTicket> ParkingTickets => Set<ParkingTicket>();
     public DbSet<TicketDiscount> TicketDiscounts => Set<TicketDiscount>();
+    public DbSet<PendingSyncItem> PendingSyncItems => Set<PendingSyncItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

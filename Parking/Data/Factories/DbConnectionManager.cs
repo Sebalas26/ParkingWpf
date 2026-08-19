@@ -69,6 +69,21 @@ public class DbConnectionManager : IDbConnectionManager
 
         using var db = CreateDbContext();
         await db.Database.EnsureCreatedAsync();
+
+        if (_currentProvider == DatabaseProviderType.Sqlite)
+        {
+            await db.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS ""PendingSyncItems"" (
+                    ""PendingSyncItemId"" TEXT NOT NULL PRIMARY KEY,
+                    ""OperationType"" TEXT NOT NULL,
+                    ""PayloadJson"" TEXT NOT NULL,
+                    ""CreatedAtUtc"" TEXT NOT NULL,
+                    ""RetryCount"" INTEGER NOT NULL,
+                    ""LastError"" TEXT NULL,
+                    ""IsProcessed"" INTEGER NOT NULL
+                );");
+        }
+
         await SeedInitialMetadataAsync(db);
 
         ConnectionStateChanged?.Invoke(this, _isOnlineMode);

@@ -45,62 +45,62 @@
                             <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushTextWhite}" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="PARKFLOW" FontSize="20" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}"/>
-                            <TextBlock Text="SISTEMA EMPRESARIAL" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushPrimary}"/>
+                            <TextBlock Text="PARKFLOW" FontSize="20" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
+                            <TextBlock Text="CONTROL DE ACCESO" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushSidebarText}"/>
                         </StackPanel>
                     </StackPanel>
 
                     <StackPanel Grid.Row="1" VerticalAlignment="Center">
-                        <TextBlock Text="Sistema de Control de Acceso y Recaudación de Nueva Generación"
+                        <TextBlock Text="Sistema de Control de Acceso y Recaudación de Parqueadero"
                                    FontSize="22"
                                    FontWeight="Bold"
-                                   Foreground="{DynamicResource BrushTextPrimary}"
+                                   Foreground="{DynamicResource BrushTextWhite}"
                                    TextWrapping="Wrap"
                                    LineHeight="30"
                                    Margin="0,0,0,16"/>
-                        <TextBlock Text="Agilice el registro de entradas, cálculo en caja, seguimiento de ocupación y convenios comerciales de forma fluida."
+                        <TextBlock Text="Agilice el registro de entradas, cálculo en caja, seguimiento de cupos en tiempo real y convenios comerciales."
                                    FontSize="13"
-                                   Foreground="{DynamicResource BrushTextSecondary}"
+                                   Foreground="{DynamicResource BrushSidebarText}"
                                    TextWrapping="Wrap"
                                    LineHeight="20"
                                    Margin="0,0,0,32"/>
 
                         <StackPanel>
-                            <Border Background="{DynamicResource BrushSurfaceElevated}" CornerRadius="8" Padding="12,10" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" Margin="0,0,0,12">
+                            <Border Background="#104E5F" CornerRadius="8" Padding="12,10" BorderBrush="#1B6275" BorderThickness="1" Margin="0,0,0,12">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <Path Grid.Column="0" Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushSuccess}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,12,0"/>
-                                    <TextBlock Grid.Column="1" Text="Control de Ocupación y Bahías en Tiempo Real" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="Control de Ocupación y Bahías en Tiempo Real" Foreground="{DynamicResource BrushTextWhite}" FontSize="12" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
-                            <Border Background="{DynamicResource BrushSurfaceElevated}" CornerRadius="8" Padding="12,10" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" Margin="0,0,0,12">
+                            <Border Background="#104E5F" CornerRadius="8" Padding="12,10" BorderBrush="#1B6275" BorderThickness="1" Margin="0,0,0,12">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <Path Grid.Column="0" Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushPrimary}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,12,0"/>
-                                    <TextBlock Grid.Column="1" Text="Vista Previa de Tiquete Térmico y Descuentos" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" VerticalAlignment="Center"/>
+                                    <Path Grid.Column="0" Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushCyan}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,12,0"/>
+                                    <TextBlock Grid.Column="1" Text="Liquidación Automática y Convenios Comerciales" Foreground="{DynamicResource BrushTextWhite}" FontSize="12" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
-                            <Border Background="{DynamicResource BrushSurfaceElevated}" CornerRadius="8" Padding="12,10" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1">
+                            <Border Background="#104E5F" CornerRadius="8" Padding="12,10" BorderBrush="#1B6275" BorderThickness="1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <Path Grid.Column="0" Data="{StaticResource IconAnalytics}" Fill="{DynamicResource BrushCyan}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,12,0"/>
-                                    <TextBlock Grid.Column="1" Text="Estructura Híbrida Cloud MySQL + Local Offline" Foreground="{DynamicResource BrushTextPrimary}" FontSize="12" VerticalAlignment="Center"/>
+                                    <Path Grid.Column="0" Data="{StaticResource IconAnalytics}" Fill="{DynamicResource BrushSuccess}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,12,0"/>
+                                    <TextBlock Grid.Column="1" Text="Arquitectura Híbrida Cloud MySQL + Local Offline" Foreground="{DynamicResource BrushTextWhite}" FontSize="12" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
                         </StackPanel>
                     </StackPanel>
 
                     <StackPanel Grid.Row="2">
-                        <TextBlock Text="ParkFlow v2.5 Edición Empresarial • .NET 10" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
+                        <TextBlock Text="ParkFlow Enterprise • v2.5 .NET 10" FontSize="11" Foreground="{DynamicResource BrushSidebarText}"/>
                     </StackPanel>
                 </Grid>
             </Border>

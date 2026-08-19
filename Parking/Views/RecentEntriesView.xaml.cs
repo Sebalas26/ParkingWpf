@@ -2,9 +2,9 @@ using System.Windows.Controls;
 
 namespace Parking.Views;
 
-public partial class StoreSettingsView : UserControl
+public partial class RecentEntriesView : UserControl
 {
-    public StoreSettingsView()
+    public RecentEntriesView()
     {
         InitializeComponent();
     }

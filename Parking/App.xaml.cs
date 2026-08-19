@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Parking.Data.Factories;
@@ -29,13 +30,15 @@ public partial class App : Application
 
     private void ConfigureServices(IServiceCollection services)
     {
+        services.AddSingleton<HttpClient>();
+        services.AddSingleton<IApiClientService, ParkingApiClient>();
+        services.AddSingleton<ISyncEngineService, SyncEngineService>();
+        services.AddSingleton<IBackgroundSyncScheduler, BackgroundSyncScheduler>();
+
         services.AddSingleton<IDbConnectionManager, DbConnectionManager>();
         services.AddSingleton<IThemeService, ThemeService>();
 
         services.AddSingleton<IAuthService, AuthService>();
-        services.AddSingleton<ISessionHeartbeatService, SessionHeartbeatService>();
-        services.AddSingleton<IPermissionService, PermissionService>();
-        services.AddSingleton<IUserRoleService, UserRoleService>();
         services.AddSingleton<IStoreService, StoreService>();
         services.AddSingleton<IAgreementService, AgreementService>();
         services.AddSingleton<IPricingCalculatorService, EfPricingCalculatorService>();
@@ -45,22 +48,22 @@ public partial class App : Application
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IDialogService, DialogService>();
 
+        // ViewModels
         services.AddTransient<LoginViewModel>();
         services.AddSingleton<MainShellViewModel>();
         services.AddTransient<CheckInViewModel>();
         services.AddTransient<CheckOutViewModel>();
+        services.AddTransient<RecentEntriesViewModel>();
         services.AddTransient<AnalyticsViewModel>();
-        services.AddTransient<StoreSettingsViewModel>();
-        services.AddTransient<AgreementSettingsViewModel>();
-        services.AddTransient<SettingsViewModel>();
-        services.AddTransient<SecuritySettingsViewModel>();
         services.AddTransient<ReceiptPreviewViewModel>();
 
+        // Windows & Views
         services.AddTransient<LoginWindow>();
         services.AddTransient<MainShellWindow>();
-        services.AddTransient<StoreSettingsView>();
-        services.AddTransient<AgreementSettingsView>();
-        services.AddTransient<SecuritySettingsView>();
+        services.AddTransient<CheckInView>();
+        services.AddTransient<CheckOutView>();
+        services.AddTransient<RecentEntriesView>();
+        services.AddTransient<AnalyticsView>();
     }
 
     private void ShowLoginWindow()

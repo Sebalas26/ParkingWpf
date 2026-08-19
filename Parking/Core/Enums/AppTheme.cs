@@ -2,8 +2,9 @@ namespace Parking.Core.Enums;
 
 public enum AppTheme
 {
-    MidnightDark,
+    FigmaTeal,
     PureLight,
+    MidnightDark,
     OceanBlue,
     ForestEmerald,
     RoyalPurple

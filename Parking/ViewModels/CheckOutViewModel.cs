@@ -129,11 +129,7 @@ public partial class CheckOutViewModel : ViewModelBase
 
     partial void OnSearchQueryChanged(string value)
     {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return;
-        }
-
+        if (string.IsNullOrWhiteSpace(value)) return;
         _ = SearchTicketAsync();
     }
 
@@ -178,10 +174,7 @@ public partial class CheckOutViewModel : ViewModelBase
         RecalculateLiveFee();
     }
 
-    partial void OnCustomerPurchaseAmountChanged(decimal value)
-    {
-        RecalculateLiveFee();
-    }
+    partial void OnCustomerPurchaseAmountChanged(decimal value) => RecalculateLiveFee();
 
     partial void OnHasAgreementDiscountChanged(bool value)
     {
@@ -200,7 +193,7 @@ public partial class CheckOutViewModel : ViewModelBase
     partial void OnSelectedTicketChanged(ParkingTicket? value)
     {
         if (value != null)
-            {
+        {
             _liveCalculationTimer.Start();
             HasAgreementDiscount = false;
             RecalculateLiveFee();
@@ -219,15 +212,8 @@ public partial class CheckOutViewModel : ViewModelBase
         }
     }
 
-    partial void OnAmountTenderedChanged(decimal value)
-    {
-        CalculateChange();
-    }
-
-    partial void OnCalculatedFeeChanged(decimal value)
-    {
-        CalculateChange();
-    }
+    partial void OnAmountTenderedChanged(decimal value) => CalculateChange();
+    partial void OnCalculatedFeeChanged(decimal value) => CalculateChange();
 
     private void CalculateChange()
     {
@@ -236,10 +222,7 @@ public partial class CheckOutViewModel : ViewModelBase
 
     private void RecalculateLiveFee()
     {
-        if (SelectedTicket == null)
-        {
-            return;
-        }
+        if (SelectedTicket == null) return;
 
         var now = DateTime.UtcNow;
         var duration = now - SelectedTicket.EntryTimeUtc;
@@ -281,10 +264,7 @@ public partial class CheckOutViewModel : ViewModelBase
         HasFeedback = false;
         FeedbackMessage = null;
 
-        if (string.IsNullOrWhiteSpace(SearchQuery))
-        {
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(SearchQuery)) return;
 
         var ticket = await _ticketService.FindActiveTicketAsync(SearchQuery);
         if (ticket != null)
@@ -295,7 +275,7 @@ public partial class CheckOutViewModel : ViewModelBase
         {
             HasFeedback = true;
             IsSuccessFeedback = false;
-            FeedbackMessage = $"No se encontró ningún tiquete activo con el criterio '{SearchQuery}'.";
+            FeedbackMessage = $"No se encontró ningún vehículo activo con el criterio '{SearchQuery}'.";
         }
     }
 
@@ -324,10 +304,7 @@ public partial class CheckOutViewModel : ViewModelBase
     [RelayCommand]
     private async Task ProcessPaymentAsync()
     {
-        if (SelectedTicket == null)
-        {
-            return;
-        }
+        if (SelectedTicket == null) return;
 
         if (HasAgreementDiscount)
         {
@@ -335,7 +312,7 @@ public partial class CheckOutViewModel : ViewModelBase
             {
                 HasFeedback = true;
                 IsSuccessFeedback = false;
-                FeedbackMessage = "Debe seleccionar un almacén y convenio válido.";
+                FeedbackMessage = "Debe seleccionar un comercio y convenio válido.";
                 return;
             }
 
@@ -365,7 +342,7 @@ public partial class CheckOutViewModel : ViewModelBase
         }
 
         IsBusy = true;
-        BusyMessage = "Procesando cobro, convenio y liberando cupo...";
+        BusyMessage = "Procesando cobro, liquidación y liberando cupo...";
 
         try
         {
@@ -395,7 +372,7 @@ public partial class CheckOutViewModel : ViewModelBase
 
                 HasFeedback = true;
                 IsSuccessFeedback = true;
-                FeedbackMessage = $"Pago procesado para {clearedPlate}. Total Neto: ${totalPaid:F2}. Cambio: ${change:F2}. Cupo liberado.";
+                FeedbackMessage = $"Pago procesado para {clearedPlate}. Total Neto: ${totalPaid:F2}. Cambio: ${change:F2}. Cupo liberado exitosamente.";
 
                 await _dialogService.ShowReceiptPreviewAsync(completedTicket);
             }
