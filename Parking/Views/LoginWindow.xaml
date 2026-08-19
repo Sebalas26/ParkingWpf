@@ -206,14 +206,14 @@
                                HorizontalAlignment="Center"/>
 
                     <UniformGrid Columns="2" Rows="1" Margin="0,0,0,10">
-                        <Button Content="Admin (admin/admin)"
+                        <Button Content="Admin (admin/admin123)"
                                 Command="{Binding UseAdminDemoCommand}"
                                 Click="DemoButton_Click"
                                 Style="{StaticResource SecondaryButton}"
                                 Margin="0,0,6,0"
                                 FontSize="11"
                                 Height="34"/>
-                        <Button Content="Operador (operator/1234)"
+                        <Button Content="Operador (operador/operador123)"
                                 Command="{Binding UseOperatorDemoCommand}"
                                 Click="DemoButton_Click"
                                 Style="{StaticResource SecondaryButton}"

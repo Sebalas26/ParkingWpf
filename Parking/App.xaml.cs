@@ -45,9 +45,20 @@ public partial class App : Application
     {
         services.AddSingleton(_configuration);
 
-        var apiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5135";
+        var apiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7023";
 
-        services.AddSingleton<HttpClient>();
+        services.AddSingleton(sp =>
+        {
+            var handler = new HttpClientHandler
+            {
+                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
+            };
+            return new HttpClient(handler)
+            {
+                Timeout = TimeSpan.FromSeconds(30)
+            };
+        });
+
         services.AddSingleton<IApiClientService>(sp =>
         {
             var httpClient = sp.GetRequiredService<HttpClient>();

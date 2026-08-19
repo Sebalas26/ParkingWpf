@@ -17,7 +17,7 @@ public partial class LoginViewModel : ViewModelBase
     private string _username = "admin";
 
     [ObservableProperty]
-    private string _password = "admin";
+    private string _password = "admin123";
 
     [ObservableProperty]
     private string? _errorMessage;
@@ -83,7 +83,7 @@ public partial class LoginViewModel : ViewModelBase
     private void UseAdminDemo()
     {
         Username = "admin";
-        Password = "admin";
+        Password = "admin123";
         ErrorMessage = null;
         HasError = false;
     }
@@ -91,8 +91,8 @@ public partial class LoginViewModel : ViewModelBase
     [RelayCommand]
     private void UseOperatorDemo()
     {
-        Username = "operator";
-        Password = "1234";
+        Username = "operador";
+        Password = "operador123";
         ErrorMessage = null;
         HasError = false;
     }

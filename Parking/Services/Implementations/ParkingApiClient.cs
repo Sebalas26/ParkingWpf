@@ -19,12 +19,12 @@ public class ParkingApiClient : IApiClientService
         PropertyNameCaseInsensitive = true
     };
 
-    public string BaseUrl { get; set; } = "http://localhost:5135";
+    public string BaseUrl { get; set; } = "https://localhost:7023";
 
     public ParkingApiClient(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _httpClient.Timeout = TimeSpan.FromSeconds(5);
+        _httpClient.Timeout = TimeSpan.FromSeconds(30);
     }
 
     public void SetAuthToken(string token)
@@ -45,12 +45,23 @@ public class ParkingApiClient : IApiClientService
         try
         {
             var response = await _httpClient.GetAsync($"{BaseUrl}/api/health");
-            return response.IsSuccessStatusCode;
+            if (response.IsSuccessStatusCode) return true;
         }
-        catch
+        catch { }
+
+        var fallbackUrl = BaseUrl.Contains("7023") ? "http://localhost:5135" : "https://localhost:7023";
+        try
         {
-            return false;
+            var response = await _httpClient.GetAsync($"{fallbackUrl}/api/health");
+            if (response.IsSuccessStatusCode)
+            {
+                BaseUrl = fallbackUrl;
+                return true;
+            }
         }
+        catch { }
+
+        return false;
     }
 
     public async Task<BootstrapSyncResponse?> GetBootstrapAsync()
@@ -123,9 +134,10 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<LoginApiResponse?> LoginAsync(string username, string password)
     {
+        var request = new LoginApiRequest { Username = username, Password = password };
+
         try
         {
-            var request = new LoginApiRequest { Username = username, Password = password };
             var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/auth/login", request);
             if (response.IsSuccessStatusCode)
             {
@@ -136,12 +148,27 @@ public class ParkingApiClient : IApiClientService
                 }
                 return result;
             }
-            return null;
         }
-        catch
+        catch { }
+
+        var fallbackUrl = BaseUrl.Contains("7023") ? "http://localhost:5135" : "https://localhost:7023";
+        try
         {
-            return null;
+            var response = await _httpClient.PostAsJsonAsync($"{fallbackUrl}/api/auth/login", request);
+            if (response.IsSuccessStatusCode)
+            {
+                BaseUrl = fallbackUrl;
+                var result = await response.Content.ReadFromJsonAsync<LoginApiResponse>(JsonOptions);
+                if (result != null && !string.IsNullOrEmpty(result.Token))
+                {
+                    SetAuthToken(result.Token);
+                }
+                return result;
+            }
         }
+        catch { }
+
+        return null;
     }
 
     public async Task LogoutAsync()
