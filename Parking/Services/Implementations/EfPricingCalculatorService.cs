@@ -56,7 +56,7 @@ public class EfPricingCalculatorService : IPricingCalculatorService
             HourRate = 3000m,
             MinuteRate = 50m,
             FullDayRate = 25000m,
-            GracePeriodMinutes = 15,
+            GracePeriodMinutes = 0,
             IconKey = "IconCar"
         };
     }
@@ -71,17 +71,12 @@ public class EfPricingCalculatorService : IPricingCalculatorService
         }
 
         var totalMinutes = duration.TotalMinutes;
-        if (totalMinutes <= rate.GracePeriodMinutes)
+        if (rate.GracePeriodMinutes > 0 && totalMinutes <= rate.GracePeriodMinutes)
         {
             return 0m;
         }
 
-        var billableHours = (int)Math.Ceiling(totalMinutes / 60.0);
-        if (billableHours < 1)
-        {
-            billableHours = 1;
-        }
-
+        var billableHours = (int)Math.Max(1, Math.Ceiling(Math.Max(0.01, totalMinutes) / 60.0));
         return billableHours * rate.HourRate;
     }
 

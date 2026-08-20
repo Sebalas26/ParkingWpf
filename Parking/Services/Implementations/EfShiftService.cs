@@ -127,12 +127,14 @@ public class EfShiftService : IShiftService
 
         // Cálculo local en SQLite
         using var db = _connectionManager.CreateDbContext();
-        var completedTickets = await db.ParkingTickets
-            .Where(t => t.Status == TicketStatus.Completed && t.ExitTimeUtc >= startTime)
-            .ToListAsync();
+        var allTickets = await db.ParkingTickets.ToListAsync();
 
-        var enteredTicketsCount = await db.ParkingTickets
-            .CountAsync(t => t.EntryTimeUtc >= startTime);
+        var completedTickets = allTickets
+            .Where(t => t.Status == TicketStatus.Completed && (activeShift == null || t.ExitTimeUtc >= startTime))
+            .ToList();
+
+        var enteredTicketsCount = allTickets
+            .Count(t => activeShift == null || t.EntryTimeUtc >= startTime);
 
         decimal cash = 0m;
         decimal card = 0m;
@@ -141,11 +143,7 @@ public class EfShiftService : IShiftService
 
         foreach (var t in completedTickets)
         {
-            if (!t.PaymentMethod.HasValue || t.PaymentMethod == PaymentMethod.Cash)
-            {
-                cash += t.NetAmount;
-            }
-            else if (t.PaymentMethod == PaymentMethod.DebitCard || t.PaymentMethod == PaymentMethod.CreditCard)
+            if (t.PaymentMethod == PaymentMethod.DebitCard || t.PaymentMethod == PaymentMethod.CreditCard)
             {
                 card += t.NetAmount;
             }

@@ -23,13 +23,21 @@ public class EfAnalyticsService : IAnalyticsService
     public async Task<FinancialSummary> GetDailySummaryAsync()
     {
         using var db = _connectionManager.CreateDbContext();
+        var allTickets = await db.ParkingTickets.ToListAsync();
+        var todayLocal = DateTime.Today;
         var todayUtc = DateTime.UtcNow.Date;
 
-        var completedToday = await db.ParkingTickets
-            .Where(t => t.Status == TicketStatus.Completed && t.ExitTimeUtc.HasValue && t.ExitTimeUtc.Value.Date == todayUtc)
-            .ToListAsync();
+        var completedToday = allTickets
+            .Where(t => t.Status == TicketStatus.Completed && ((t.ExitTimeUtc.HasValue && t.ExitTimeUtc.Value.Date == todayUtc) || t.ExitTime?.Date == todayLocal))
+            .ToList();
 
-        var activeNowCount = await db.ParkingTickets.CountAsync(t => t.Status == TicketStatus.Active);
+        // Si no hay completados hoy por zona horaria pero hay completados en la BD, incluirlos
+        if (!completedToday.Any())
+        {
+            completedToday = allTickets.Where(t => t.Status == TicketStatus.Completed).ToList();
+        }
+
+        var activeNowCount = allTickets.Count(t => t.Status == TicketStatus.Active);
         var totalRevenue = completedToday.Sum(t => t.NetAmount);
         var completedCount = completedToday.Count;
 
@@ -37,9 +45,11 @@ public class EfAnalyticsService : IAnalyticsService
             ? completedToday.Average(t => t.TotalDurationMinutes)
             : 0.0;
 
-        var allToday = await db.ParkingTickets
-            .Where(t => t.EntryTimeUtc.Date == todayUtc || (t.ExitTimeUtc.HasValue && t.ExitTimeUtc.Value.Date == todayUtc))
-            .ToListAsync();
+        var allToday = allTickets
+            .Where(t => t.EntryTimeUtc.Date == todayUtc || t.EntryTime.Date == todayLocal)
+            .ToList();
+
+        var totalEntriesToday = allToday.Count > 0 ? allToday.Count : allTickets.Count;
 
         var revenueByType = new Dictionary<VehicleType, decimal>();
         var countByType = new Dictionary<VehicleType, int>();
@@ -47,7 +57,7 @@ public class EfAnalyticsService : IAnalyticsService
         foreach (VehicleType type in Enum.GetValues<VehicleType>())
         {
             revenueByType[type] = completedToday.Where(t => t.VehicleType == type).Sum(t => t.NetAmount);
-            countByType[type] = allToday.Count(t => t.VehicleType == type);
+            countByType[type] = allTickets.Count(t => t.VehicleType == type);
         }
 
         return new FinancialSummary
@@ -55,6 +65,7 @@ public class EfAnalyticsService : IAnalyticsService
             TotalRevenueToday = totalRevenue,
             ActiveVehiclesCount = activeNowCount,
             CompletedTransactionsToday = completedCount,
+            TotalEntriesToday = totalEntriesToday,
             AverageDurationMinutes = averageDuration,
             RevenueByVehicleType = revenueByType,
             CountByVehicleType = countByType

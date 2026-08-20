@@ -22,6 +22,8 @@ public class ParkFlowDbContext : DbContext
     public DbSet<TicketDiscount> TicketDiscounts => Set<TicketDiscount>();
     public DbSet<WorkShift> WorkShifts => Set<WorkShift>();
     public DbSet<PendingSyncItem> PendingSyncItems => Set<PendingSyncItem>();
+    public DbSet<PaymentMethodEntity> PaymentMethods => Set<PaymentMethodEntity>();
+    public DbSet<MonthlySubscription> MonthlySubscriptions => Set<MonthlySubscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

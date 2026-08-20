@@ -16,4 +16,5 @@ public interface ISyncEngineService
     Task EnqueueOfflineCheckInAsync(ParkingTicket ticket);
     Task EnqueueOfflineCheckOutAsync(ParkingTicket ticket);
     Task ProcessPendingQueueAsync();
+    Task ClearLocalTicketsMemoryAsync();
 }

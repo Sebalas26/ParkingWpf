@@ -36,7 +36,7 @@ public class EfParkingTicketService : IParkingTicketService
         _syncEngine = syncEngine;
     }
 
-    public async Task<ParkingTicket> RegisterEntryAsync(string plateNumber, VehicleType vehicleType, string? phoneNumber, string? notes, string operatorName)
+    public async Task<ParkingTicket> RegisterEntryAsync(string plateNumber, VehicleType vehicleType, string? phoneNumber, string? notes, string operatorName, decimal? customHourlyRate = null)
     {
         var normalizedPlate = plateNumber.Trim().ToUpperInvariant();
         using var db = _connectionManager.CreateDbContext();
@@ -53,6 +53,7 @@ public class EfParkingTicketService : IParkingTicketService
         var todayCount = await db.ParkingTickets.CountAsync(t => t.EntryTimeUtc.Date == DateTime.UtcNow.Date) + 1;
         var ticketNumber = $"PKF-{DateTime.Now:yyyyMMdd}-{todayCount:D3}";
         var rate = _pricingCalculator.GetRate(vehicleType);
+        var hourlyRate = customHourlyRate ?? rate.HourRate;
 
         var ticket = new ParkingTicket
         {
@@ -63,7 +64,7 @@ public class EfParkingTicketService : IParkingTicketService
             CustomerPhone = string.IsNullOrWhiteSpace(phoneNumber) ? null : phoneNumber.Trim(),
             Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim(),
             EntryTimeUtc = DateTime.UtcNow,
-            HourlyRate = rate.HourRate,
+            HourlyRate = hourlyRate,
             Status = TicketStatus.Active,
             OperatorName = operatorName,
             IsSynchronized = false
@@ -76,6 +77,8 @@ public class EfParkingTicketService : IParkingTicketService
             {
                 var apiResponse = await _apiClient.CheckInAsync(new CheckInApiRequest
                 {
+                    TicketId = ticket.TicketId,
+                    TicketNumber = ticket.TicketNumber,
                     PlateNumber = ticket.PlateNumber,
                     VehicleType = ticket.VehicleType,
                     PhoneNumber = ticket.CustomerPhone,
@@ -120,7 +123,9 @@ public class EfParkingTicketService : IParkingTicketService
         Guid? agreementId,
         string? invoiceNumber,
         decimal? purchaseAmount,
-        decimal discountAmount)
+        decimal discountAmount,
+        int? paymentMethodId = null,
+        string? exitNotes = null)
     {
         using var db = _connectionManager.CreateDbContext();
         var ticket = await db.ParkingTickets.FindAsync(ticketId);
@@ -141,6 +146,8 @@ public class EfParkingTicketService : IParkingTicketService
         ticket.AmountPaid = amountPaid;
         ticket.ChangeGiven = Math.Max(0m, amountPaid - net);
         ticket.PaymentMethod = paymentMethod;
+        ticket.PaymentMethodId = paymentMethodId;
+        ticket.ExitNotes = exitNotes;
         ticket.Status = TicketStatus.Completed;
         ticket.IsSynchronized = false;
 

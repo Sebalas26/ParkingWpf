@@ -79,6 +79,8 @@ public partial class App : Application
         services.AddSingleton<IAgreementService, AgreementService>();
         services.AddSingleton<IPricingCalculatorService, EfPricingCalculatorService>();
         services.AddSingleton<IParkingTicketService, EfParkingTicketService>();
+        services.AddSingleton<IMonthlySubscriptionService, EfMonthlySubscriptionService>();
+        services.AddSingleton<IBarcodeGeneratorService, Code128BarcodeGeneratorService>();
         services.AddSingleton<IReceiptPrinterService, MockReceiptPrinterService>();
         services.AddSingleton<IAnalyticsService, EfAnalyticsService>();
         services.AddSingleton<INavigationService, NavigationService>();
@@ -92,6 +94,7 @@ public partial class App : Application
         services.AddTransient<RecentEntriesViewModel>();
         services.AddTransient<AnalyticsViewModel>();
         services.AddTransient<ShiftClosureViewModel>();
+        services.AddTransient<MonthlySubscriptionsViewModel>();
         services.AddTransient<ReceiptPreviewViewModel>();
 
         // Windows & Views
@@ -102,6 +105,7 @@ public partial class App : Application
         services.AddTransient<RecentEntriesView>();
         services.AddTransient<AnalyticsView>();
         services.AddTransient<ShiftClosureView>();
+        services.AddTransient<MonthlySubscriptionsView>();
     }
 
     private void ShowLoginWindow()

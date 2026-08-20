@@ -181,22 +181,10 @@
                 <StackPanel>
                     <!-- Header -->
                     <Grid Margin="0,0,0,24">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-
-                        <StackPanel Grid.Column="0">
+                        <StackPanel>
                             <TextBlock Text="Registro de Entrada de Vehículo" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
                             <TextBlock Text="Capture la placa del vehículo, seleccione la categoría tarifaria y emita el tiquete de ingreso" FontSize="13" Foreground="{DynamicResource BrushTextMuted}" Margin="0,4,0,0"/>
                         </StackPanel>
-
-                        <Border Grid.Column="1" Background="{DynamicResource BrushPrimary}" CornerRadius="10" Padding="14,8" VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal">
-                                <Path Data="{StaticResource IconCheckIn}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Módulo de Ingreso" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
                     </Grid>
 
                     <!-- Feedback Alert -->
@@ -270,6 +258,40 @@
                             <TextBox Text="{Binding PlateNumber, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource PlateInputTextBox}"
                                      Margin="0,0,0,8"/>
+
+                            <!-- Banner de Suscriptor Mensual Activo -->
+                            <Border Visibility="{Binding IsMonthlySubscriber, Converter={StaticResource BoolToVis}}"
+                                    Background="{DynamicResource BrushSuccessBg}"
+                                    BorderBrush="{DynamicResource BrushSuccess}"
+                                    BorderThickness="1.5"
+                                    CornerRadius="10"
+                                    Padding="14,10"
+                                    Margin="0,0,0,10">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" Background="{DynamicResource BrushSuccess}" Margin="0,0,10,0" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="VEHÍCULO CON MENSUALIDAD ACTIVA" FontWeight="Black" FontSize="12" Foreground="{DynamicResource BrushSuccess}"/>
+                                        <TextBlock FontSize="11" Foreground="{DynamicResource BrushTextPrimary}">
+                                            <Run Text="Abonado: " FontWeight="SemiBold"/>
+                                            <Run Text="{Binding ActiveSubscription.CustomerName}" FontWeight="Bold"/>
+                                            <Run Text=" • Doc: "/>
+                                            <Run Text="{Binding ActiveSubscription.CustomerDocument}"/>
+                                            <Run Text=" • Vence: "/>
+                                            <Run Text="{Binding ActiveSubscription.EndDate, StringFormat='{}{0:yyyy-MM-dd}'}" FontWeight="Bold"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Background="{DynamicResource BrushSuccess}" CornerRadius="6" Padding="8,4" VerticalAlignment="Center">
+                                        <TextBlock Text="TARIFA $0.00" FontSize="11" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
 
                             <TextBlock Text="💡 Las letras y números ingresados se convertirán automáticamente a mayúsculas"
                                        FontSize="12"

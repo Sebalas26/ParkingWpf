@@ -6,6 +6,7 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Parking.Core.Enums;
+using Parking.Data.Factories;
 using Parking.Entities;
 using Parking.Services.Contracts;
 
@@ -15,9 +16,11 @@ public partial class CheckOutViewModel : ViewModelBase
 {
     private readonly IParkingTicketService _ticketService;
     private readonly IPricingCalculatorService _pricingCalculator;
+    private readonly IMonthlySubscriptionService _monthlySubscriptionService;
     private readonly IStoreService _storeService;
     private readonly IAgreementService _agreementService;
     private readonly IDialogService _dialogService;
+    private readonly IDbConnectionManager _connectionManager;
     private readonly DispatcherTimer _liveCalculationTimer;
 
     [ObservableProperty]
@@ -25,6 +28,9 @@ public partial class CheckOutViewModel : ViewModelBase
 
     [ObservableProperty]
     private ParkingTicket? _selectedTicket;
+
+    [ObservableProperty]
+    private bool _isMonthlyTicket;
 
     [ObservableProperty]
     private decimal _grossFee;
@@ -40,6 +46,12 @@ public partial class CheckOutViewModel : ViewModelBase
 
     [ObservableProperty]
     private PaymentMethod _selectedPaymentMethod = PaymentMethod.Cash;
+
+    [ObservableProperty]
+    private PaymentMethodEntity? _selectedPaymentMethodEntity;
+
+    [ObservableProperty]
+    private string _exitNotes = string.Empty;
 
     [ObservableProperty]
     private decimal _amountTendered;
@@ -77,19 +89,24 @@ public partial class CheckOutViewModel : ViewModelBase
     public ObservableCollection<ParkingTicket> ActiveVehicles { get; } = new();
     public ObservableCollection<Store> AvailableStores { get; } = new();
     public ObservableCollection<CommercialAgreement> AvailableAgreements { get; } = new();
+    public ObservableCollection<PaymentMethodEntity> AvailablePaymentMethods { get; } = new();
 
     public CheckOutViewModel(
         IParkingTicketService ticketService,
         IPricingCalculatorService pricingCalculator,
+        IMonthlySubscriptionService monthlySubscriptionService,
         IStoreService storeService,
         IAgreementService agreementService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IDbConnectionManager connectionManager)
     {
         _ticketService = ticketService;
         _pricingCalculator = pricingCalculator;
+        _monthlySubscriptionService = monthlySubscriptionService;
         _storeService = storeService;
         _agreementService = agreementService;
         _dialogService = dialogService;
+        _connectionManager = connectionManager;
 
         _liveCalculationTimer = new DispatcherTimer
         {
@@ -103,8 +120,63 @@ public partial class CheckOutViewModel : ViewModelBase
 
     public override async Task InitializeAsync()
     {
+        await LoadPaymentMethodsAsync();
         await LoadActiveVehiclesAsync();
         await LoadStoresAsync();
+    }
+
+    private async Task LoadPaymentMethodsAsync()
+    {
+        try
+        {
+            using var db = _connectionManager.CreateDbContext();
+            var methods = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(db.PaymentMethods.Where(p => p.State));
+            if (!methods.Any())
+            {
+                var defaultCash = new PaymentMethodEntity
+                {
+                    Id = 1,
+                    Name = "Efectivo",
+                    Icon = "IconCash",
+                    State = true,
+                    RequiresCashTender = true
+                };
+                db.PaymentMethods.Add(defaultCash);
+                await db.SaveChangesAsync();
+                methods.Add(defaultCash);
+            }
+
+            AvailablePaymentMethods.Clear();
+            foreach (var m in methods)
+            {
+                AvailablePaymentMethods.Add(m);
+            }
+
+            SelectedPaymentMethodEntity = AvailablePaymentMethods.FirstOrDefault(p => p.Name.Equals("Efectivo", StringComparison.OrdinalIgnoreCase)) ?? AvailablePaymentMethods.FirstOrDefault();
+            if (SelectedPaymentMethodEntity != null)
+            {
+                SelectedPaymentMethod = SelectedPaymentMethodEntity.ToEnum();
+            }
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    private void SelectPaymentMethod(PaymentMethodEntity method)
+    {
+        if (method == null) return;
+        SelectedPaymentMethodEntity = method;
+        SelectedPaymentMethod = method.ToEnum();
+
+        if (!method.RequiresCashTender)
+        {
+            AmountTendered = CalculatedFee;
+            ChangeDue = 0m;
+        }
+        else
+        {
+            CalculateChange();
+        }
     }
 
     private async Task LoadActiveVehiclesAsync()
@@ -190,10 +262,24 @@ public partial class CheckOutViewModel : ViewModelBase
         RecalculateLiveFee();
     }
 
-    partial void OnSelectedTicketChanged(ParkingTicket? value)
+    async partial void OnSelectedTicketChanged(ParkingTicket? value)
     {
         if (value != null)
         {
+            IsMonthlyTicket = value.HourlyRate == 0m || (value.Notes?.Contains("Mensualidad", StringComparison.OrdinalIgnoreCase) ?? false);
+            if (!IsMonthlyTicket)
+            {
+                try
+                {
+                    var sub = await _monthlySubscriptionService.GetActiveSubscriptionByPlateAsync(value.PlateNumber);
+                    if (sub != null)
+                    {
+                        IsMonthlyTicket = true;
+                    }
+                }
+                catch { }
+            }
+
             _liveCalculationTimer.Start();
             HasAgreementDiscount = false;
             RecalculateLiveFee();
@@ -202,6 +288,7 @@ public partial class CheckOutViewModel : ViewModelBase
         else
         {
             _liveCalculationTimer.Stop();
+            IsMonthlyTicket = false;
             GrossFee = 0m;
             DiscountAmount = 0m;
             CalculatedFee = 0m;
@@ -237,6 +324,16 @@ public partial class CheckOutViewModel : ViewModelBase
         else
         {
             ElapsedTimeString = $"{duration.Minutes}min {duration.Seconds}seg";
+        }
+
+        if (IsMonthlyTicket)
+        {
+            GrossFee = 0m;
+            DiscountAmount = 0m;
+            CalculatedFee = 0m;
+            AmountTendered = 0m;
+            ChangeDue = 0m;
+            return;
         }
 
         GrossFee = _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, now);
@@ -275,12 +372,12 @@ public partial class CheckOutViewModel : ViewModelBase
         {
             HasFeedback = true;
             IsSuccessFeedback = false;
-            FeedbackMessage = $"No se encontró ningún vehículo activo con el criterio '{SearchQuery}'.";
+            FeedbackMessage = $"No se encontró ningún vehículo activo con placa o tiquete '{SearchQuery}'.";
         }
     }
 
     [RelayCommand]
-    private void SelectTicket(ParkingTicket ticket)
+    private void SelectActiveVehicle(ParkingTicket ticket)
     {
         SelectedTicket = ticket;
         SearchQuery = ticket.PlateNumber;
@@ -289,24 +386,44 @@ public partial class CheckOutViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SetQuickAmount(string amountString)
+    private void QuickCash(decimal amount)
     {
-        if (amountString.Equals("Exact", StringComparison.OrdinalIgnoreCase) || amountString.Equals("Exacto", StringComparison.OrdinalIgnoreCase))
+        AmountTendered = amount;
+    }
+
+    [RelayCommand]
+    private void ExactCash()
+    {
+        AmountTendered = CalculatedFee;
+    }
+
+    [RelayCommand]
+    private void SelectPaymentMethodEnum(PaymentMethod method)
+    {
+        SelectedPaymentMethod = method;
+        if (method != PaymentMethod.Cash)
         {
             AmountTendered = CalculatedFee;
+            ChangeDue = 0m;
         }
-        else if (decimal.TryParse(amountString, out var amount))
+        else
         {
-            AmountTendered = amount;
+            CalculateChange();
         }
     }
 
     [RelayCommand]
     private async Task ProcessPaymentAsync()
     {
-        if (SelectedTicket == null) return;
+        if (SelectedTicket == null)
+        {
+            HasFeedback = true;
+            IsSuccessFeedback = false;
+            FeedbackMessage = "Debe seleccionar un vehículo activo para liquidar.";
+            return;
+        }
 
-        if (HasAgreementDiscount)
+        if (HasAgreementDiscount && !IsMonthlyTicket)
         {
             if (SelectedStore == null || SelectedAgreement == null)
             {
@@ -333,7 +450,10 @@ public partial class CheckOutViewModel : ViewModelBase
             }
         }
 
-        if (SelectedPaymentMethod == PaymentMethod.Cash && AmountTendered < CalculatedFee)
+        var methodEnum = SelectedPaymentMethodEntity?.ToEnum() ?? PaymentMethod.Cash;
+        var requiresCash = !IsMonthlyTicket && (SelectedPaymentMethodEntity?.RequiresCashTender ?? true);
+
+        if (requiresCash && AmountTendered < CalculatedFee)
         {
             HasFeedback = true;
             IsSuccessFeedback = false;
@@ -342,21 +462,26 @@ public partial class CheckOutViewModel : ViewModelBase
         }
 
         IsBusy = true;
-        BusyMessage = "Procesando cobro, liquidación y liberando cupo...";
+        BusyMessage = IsMonthlyTicket
+            ? "Registrando salida de vehículo abonado y liberando cupo..."
+            : "Procesando cobro, liquidación y liberando cupo...";
 
         try
         {
-            var paidAmount = SelectedPaymentMethod == PaymentMethod.Cash ? AmountTendered : CalculatedFee;
+            var paidAmount = IsMonthlyTicket ? 0m : (requiresCash ? AmountTendered : CalculatedFee);
+            var discount = IsMonthlyTicket ? 0m : DiscountAmount;
 
             var completedTicket = await _ticketService.ProcessExitAsync(
                 SelectedTicket.TicketId,
-                SelectedPaymentMethod,
+                methodEnum,
                 paidAmount,
                 HasAgreementDiscount ? SelectedStore?.StoreId : null,
                 HasAgreementDiscount ? SelectedAgreement?.AgreementId : null,
                 HasAgreementDiscount ? InvoiceNumber : null,
                 HasAgreementDiscount ? CustomerPurchaseAmount : null,
-                DiscountAmount);
+                discount,
+                SelectedPaymentMethodEntity?.Id,
+                IsMonthlyTicket ? "Salida Abonado / Mensualidad" : ExitNotes);
 
             if (completedTicket != null)
             {
@@ -368,11 +493,14 @@ public partial class CheckOutViewModel : ViewModelBase
                 SearchQuery = string.Empty;
                 AmountTendered = 0m;
                 ChangeDue = 0m;
+                ExitNotes = string.Empty;
                 HasAgreementDiscount = false;
 
                 HasFeedback = true;
                 IsSuccessFeedback = true;
-                FeedbackMessage = $"Pago procesado para {clearedPlate}. Total Neto: ${totalPaid:F2}. Cambio: ${change:F2}. Cupo liberado exitosamente.";
+                FeedbackMessage = IsMonthlyTicket
+                    ? $"Salida registrada para vehículo con mensualidad {clearedPlate}. Cupo liberado exitosamente (Sin cobro horario)."
+                    : $"Pago procesado para {clearedPlate}. Total Neto: ${totalPaid:F2}. Cambio: ${change:F2}. Cupo liberado exitosamente.";
 
                 await _dialogService.ShowReceiptPreviewAsync(completedTicket);
             }
@@ -381,7 +509,7 @@ public partial class CheckOutViewModel : ViewModelBase
         {
             HasFeedback = true;
             IsSuccessFeedback = false;
-            FeedbackMessage = $"Error al procesar el pago: {ex.Message}";
+            FeedbackMessage = $"Error al procesar la salida: {ex.Message}";
         }
         finally
         {
@@ -391,12 +519,13 @@ public partial class CheckOutViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void CancelSelection()
+    private void ClearSelection()
     {
         SelectedTicket = null;
         SearchQuery = string.Empty;
         AmountTendered = 0m;
         ChangeDue = 0m;
+        ExitNotes = string.Empty;
         HasAgreementDiscount = false;
         HasFeedback = false;
         FeedbackMessage = null;

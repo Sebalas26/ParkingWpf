@@ -48,15 +48,15 @@
                     <TextBox Grid.Column="0"
                              Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource CheckoutSearchTextBox}"
-                             Margin="0,0,8,0"/>
+                             Margin="0,0,10,0"/>
                     <Button Grid.Column="1"
                             Command="{Binding SearchTicketCommand}"
                             Style="{StaticResource ModernButton}"
-                            Width="60"
-                            Height="60"
+                            Width="68"
+                            Height="68"
                             Padding="0"
                             ToolTip="Buscar tiquete o placa">
-                        <Path Data="{StaticResource IconSearch}" Fill="{DynamicResource BrushTextWhite}" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Path Data="{StaticResource IconSearch}" Fill="{DynamicResource BrushTextWhite}" Width="22" Height="22" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
                 </Grid>
 
@@ -87,9 +87,20 @@
                                             Cursor="Hand">
                                         <Border.InputBindings>
                                             <MouseBinding Gesture="LeftClick"
-                                                          Command="{Binding DataContext.SelectTicketCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                          Command="{Binding DataContext.SelectActiveVehicleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                           CommandParameter="{Binding}"/>
                                         </Border.InputBindings>
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="{DynamicResource BrushInputBackground}"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="#F1F5F9"/>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
@@ -130,12 +141,15 @@
                                                                FontSize="10"
                                                                Foreground="{DynamicResource BrushPrimary}"/>
                                                 </Border>
-                                                <TextBlock Text="Liquidarse"
-                                                           FontSize="10"
-                                                           FontWeight="Bold"
-                                                           Foreground="{DynamicResource BrushSuccess}"
-                                                           HorizontalAlignment="Right"
-                                                           Margin="0,3,0,0"/>
+                                                <Button Content="Liquidar"
+                                                        Command="{Binding DataContext.SelectActiveVehicleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"
+                                                        Style="{StaticResource SecondaryButton}"
+                                                        Padding="8,2"
+                                                        FontSize="10"
+                                                        FontWeight="Bold"
+                                                        Foreground="{DynamicResource BrushSuccess}"
+                                                        Margin="0,3,0,0"/>
                                             </StackPanel>
                                         </Grid>
                                     </Border>
@@ -211,6 +225,33 @@
                                     </Style>
                                 </TextBlock.Style>
                             </TextBlock>
+                        </Border>
+
+                        <!-- Banner de Vehículo con Mensualidad Activa -->
+                        <Border Visibility="{Binding IsMonthlyTicket, Converter={StaticResource BoolToVis}}"
+                                Background="{DynamicResource BrushSuccessBg}"
+                                BorderBrush="{DynamicResource BrushSuccess}"
+                                BorderThickness="1.5"
+                                CornerRadius="10"
+                                Padding="14,10"
+                                Margin="0,0,0,16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" Background="{DynamicResource BrushSuccess}" Margin="0,0,10,0" VerticalAlignment="Center">
+                                    <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="VEHÍCULO CON MENSUALIDAD AL DÍA" FontWeight="Black" FontSize="12" Foreground="{DynamicResource BrushSuccess}"/>
+                                    <TextBlock Text="Acceso con tarifa preferencial de mensualidad • Cobro actual: $0.00" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                </StackPanel>
+                                <Border Grid.Column="2" Background="{DynamicResource BrushSuccess}" CornerRadius="6" Padding="10,4" VerticalAlignment="Center">
+                                    <TextBlock Text="TARIFA $0.00" FontSize="12" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
+                                </Border>
+                            </Grid>
                         </Border>
 
                         <!-- 3 Métricas: Hora Entrada, Tiempo Transcurrido (Timer), Subtotal -->
@@ -296,8 +337,69 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Selector de Medios de Pago Dinámicos de la BD -->
+                        <TextBlock Text="MÉTODO DE PAGO *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,8"/>
+                        <ItemsControl ItemsSource="{Binding AvailablePaymentMethods}" Margin="0,0,0,16">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="2" Rows="0"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <RadioButton GroupName="PaymentMethodGroup"
+                                                 Margin="4"
+                                                 Cursor="Hand"
+                                                 Command="{Binding DataContext.SelectPaymentMethodCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                 CommandParameter="{Binding}">
+                                        <RadioButton.IsChecked>
+                                            <MultiBinding Converter="{StaticResource EqualityConv}" Mode="OneWay">
+                                                <Binding Path="Id"/>
+                                                <Binding Path="DataContext.SelectedPaymentMethodEntity.Id" RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                            </MultiBinding>
+                                        </RadioButton.IsChecked>
+                                        <RadioButton.Template>
+                                            <ControlTemplate TargetType="RadioButton">
+                                                <Border x:Name="border"
+                                                        Background="{DynamicResource BrushSurfaceBackground}"
+                                                        BorderBrush="{DynamicResource BrushBorderMedium}"
+                                                        BorderThickness="1.5"
+                                                        CornerRadius="10"
+                                                        Padding="12,10"
+                                                        SnapsToDevicePixels="True">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Path x:Name="icon" Grid.Column="0" Data="{StaticResource IconCash}" Fill="{DynamicResource BrushPrimary}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                        <TextBlock x:Name="txt" Grid.Column="1" Text="{Binding Name}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                                        <Path x:Name="check" Grid.Column="2" Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushPrimary}" Width="12" Height="12" Stretch="Uniform" Visibility="Collapsed" VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Setter TargetName="border" Property="Background" Value="#EBF6F8"/>
+                                                        <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
+                                                        <Setter TargetName="border" Property="BorderThickness" Value="2"/>
+                                                        <Setter TargetName="txt" Property="Foreground" Value="{DynamicResource BrushPrimary}"/>
+                                                        <Setter TargetName="txt" Property="FontWeight" Value="Black"/>
+                                                        <Setter TargetName="check" Property="Visibility" Value="Visible"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </RadioButton.Template>
+                                    </RadioButton>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
                         <!-- Total Neto y Módulo de Caja -->
-                        <Border Background="#F8FAFC" BorderBrush="{DynamicResource BrushBorderMedium}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,20">
+                        <Border Background="#F8FAFC" BorderBrush="{DynamicResource BrushBorderMedium}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,16">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
@@ -313,7 +415,11 @@
                                 <!-- Recibido y Cambio -->
                                 <StackPanel Grid.Column="1">
                                     <TextBlock Text="MONTO EN EFECTIVO RECIBIDO ($)" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
-                                    <TextBox Text="{Binding AmountTendered, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource PlateInputTextBox}" FontSize="16" Margin="0,0,0,8"/>
+                                    <TextBox Text="{Binding AmountTendered, UpdateSourceTrigger=PropertyChanged}"
+                                             IsEnabled="{Binding SelectedPaymentMethodEntity.RequiresCashTender, FallbackValue=True}"
+                                             Style="{StaticResource PlateInputTextBox}"
+                                             FontSize="16"
+                                             Margin="0,0,0,8"/>
 
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -326,6 +432,14 @@
                                 </StackPanel>
                             </Grid>
                         </Border>
+
+                        <!-- Campo de Observaciones / Novedades de Salida -->
+                        <TextBlock Text="OBSERVACIONES / NOVEDADES DE SALIDA (OPCIONAL)" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding ExitNotes, UpdateSourceTrigger=PropertyChanged}"
+                                 Height="44"
+                                 TextWrapping="Wrap"
+                                 Style="{StaticResource ModernTextBox}"
+                                 Margin="0,0,0,18"/>
 
                         <!-- Botón de Pago Principal -->
                         <Button Command="{Binding ProcessPaymentCommand}"

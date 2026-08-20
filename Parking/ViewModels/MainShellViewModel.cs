@@ -156,6 +156,7 @@ public partial class MainShellViewModel : ViewModelBase
             RecentEntriesViewModel => "RecentEntries",
             AnalyticsViewModel => "Analytics",
             ShiftClosureViewModel => "ShiftClosure",
+            MonthlySubscriptionsViewModel => "MonthlySubscriptions",
             _ => "CheckIn"
         };
     }
@@ -214,6 +215,12 @@ public partial class MainShellViewModel : ViewModelBase
     private void NavigateToShiftClosure()
     {
         _navigationService.NavigateTo<ShiftClosureViewModel>();
+    }
+
+    [RelayCommand]
+    private void NavigateToMonthlySubscriptions()
+    {
+        _navigationService.NavigateTo<MonthlySubscriptionsViewModel>();
     }
 
     [RelayCommand]

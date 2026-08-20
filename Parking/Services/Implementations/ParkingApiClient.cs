@@ -18,7 +18,8 @@ public class ParkingApiClient : IApiClientService
     private readonly HttpClient _httpClient;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
     };
 
     public string BaseUrl { get; set; } = "https://localhost:7023";

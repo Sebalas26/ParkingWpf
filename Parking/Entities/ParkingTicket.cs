@@ -23,6 +23,8 @@ public class ParkingTicket
     public decimal AmountPaid { get; set; }
     public decimal ChangeGiven { get; set; }
     public PaymentMethod? PaymentMethod { get; set; }
+    public int? PaymentMethodId { get; set; }
+    public string? ExitNotes { get; set; }
     public TicketStatus Status { get; set; } = TicketStatus.Active;
     public Guid? OperatorEntryId { get; set; }
     public Guid? OperatorExitId { get; set; }
@@ -50,6 +52,21 @@ public class ParkingTicket
                 return $"{(int)span.TotalHours}h {span.Minutes}min {span.Seconds}seg";
             }
             return $"{span.Minutes}min {span.Seconds}seg";
+        }
+    }
+
+    public decimal CurrentEstimatedAmount
+    {
+        get
+        {
+            if (Status == TicketStatus.Completed)
+            {
+                return NetAmount;
+            }
+            var totalMinutes = Math.Max(0.01, ElapsedDuration.TotalMinutes);
+            var billableHours = (int)Math.Max(1, Math.Ceiling(totalMinutes / 60.0));
+            var rate = HourlyRate > 0 ? HourlyRate : 2000m;
+            return billableHours * rate;
         }
     }
 

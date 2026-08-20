@@ -17,7 +17,7 @@ public class EqualityToBooleanConverter : IMultiValueConverter, IValueConverter
 
     public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        return Array.Empty<object>();
     }
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
@@ -31,6 +31,10 @@ public class EqualityToBooleanConverter : IMultiValueConverter, IValueConverter
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
-        throw new NotImplementedException();
+        if (value is bool isChecked && isChecked && parameter != null)
+        {
+            return parameter.ToString()!;
+        }
+        return Binding.DoNothing;
     }
 }

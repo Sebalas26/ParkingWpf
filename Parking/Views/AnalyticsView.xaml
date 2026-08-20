@@ -106,60 +106,74 @@
                     <ColumnDefinition Width="1*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Gráfica de Tendencia Semanal de Ocupación -->
+                <!-- Gráfica de Tendencia Semanal de Ocupación y Flujo -->
                 <Border Grid.Column="0" Style="{StaticResource ModernCard}" Margin="0,0,16,0" Padding="20">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="200"/>
-                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
                         <!-- Chart Header -->
-                        <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <Grid Grid.Row="0" Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
-                                <TextBlock Text="Ocupación y Flujo Semanal" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                <TextBlock Text="Seguimiento histórico de cupos y afluencia de vehículos" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
+                                <TextBlock Text="Afluencia y Flujo Semanal" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                <TextBlock Text="Conteo real de vehículos atendidos por día de la semana" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                 <Ellipse Width="8" Height="8" Fill="{DynamicResource BrushPrimary}" Margin="0,0,6,0"/>
-                                <TextBlock Text="Ocupación %" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                <TextBlock Text="Vehículos" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}"/>
                             </StackPanel>
                         </Grid>
 
-                        <!-- Chart Curve -->
-                        <Grid Grid.Row="1" Margin="0,8,0,8">
-                            <Line X1="0" Y1="30" X2="1000" Y2="30" Stroke="{DynamicResource BrushBorderSubtle}" StrokeDashArray="3,3" StrokeThickness="1"/>
-                            <Line X1="0" Y1="85" X2="1000" Y2="85" Stroke="{DynamicResource BrushBorderSubtle}" StrokeDashArray="3,3" StrokeThickness="1"/>
-                            <Line X1="0" Y1="140" X2="1000" Y2="140" Stroke="{DynamicResource BrushBorderSubtle}" StrokeDashArray="3,3" StrokeThickness="1"/>
+                        <!-- Chart Columns -->
+                        <ItemsControl Grid.Row="1" ItemsSource="{Binding WeeklyTrafficStats}" Margin="0,10,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="7" Rows="1"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid VerticalAlignment="Bottom" Margin="6,0">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
 
-                            <Path Data="M 20 130 C 60 120, 100 100, 140 115 C 180 130, 220 155, 260 140 C 300 120, 340 80, 380 100 C 420 120, 460 145, 500 110 C 540 75, 580 95, 620 75 C 660 55, 700 65, 740 75"
-                                  Stroke="{DynamicResource BrushPrimary}"
-                                  StrokeThickness="3"
-                                  Stretch="Fill"
-                                  VerticalAlignment="Center"
-                                  Height="130"
-                                  Margin="10,0,10,0"/>
-                        </Grid>
+                                        <!-- Bar with Count Badge -->
+                                        <StackPanel Grid.Row="0" VerticalAlignment="Bottom" HorizontalAlignment="Center">
+                                            <Border Background="#E0F2FE" CornerRadius="6" Padding="4,2" Margin="0,0,0,4" HorizontalAlignment="Center">
+                                                <TextBlock Text="{Binding Count}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}"/>
+                                            </Border>
+                                            <Border Width="28"
+                                                    Height="{Binding BarHeight}"
+                                                    Background="{DynamicResource BrushPrimary}"
+                                                    CornerRadius="6,6,2,2"
+                                                    HorizontalAlignment="Center"
+                                                    Opacity="0.85"/>
+                                        </StackPanel>
 
-                        <!-- Chart Days in Spanish -->
-                        <UniformGrid Grid.Row="2" Columns="7" Rows="1" Margin="10,4,10,0">
-                            <TextBlock Text="Lun" HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
-                            <TextBlock Text="Mar" HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
-                            <TextBlock Text="Mié" HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
-                            <TextBlock Text="Jue" HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
-                            <TextBlock Text="Vie" HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
-                            <TextBlock Text="Sáb" HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
-                            <TextBlock Text="Dom" HorizontalAlignment="Center" FontSize="11" Foreground="{DynamicResource BrushTextMuted}"/>
-                        </UniformGrid>
+                                        <!-- Day Label -->
+                                        <TextBlock Grid.Row="1"
+                                                   Text="{Binding DayName}"
+                                                   HorizontalAlignment="Center"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource BrushTextSecondary}"
+                                                   Margin="0,8,0,0"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </Grid>
                 </Border>
 
-                <!-- Desglose por Tipo de Vehículo -->
+                <!-- Desglose por Tipo de Vehículo Dinámico -->
                 <Border Grid.Column="1" Style="{StaticResource ModernCard}" Padding="20">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -169,59 +183,26 @@
 
                         <TextBlock Grid.Row="0" Text="Desglose por Categoría" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,0,14"/>
 
-                        <StackPanel Grid.Row="1" VerticalAlignment="Center">
-                            <!-- Automóviles -->
-                            <Grid Margin="0,0,0,12">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <Grid Grid.Row="0" Margin="0,0,0,4">
-                                    <TextBlock Text="Automóviles / Sedán" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                    <TextBlock Text="58%" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Right"/>
-                                </Grid>
-                                <ProgressBar Grid.Row="1" Value="58" Height="6" Foreground="{DynamicResource BrushPrimary}" Background="{DynamicResource BrushInputBackground}"/>
-                            </Grid>
-
-                            <!-- Camionetas / SUV -->
-                            <Grid Margin="0,0,0,12">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <Grid Grid.Row="0" Margin="0,0,0,4">
-                                    <TextBlock Text="Camionetas / SUV" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                    <TextBlock Text="24%" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushCyan}" HorizontalAlignment="Right"/>
-                                </Grid>
-                                <ProgressBar Grid.Row="1" Value="24" Height="6" Foreground="{DynamicResource BrushCyan}" Background="{DynamicResource BrushInputBackground}"/>
-                            </Grid>
-
-                            <!-- Motocicletas -->
-                            <Grid Margin="0,0,0,12">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <Grid Grid.Row="0" Margin="0,0,0,4">
-                                    <TextBlock Text="Motocicletas" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                    <TextBlock Text="14%" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushSuccess}" HorizontalAlignment="Right"/>
-                                </Grid>
-                                <ProgressBar Grid.Row="1" Value="14" Height="6" Foreground="{DynamicResource BrushSuccess}" Background="{DynamicResource BrushInputBackground}"/>
-                            </Grid>
-
-                            <!-- Pesados / Otros -->
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <Grid Grid.Row="0" Margin="0,0,0,4">
-                                    <TextBlock Text="Vehículos Pesados / Vanes" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                    <TextBlock Text="4%" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushWarning}" HorizontalAlignment="Right"/>
-                                </Grid>
-                                <ProgressBar Grid.Row="1" Value="4" Height="6" Foreground="{DynamicResource BrushWarning}" Background="{DynamicResource BrushInputBackground}"/>
-                            </Grid>
-                        </StackPanel>
+                        <ItemsControl Grid.Row="1" ItemsSource="{Binding CategoryDistribution}" VerticalAlignment="Center">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,12">
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <Grid Grid.Row="0" Margin="0,0,0,4">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding CategoryName}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                <TextBlock Text="{Binding CountLabel, StringFormat='{} ({0})'}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="4,0,0,0"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding FormattedPercentage}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Right"/>
+                                        </Grid>
+                                        <ProgressBar Grid.Row="1" Value="{Binding Percentage}" Maximum="100" Height="6" Foreground="{DynamicResource BrushPrimary}" Background="{DynamicResource BrushInputBackground}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </Grid>
                 </Border>
             </Grid>
@@ -247,15 +228,26 @@
                             <TextBlock Text="Registro detallado de ingresos, salidas, convenios aplicados y liquidaciones" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
                         </StackPanel>
 
-                        <Button Grid.Column="1"
-                                Command="{Binding ExportReportCommand}"
-                                Style="{StaticResource ModernButton}"
-                                Padding="14,8">
-                            <StackPanel Orientation="Horizontal">
-                                <Path Data="{StaticResource IconExport}" Fill="{DynamicResource BrushTextWhite}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Exportar Auditoría" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Button>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Command="{Binding RefreshDataCommand}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Padding="12,8"
+                                    Margin="0,0,10,0">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushPrimary}" Width="13" Height="13" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Refrescar Auditoría" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <Button Command="{Binding ExportReportCommand}"
+                                    Style="{StaticResource ModernButton}"
+                                    Padding="14,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource IconExport}" Fill="{DynamicResource BrushTextWhite}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Exportar Auditoría" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
                     </Grid>
 
                     <!-- Filter Chips & Search Bar -->
@@ -332,13 +324,14 @@
                             <!-- Hora Salida -->
                             <DataGridTextColumn Header="HORA SALIDA" Binding="{Binding ExitTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Width="1.4*"/>
 
-                            <!-- Tiempo Total -->
-                            <DataGridTemplateColumn Header="DURACIÓN" Width="1.2*">
+                            <!-- Tiempo Total / Transcurrido -->
+                            <DataGridTemplateColumn Header="DURACIÓN" Width="1.3*">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding TotalDurationMinutes, Converter={StaticResource DurationConv}}"
+                                        <TextBlock Text="{Binding FormattedDuration}"
                                                    FontSize="12"
-                                                   Foreground="{DynamicResource BrushTextSecondary}"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="{DynamicResource BrushTextPrimary}"
                                                    VerticalAlignment="Center"/>
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>

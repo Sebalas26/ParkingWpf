@@ -149,12 +149,12 @@
 
     <Style x:Key="CheckoutSearchTextBox" TargetType="TextBox">
         <Setter Property="FontFamily" Value="{StaticResource FontFamilyMonospace}"/>
-        <Setter Property="FontSize" Value="26"/>
+        <Setter Property="FontSize" Value="28"/>
         <Setter Property="FontWeight" Value="Black"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Height" Value="60"/>
-        <Setter Property="Padding" Value="16,4"/>
+        <Setter Property="Height" Value="68"/>
+        <Setter Property="Padding" Value="18,6"/>
         <Setter Property="CharacterCasing" Value="Upper"/>
         <Setter Property="Background" Value="{DynamicResource BrushSurfaceBackground}"/>
         <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
@@ -168,11 +168,8 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="12"
+                            CornerRadius="14"
                             SnapsToDevicePixels="True">
-                        <Border.Effect>
-                            <DropShadowEffect BlurRadius="8" Direction="270" ShadowDepth="2" Opacity="0.08" Color="#0B3C49"/>
-                        </Border.Effect>
                         <ScrollViewer x:Name="PART_ContentHost"
                                       Focusable="false"
                                       VerticalAlignment="Center"
@@ -381,9 +378,11 @@
                                               Content="{TemplateBinding Tag}"
                                               VerticalAlignment="Center"
                                               Margin="0,0,12,0"/>
-                            <ContentPresenter Grid.Column="1"
-                                              HorizontalAlignment="Left"
-                                              VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{TemplateBinding Content}"
+                                       TextWrapping="Wrap"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Center"/>
                         </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -590,6 +589,8 @@
         <Setter Property="CanUserDeleteRows" Value="False"/>
         <Setter Property="CanUserResizeRows" Value="False"/>
         <Setter Property="SelectionMode" Value="Single"/>
+        <Setter Property="HeadersVisibility" Value="Column"/>
+        <Setter Property="RowHeaderWidth" Value="0"/>
         <Setter Property="RowHeight" Value="46"/>
         <Setter Property="FontSize" Value="13"/>
     </Style>

@@ -158,6 +158,8 @@ public class SyncEngineService : ISyncEngineService
             OperationType = "CheckIn",
             PayloadJson = JsonSerializer.Serialize(new CheckInApiRequest
             {
+                TicketId = ticket.TicketId,
+                TicketNumber = ticket.TicketNumber,
                 PlateNumber = ticket.PlateNumber,
                 VehicleType = ticket.VehicleType,
                 PhoneNumber = ticket.CustomerPhone,
@@ -174,6 +176,22 @@ public class SyncEngineService : ISyncEngineService
 
         await RefreshPendingCountAsync();
         SyncStatusChanged?.Invoke(this, SyncStatusDescription);
+    }
+
+    public async Task ClearLocalTicketsMemoryAsync()
+    {
+        try
+        {
+            using var db = _dbManager.CreateDbContext();
+            db.PendingSyncItems.RemoveRange(db.PendingSyncItems);
+            db.TicketDiscounts.RemoveRange(db.TicketDiscounts);
+            db.ParkingTickets.RemoveRange(db.ParkingTickets);
+            await db.SaveChangesAsync();
+
+            await RefreshPendingCountAsync();
+            SyncStatusChanged?.Invoke(this, SyncStatusDescription);
+        }
+        catch { }
     }
 
     public async Task EnqueueOfflineCheckOutAsync(ParkingTicket ticket)

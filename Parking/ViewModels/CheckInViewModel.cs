@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Parking.Core.Enums;
@@ -14,8 +15,10 @@ public partial class CheckInViewModel : ViewModelBase
 {
     private readonly IParkingTicketService _ticketService;
     private readonly IPricingCalculatorService _pricingCalculator;
+    private readonly IMonthlySubscriptionService _monthlySubscriptionService;
     private readonly IAuthService _authService;
     private readonly IDialogService _dialogService;
+    private readonly DispatcherTimer _feedbackTimer;
 
     [ObservableProperty]
     private string _plateNumber = string.Empty;
@@ -36,6 +39,12 @@ public partial class CheckInViewModel : ViewModelBase
     private IReadOnlyList<VehicleRate> _availableRates = new List<VehicleRate>();
 
     [ObservableProperty]
+    private MonthlySubscription? _activeSubscription;
+
+    [ObservableProperty]
+    private bool _isMonthlySubscriber;
+
+    [ObservableProperty]
     private string? _feedbackMessage;
 
     [ObservableProperty]
@@ -50,19 +59,67 @@ public partial class CheckInViewModel : ViewModelBase
     public CheckInViewModel(
         IParkingTicketService ticketService,
         IPricingCalculatorService pricingCalculator,
+        IMonthlySubscriptionService monthlySubscriptionService,
         IAuthService authService,
         IDialogService dialogService)
     {
         _ticketService = ticketService;
         _pricingCalculator = pricingCalculator;
+        _monthlySubscriptionService = monthlySubscriptionService;
         _authService = authService;
         _dialogService = dialogService;
+
+        _feedbackTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(10)
+        };
+        _feedbackTimer.Tick += (s, e) =>
+        {
+            _feedbackTimer.Stop();
+            HasFeedback = false;
+            FeedbackMessage = null;
+        };
     }
 
     public override async Task InitializeAsync()
     {
         AvailableRates = await _pricingCalculator.GetAllRatesAsync();
         UpdateCurrentRate();
+    }
+
+    async partial void OnPlateNumberChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Trim().Length < 3)
+        {
+            ActiveSubscription = null;
+            IsMonthlySubscriber = false;
+            return;
+        }
+
+        try
+        {
+            var sub = await _monthlySubscriptionService.GetActiveSubscriptionByPlateAsync(value.Trim());
+            if (sub != null)
+            {
+                ActiveSubscription = sub;
+                IsMonthlySubscriber = true;
+                SelectedVehicleType = sub.VehicleType;
+                if (!string.IsNullOrWhiteSpace(sub.CustomerPhone))
+                {
+                    PhoneNumber = sub.CustomerPhone;
+                }
+            }
+            else
+            {
+                ActiveSubscription = null;
+                IsMonthlySubscriber = false;
+            }
+        }
+        catch
+        {
+            ActiveSubscription = null;
+            IsMonthlySubscriber = false;
+        }
     }
 
     partial void OnSelectedVehicleTypeChanged(VehicleType value)
@@ -113,26 +170,28 @@ public partial class CheckInViewModel : ViewModelBase
         }
     }
 
+    private void ShowFeedback(string message, bool isSuccess)
+    {
+        FeedbackMessage = message;
+        IsSuccessFeedback = isSuccess;
+        HasFeedback = true;
+        _feedbackTimer.Stop();
+        _feedbackTimer.Start();
+    }
+
     [RelayCommand]
     private async Task RegisterAndPrintAsync()
     {
-        HasFeedback = false;
-        FeedbackMessage = null;
-
         if (string.IsNullOrWhiteSpace(PlateNumber))
         {
-            HasFeedback = true;
-            IsSuccessFeedback = false;
-            FeedbackMessage = "Por favor ingrese un número de placa válido.";
+            ShowFeedback("Por favor ingrese un número de placa válido.", false);
             return;
         }
 
         var normalizedPlate = PlateNumber.Trim().ToUpperInvariant();
         if (await _ticketService.IsPlateCurrentlyParkedAsync(normalizedPlate))
         {
-            HasFeedback = true;
-            IsSuccessFeedback = false;
-            FeedbackMessage = $"El vehículo con placa '{normalizedPlate}' ya se encuentra registrado y activo adentro.";
+            ShowFeedback($"El vehículo con placa '{normalizedPlate}' ya se encuentra registrado y activo adentro.", false);
             return;
         }
 
@@ -142,26 +201,32 @@ public partial class CheckInViewModel : ViewModelBase
         try
         {
             var operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
+            decimal? customRate = IsMonthlySubscriber ? 0m : null;
+            var ticketNotes = IsMonthlySubscriber && ActiveSubscription != null
+                ? $"Mensualidad Activa: {ActiveSubscription.CustomerName} (Vence: {ActiveSubscription.EndDate:yyyy-MM-dd})"
+                : Notes;
+
             var ticket = await _ticketService.RegisterEntryAsync(
                 normalizedPlate,
                 SelectedVehicleType,
                 PhoneNumber,
-                Notes,
-                operatorName);
+                ticketNotes,
+                operatorName,
+                customRate);
 
-            ClearForm();
+            ClearInputs();
 
-            HasFeedback = true;
-            IsSuccessFeedback = true;
-            FeedbackMessage = $"Vehículo {ticket.PlateNumber} registrado exitosamente (Tiquete #{ticket.TicketNumber}).";
+            var successMsg = IsMonthlySubscriber
+                ? $"Vehículo abonado {ticket.PlateNumber} registrado correctamente (Mensualidad Activa - Tarifa $0.00)."
+                : $"Vehículo {ticket.PlateNumber} registrado exitosamente (Tiquete #{ticket.TicketNumber}).";
+
+            ShowFeedback(successMsg, true);
 
             await _dialogService.ShowReceiptPreviewAsync(ticket);
         }
         catch (Exception ex)
         {
-            HasFeedback = true;
-            IsSuccessFeedback = false;
-            FeedbackMessage = $"Error al registrar ingreso: {ex.Message}";
+            ShowFeedback($"Error al registrar ingreso: {ex.Message}", false);
         }
         finally
         {
@@ -170,13 +235,21 @@ public partial class CheckInViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
-    private void ClearForm()
+    private void ClearInputs()
     {
         PlateNumber = string.Empty;
         PhoneNumber = null;
         Notes = null;
+        ActiveSubscription = null;
+        IsMonthlySubscriber = false;
         SelectedVehicleType = VehicleType.Car;
+    }
+
+    [RelayCommand]
+    private void ClearForm()
+    {
+        ClearInputs();
+        _feedbackTimer.Stop();
         HasFeedback = false;
         FeedbackMessage = null;
     }

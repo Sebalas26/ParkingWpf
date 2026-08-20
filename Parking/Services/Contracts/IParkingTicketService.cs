@@ -13,8 +13,8 @@ public interface IParkingTicketService
     event EventHandler<ParkingTicket>? TicketCompleted;
     event EventHandler<OccupancyStats>? OccupancyChanged;
 
-    Task<ParkingTicket> RegisterEntryAsync(string plateNumber, VehicleType vehicleType, string? phoneNumber, string? notes, string operatorName);
-    Task<ParkingTicket?> ProcessExitAsync(Guid ticketId, PaymentMethod paymentMethod, decimal amountPaid, Guid? storeId, Guid? agreementId, string? invoiceNumber, decimal? purchaseAmount, decimal discountAmount);
+    Task<ParkingTicket> RegisterEntryAsync(string plateNumber, VehicleType vehicleType, string? phoneNumber, string? notes, string operatorName, decimal? customHourlyRate = null);
+    Task<ParkingTicket?> ProcessExitAsync(Guid ticketId, PaymentMethod paymentMethod, decimal amountPaid, Guid? storeId, Guid? agreementId, string? invoiceNumber, decimal? purchaseAmount, decimal discountAmount, int? paymentMethodId = null, string? exitNotes = null);
     Task<IReadOnlyList<ParkingTicket>> GetActiveTicketsAsync();
     Task<IReadOnlyList<ParkingTicket>> GetCompletedTicketsAsync();
     Task<IReadOnlyList<ParkingTicket>> GetAllTicketsAsync();

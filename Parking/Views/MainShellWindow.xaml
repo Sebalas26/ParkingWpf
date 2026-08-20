@@ -9,9 +9,11 @@
         xmlns:enums="clr-namespace:Parking.Core.Enums"
         mc:Ignorable="d"
         Title="ParkFlow - Terminal POS de Control de Acceso y Caja"
-        Height="880"
-        Width="1440"
-        MinHeight="720"
+        Height="720"
+        Width="1340"
+        MinHeight="660"
+        MinWidth="1100"
+        WindowState="Maximized"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource BrushAppBackground}"
         UseLayoutRounding="True"
@@ -41,6 +43,9 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:ShiftClosureViewModel}">
             <views:ShiftClosureView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:MonthlySubscriptionsViewModel}">
+            <views:MonthlySubscriptionsView/>
         </DataTemplate>
     </Window.Resources>
 
@@ -103,7 +108,18 @@
                             </RadioButton.Tag>
                         </RadioButton>
 
-                        <!-- 3. Entradas del Turno -->
+                        <!-- 3. Mensualidades y Abonados -->
+                        <RadioButton Content="Mensualidades"
+                                     Command="{Binding NavigateToMonthlySubscriptionsCommand}"
+                                     IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=MonthlySubscriptions, Mode=OneWay}"
+                                     Style="{StaticResource SidebarNavButton}"
+                                     Margin="0,0,0,6">
+                            <RadioButton.Tag>
+                                <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform"/>
+                            </RadioButton.Tag>
+                        </RadioButton>
+
+                        <!-- 4. Entradas del Turno -->
                         <RadioButton Content="Entradas del Turno"
                                      Command="{Binding NavigateToRecentEntriesCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=RecentEntries, Mode=OneWay}"
@@ -114,7 +130,7 @@
                             </RadioButton.Tag>
                         </RadioButton>
 
-                        <!-- 4. Panel Financiero -->
+                        <!-- 5. Panel Financiero -->
                         <RadioButton Content="Panel Financiero"
                                      Command="{Binding NavigateToAnalyticsCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=Analytics, Mode=OneWay}"
@@ -125,7 +141,7 @@
                             </RadioButton.Tag>
                         </RadioButton>
 
-                        <!-- 5. Entrega de Turno y Arqueo -->
+                        <!-- 6. Entrega de Turno y Arqueo -->
                         <RadioButton Content="Entrega de Turno y Arqueo"
                                      Command="{Binding NavigateToShiftClosureCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=ShiftClosure, Mode=OneWay}"
