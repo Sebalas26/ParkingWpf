@@ -39,7 +39,15 @@ public class EfPricingCalculatorService : IPricingCalculatorService
             await ReloadRatesAsync();
         }
 
-        return _ratesCache.Values.OrderBy(r => (int)r.VehicleType).ToList();
+        var preferredOrder = new List<VehicleType> { VehicleType.Motorcycle, VehicleType.Car, VehicleType.Van, VehicleType.HeavyTruck, VehicleType.Bicycle };
+        return _ratesCache.Values
+            .Where(r => r.IsActive && r.VehicleType != VehicleType.Suv)
+            .OrderBy(r =>
+            {
+                var idx = preferredOrder.IndexOf(r.VehicleType);
+                return idx >= 0 ? idx : 99;
+            })
+            .ToList();
     }
 
     public VehicleRate GetRate(VehicleType vehicleType)

@@ -15,6 +15,6 @@ public interface IShiftService
     Task<WorkShift> OpenShiftAsync(decimal baseAmount, string? notes = null);
     Task<WorkShift?> GetActiveShiftAsync();
     Task<ShiftSummaryModel> GetCurrentShiftSummaryAsync();
-    Task<WorkShift?> CloseShiftAsync(decimal actualCashCounted, string? notes = null);
+    Task<WorkShift?> CloseShiftAsync(decimal actualCashCounted, string? notes = null, Guid? handoverToUserId = null, string? handoverToUserName = null);
     Task<IReadOnlyList<WorkShift>> GetShiftHistoryAsync(DateTime? fromDate = null, DateTime? toDate = null);
 }

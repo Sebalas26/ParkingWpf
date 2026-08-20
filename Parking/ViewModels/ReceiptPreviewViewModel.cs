@@ -44,7 +44,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     {
         Ticket = ticket;
         PrintSuccess = false;
-        QrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(PublicConsultationUrl);
+        QrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(ticket.PlateNumber);
         BarcodeImage = _barcodeGenerator.GenerateCode128Barcode(ticket.TicketNumber, height: 50, moduleWidth: 2);
     }
 

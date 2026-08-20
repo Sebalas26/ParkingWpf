@@ -13,6 +13,8 @@ public class CloseShiftApiRequest
     public Guid ShiftId { get; set; }
     public decimal ActualCashCounted { get; set; }
     public string? Notes { get; set; }
+    public Guid? HandoverToUserId { get; set; }
+    public string? HandoverToUserName { get; set; }
 }
 
 public class ShiftSummaryModel

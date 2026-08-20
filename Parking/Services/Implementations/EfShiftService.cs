@@ -180,7 +180,7 @@ public class EfShiftService : IShiftService
         };
     }
 
-    public async Task<WorkShift?> CloseShiftAsync(decimal actualCashCounted, string? notes = null)
+    public async Task<WorkShift?> CloseShiftAsync(decimal actualCashCounted, string? notes = null, Guid? handoverToUserId = null, string? handoverToUserName = null)
     {
         var activeShift = CurrentShift ?? await GetActiveShiftAsync();
         if (activeShift == null) return null;
@@ -189,7 +189,9 @@ public class EfShiftService : IShiftService
         {
             ShiftId = activeShift.ShiftId,
             ActualCashCounted = actualCashCounted,
-            Notes = notes
+            Notes = notes,
+            HandoverToUserId = handoverToUserId,
+            HandoverToUserName = handoverToUserName
         };
 
         WorkShift? closedShift = null;
@@ -219,6 +221,8 @@ public class EfShiftService : IShiftService
             local.TotalVehiclesEntered = summary.TotalVehiclesEntered;
             local.Status = 1;
             local.Notes = notes ?? local.Notes;
+            local.HandoverToUserId = handoverToUserId;
+            local.HandoverToUserName = handoverToUserName;
             local.IsSynchronized = closedShift != null;
             await db.SaveChangesAsync();
 

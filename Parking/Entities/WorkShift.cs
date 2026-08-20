@@ -21,6 +21,8 @@ public class WorkShift
     public int TotalVehiclesEntered { get; set; }
     public int Status { get; set; } // 0 = Open, 1 = Closed
     public string? Notes { get; set; }
+    public Guid? HandoverToUserId { get; set; }
+    public string? HandoverToUserName { get; set; }
     public bool IsSynchronized { get; set; } = true;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? ClosedAtUtc { get; set; }

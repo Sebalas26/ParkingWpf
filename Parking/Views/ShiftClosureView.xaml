@@ -256,6 +256,15 @@
                                 </Grid>
                             </Border>
 
+                            <!-- Usuario Receptor de la Entrega de Turno -->
+                            <TextBlock Text="USUARIO A QUIEN SE ENTREGA EL TURNO *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6"/>
+                            <ComboBox ItemsSource="{Binding AvailableUsers}"
+                                      SelectedItem="{Binding SelectedHandoverUser}"
+                                      DisplayMemberPath="FullName"
+                                      Height="42"
+                                      Style="{StaticResource ModernComboBox}"
+                                      Margin="0,0,0,12"/>
+
                             <!-- Notes -->
                             <TextBlock Text="Observaciones / Novedades de Turno" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,6"/>
                             <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
@@ -397,6 +406,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="ENTREGADO A" Binding="{Binding HandoverToUserName}" Width="1.3*"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </StackPanel>

@@ -203,19 +203,6 @@ public class DbConnectionManager : IDbConnectionManager
                 new VehicleRate
                 {
                     RateId = Guid.NewGuid(),
-                    VehicleType = VehicleType.Car,
-                    DisplayName = "Automóvil / Sedán",
-                    HourRate = 4000m,
-                    MinuteRate = 70m,
-                    FullDayRate = 28000m,
-                    GracePeriodMinutes = 0,
-                    IconKey = "IconCar",
-                    IsActive = true,
-                    UpdatedAtUtc = DateTime.UtcNow
-                },
-                new VehicleRate
-                {
-                    RateId = Guid.NewGuid(),
                     VehicleType = VehicleType.Motorcycle,
                     DisplayName = "Motocicleta",
                     HourRate = 2000m,
@@ -229,13 +216,13 @@ public class DbConnectionManager : IDbConnectionManager
                 new VehicleRate
                 {
                     RateId = Guid.NewGuid(),
-                    VehicleType = VehicleType.Suv,
-                    DisplayName = "Camioneta / SUV",
-                    HourRate = 5000m,
-                    MinuteRate = 85m,
-                    FullDayRate = 35000m,
+                    VehicleType = VehicleType.Car,
+                    DisplayName = "Automóvil / Sedán",
+                    HourRate = 4000m,
+                    MinuteRate = 70m,
+                    FullDayRate = 28000m,
                     GracePeriodMinutes = 0,
-                    IconKey = "IconSuv",
+                    IconKey = "IconCar",
                     IsActive = true,
                     UpdatedAtUtc = DateTime.UtcNow
                 },
@@ -264,9 +251,67 @@ public class DbConnectionManager : IDbConnectionManager
                     IconKey = "IconTruck",
                     IsActive = true,
                     UpdatedAtUtc = DateTime.UtcNow
+                },
+                new VehicleRate
+                {
+                    RateId = Guid.NewGuid(),
+                    VehicleType = VehicleType.Suv,
+                    DisplayName = "Camioneta / SUV",
+                    HourRate = 5000m,
+                    MinuteRate = 85m,
+                    FullDayRate = 35000m,
+                    GracePeriodMinutes = 0,
+                    IconKey = "IconSuv",
+                    IsActive = false,
+                    UpdatedAtUtc = DateTime.UtcNow
                 }
             );
             await context.SaveChangesAsync();
+        }
+        else
+        {
+            // Sincronizar nombres e inactivar Camioneta en base existente
+            try
+            {
+                var allDbRates = await context.VehicleRates.ToListAsync();
+                foreach (var r in allDbRates)
+                {
+                    if (r.VehicleType == VehicleType.Motorcycle)
+                    {
+                        r.DisplayName = "Motocicleta";
+                        r.HourRate = 2000m;
+                        r.IconKey = "IconMotorcycle";
+                        r.IsActive = true;
+                    }
+                    else if (r.VehicleType == VehicleType.Car)
+                    {
+                        r.DisplayName = "Automóvil / Sedán";
+                        r.HourRate = 4000m;
+                        r.IconKey = "IconCar";
+                        r.IsActive = true;
+                    }
+                    else if (r.VehicleType == VehicleType.Van)
+                    {
+                        r.DisplayName = "Furgón / Minibús";
+                        r.HourRate = 6000m;
+                        r.IconKey = "IconVan";
+                        r.IsActive = true;
+                    }
+                    else if (r.VehicleType == VehicleType.HeavyTruck)
+                    {
+                        r.DisplayName = "Vehículo Pesado / Camión";
+                        r.HourRate = 10000m;
+                        r.IconKey = "IconTruck";
+                        r.IsActive = true;
+                    }
+                    else if (r.VehicleType == VehicleType.Suv)
+                    {
+                        r.IsActive = false;
+                    }
+                }
+                await context.SaveChangesAsync();
+            }
+            catch { }
         }
 
         if (!await context.PaymentMethods.AnyAsync())

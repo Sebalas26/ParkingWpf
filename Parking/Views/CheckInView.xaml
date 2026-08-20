@@ -381,7 +381,7 @@
                     <ItemsControl ItemsSource="{Binding AvailableRates}" Margin="0,0,0,24">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <UniformGrid Columns="3" Rows="2"/>
+                                <UniformGrid Columns="2" Rows="2"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>

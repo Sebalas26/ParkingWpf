@@ -202,7 +202,61 @@ public partial class CheckOutViewModel : ViewModelBase
     partial void OnSearchQueryChanged(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return;
+        var sanitized = SanitizePlateQuery(value);
+        if (sanitized != value)
+        {
+            SearchQuery = sanitized;
+            return;
+        }
         _ = SearchTicketAsync();
+    }
+
+    private string SanitizePlateQuery(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+        var text = raw.Trim();
+
+        // Normalizar caracteres producidos por pistolas lectoras con layout en español
+        text = text.Replace("Ñ--", "://")
+                   .Replace("¿", "=")
+                   .Replace("'", "?")
+                   .Replace("¡", "");
+
+        // Si tiene parámetro plate=
+        if (text.Contains("plate=", StringComparison.OrdinalIgnoreCase))
+        {
+            var idx = text.IndexOf("plate=", StringComparison.OrdinalIgnoreCase);
+            var queryPart = text[(idx + 6)..];
+            var endIdx = queryPart.IndexOfAny(new[] { '&', ' ', '#', '/', '?' });
+            if (endIdx > 0) queryPart = queryPart[..endIdx];
+            return queryPart.Trim().ToUpperInvariant();
+        }
+
+        // Si tiene parámetro ticket=
+        if (text.Contains("ticket=", StringComparison.OrdinalIgnoreCase))
+        {
+            var idx = text.IndexOf("ticket=", StringComparison.OrdinalIgnoreCase);
+            var queryPart = text[(idx + 7)..];
+            var endIdx = queryPart.IndexOfAny(new[] { '&', ' ', '#', '/', '?' });
+            if (endIdx > 0) queryPart = queryPart[..endIdx];
+            return queryPart.Trim().ToUpperInvariant();
+        }
+
+        // Si es una URL completa, extraer el último segmento
+        if (text.StartsWith("http", StringComparison.OrdinalIgnoreCase) || text.Contains("://"))
+        {
+            var parts = text.Split(new[] { '/', '?', '=', '&' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length > 0)
+            {
+                var last = parts[^1];
+                if (last.Length is >= 4 and <= 25)
+                {
+                    return last.Trim().ToUpperInvariant();
+                }
+            }
+        }
+
+        return text.Trim().ToUpperInvariant();
     }
 
     async partial void OnSelectedStoreChanged(Store? value)

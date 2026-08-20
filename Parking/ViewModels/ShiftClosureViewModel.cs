@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.EntityFrameworkCore;
+using Parking.Data.Factories;
 using Parking.Entities;
 using Parking.Models.ApiModels;
 using Parking.Services.Contracts;
@@ -15,6 +19,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private readonly IAuthService _authService;
     private readonly IDialogService _dialogService;
     private readonly IReceiptPrinterService _receiptPrinter;
+    private readonly IDbConnectionManager _connectionManager;
 
     [ObservableProperty]
     private ShiftSummaryModel _summary = new();
@@ -49,16 +54,24 @@ public partial class ShiftClosureViewModel : ViewModelBase
     [ObservableProperty]
     private string _operatorName = "Operador General";
 
+    [ObservableProperty]
+    private ObservableCollection<User> _availableUsers = new();
+
+    [ObservableProperty]
+    private User? _selectedHandoverUser;
+
     public ShiftClosureViewModel(
         IShiftService shiftService,
         IAuthService authService,
         IDialogService dialogService,
-        IReceiptPrinterService receiptPrinter)
+        IReceiptPrinterService receiptPrinter,
+        IDbConnectionManager connectionManager)
     {
         _shiftService = shiftService;
         _authService = authService;
         _dialogService = dialogService;
         _receiptPrinter = receiptPrinter;
+        _connectionManager = connectionManager;
         _operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
     }
 
@@ -124,9 +137,17 @@ public partial class ShiftClosureViewModel : ViewModelBase
             return;
         }
 
+        if (SelectedHandoverUser == null)
+        {
+            HasFeedback = true;
+            IsSuccessFeedback = false;
+            FeedbackMessage = "Debe seleccionar el usuario al que se le realiza la entrega de turno.";
+            return;
+        }
+
         var confirmed = await _dialogService.ShowConfirmationAsync(
             "Confirmar Cierre de Turno y Arqueo",
-            $"¿Está seguro de cerrar el turno de {OperatorName}?\n\n" +
+            $"¿Está seguro de cerrar el turno de {OperatorName} y entregarlo a {SelectedHandoverUser.FullName}?\n\n" +
             $"• Base de Caja: ${Summary.BaseAmount:N0}\n" +
             $"• Efectivo Esperado: ${Summary.ExpectedCash:N0}\n" +
             $"• Efectivo Contado: ${ActualCashCounted:N0}\n" +
@@ -139,12 +160,17 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
         try
         {
-            var closedShift = await _shiftService.CloseShiftAsync(ActualCashCounted, Notes);
+            var closedShift = await _shiftService.CloseShiftAsync(
+                ActualCashCounted,
+                Notes,
+                SelectedHandoverUser.UserId,
+                SelectedHandoverUser.FullName);
+
             if (closedShift != null)
             {
                 HasFeedback = true;
                 IsSuccessFeedback = true;
-                FeedbackMessage = $"Turno cerrado exitosamente. Diferencia final: ${closedShift.CashDifference:N0}.";
+                FeedbackMessage = $"Turno cerrado exitosamente y entregado a {SelectedHandoverUser.FullName}. Diferencia: ${closedShift.CashDifference:N0}.";
                 ActualCashCounted = 0m;
                 Notes = null;
                 await LoadShiftDataAsync();
@@ -184,6 +210,18 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 Summary = await _shiftService.GetCurrentShiftSummaryAsync();
                 RecalculateDifference();
             }
+
+            // Cargar usuarios para entrega de turno
+            using var db = _connectionManager.CreateDbContext();
+            var users = await db.Users.Where(u => u.IsActive).OrderBy(u => u.FullName).ToListAsync();
+            AvailableUsers.Clear();
+            foreach (var u in users)
+            {
+                AvailableUsers.Add(u);
+            }
+
+            var currentUserId = _authService.CurrentUser?.UserId;
+            SelectedHandoverUser = AvailableUsers.FirstOrDefault(u => u.UserId != currentUserId) ?? AvailableUsers.FirstOrDefault();
 
             ShiftHistory = await _shiftService.GetShiftHistoryAsync(DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
         }

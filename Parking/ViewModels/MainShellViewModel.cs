@@ -23,6 +23,7 @@ public partial class MainShellViewModel : ViewModelBase
     private readonly IBackgroundSyncScheduler _backgroundSync;
     private readonly IThemeService _themeService;
     private readonly IDialogService _dialogService;
+    private readonly IShiftService _shiftService;
     private readonly DispatcherTimer _clockTimer;
 
     [ObservableProperty]
@@ -66,7 +67,8 @@ public partial class MainShellViewModel : ViewModelBase
         ISyncEngineService syncEngine,
         IBackgroundSyncScheduler backgroundSync,
         IThemeService themeService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IShiftService shiftService)
     {
         _authService = authService;
         _ticketService = ticketService;
@@ -75,6 +77,7 @@ public partial class MainShellViewModel : ViewModelBase
         _backgroundSync = backgroundSync;
         _themeService = themeService;
         _dialogService = dialogService;
+        _shiftService = shiftService;
 
         _currentAppTheme = _themeService.CurrentTheme;
         _selectedTheme = AvailableThemes.FirstOrDefault(t => t.Theme == _themeService.CurrentTheme) ?? AvailableThemes.First();
@@ -125,8 +128,16 @@ public partial class MainShellViewModel : ViewModelBase
         CurrentUser = _authService.CurrentUser;
         Occupancy = await _ticketService.GetOccupancyStatsAsync();
 
-        // 1. Mostrar pantalla principal inmediatamente con datos locales SQLite (<50ms)
-        NavigateToCheckIn();
+        // 1. Verificar si hay turno activo; si no, abrir pantalla de apertura de turno
+        var activeShift = await _shiftService.GetActiveShiftAsync();
+        if (activeShift == null)
+        {
+            NavigateToShiftClosure();
+        }
+        else
+        {
+            NavigateToCheckIn();
+        }
 
         // 2. Iniciar programador de sincronización en segundo plano (cada 1 hora)
         _backgroundSync.Start();
