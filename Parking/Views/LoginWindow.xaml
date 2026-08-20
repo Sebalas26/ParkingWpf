@@ -17,7 +17,12 @@
 
     <Window.Resources>
         <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:InverseBooleanConverter x:Key="InverseBoolConv"/>
     </Window.Resources>
+
+    <Window.InputBindings>
+        <KeyBinding Key="Enter" Command="{Binding LoginCommand}"/>
+    </Window.InputBindings>
 
     <Border Background="{DynamicResource BrushAppBackground}"
             BorderBrush="{DynamicResource BrushBorderMedium}"
@@ -29,6 +34,7 @@
                 <ColumnDefinition Width="1.2*"/>
             </Grid.ColumnDefinitions>
 
+            <!-- Banner Izquierdo Profesional -->
             <Border Grid.Column="0"
                     Background="{DynamicResource BrushSidebarBackground}"
                     CornerRadius="16,0,0,16"
@@ -46,19 +52,19 @@
                         </Border>
                         <StackPanel VerticalAlignment="Center">
                             <TextBlock Text="PARKFLOW" FontSize="20" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
-                            <TextBlock Text="CONTROL DE ACCESO" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushSidebarText}"/>
+                            <TextBlock Text="CONTROL DE ACCESO Y CAJA" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushSidebarText}"/>
                         </StackPanel>
                     </StackPanel>
 
                     <StackPanel Grid.Row="1" VerticalAlignment="Center">
-                        <TextBlock Text="Sistema de Control de Acceso y Recaudación de Parqueadero"
+                        <TextBlock Text="Sistema Integral de Control de Acceso y Recaudación de Parqueadero"
                                    FontSize="22"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource BrushTextWhite}"
                                    TextWrapping="Wrap"
                                    LineHeight="30"
                                    Margin="0,0,0,16"/>
-                        <TextBlock Text="Agilice el registro de entradas, cálculo en caja, seguimiento de cupos en tiempo real y convenios comerciales."
+                        <TextBlock Text="Agilice el registro de entradas, cálculo en caja, seguimiento de cupos en tiempo real, convenios comerciales y arqueo de turnos."
                                    FontSize="13"
                                    Foreground="{DynamicResource BrushSidebarText}"
                                    TextWrapping="Wrap"
@@ -93,18 +99,19 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <Path Grid.Column="0" Data="{StaticResource IconAnalytics}" Fill="{DynamicResource BrushSuccess}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,12,0"/>
-                                    <TextBlock Grid.Column="1" Text="Arquitectura Híbrida Cloud MySQL + Local Offline" Foreground="{DynamicResource BrushTextWhite}" FontSize="12" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="Control de Turnos Operativos y Arqueo de Caja" Foreground="{DynamicResource BrushTextWhite}" FontSize="12" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
                         </StackPanel>
                     </StackPanel>
 
                     <StackPanel Grid.Row="2">
-                        <TextBlock Text="ParkFlow Enterprise • v2.5 .NET 10" FontSize="11" Foreground="{DynamicResource BrushSidebarText}"/>
+                        <TextBlock Text="ParkFlow Enterprise • Sistema Profesional de Control de Acceso y Parqueaderos" FontSize="11" Foreground="{DynamicResource BrushSidebarText}"/>
                     </StackPanel>
                 </Grid>
             </Border>
 
+            <!-- Lado Derecho: Formulario de Autenticación con Loader -->
             <Grid Grid.Column="1" Margin="40,30,40,30">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -164,7 +171,7 @@
 
                 <StackPanel Grid.Row="1" VerticalAlignment="Center" MaxWidth="380" HorizontalAlignment="Stretch">
                     <TextBlock Text="Iniciar Sesión" Style="{StaticResource TextHeaderLarge}" Margin="0,0,0,6"/>
-                    <TextBlock Text="Ingrese sus credenciales de estación para abrir su turno" Style="{StaticResource TextBodySecondary}" Margin="0,0,0,24"/>
+                    <TextBlock Text="Ingrese sus credenciales de operador para iniciar estación" Style="{StaticResource TextBodySecondary}" Margin="0,0,0,24"/>
 
                     <Border Background="{DynamicResource BrushDangerBg}"
                             BorderBrush="{DynamicResource BrushDanger}"
@@ -178,53 +185,61 @@
 
                     <TextBlock Text="Usuario / ID de Operador" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,8"/>
                     <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                             IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
                              Style="{StaticResource ModernTextBox}"
                              Margin="0,0,0,18"/>
 
                     <TextBlock Text="Contraseña" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,8"/>
                     <PasswordBox x:Name="UserPasswordBox"
+                                 IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
                                  Style="{StaticResource ModernPasswordBox}"
                                  PasswordChanged="UserPasswordBox_PasswordChanged"
+                                 KeyDown="UserPasswordBox_KeyDown"
                                  Margin="0,0,0,24"/>
 
+                    <!-- Botón de Acceso -->
                     <Button Command="{Binding LoginCommand}"
+                            IsDefault="True"
+                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
                             Style="{StaticResource ModernButton}"
-                            Height="44"
-                            Margin="0,0,0,20">
+                            Height="46"
+                            Margin="0,0,0,16">
                         <Button.ContentTemplate>
                             <DataTemplate>
-                                <TextBlock Text="Acceder y Abrir Turno" Foreground="{DynamicResource BrushTextWhite}" FontSize="14" FontWeight="Bold"/>
+                                <TextBlock Text="Acceder a Estación de Trabajo" Foreground="{DynamicResource BrushTextWhite}" FontSize="14" FontWeight="Bold"/>
                             </DataTemplate>
                         </Button.ContentTemplate>
                     </Button>
 
-                    <TextBlock Text="CREDENCIALES DE PRUEBA"
-                               FontSize="11"
-                               FontWeight="Bold"
-                               Foreground="{DynamicResource BrushTextMuted}"
-                               Margin="0,0,0,10"
-                               HorizontalAlignment="Center"/>
-
-                    <UniformGrid Columns="2" Rows="1" Margin="0,0,0,10">
-                        <Button Content="Admin (admin/admin123)"
-                                Command="{Binding UseAdminDemoCommand}"
-                                Click="DemoButton_Click"
-                                Style="{StaticResource SecondaryButton}"
-                                Margin="0,0,6,0"
-                                FontSize="11"
-                                Height="34"/>
-                        <Button Content="Operador (operador/operador123)"
-                                Command="{Binding UseOperatorDemoCommand}"
-                                Click="DemoButton_Click"
-                                Style="{StaticResource SecondaryButton}"
-                                Margin="6,0,0,0"
-                                FontSize="11"
-                                Height="34"/>
-                    </UniformGrid>
+                    <!-- Loader Visual Animado Activo durante IsBusy -->
+                    <Border Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"
+                            Background="{DynamicResource BrushCardBackground}"
+                            BorderBrush="{DynamicResource BrushBorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,12"
+                            Margin="0,4,0,0">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <ProgressBar IsIndeterminate="True"
+                                         Height="4"
+                                         Foreground="{DynamicResource BrushPrimary}"
+                                         Background="{DynamicResource BrushInputBackground}"
+                                         BorderThickness="0"
+                                         Margin="0,0,0,10"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding BusyMessage, FallbackValue='Validando credenciales y conectando estación...'}"
+                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <TextBlock Grid.Row="2"
-                           Text="Protegido por Control de Acceso Basado en Roles"
+                           Text="Protegido por Control de Acceso Basado en Roles • ParkFlow Enterprise"
                            HorizontalAlignment="Center"
                            Style="{StaticResource TextCaption}"/>
             </Grid>

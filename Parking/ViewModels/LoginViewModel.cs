@@ -14,10 +14,10 @@ public partial class LoginViewModel : ViewModelBase
     private readonly IThemeService _themeService;
 
     [ObservableProperty]
-    private string _username = "admin";
+    private string _username = string.Empty;
 
     [ObservableProperty]
-    private string _password = "admin123";
+    private string _password = string.Empty;
 
     [ObservableProperty]
     private string? _errorMessage;
@@ -49,14 +49,21 @@ public partial class LoginViewModel : ViewModelBase
     [RelayCommand]
     private async Task LoginAsync()
     {
+        if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
+        {
+            HasError = true;
+            ErrorMessage = "Por favor ingrese su usuario y contraseña.";
+            return;
+        }
+
         ErrorMessage = null;
         HasError = false;
         IsBusy = true;
-        BusyMessage = "Autenticando credenciales del operador...";
+        BusyMessage = "Validando credenciales y preparando estación de trabajo...";
 
         try
         {
-            var success = await _authService.LoginAsync(Username, Password);
+            var success = await _authService.LoginAsync(Username.Trim(), Password);
             if (success)
             {
                 LoginSuccessful?.Invoke();
@@ -64,36 +71,18 @@ public partial class LoginViewModel : ViewModelBase
             else
             {
                 HasError = true;
-                ErrorMessage = "Usuario o contraseña incorrectos. Por favor verifique sus credenciales.";
+                ErrorMessage = "Usuario o contraseña incorrectos. Por favor verifique sus datos.";
             }
         }
         catch (Exception ex)
         {
             HasError = true;
-            ErrorMessage = $"Error de autenticación: {ex.Message}";
+            ErrorMessage = $"Error al iniciar sesión: {ex.Message}";
         }
         finally
         {
             IsBusy = false;
             BusyMessage = null;
         }
-    }
-
-    [RelayCommand]
-    private void UseAdminDemo()
-    {
-        Username = "admin";
-        Password = "admin123";
-        ErrorMessage = null;
-        HasError = false;
-    }
-
-    [RelayCommand]
-    private void UseOperatorDemo()
-    {
-        Username = "operador";
-        Password = "operador123";
-        ErrorMessage = null;
-        HasError = false;
     }
 }

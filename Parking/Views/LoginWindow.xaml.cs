@@ -38,11 +38,15 @@ public partial class LoginWindow : Window
         }
     }
 
-    private void DemoButton_Click(object sender, RoutedEventArgs e)
+    private void UserPasswordBox_KeyDown(object sender, KeyEventArgs e)
     {
-        if (DataContext is LoginViewModel vm)
+        if (e.Key == Key.Enter && DataContext is LoginViewModel vm)
         {
-            UserPasswordBox.Password = vm.Password;
+            vm.Password = UserPasswordBox.Password;
+            if (vm.LoginCommand.CanExecute(null))
+            {
+                vm.LoginCommand.Execute(null);
+            }
         }
     }
 

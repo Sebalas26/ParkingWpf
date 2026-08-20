@@ -39,7 +39,7 @@ public class DbConnectionManager : IDbConnectionManager
         using var context = CreateDbContext();
         await context.Database.EnsureCreatedAsync();
 
-        // Asegurar que la tabla de pendientes de sincronización exista
+        // Asegurar que las tablas auxiliares y de turnos existan
         try
         {
             await context.Database.ExecuteSqlRawAsync(@"
@@ -53,6 +53,29 @@ public class DbConnectionManager : IDbConnectionManager
                     ""ErrorMessage"" TEXT NULL,
                     ""CreatedAtUtc"" TEXT NOT NULL,
                     ""LastAttemptUtc"" TEXT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""WorkShifts"" (
+                    ""ShiftId"" TEXT NOT NULL PRIMARY KEY,
+                    ""UserId"" INTEGER NOT NULL,
+                    ""OperatorName"" TEXT NOT NULL,
+                    ""StartTimeUtc"" TEXT NOT NULL,
+                    ""EndTimeUtc"" TEXT NULL,
+                    ""BaseAmount"" TEXT NOT NULL,
+                    ""TotalCashCollected"" TEXT NOT NULL,
+                    ""TotalCardCollected"" TEXT NOT NULL,
+                    ""TotalTransferCollected"" TEXT NOT NULL,
+                    ""TotalDiscounts"" TEXT NOT NULL,
+                    ""ExpectedCash"" TEXT NOT NULL,
+                    ""ActualCashCounted"" TEXT NOT NULL,
+                    ""CashDifference"" TEXT NOT NULL,
+                    ""TotalTicketsProcessed"" INTEGER NOT NULL DEFAULT 0,
+                    ""TotalVehiclesEntered"" INTEGER NOT NULL DEFAULT 0,
+                    ""Status"" INTEGER NOT NULL DEFAULT 0,
+                    ""Notes"" TEXT NULL,
+                    ""IsSynchronized"" INTEGER NOT NULL DEFAULT 1,
+                    ""CreatedAtUtc"" TEXT NOT NULL,
+                    ""ClosedAtUtc"" TEXT NULL
                 );
             ");
         }

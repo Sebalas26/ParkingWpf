@@ -12,9 +12,14 @@
         Height="880"
         Width="1440"
         MinHeight="720"
-        MinWidth="1150"
         WindowStartupLocation="CenterScreen"
-        Background="{DynamicResource BrushAppBackground}">
+        Background="{DynamicResource BrushAppBackground}"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        RenderOptions.ClearTypeHint="Enabled"
+        RenderOptions.BitmapScalingMode="HighQuality">
 
     <Window.Resources>
         <conv:CurrencyConverter x:Key="CurrencyConv"/>
@@ -33,6 +38,9 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type vm:AnalyticsViewModel}">
             <views:AnalyticsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ShiftClosureViewModel}">
+            <views:ShiftClosureView/>
         </DataTemplate>
     </Window.Resources>
 
@@ -68,7 +76,7 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Navigation List: 4 Exclusively Operational Modules in Spanish -->
+                <!-- Navigation List: 5 Exclusively Operational Modules in Spanish -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel>
                         <TextBlock Text="OPERACIÓN EN TERMINAL" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushSidebarText}" Margin="12,0,0,12"/>
@@ -114,6 +122,17 @@
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>
                                 <Path Data="{StaticResource IconAnalytics}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform"/>
+                            </RadioButton.Tag>
+                        </RadioButton>
+
+                        <!-- 5. Entrega de Turno y Arqueo -->
+                        <RadioButton Content="Entrega de Turno y Arqueo"
+                                     Command="{Binding NavigateToShiftClosureCommand}"
+                                     IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=ShiftClosure, Mode=OneWay}"
+                                     Style="{StaticResource SidebarNavButton}"
+                                     Margin="0,0,0,6">
+                            <RadioButton.Tag>
+                                <Path Data="{StaticResource IconCash}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform"/>
                             </RadioButton.Tag>
                         </RadioButton>
                     </StackPanel>
@@ -182,7 +201,7 @@
                     Background="{DynamicResource BrushSurfaceBackground}"
                     BorderBrush="{DynamicResource BrushBorderSubtle}"
                     BorderThickness="0,0,0,1"
-                    Padding="20,0">
+                    Padding="16,0">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -190,10 +209,9 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- Left: Subtitle Context -->
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
                         <TextBlock Text="Terminal Principal" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                        <TextBlock Text=" • " FontSize="13" Foreground="{DynamicResource BrushTextMuted}"/>
-                        <TextBlock Text="Control de Acceso y Recaudación" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}"/>
+                        <TextBlock Text=" • Control de Acceso y Caja" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
                     </StackPanel>
 
                     <!-- Right: All Pills & Controls in One Clean Flowing Stack -->
@@ -205,12 +223,12 @@
                         <!-- 1. Botón Sincronizar Novedades Manual -->
                         <Button Command="{Binding ManualSyncCommand}"
                                 Style="{StaticResource SecondaryButton}"
-                                Padding="10,5"
-                                Margin="0,0,10,0"
-                                ToolTip="Consultar y descargar novedades del API Central de inmediato">
+                                Padding="8,4"
+                                Margin="0,0,8,0"
+                                ToolTip="Consultar y sincronizar con API Central de inmediato">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushPrimary}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Sincronizar Novedades" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                                <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushPrimary}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Sincronizar" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
 
@@ -218,11 +236,12 @@
                         <Border Background="{DynamicResource BrushInputBackground}"
                                 BorderBrush="{DynamicResource BrushBorderSubtle}"
                                 BorderThickness="1"
-                                CornerRadius="16"
-                                Padding="10,5"
-                                Margin="0,0,10,0">
+                                CornerRadius="14"
+                                Padding="8,4"
+                                Margin="0,0,8,0"
+                                ToolTip="{Binding SyncStatusText}">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Ellipse Width="8" Height="8" Fill="{Binding IsOnlineMode, Converter={StaticResource ConnColorConv}}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <Ellipse Width="7" Height="7" Fill="{Binding IsOnlineMode, Converter={StaticResource ConnColorConv}}" Margin="0,0,5,0" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding SyncStatusText}"
                                            FontSize="11"
                                            FontWeight="SemiBold"
@@ -231,16 +250,16 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- 3. Cupos Counter Pill -->
+                        <!-- 3. Cupos Counter Pill (Real-Time DB Binding) -->
                         <Border Background="{DynamicResource BrushInputBackground}"
                                 BorderBrush="{DynamicResource BrushBorderSubtle}"
                                 BorderThickness="1"
-                                CornerRadius="16"
-                                Padding="10,5"
-                                Margin="0,0,10,0">
+                                CornerRadius="14"
+                                Padding="8,4"
+                                Margin="0,0,8,0">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Ellipse Width="8" Height="8" Fill="{DynamicResource BrushSuccess}" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Occupancy.OccupancySummary, FallbackValue='Cupos: 33 disponibles / 87 ocupados'}"
+                                <Ellipse Width="7" Height="7" Fill="{DynamicResource BrushSuccess}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Occupancy.OccupancySummary}"
                                            FontSize="11"
                                            FontWeight="Bold"
                                            Foreground="{DynamicResource BrushTextPrimary}"
@@ -252,11 +271,11 @@
                         <Border Background="{DynamicResource BrushInputBackground}"
                                 BorderBrush="{DynamicResource BrushBorderSubtle}"
                                 BorderThickness="1"
-                                CornerRadius="16"
-                                Padding="10,5"
-                                Margin="0,0,10,0">
+                                CornerRadius="14"
+                                Padding="8,4"
+                                Margin="0,0,8,0">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Path Data="{StaticResource IconClock}" Fill="{DynamicResource BrushPrimary}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <Path Data="{StaticResource IconClock}" Fill="{DynamicResource BrushPrimary}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
                                 <TextBlock Text="{Binding CurrentTimeString}"
                                            FontSize="11"
                                            FontWeight="SemiBold"
@@ -269,13 +288,13 @@
                         <ComboBox ItemsSource="{Binding AvailableThemes}"
                                   SelectedItem="{Binding SelectedTheme}"
                                   Style="{StaticResource ModernComboBox}"
-                                  Width="140"
-                                  Height="30">
+                                  Width="120"
+                                  Height="28">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Border Width="10" Height="10" CornerRadius="5" Background="{Binding PrimaryHex}" Margin="0,0,8,0"/>
-                                        <TextBlock Text="{Binding DisplayName}" FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                        <Border Width="8" Height="8" CornerRadius="4" Background="{Binding PrimaryHex}" Margin="0,0,6,0"/>
+                                        <TextBlock Text="{Binding DisplayName}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>

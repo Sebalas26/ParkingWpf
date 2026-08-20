@@ -32,6 +32,8 @@
         <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
     </Style>
 
+    <Style x:Key="TextBody" BasedOn="{StaticResource TextBodyDefault}" TargetType="TextBlock"/>
+
     <Style x:Key="TextBodySecondary" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource FontFamilyPrimary}"/>
         <Setter Property="FontSize" Value="12"/>

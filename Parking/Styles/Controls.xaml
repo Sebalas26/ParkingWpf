@@ -4,28 +4,20 @@
     <!-- Card Styles -->
     <Style x:Key="ModernCard" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource BrushSurfaceBackground}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSubtle}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMedium}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="CornerRadius" Value="14"/>
         <Setter Property="Padding" Value="18"/>
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Direction="270" Opacity="0.04" Color="#000000"/>
-            </Setter.Value>
-        </Setter>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
 
     <Style x:Key="ModernElevatedCard" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource BrushSurfaceBackground}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMedium}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="BorderThickness" Value="1.5"/>
+        <Setter Property="CornerRadius" Value="14"/>
         <Setter Property="Padding" Value="18"/>
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect BlurRadius="16" ShadowDepth="3" Direction="270" Opacity="0.07" Color="#000000"/>
-            </Setter.Value>
-        </Setter>
+        <Setter Property="SnapsToDevicePixels" Value="True"/>
     </Style>
 
     <Style x:Key="StatCard" TargetType="Border" BasedOn="{StaticResource ModernCard}">

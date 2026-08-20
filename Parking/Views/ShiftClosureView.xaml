@@ -1,0 +1,406 @@
+<UserControl x:Class="Parking.Views.ShiftClosureView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:conv="clr-namespace:Parking.Core.Converters"
+             mc:Ignorable="d"
+             d:DesignHeight="1050"
+             d:DesignWidth="1200">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="28,20,28,32">
+        <StackPanel>
+            <!-- 1. Header Area -->
+            <Grid Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="Entrega de Turno y Arqueo de Caja"
+                               Style="{StaticResource TextHeaderLarge}"/>
+                    <TextBlock Text="Liquidación operativa, balance por medio de pago y conteo físico de efectivo en gaveta."
+                               Style="{StaticResource TextBodySecondary}"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Command="{Binding RefreshSummaryCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Padding="12,8">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushPrimary}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Actualizar Balance" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <!-- 2. Feedback Alert Banner -->
+            <Border Visibility="{Binding HasFeedback, Converter={StaticResource BoolToVis}}"
+                    CornerRadius="8"
+                    Padding="14,10"
+                    Margin="0,0,0,16"
+                    BorderThickness="1">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="{DynamicResource BrushDangerBg}"/>
+                        <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsSuccessFeedback}" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource BrushSuccessBg}"/>
+                                <Setter Property="BorderBrush" Value="{DynamicResource BrushSuccess}"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Path Grid.Column="0" Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushSuccess}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="{Binding FeedbackMessage}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                </Grid>
+            </Border>
+
+            <!-- 3. Upper Operational Content Grid (Left KPIs + Right Action Box) -->
+            <Grid Margin="0,0,0,24">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="1.3*"/>
+                    <ColumnDefinition Width="20"/>
+                    <ColumnDefinition Width="1.1*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left Column: Metrics KPI Cards & Ticket Volume Banner -->
+                <StackPanel Grid.Column="0">
+                    <!-- Live Breakdown Cards (2x2 Grid) -->
+                    <UniformGrid Columns="2" Rows="2" Margin="0,0,0,16">
+                        <!-- Card 1: Efectivo Cobrado -->
+                        <Border Background="{DynamicResource BrushCardBackground}"
+                                BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                BorderThickness="1"
+                                CornerRadius="12"
+                                Padding="16,14"
+                                Margin="0,0,6,10">
+                            <StackPanel>
+                                <Grid>
+                                    <TextBlock Text="EFECTIVO COBRADO" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                    <Path HorizontalAlignment="Right" Data="{StaticResource IconCash}" Fill="{DynamicResource BrushSuccess}" Width="16" Height="16" Stretch="Uniform"/>
+                                </Grid>
+                                <TextBlock Text="{Binding Summary.TotalCashCollected, Converter={StaticResource CurrencyConv}}"
+                                           FontSize="22"
+                                           FontWeight="Black"
+                                           Foreground="{DynamicResource BrushSuccess}"
+                                           Margin="0,8,0,0"/>
+                                <TextBlock Text="Ingresos por tiquetes en efectivo" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 2: Tarjetas Débito / Crédito -->
+                        <Border Background="{DynamicResource BrushCardBackground}"
+                                BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                BorderThickness="1"
+                                CornerRadius="12"
+                                Padding="16,14"
+                                Margin="6,0,0,10">
+                            <StackPanel>
+                                <Grid>
+                                    <TextBlock Text="TARJETAS DÉBITO / CRÉDITO" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                    <Path HorizontalAlignment="Right" Data="{StaticResource IconCard}" Fill="{DynamicResource BrushPrimary}" Width="16" Height="16" Stretch="Uniform"/>
+                                </Grid>
+                                <TextBlock Text="{Binding Summary.TotalCardCollected, Converter={StaticResource CurrencyConv}}"
+                                           FontSize="22"
+                                           FontWeight="Black"
+                                           Foreground="{DynamicResource BrushPrimary}"
+                                           Margin="0,8,0,0"/>
+                                <TextBlock Text="Cobros procesados por datafono" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 3: Transferencias / QR -->
+                        <Border Background="{DynamicResource BrushCardBackground}"
+                                BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                BorderThickness="1"
+                                CornerRadius="12"
+                                Padding="16,14"
+                                Margin="0,0,6,0">
+                            <StackPanel>
+                                <Grid>
+                                    <TextBlock Text="TRANSFERENCIAS / QR" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                    <Path HorizontalAlignment="Right" Data="{StaticResource IconQr}" Fill="{DynamicResource BrushCyan}" Width="16" Height="16" Stretch="Uniform"/>
+                                </Grid>
+                                <TextBlock Text="{Binding Summary.TotalTransferCollected, Converter={StaticResource CurrencyConv}}"
+                                           FontSize="22"
+                                           FontWeight="Black"
+                                           Foreground="{DynamicResource BrushCyan}"
+                                           Margin="0,8,0,0"/>
+                                <TextBlock Text="Transferencias directas verificadas" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Card 4: Descuentos de Convenios -->
+                        <Border Background="{DynamicResource BrushCardBackground}"
+                                BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                BorderThickness="1"
+                                CornerRadius="12"
+                                Padding="16,14"
+                                Margin="6,0,0,0">
+                            <StackPanel>
+                                <Grid>
+                                    <TextBlock Text="DESCUENTOS POR CONVENIOS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                    <Path HorizontalAlignment="Right" Data="{StaticResource IconDiscount}" Fill="{DynamicResource BrushWarning}" Width="16" Height="16" Stretch="Uniform"/>
+                                </Grid>
+                                <TextBlock Text="{Binding Summary.TotalDiscounts, Converter={StaticResource CurrencyConv}}"
+                                           FontSize="22"
+                                           FontWeight="Black"
+                                           Foreground="{DynamicResource BrushWarning}"
+                                           Margin="0,8,0,0"/>
+                                <TextBlock Text="Deducciones aplicadas por comercios" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Border>
+                    </UniformGrid>
+
+                    <!-- Shift Ticket Volumes Banner -->
+                    <Border Background="{DynamicResource BrushInputBackground}"
+                            BorderBrush="{DynamicResource BrushBorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,12">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                <TextBlock Text="Tiquetes Liquidados" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding Summary.TotalTicketsProcessed}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            </StackPanel>
+                            <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource BrushBorderSubtle}" Margin="16,0"/>
+                            <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                <TextBlock Text="Vehículos Ingresados" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding Summary.TotalVehiclesEntered}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <!-- Right Column: Cash Audit Action Box -->
+                <StackPanel Grid.Column="2">
+                    <!-- Mode A: Active Shift Open (Ready for Cash Count & Closure) -->
+                    <Border Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}}"
+                            Background="{DynamicResource BrushCardBackground}"
+                            BorderBrush="{DynamicResource BrushBorderMedium}"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="20">
+                        <StackPanel>
+                            <TextBlock Text="Arqueo de Gaveta y Cierre" Style="{StaticResource TextHeaderMedium}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Verifique los montos de efectivo y proceda al arqueo físico." Style="{StaticResource TextBodySecondary}" Margin="0,0,0,16"/>
+
+                            <Border Background="{DynamicResource BrushInputBackground}" CornerRadius="8" Padding="12,8" Margin="0,0,0,14">
+                                <StackPanel>
+                                    <TextBlock Text="OPERADOR DE TURNO" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                    <TextBlock Text="{Binding OperatorName, Mode=OneWay}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Financial Summary Breakdown Table -->
+                            <StackPanel Margin="0,0,0,14">
+                                <Grid Margin="0,0,0,6">
+                                    <TextBlock Text="Base Inicial de Caja" Style="{StaticResource TextBodyDefault}"/>
+                                    <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.BaseAmount, Converter={StaticResource CurrencyConv}}" FontWeight="Bold" Style="{StaticResource TextBodyDefault}"/>
+                                </Grid>
+                                <Grid Margin="0,0,0,6">
+                                    <TextBlock Text="(+) Efectivo Cobrado en Tiquetes" Style="{StaticResource TextBodyDefault}"/>
+                                    <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.TotalCashCollected, Converter={StaticResource CurrencyConv}}" Foreground="{DynamicResource BrushSuccess}" FontWeight="Bold" Style="{StaticResource TextBodyDefault}"/>
+                                </Grid>
+                                <Rectangle Height="1" Fill="{DynamicResource BrushBorderSubtle}" Margin="0,4,0,6"/>
+                                <Grid Margin="0,0,0,10">
+                                    <TextBlock Text="Total Efectivo Esperado en Caja" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                    <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.ExpectedCash, Converter={StaticResource CurrencyConv}}" FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Physical Cash Count Input -->
+                            <TextBlock Text="Efectivo Físico Contado en Gaveta ($)" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding ActualCashCounted, UpdateSourceTrigger=PropertyChanged, StringFormat='N0'}"
+                                     FontSize="16"
+                                     FontWeight="Bold"
+                                     Foreground="{DynamicResource BrushTextPrimary}"
+                                     Style="{StaticResource ModernTextBox}"
+                                     Margin="0,0,0,12"/>
+
+                            <!-- Difference Calculation Box -->
+                            <Border CornerRadius="8" Padding="12,8" Margin="0,0,0,12" Background="{DynamicResource BrushInputBackground}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1">
+                                <Grid>
+                                    <TextBlock Text="Diferencia de Arqueo:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                                    <TextBlock HorizontalAlignment="Right"
+                                               Text="{Binding CashDifference, Converter={StaticResource CurrencyConv}}"
+                                               FontSize="14"
+                                               FontWeight="Black"
+                                               VerticalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Foreground" Value="{DynamicResource BrushSuccess}"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Summary.IsDeficit}" Value="True">
+                                                        <Setter Property="Foreground" Value="{DynamicResource BrushDanger}"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Grid>
+                            </Border>
+
+                            <!-- Notes -->
+                            <TextBlock Text="Observaciones / Novedades de Turno" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,6"/>
+                            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="50"
+                                     TextWrapping="Wrap"
+                                     AcceptsReturn="True"
+                                     Style="{StaticResource ModernTextBox}"
+                                     Margin="0,0,0,16"/>
+
+                            <!-- Submit Action Button -->
+                            <Button Command="{Binding CloseShiftCommand}"
+                                    Style="{StaticResource ModernButton}"
+                                    Height="42"
+                                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}">
+                                <Button.ContentTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="Confirmar Cierre de Turno y Arqueo" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold"/>
+                                    </DataTemplate>
+                                </Button.ContentTemplate>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Mode B: No Active Shift (Apertura de Turno Prompt) -->
+                    <Border Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                            Background="{DynamicResource BrushCardBackground}"
+                            BorderBrush="{DynamicResource BrushBorderMedium}"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="20">
+                        <StackPanel>
+                            <TextBlock Text="Apertura de Turno Operativo" Style="{StaticResource TextHeaderMedium}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Actualmente no hay turno activo. Establezca la base de caja para iniciar." Style="{StaticResource TextBodySecondary}" Margin="0,0,0,16"/>
+
+                            <TextBlock Text="Operador Responsable" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding OperatorName, Mode=OneWay}" IsReadOnly="True" Style="{StaticResource ModernTextBox}" Margin="0,0,0,12"/>
+
+                            <TextBlock Text="Monto Base Inicial de Caja ($)" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding NewShiftBaseAmount, UpdateSourceTrigger=PropertyChanged, StringFormat='N0'}"
+                                     FontSize="15"
+                                     FontWeight="Bold"
+                                     Style="{StaticResource ModernTextBox}"
+                                     Margin="0,0,0,12"/>
+
+                            <TextBlock Text="Notas de Apertura (Opcional)" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
+                                     Height="45"
+                                     TextWrapping="Wrap"
+                                     Style="{StaticResource ModernTextBox}"
+                                     Margin="0,0,0,18"/>
+
+                            <Button Command="{Binding OpenShiftCommand}"
+                                    Style="{StaticResource ModernButton}"
+                                    Height="42">
+                                <Button.ContentTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="Abrir Turno e Iniciar Operación" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold"/>
+                                    </DataTemplate>
+                                </Button.ContentTemplate>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+
+            <!-- 4. Lower Full-Width History Section (100% Width) -->
+            <Border Background="{DynamicResource BrushCardBackground}"
+                    BorderBrush="{DynamicResource BrushBorderSubtle}"
+                    BorderThickness="1"
+                    CornerRadius="14"
+                    Padding="20">
+                <StackPanel>
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Historial de Turnos y Liquidaciones Recientes" Style="{StaticResource TextHeaderMedium}"/>
+                            <TextBlock Text="Registro y trazabilidad de aperturas, recaudos por medio de pago y arqueos por operador." Style="{StaticResource TextBodySecondary}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <Border Grid.Column="1"
+                                Background="{DynamicResource BrushInputBackground}"
+                                BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                BorderThickness="1"
+                                CornerRadius="12"
+                                Padding="10,4"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="Últimos 7 días" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                        </Border>
+                    </Grid>
+
+                    <DataGrid ItemsSource="{Binding ShiftHistory}"
+                              Style="{StaticResource ModernDataGrid}"
+                              MaxHeight="360">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="FECHA APERTURA" Binding="{Binding StartTime, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Width="1.3*"/>
+                            <DataGridTextColumn Header="FECHA CIERRE" Binding="{Binding EndTime, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Width="1.3*"/>
+                            <DataGridTextColumn Header="OPERADOR" Binding="{Binding OperatorName}" Width="1.4*"/>
+                            <DataGridTemplateColumn Header="BASE CAJA" Width="1.1*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding BaseAmount, Converter={StaticResource CurrencyConv}}" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="EFECTIVO" Width="1.1*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding TotalCashCollected, Converter={StaticResource CurrencyConv}}" Foreground="{DynamicResource BrushSuccess}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="DATA / TRANSF" Width="1.2*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding TotalRevenue, Converter={StaticResource CurrencyConv}}" Foreground="{DynamicResource BrushPrimary}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="ESPERADO" Width="1.1*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ExpectedCash, Converter={StaticResource CurrencyConv}}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="CONTADO" Width="1.1*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding ActualCashCounted, Converter={StaticResource CurrencyConv}}" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="DIFERENCIA" Width="1.1*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding CashDifference, Converter={StaticResource CurrencyConv}}" FontWeight="Bold" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

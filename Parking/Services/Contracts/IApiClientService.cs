@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Parking.Entities;
 using Parking.Models;
@@ -17,4 +19,11 @@ public interface IApiClientService
     Task LogoutAsync();
     void SetAuthToken(string token);
     void ClearAuthToken();
+
+    // Endpoints de Turnos y Arqueo de Caja
+    Task<WorkShift?> OpenShiftAsync(OpenShiftApiRequest request);
+    Task<WorkShift?> GetActiveShiftAsync(int? userId = null);
+    Task<ShiftSummaryModel?> GetShiftSummaryAsync(Guid shiftId);
+    Task<WorkShift?> CloseShiftAsync(CloseShiftApiRequest request);
+    Task<IReadOnlyList<WorkShift>> GetShiftHistoryAsync(DateTime? fromDate = null, DateTime? toDate = null);
 }

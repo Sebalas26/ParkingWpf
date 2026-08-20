@@ -20,6 +20,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     [ObservableProperty]
     private bool _printSuccess;
 
+    public string PublicConsultationUrl => $"https://localhost:7023/api/public/tickets/status?plate={Ticket.PlateNumber}";
+
     public event Action? RequestClose;
 
     public ReceiptPreviewViewModel(IReceiptPrinterService printerService)

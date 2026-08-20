@@ -68,12 +68,7 @@ public class AuthService : IAuthService
 
         var isValidLocal = user != null && (
             user.PasswordHash == passwordHash ||
-            user.PasswordHash == password ||
-            password == "admin123" ||
-            password == "admin" ||
-            password == "operador123" ||
-            password == "operador" ||
-            password == "1234"
+            user.PasswordHash == password
         );
 
         if (user == null || !isValidLocal)

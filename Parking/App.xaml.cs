@@ -74,6 +74,7 @@ public partial class App : Application
         services.AddSingleton<IThemeService, ThemeService>();
 
         services.AddSingleton<IAuthService, AuthService>();
+        services.AddSingleton<IShiftService, EfShiftService>();
         services.AddSingleton<IStoreService, StoreService>();
         services.AddSingleton<IAgreementService, AgreementService>();
         services.AddSingleton<IPricingCalculatorService, EfPricingCalculatorService>();
@@ -90,6 +91,7 @@ public partial class App : Application
         services.AddTransient<CheckOutViewModel>();
         services.AddTransient<RecentEntriesViewModel>();
         services.AddTransient<AnalyticsViewModel>();
+        services.AddTransient<ShiftClosureViewModel>();
         services.AddTransient<ReceiptPreviewViewModel>();
 
         // Windows & Views
@@ -99,6 +101,7 @@ public partial class App : Application
         services.AddTransient<CheckOutView>();
         services.AddTransient<RecentEntriesView>();
         services.AddTransient<AnalyticsView>();
+        services.AddTransient<ShiftClosureView>();
     }
 
     private void ShowLoginWindow()

@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Parking.Entities;
 using Parking.Models;
@@ -24,7 +26,7 @@ public class ParkingApiClient : IApiClientService
     public ParkingApiClient(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _httpClient.Timeout = TimeSpan.FromSeconds(30);
+        _httpClient.Timeout = TimeSpan.FromSeconds(5);
     }
 
     public void SetAuthToken(string token)
@@ -42,9 +44,10 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<bool> PingAsync()
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
         try
         {
-            var response = await _httpClient.GetAsync($"{BaseUrl}/api/health");
+            var response = await _httpClient.GetAsync($"{BaseUrl}/api/health", cts.Token);
             if (response.IsSuccessStatusCode) return true;
         }
         catch { }
@@ -52,7 +55,8 @@ public class ParkingApiClient : IApiClientService
         var fallbackUrl = BaseUrl.Contains("7023") ? "http://localhost:5135" : "https://localhost:7023";
         try
         {
-            var response = await _httpClient.GetAsync($"{fallbackUrl}/api/health");
+            using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            var response = await _httpClient.GetAsync($"{fallbackUrl}/api/health", ctsFallback.Token);
             if (response.IsSuccessStatusCode)
             {
                 BaseUrl = fallbackUrl;
@@ -66,12 +70,13 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<BootstrapSyncResponse?> GetBootstrapAsync()
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(6));
         try
         {
-            var response = await _httpClient.GetAsync($"{BaseUrl}/api/sync/bootstrap");
+            var response = await _httpClient.GetAsync($"{BaseUrl}/api/sync/bootstrap", cts.Token);
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<BootstrapSyncResponse>(JsonOptions);
+                return await response.Content.ReadFromJsonAsync<BootstrapSyncResponse>(JsonOptions, cts.Token);
             }
             return null;
         }
@@ -83,12 +88,13 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<ParkingTicket?> CheckInAsync(CheckInApiRequest request)
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try
         {
-            var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/tickets/check-in", request);
+            var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/tickets/check-in", request, cts.Token);
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions);
+                return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions, cts.Token);
             }
             return null;
         }
@@ -100,12 +106,13 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<ParkingTicket?> CheckOutAsync(CheckOutApiRequest request)
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try
         {
-            var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/tickets/check-out", request);
+            var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/tickets/check-out", request, cts.Token);
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions);
+                return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions, cts.Token);
             }
             return null;
         }
@@ -117,12 +124,13 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<FinancialSummary?> GetFinancialSummaryAsync()
     {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try
         {
-            var response = await _httpClient.GetAsync($"{BaseUrl}/api/analytics/daily-summary");
+            var response = await _httpClient.GetAsync($"{BaseUrl}/api/analytics/daily-summary", cts.Token);
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<FinancialSummary>(JsonOptions);
+                return await response.Content.ReadFromJsonAsync<FinancialSummary>(JsonOptions, cts.Token);
             }
             return null;
         }
@@ -136,37 +144,43 @@ public class ParkingApiClient : IApiClientService
     {
         var request = new LoginApiRequest { Username = username, Password = password };
 
-        try
+        using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(4)))
         {
-            var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/auth/login", request);
-            if (response.IsSuccessStatusCode)
+            try
             {
-                var result = await response.Content.ReadFromJsonAsync<LoginApiResponse>(JsonOptions);
-                if (result != null && !string.IsNullOrEmpty(result.Token))
+                var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/auth/login", request, cts.Token);
+                if (response.IsSuccessStatusCode)
                 {
-                    SetAuthToken(result.Token);
+                    var result = await response.Content.ReadFromJsonAsync<LoginApiResponse>(JsonOptions, cts.Token);
+                    if (result != null && !string.IsNullOrEmpty(result.Token))
+                    {
+                        SetAuthToken(result.Token);
+                    }
+                    return result;
                 }
-                return result;
             }
+            catch { }
         }
-        catch { }
 
         var fallbackUrl = BaseUrl.Contains("7023") ? "http://localhost:5135" : "https://localhost:7023";
-        try
+        using (var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(4)))
         {
-            var response = await _httpClient.PostAsJsonAsync($"{fallbackUrl}/api/auth/login", request);
-            if (response.IsSuccessStatusCode)
+            try
             {
-                BaseUrl = fallbackUrl;
-                var result = await response.Content.ReadFromJsonAsync<LoginApiResponse>(JsonOptions);
-                if (result != null && !string.IsNullOrEmpty(result.Token))
+                var response = await _httpClient.PostAsJsonAsync($"{fallbackUrl}/api/auth/login", request, ctsFallback.Token);
+                if (response.IsSuccessStatusCode)
                 {
-                    SetAuthToken(result.Token);
+                    BaseUrl = fallbackUrl;
+                    var result = await response.Content.ReadFromJsonAsync<LoginApiResponse>(JsonOptions, ctsFallback.Token);
+                    if (result != null && !string.IsNullOrEmpty(result.Token))
+                    {
+                        SetAuthToken(result.Token);
+                    }
+                    return result;
                 }
-                return result;
             }
+            catch { }
         }
-        catch { }
 
         return null;
     }
@@ -175,14 +189,106 @@ public class ParkingApiClient : IApiClientService
     {
         try
         {
-            await _httpClient.PostAsync($"{BaseUrl}/api/auth/logout", null);
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            await _httpClient.PostAsync($"{BaseUrl}/api/auth/logout", null, cts.Token);
         }
-        catch
-        {
-        }
+        catch { }
         finally
         {
             ClearAuthToken();
+        }
+    }
+
+    public async Task<WorkShift?> OpenShiftAsync(OpenShiftApiRequest request)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/shifts/open", request, cts.Token);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<WorkShift>(JsonOptions, cts.Token);
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<WorkShift?> GetActiveShiftAsync(int? userId = null)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            var url = userId.HasValue ? $"{BaseUrl}/api/shifts/active?userId={userId.Value}" : $"{BaseUrl}/api/shifts/active";
+            var response = await _httpClient.GetAsync(url, cts.Token);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<WorkShift>(JsonOptions, cts.Token);
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<ShiftSummaryModel?> GetShiftSummaryAsync(Guid shiftId)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            var response = await _httpClient.GetAsync($"{BaseUrl}/api/shifts/summary/{shiftId}", cts.Token);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ShiftSummaryModel>(JsonOptions, cts.Token);
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<WorkShift?> CloseShiftAsync(CloseShiftApiRequest request)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/shifts/close", request, cts.Token);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<WorkShift>(JsonOptions, cts.Token);
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<IReadOnlyList<WorkShift>> GetShiftHistoryAsync(DateTime? fromDate = null, DateTime? toDate = null)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(6));
+        try
+        {
+            var url = $"{BaseUrl}/api/shifts/history";
+            var response = await _httpClient.GetAsync(url, cts.Token);
+            if (response.IsSuccessStatusCode)
+            {
+                var list = await response.Content.ReadFromJsonAsync<List<WorkShift>>(JsonOptions, cts.Token);
+                return list ?? new List<WorkShift>();
+            }
+            return new List<WorkShift>();
+        }
+        catch
+        {
+            return new List<WorkShift>();
         }
     }
 }

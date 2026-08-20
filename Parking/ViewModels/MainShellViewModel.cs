@@ -125,13 +125,21 @@ public partial class MainShellViewModel : ViewModelBase
         CurrentUser = _authService.CurrentUser;
         Occupancy = await _ticketService.GetOccupancyStatsAsync();
 
-        // Iniciar programador de sincronización en segundo plano (cada 1 hora)
+        // 1. Mostrar pantalla principal inmediatamente con datos locales SQLite (<50ms)
+        NavigateToCheckIn();
+
+        // 2. Iniciar programador de sincronización en segundo plano (cada 1 hora)
         _backgroundSync.Start();
 
-        // Ejecutar primera sincronización con el API al abrir la app
-        await ManualSyncAsync();
-
-        NavigateToCheckIn();
+        // 3. Ejecutar primera sincronización con el API en segundo plano sin bloquear la interfaz
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ManualSyncAsync();
+            }
+            catch { }
+        });
     }
 
     private void UpdateClock()
@@ -147,6 +155,7 @@ public partial class MainShellViewModel : ViewModelBase
             CheckOutViewModel => "CheckOut",
             RecentEntriesViewModel => "RecentEntries",
             AnalyticsViewModel => "Analytics",
+            ShiftClosureViewModel => "ShiftClosure",
             _ => "CheckIn"
         };
     }
@@ -199,6 +208,12 @@ public partial class MainShellViewModel : ViewModelBase
     private void NavigateToAnalytics()
     {
         _navigationService.NavigateTo<AnalyticsViewModel>();
+    }
+
+    [RelayCommand]
+    private void NavigateToShiftClosure()
+    {
+        _navigationService.NavigateTo<ShiftClosureViewModel>();
     }
 
     [RelayCommand]

@@ -31,6 +31,8 @@
     <Geometry x:Key="IconListLog">M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z</Geometry>
     <Geometry x:Key="IconAdd">M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z</Geometry>
     <Geometry x:Key="IconExport">M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z</Geometry>
-    <Geometry x:Key="IconAlert">M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z</Geometry>
     <Geometry x:Key="IconKeyboard">M20 5H4c-1.1 0-1.99.9-1.99 2L2 17c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm-9 3h2v2h-2V8zm0 3h2v2h-2v-2zM8 8h2v2H8V8zm0 3h2v2H8v-2zm-1 2H5v-2h2v2zm0-3H5V8h2v2zm9 7H8v-2h8v2zm0-4h-2v-2h2v2zm0-3h-2V8h2v2zm3 3h-2v-2h2v2zm0-3h-2V8h2v2z</Geometry>
+    <Geometry x:Key="IconCard">M20 4H4c-1.11 0-1.99.89-1.99 2L2 18c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z</Geometry>
+    <Geometry x:Key="IconQr">M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-3 2h2v2h-2v-2zm3 3h3v3h-3v-3zm-5 0h2v3h-2v-3zm2-2h3v2h-3v-2zm3-3h2v2h-2v-2z</Geometry>
+    <Geometry x:Key="IconDiscount">M12.79 21L3 11.21V3h8.21L21 12.79 12.79 21zM7.25 8.75c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5-1.5.67-1.5 1.5.67 1.5 1.5 1.5z</Geometry>
 </ResourceDictionary>
