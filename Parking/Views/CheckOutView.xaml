@@ -44,12 +44,23 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBox Grid.Column="0"
                              Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource CheckoutSearchTextBox}"
-                             Margin="0,0,10,0"/>
+                             Margin="0,0,8,0"/>
                     <Button Grid.Column="1"
+                            Command="{Binding ClearSearchCommand}"
+                            Style="{StaticResource SecondaryButton}"
+                            Width="52"
+                            Height="68"
+                            Padding="0"
+                            Margin="0,0,8,0"
+                            ToolTip="Limpiar campo de búsqueda">
+                        <TextBlock Text="✕" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
+                    <Button Grid.Column="2"
                             Command="{Binding SearchTicketCommand}"
                             Style="{StaticResource ModernButton}"
                             Width="68"

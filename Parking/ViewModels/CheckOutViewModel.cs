@@ -211,6 +211,15 @@ public partial class CheckOutViewModel : ViewModelBase
         _ = SearchTicketAsync();
     }
 
+    [RelayCommand]
+    private void ClearSearch()
+    {
+        SearchQuery = string.Empty;
+        HasFeedback = false;
+        FeedbackMessage = null;
+        SelectedTicket = null;
+    }
+
     private string SanitizePlateQuery(string raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
@@ -252,6 +261,34 @@ public partial class CheckOutViewModel : ViewModelBase
                 if (last.Length is >= 4 and <= 25)
                 {
                     return last.Trim().ToUpperInvariant();
+                }
+            }
+        }
+
+        // Detectar y remover repeticiones consecutivas de placas producidas por disparos múltiples de escáner
+        // Ejemplo: XDI21HXDI21H o XDI21HXDI21HXDI21H -> XDI21H
+        for (int len = 3; len <= 10; len++)
+        {
+            if (text.Length >= len * 2)
+            {
+                var prefix = text[..len];
+                var isAllRepeats = true;
+                for (int i = 0; i + len <= text.Length; i += len)
+                {
+                    if (text.Substring(i, len) != prefix)
+                    {
+                        isAllRepeats = false;
+                        break;
+                    }
+                }
+                var remainder = text.Length % len;
+                if (isAllRepeats && remainder == 0)
+                {
+                    return prefix.ToUpperInvariant();
+                }
+                if (isAllRepeats && remainder > 0 && text[^remainder..] == prefix[..remainder])
+                {
+                    return prefix.ToUpperInvariant();
                 }
             }
         }

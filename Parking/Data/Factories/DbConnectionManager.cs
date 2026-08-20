@@ -73,6 +73,8 @@ public class DbConnectionManager : IDbConnectionManager
                     ""TotalVehiclesEntered"" INTEGER NOT NULL DEFAULT 0,
                     ""Status"" INTEGER NOT NULL DEFAULT 0,
                     ""Notes"" TEXT NULL,
+                    ""HandoverToUserId"" TEXT NULL,
+                    ""HandoverToUserName"" TEXT NULL,
                     ""IsSynchronized"" INTEGER NOT NULL DEFAULT 1,
                     ""CreatedAtUtc"" TEXT NOT NULL,
                     ""ClosedAtUtc"" TEXT NULL
@@ -105,6 +107,8 @@ public class DbConnectionManager : IDbConnectionManager
                 );
             ");
 
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"HandoverToUserId\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"HandoverToUserName\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"PaymentMethodId\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"ExitNotes\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"GracePeriodMinutes\" = 0;"); } catch { }

@@ -13,4 +13,5 @@ public class BootstrapSyncResponse
     public List<Store> Stores { get; set; } = new();
     public List<CommercialAgreement> Agreements { get; set; } = new();
     public List<ParkingTicket> ActiveTickets { get; set; } = new();
+    public List<ParkingTicket> RecentTickets { get; set; } = new();
 }

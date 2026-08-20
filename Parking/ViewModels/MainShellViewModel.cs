@@ -193,6 +193,45 @@ public partial class MainShellViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    public async Task UserManualSyncAsync()
+    {
+        if (IsSyncing) return;
+        IsSyncing = true;
+        SyncStatusText = "Sincronizando con API Central...";
+
+        try
+        {
+            await _backgroundSync.TriggerManualSyncAsync();
+            IsOnlineMode = _syncEngine.IsOnline;
+            SyncStatusText = _syncEngine.SyncStatusDescription;
+            Occupancy = await _ticketService.GetOccupancyStatsAsync();
+
+            if (IsOnlineMode)
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Sincronización Exitosa",
+                    "El sistema y la base de datos local se han actualizado y sincronizado correctamente con el servidor central.");
+            }
+            else
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Modo Sin Conexión",
+                    "No se pudo conectar con el servidor central. Se mantendrán los datos locales hasta restablecer la conexión.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Error de Sincronización",
+                $"Ocurrió un error al sincronizar con el servidor: {ex.Message}");
+        }
+        finally
+        {
+            IsSyncing = false;
+        }
+    }
+
+    [RelayCommand]
     private void SelectTheme(AppTheme theme)
     {
         _themeService.SetTheme(theme);

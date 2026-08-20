@@ -134,6 +134,39 @@ public class SyncEngineService : ISyncEngineService
                     }
                 }
 
+                // 5. Sincronizar Tiquetes Activos e Históricos (Descarga completa desde MySQL a SQLite)
+                var allIncomingTickets = new List<ParkingTicket>();
+                if (bootstrap.ActiveTickets != null) allIncomingTickets.AddRange(bootstrap.ActiveTickets);
+                if (bootstrap.RecentTickets != null) allIncomingTickets.AddRange(bootstrap.RecentTickets);
+
+                foreach (var ticket in allIncomingTickets)
+                {
+                    var existing = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == ticket.TicketId || t.TicketNumber == ticket.TicketNumber);
+                    if (existing != null)
+                    {
+                        existing.TicketNumber = ticket.TicketNumber;
+                        existing.PlateNumber = ticket.PlateNumber;
+                        existing.VehicleType = ticket.VehicleType;
+                        existing.CustomerPhone = ticket.CustomerPhone;
+                        existing.Notes = ticket.Notes;
+                        existing.EntryTimeUtc = ticket.EntryTimeUtc;
+                        existing.ExitTimeUtc = ticket.ExitTimeUtc;
+                        existing.TotalDurationMinutes = ticket.TotalDurationMinutes;
+                        existing.Status = ticket.Status;
+                        existing.HourlyRate = ticket.HourlyRate;
+                        existing.GrossAmount = ticket.GrossAmount;
+                        existing.DiscountAmount = ticket.DiscountAmount;
+                        existing.NetAmount = ticket.NetAmount;
+                        existing.PaymentMethod = ticket.PaymentMethod;
+                        existing.IsSynchronized = true;
+                    }
+                    else
+                    {
+                        ticket.IsSynchronized = true;
+                        db.ParkingTickets.Add(ticket);
+                    }
+                }
+
                 await db.SaveChangesAsync();
 
                 _lastSyncTime = DateTime.Now;
