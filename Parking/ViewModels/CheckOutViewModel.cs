@@ -477,9 +477,12 @@ public partial class CheckOutViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void QuickCash(decimal amount)
+    private void QuickCash(object? parameter)
     {
-        AmountTendered = amount;
+        if (parameter != null && decimal.TryParse(parameter.ToString(), out var amount))
+        {
+            AmountTendered = amount;
+        }
     }
 
     [RelayCommand]
@@ -598,10 +601,28 @@ public partial class CheckOutViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
+            var rawError = ex.InnerException?.Message ?? ex.Message;
+            var friendlyError = rawError;
+
+            if (rawError.Contains("no such table", StringComparison.OrdinalIgnoreCase))
+            {
+                friendlyError = "La estructura de datos local requería actualización y ya fue reparada. Por favor presione de nuevo en Cobrar.";
+            }
+            else if (rawError.Contains("UNIQUE constraint", StringComparison.OrdinalIgnoreCase))
+            {
+                friendlyError = "El número de factura de comercio ya fue registrado anteriormente con este convenio.";
+            }
+
             HasFeedback = true;
             IsSuccessFeedback = false;
-            FeedbackMessage = $"Error al procesar la salida: {ex.Message}";
+            FeedbackMessage = $"No se pudo completar la salida: {friendlyError}";
+
+            await _dialogService.ShowAlertAsync(
+                "Error en Liquidación",
+                $"No se pudo procesar la salida del vehículo: {friendlyError}",
+                DialogNotificationType.Error);
         }
+
         finally
         {
             IsBusy = false;

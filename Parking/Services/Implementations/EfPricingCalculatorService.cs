@@ -39,16 +39,21 @@ public class EfPricingCalculatorService : IPricingCalculatorService
             await ReloadRatesAsync();
         }
 
-        var preferredOrder = new List<VehicleType> { VehicleType.Motorcycle, VehicleType.Car, VehicleType.Van, VehicleType.HeavyTruck, VehicleType.Bicycle };
-        return _ratesCache.Values
-            .Where(r => r.IsActive && r.VehicleType != VehicleType.Suv)
-            .OrderBy(r =>
+        var standardOrder = new[] { VehicleType.Motorcycle, VehicleType.Car, VehicleType.Van, VehicleType.HeavyTruck };
+        var result = new List<VehicleRate>();
+
+        foreach (var vt in standardOrder)
+        {
+            var rate = GetRate(vt);
+            if (rate != null && rate.IsActive)
             {
-                var idx = preferredOrder.IndexOf(r.VehicleType);
-                return idx >= 0 ? idx : 99;
-            })
-            .ToList();
+                result.Add(rate);
+            }
+        }
+
+        return result;
     }
+
 
     public VehicleRate GetRate(VehicleType vehicleType)
     {
@@ -84,8 +89,33 @@ public class EfPricingCalculatorService : IPricingCalculatorService
             return 0m;
         }
 
-        var billableHours = (int)Math.Max(1, Math.Ceiling(Math.Max(0.01, totalMinutes) / 60.0));
-        return billableHours * rate.HourRate;
+        // Si tiene tarifa por minuto configurada (> 0), liquidar por minutos exactos
+        if (rate.MinuteRate > 0)
+        {
+            var billableMinutes = (decimal)Math.Max(1, Math.Ceiling(totalMinutes));
+
+            // Si excede 24 horas (1440 min) y tiene tarifa de día completo
+            if (rate.FullDayRate > 0 && totalMinutes >= 1440)
+            {
+                var days = (int)(totalMinutes / 1440);
+                var remainingMinutes = (decimal)Math.Ceiling(totalMinutes % 1440);
+                var remainingFee = Math.Min(remainingMinutes * rate.MinuteRate, rate.FullDayRate);
+                return (days * rate.FullDayRate) + remainingFee;
+            }
+
+            var fee = billableMinutes * rate.MinuteRate;
+            if (rate.FullDayRate > 0 && fee > rate.FullDayRate)
+            {
+                return rate.FullDayRate;
+            }
+            return fee;
+        }
+        else
+        {
+            // Cobro por horas redondeadas
+            var billableHours = (int)Math.Max(1, Math.Ceiling(Math.Max(0.01, totalMinutes) / 60.0));
+            return billableHours * rate.HourRate;
+        }
     }
 
     public async Task UpdateRateAsync(VehicleType vehicleType, decimal hourRate, decimal minuteRate, decimal fullDayRate, int gracePeriodMinutes)

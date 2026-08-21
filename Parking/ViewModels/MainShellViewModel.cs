@@ -105,6 +105,11 @@ public partial class MainShellViewModel : ViewModelBase
             SelectedTheme = AvailableThemes.FirstOrDefault(t => t.Theme == theme);
         };
 
+        _authService.UserSessionChanged += user =>
+        {
+            CurrentUser = user;
+        };
+
         _clockTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(1)
@@ -130,13 +135,13 @@ public partial class MainShellViewModel : ViewModelBase
 
         // 1. Verificar si hay turno activo; si no, abrir pantalla de apertura de turno
         var activeShift = await _shiftService.GetActiveShiftAsync();
-        if (activeShift == null)
+        if (activeShift == null || activeShift.Status != 0)
         {
             NavigateToShiftClosure();
         }
         else
         {
-            NavigateToCheckIn();
+            _navigationService.NavigateTo<CheckInViewModel>();
         }
 
         // 2. Iniciar programador de sincronización en segundo plano (cada 1 hora)
@@ -201,34 +206,109 @@ public partial class MainShellViewModel : ViewModelBase
 
         try
         {
-            await _backgroundSync.TriggerManualSyncAsync();
+            var success = await _dialogService.ShowSyncProgressModalAsync(_syncEngine);
             IsOnlineMode = _syncEngine.IsOnline;
             SyncStatusText = _syncEngine.SyncStatusDescription;
             Occupancy = await _ticketService.GetOccupancyStatsAsync();
 
-            if (IsOnlineMode)
+            // Refrescar de inmediato la pantalla activa con los datos recién sincronizados
+            if (ActiveView is ShiftClosureViewModel)
             {
-                await _dialogService.ShowAlertAsync(
-                    "Sincronización Exitosa",
-                    "El sistema y la base de datos local se han actualizado y sincronizado correctamente con el servidor central.");
+                _navigationService.NavigateTo<ShiftClosureViewModel>();
             }
-            else
+            else if (ActiveView is CheckInViewModel)
             {
-                await _dialogService.ShowAlertAsync(
-                    "Modo Sin Conexión",
-                    "No se pudo conectar con el servidor central. Se mantendrán los datos locales hasta restablecer la conexión.");
+                _navigationService.NavigateTo<CheckInViewModel>();
+            }
+            else if (ActiveView is CheckOutViewModel)
+            {
+                _navigationService.NavigateTo<CheckOutViewModel>();
+            }
+            else if (ActiveView is RecentEntriesViewModel)
+            {
+                _navigationService.NavigateTo<RecentEntriesViewModel>();
             }
         }
         catch (Exception ex)
         {
             await _dialogService.ShowAlertAsync(
                 "Error de Sincronización",
-                $"Ocurrió un error al sincronizar con el servidor: {ex.Message}");
+                $"Ocurrió un error al sincronizar con el servidor: {ex.Message}",
+                DialogNotificationType.Error);
         }
         finally
         {
             IsSyncing = false;
         }
+    }
+
+    [RelayCommand]
+    public async Task ForceCleanCacheAsync()
+    {
+        if (IsSyncing) return;
+
+        var confirmed = await _dialogService.ShowConfirmationAsync(
+            "Restablecer Caché Local",
+            "¿Deseas limpiar la memoria local y forzar la recarga completa desde la API Central? Esto dejará la terminal exactamente con los datos de la nube.",
+            DialogNotificationType.Question,
+            "Limpiar y Recargar",
+            "Cancelar");
+
+        if (!confirmed) return;
+
+        IsSyncing = true;
+        SyncStatusText = "Restableciendo caché y sincronizando...";
+
+        try
+        {
+            var success = await _syncEngine.ForceCleanResyncAsync();
+            IsOnlineMode = _syncEngine.IsOnline;
+            SyncStatusText = _syncEngine.SyncStatusDescription;
+            Occupancy = await _ticketService.GetOccupancyStatsAsync();
+
+            if (success)
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Caché Restablecida",
+                    "La base de datos local se limpió y sincronizó con la información más reciente de la nube (MySQL) con total éxito.",
+                    DialogNotificationType.Success);
+            }
+            else
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Caché Limpia (Sin Conexión)",
+                    "La memoria local fue limpiada. La sincronización se completará automáticamente al reconectarse a la API.",
+                    DialogNotificationType.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Error al Restablecer",
+                $"Ocurrió un error al restablecer la base local: {ex.Message}",
+                DialogNotificationType.Error);
+        }
+        finally
+        {
+            IsSyncing = false;
+        }
+    }
+
+
+    private async Task<bool> EnsureActiveShiftAsync()
+    {
+        var activeShift = await _shiftService.GetActiveShiftAsync();
+        if (activeShift == null || activeShift.Status != 0)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Apertura de Turno Requerida",
+                "Debes abrir un turno operativo e indicar la base inicial de caja antes de realizar operaciones o acceder a otros módulos en la terminal.",
+                DialogNotificationType.Warning);
+
+            NavigateToShiftClosure();
+            return false;
+        }
+        return true;
     }
 
     [RelayCommand]
@@ -238,27 +318,39 @@ public partial class MainShellViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void NavigateToCheckIn()
+    private async Task NavigateToCheckInAsync()
     {
-        _navigationService.NavigateTo<CheckInViewModel>();
+        if (await EnsureActiveShiftAsync())
+        {
+            _navigationService.NavigateTo<CheckInViewModel>();
+        }
     }
 
     [RelayCommand]
-    private void NavigateToCheckOut()
+    private async Task NavigateToCheckOutAsync()
     {
-        _navigationService.NavigateTo<CheckOutViewModel>();
+        if (await EnsureActiveShiftAsync())
+        {
+            _navigationService.NavigateTo<CheckOutViewModel>();
+        }
     }
 
     [RelayCommand]
-    private void NavigateToRecentEntries()
+    private async Task NavigateToRecentEntriesAsync()
     {
-        _navigationService.NavigateTo<RecentEntriesViewModel>();
+        if (await EnsureActiveShiftAsync())
+        {
+            _navigationService.NavigateTo<RecentEntriesViewModel>();
+        }
     }
 
     [RelayCommand]
-    private void NavigateToAnalytics()
+    private async Task NavigateToAnalyticsAsync()
     {
-        _navigationService.NavigateTo<AnalyticsViewModel>();
+        if (await EnsureActiveShiftAsync())
+        {
+            _navigationService.NavigateTo<AnalyticsViewModel>();
+        }
     }
 
     [RelayCommand]
@@ -268,10 +360,14 @@ public partial class MainShellViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void NavigateToMonthlySubscriptions()
+    private async Task NavigateToMonthlySubscriptionsAsync()
     {
-        _navigationService.NavigateTo<MonthlySubscriptionsViewModel>();
+        if (await EnsureActiveShiftAsync())
+        {
+            _navigationService.NavigateTo<MonthlySubscriptionsViewModel>();
+        }
     }
+
 
     [RelayCommand]
     private async Task LogoutAsync()

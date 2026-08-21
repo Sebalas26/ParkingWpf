@@ -45,14 +45,12 @@ public class DbConnectionManager : IDbConnectionManager
             await context.Database.ExecuteSqlRawAsync(@"
                 CREATE TABLE IF NOT EXISTS ""PendingSyncItems"" (
                     ""PendingSyncItemId"" TEXT NOT NULL PRIMARY KEY,
-                    ""EntityType"" TEXT NOT NULL,
-                    ""Action"" TEXT NOT NULL,
-                    ""PayloadJson"" TEXT NOT NULL,
+                    ""OperationType"" TEXT NOT NULL DEFAULT '',
+                    ""PayloadJson"" TEXT NOT NULL DEFAULT '',
                     ""RetryCount"" INTEGER NOT NULL DEFAULT 0,
-                    ""Status"" INTEGER NOT NULL DEFAULT 0,
-                    ""ErrorMessage"" TEXT NULL,
-                    ""CreatedAtUtc"" TEXT NOT NULL,
-                    ""LastAttemptUtc"" TEXT NULL
+                    ""LastError"" TEXT NULL,
+                    ""IsProcessed"" INTEGER NOT NULL DEFAULT 0,
+                    ""CreatedAtUtc"" TEXT NOT NULL
                 );
 
                 CREATE TABLE IF NOT EXISTS ""WorkShifts"" (
@@ -105,10 +103,36 @@ public class DbConnectionManager : IDbConnectionManager
                     ""Notes"" TEXT NULL,
                     ""CreatedAtUtc"" TEXT NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS ""TicketDiscounts"" (
+                    ""TicketDiscountId"" TEXT NOT NULL PRIMARY KEY,
+                    ""TicketId"" TEXT NOT NULL,
+                    ""StoreId"" TEXT NOT NULL,
+                    ""AgreementId"" TEXT NOT NULL,
+                    ""InvoiceNumber"" TEXT NOT NULL,
+                    ""PurchaseAmount"" TEXT NOT NULL,
+                    ""AppliedDiscountAmount"" TEXT NOT NULL,
+                    ""ValidatedAtUtc"" TEXT NOT NULL,
+                    ""IsSynchronized"" INTEGER NOT NULL DEFAULT 1
+                );
+
+                CREATE TABLE IF NOT EXISTS ""CashWithdrawals"" (
+                    ""WithdrawalId"" TEXT NOT NULL PRIMARY KEY,
+                    ""ShiftId"" TEXT NOT NULL,
+                    ""Amount"" TEXT NOT NULL,
+                    ""Reason"" TEXT NOT NULL,
+                    ""AuthorizedByAdminName"" TEXT NOT NULL,
+                    ""CashierName"" TEXT NOT NULL,
+                    ""CreatedAtUtc"" TEXT NOT NULL
+                );
             ");
 
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PendingSyncItems\" ADD COLUMN \"OperationType\" TEXT DEFAULT '';"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PendingSyncItems\" ADD COLUMN \"LastError\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PendingSyncItems\" ADD COLUMN \"IsProcessed\" INTEGER DEFAULT 0;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"HandoverToUserId\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"HandoverToUserName\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"TotalCashWithdrawals\" TEXT DEFAULT '0';"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"PaymentMethodId\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"ExitNotes\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"GracePeriodMinutes\" = 0;"); } catch { }
@@ -143,63 +167,87 @@ public class DbConnectionManager : IDbConnectionManager
 
     private async Task SeedDefaultDataAsync(ParkFlowDbContext context)
     {
-        if (!await context.Roles.AnyAsync())
+        // 1. Asegurar roles estándar
+        var adminRoleId = Guid.Parse("11111111-1111-1111-1111-111111111111");
+        var operatorRoleId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+
+        var adminRole = await context.Roles.FirstOrDefaultAsync(r => r.RoleId == adminRoleId || r.Name == "Administrador" || r.Name == "Admin");
+        if (adminRole == null)
         {
-            var adminRoleId = Guid.Parse("11111111-1111-1111-1111-111111111111");
-            var operatorRoleId = Guid.Parse("22222222-2222-2222-2222-222222222222");
-
-            context.Roles.AddRange(
-                new Role
-                {
-                    RoleId = adminRoleId,
-                    Name = "Administrador",
-                    Description = "Acceso total y configuración del sistema",
-                    IsActive = true,
-                    CreatedAtUtc = DateTime.UtcNow
-                },
-                new Role
-                {
-                    RoleId = operatorRoleId,
-                    Name = "Operador",
-                    Description = "Registro de entradas, salidas y cobros",
-                    IsActive = true,
-                    CreatedAtUtc = DateTime.UtcNow
-                }
-            );
-            await context.SaveChangesAsync();
-
-            if (!await context.Users.AnyAsync())
+            adminRole = new Role
             {
-                var adminUserId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-                var operatorUserId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+                RoleId = adminRoleId,
+                Name = "Administrador",
+                Description = "Acceso total al sistema",
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+            context.Roles.Add(adminRole);
+            await context.SaveChangesAsync();
+        }
 
-                context.Users.AddRange(
-                    new User
-                    {
-                        UserId = adminUserId,
-                        RoleId = adminRoleId,
-                        Username = "admin",
-                        PasswordHash = HashPassword("Admin2026*"),
-                        FullName = "Administrador Principal",
-                        Email = "admin@parkflow.local",
-                        IsActive = true,
-                        CreatedAtUtc = DateTime.UtcNow
-                    },
-                    new User
-                    {
-                        UserId = operatorUserId,
-                        RoleId = operatorRoleId,
-                        Username = "operador",
-                        PasswordHash = HashPassword("Operador2026*"),
-                        FullName = "Operador de Turno",
-                        Email = "operador@parkflow.local",
-                        IsActive = true,
-                        CreatedAtUtc = DateTime.UtcNow
-                    }
-                );
+        var operatorRole = await context.Roles.FirstOrDefaultAsync(r => r.RoleId == operatorRoleId || r.Name == "Operador" || r.Name == "Operator");
+        if (operatorRole == null)
+        {
+            operatorRole = new Role
+            {
+                RoleId = operatorRoleId,
+                Name = "Operador",
+                Description = "Registro de entradas, salidas y cobros",
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+            context.Roles.Add(operatorRole);
+            await context.SaveChangesAsync();
+        }
+
+        // 2. Purgar usuarios mock obsoletos
+        try
+        {
+            var mockUsers = await context.Users.Where(u => u.FullName == "Alexander Wright" || u.FullName == "Elena Vance" || u.Username == "alexander" || u.Username == "elena").ToListAsync();
+            if (mockUsers.Count > 0)
+            {
+                context.Users.RemoveRange(mockUsers);
                 await context.SaveChangesAsync();
             }
         }
+        catch { }
+
+        // 3. Asegurar los 4 usuarios reales para login y cambio de turno
+        var defaultUsers = new[]
+        {
+            ("admin", "Administrador Principal", "admin@parkflow.local", "Admin2026*", Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), adminRole.RoleId),
+            ("operador", "Operador de Turno", "operador@parkflow.local", "Operador2026*", Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), operatorRole.RoleId),
+            ("camilo.operador", "Camilo Andrés Pérez", "camilo.operador@parkflow.local", "Operador2026*", Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"), operatorRole.RoleId),
+            ("laura.cajera", "Laura Valentina Morales", "laura.cajera@parkflow.local", "Operador2026*", Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"), operatorRole.RoleId)
+        };
+
+        foreach (var (username, fullName, email, pass, userId, roleId) in defaultUsers)
+        {
+            var existing = await context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+            if (existing == null)
+            {
+                context.Users.Add(new User
+                {
+                    UserId = userId,
+                    RoleId = roleId,
+                    Username = username,
+                    PasswordHash = HashPassword(pass),
+                    FullName = fullName,
+                    Email = email,
+                    IsActive = true,
+                    CreatedAtUtc = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                existing.FullName = fullName;
+                existing.IsActive = true;
+                existing.RoleId = roleId;
+            }
+        }
+        await context.SaveChangesAsync();
+
 
         if (!await context.VehicleRates.AnyAsync())
         {
@@ -274,16 +322,44 @@ public class DbConnectionManager : IDbConnectionManager
         }
         else
         {
-            // Sincronizar nombres e inactivar Camioneta en base existente
+            // Sincronizar nombres, eliminar duplicados e inactivar categorías no deseadas
             try
             {
                 var allDbRates = await context.VehicleRates.ToListAsync();
+
+                // 1. Eliminar cualquier registro con DisplayName "Vehículo Pesado" antiguo o tipos no operativos
+                var duplicatesOrObsolete = allDbRates
+                    .Where(r => r.DisplayName == "Vehículo Pesado" || r.VehicleType == VehicleType.Suv || r.VehicleType == VehicleType.Bicycle)
+                    .ToList();
+
+                if (duplicatesOrObsolete.Any())
+                {
+                    context.VehicleRates.RemoveRange(duplicatesOrObsolete);
+                    await context.SaveChangesAsync();
+                    allDbRates = await context.VehicleRates.ToListAsync();
+                }
+
+                // 2. Asegurar que solo exista 1 registro por tipo estándar
+                var standardTypes = new[] { VehicleType.Motorcycle, VehicleType.Car, VehicleType.Van, VehicleType.HeavyTruck };
+                foreach (var st in standardTypes)
+                {
+                    var matching = allDbRates.Where(r => r.VehicleType == st).ToList();
+                    if (matching.Count > 1)
+                    {
+                        context.VehicleRates.RemoveRange(matching.Skip(1));
+                    }
+                }
+                await context.SaveChangesAsync();
+
+                allDbRates = await context.VehicleRates.ToListAsync();
                 foreach (var r in allDbRates)
                 {
                     if (r.VehicleType == VehicleType.Motorcycle)
                     {
                         r.DisplayName = "Motocicleta";
                         r.HourRate = 2000m;
+                        r.MinuteRate = 35m;
+                        r.FullDayRate = 14000m;
                         r.IconKey = "IconMotorcycle";
                         r.IsActive = true;
                     }
@@ -291,6 +367,8 @@ public class DbConnectionManager : IDbConnectionManager
                     {
                         r.DisplayName = "Automóvil / Sedán";
                         r.HourRate = 4000m;
+                        r.MinuteRate = 70m;
+                        r.FullDayRate = 28000m;
                         r.IconKey = "IconCar";
                         r.IsActive = true;
                     }
@@ -298,6 +376,8 @@ public class DbConnectionManager : IDbConnectionManager
                     {
                         r.DisplayName = "Furgón / Minibús";
                         r.HourRate = 6000m;
+                        r.MinuteRate = 100m;
+                        r.FullDayRate = 42000m;
                         r.IconKey = "IconVan";
                         r.IsActive = true;
                     }
@@ -305,18 +385,17 @@ public class DbConnectionManager : IDbConnectionManager
                     {
                         r.DisplayName = "Vehículo Pesado / Camión";
                         r.HourRate = 10000m;
+                        r.MinuteRate = 170m;
+                        r.FullDayRate = 70000m;
                         r.IconKey = "IconTruck";
                         r.IsActive = true;
-                    }
-                    else if (r.VehicleType == VehicleType.Suv)
-                    {
-                        r.IsActive = false;
                     }
                 }
                 await context.SaveChangesAsync();
             }
             catch { }
         }
+
 
         if (!await context.PaymentMethods.AnyAsync())
         {

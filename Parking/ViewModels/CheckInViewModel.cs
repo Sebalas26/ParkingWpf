@@ -18,6 +18,7 @@ public partial class CheckInViewModel : ViewModelBase
     private readonly IMonthlySubscriptionService _monthlySubscriptionService;
     private readonly IAuthService _authService;
     private readonly IDialogService _dialogService;
+    private readonly IShiftService _shiftService;
     private readonly DispatcherTimer _feedbackTimer;
 
     [ObservableProperty]
@@ -45,6 +46,12 @@ public partial class CheckInViewModel : ViewModelBase
     private bool _isMonthlySubscriber;
 
     [ObservableProperty]
+    private OccupancyStats _occupancy = new();
+
+    [ObservableProperty]
+    private IReadOnlyList<ParkingTicket> _recentEntries = new List<ParkingTicket>();
+
+    [ObservableProperty]
     private string? _feedbackMessage;
 
     [ObservableProperty]
@@ -61,13 +68,15 @@ public partial class CheckInViewModel : ViewModelBase
         IPricingCalculatorService pricingCalculator,
         IMonthlySubscriptionService monthlySubscriptionService,
         IAuthService authService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        IShiftService shiftService)
     {
         _ticketService = ticketService;
         _pricingCalculator = pricingCalculator;
         _monthlySubscriptionService = monthlySubscriptionService;
         _authService = authService;
         _dialogService = dialogService;
+        _shiftService = shiftService;
 
         _feedbackTimer = new DispatcherTimer
         {
@@ -85,7 +94,20 @@ public partial class CheckInViewModel : ViewModelBase
     {
         AvailableRates = await _pricingCalculator.GetAllRatesAsync();
         UpdateCurrentRate();
+        await RefreshRecentEntriesAndOccupancyAsync();
     }
+
+    public async Task RefreshRecentEntriesAndOccupancyAsync()
+    {
+        try
+        {
+            Occupancy = await _ticketService.GetOccupancyStatsAsync();
+            var active = await _ticketService.GetActiveTicketsAsync();
+            RecentEntries = active.Take(6).ToList();
+        }
+        catch { }
+    }
+
 
     async partial void OnPlateNumberChanged(string value)
     {
@@ -182,6 +204,17 @@ public partial class CheckInViewModel : ViewModelBase
     [RelayCommand]
     private async Task RegisterAndPrintAsync()
     {
+        var activeShift = await _shiftService.GetActiveShiftAsync();
+        if (activeShift == null || activeShift.Status != 0)
+        {
+            ShowFeedback("No hay un turno operativo abierto. Debe abrir turno antes de ingresar vehículos.", false);
+            await _dialogService.ShowAlertAsync(
+                "Apertura de Turno Requerida",
+                "Debes abrir un turno operativo e indicar la base inicial de caja antes de registrar ingresos.",
+                DialogNotificationType.Warning);
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(PlateNumber))
         {
             ShowFeedback("Por favor ingrese un número de placa válido.", false);
@@ -197,6 +230,7 @@ public partial class CheckInViewModel : ViewModelBase
 
         IsBusy = true;
         BusyMessage = "Registrando ingreso de vehículo y emitiendo tiquete...";
+
 
         try
         {
@@ -215,6 +249,7 @@ public partial class CheckInViewModel : ViewModelBase
                 customRate);
 
             ClearInputs();
+            await RefreshRecentEntriesAndOccupancyAsync();
 
             var successMsg = IsMonthlySubscriber
                 ? $"Vehículo abonado {ticket.PlateNumber} registrado correctamente (Mensualidad Activa - Tarifa $0.00)."
@@ -223,6 +258,7 @@ public partial class CheckInViewModel : ViewModelBase
             ShowFeedback(successMsg, true);
 
             await _dialogService.ShowReceiptPreviewAsync(ticket);
+
         }
         catch (Exception ex)
         {

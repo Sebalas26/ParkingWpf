@@ -240,13 +240,26 @@
                         <Button Command="{Binding UserManualSyncCommand}"
                                 Style="{StaticResource SecondaryButton}"
                                 Padding="8,4"
-                                Margin="0,0,8,0"
+                                Margin="0,0,6,0"
                                 ToolTip="Consultar y sincronizar con API Central de inmediato">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushPrimary}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
                                 <TextBlock Text="Sincronizar" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
+
+                        <!-- 1.1 Botón Limpiar Caché y Forzar Recarga de Nube -->
+                        <Button Command="{Binding ForceCleanCacheCommand}"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="8,4"
+                                Margin="0,0,8,0"
+                                ToolTip="Limpiar memoria local y forzar actualización total desde la nube">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource BrushTextSecondary}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Limpiar Caché" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
 
                         <!-- 2. API Status Pill -->
                         <Border Background="{DynamicResource BrushInputBackground}"

@@ -217,15 +217,31 @@
                                     <TextBlock Text="(+) Efectivo Cobrado en Tiquetes" Style="{StaticResource TextBodyDefault}"/>
                                     <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.TotalCashCollected, Converter={StaticResource CurrencyConv}}" Foreground="{DynamicResource BrushSuccess}" FontWeight="Bold" Style="{StaticResource TextBodyDefault}"/>
                                 </Grid>
+                                <Grid Margin="0,0,0,6">
+                                    <TextBlock Text="(-) Retiros Parciales / Recogidas del Dueño" Style="{StaticResource TextBodyDefault}"/>
+                                    <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.TotalCashWithdrawals, Converter={StaticResource CurrencyConv}}" Foreground="{DynamicResource BrushWarning}" FontWeight="Bold" Style="{StaticResource TextBodyDefault}"/>
+                                </Grid>
                                 <Rectangle Height="1" Fill="{DynamicResource BrushBorderSubtle}" Margin="0,4,0,6"/>
                                 <Grid Margin="0,0,0,10">
-                                    <TextBlock Text="Total Efectivo Esperado en Caja" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                    <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.ExpectedCash, Converter={StaticResource CurrencyConv}}" FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                    <TextBlock Text="Total Efectivo Esperado en Gaveta" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                    <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.ExpectedCash, Converter={StaticResource CurrencyConv}}" FontSize="15" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}"/>
                                 </Grid>
                             </StackPanel>
 
+                            <!-- Botón para Registrar Retiro Parcial de Efectivo -->
+                            <Button Command="{Binding OpenCashWithdrawalDialogCommand}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Height="38"
+                                    Margin="0,0,0,14"
+                                    ToolTip="Registrar recogida de efectivo por parte del dueño o gerencia con firma de seguridad">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <TextBlock Text="💸" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Registrar Retiro de Efectivo (Recogida)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
                             <!-- Physical Cash Count Input -->
-                            <TextBlock Text="Efectivo Físico Contado en Gaveta ($)" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,6"/>
+                            <TextBlock Text="Efectivo Físico Contado en Gaveta ($) *" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,6"/>
                             <TextBox Text="{Binding ActualCashCounted, UpdateSourceTrigger=PropertyChanged, StringFormat='N0'}"
                                      FontSize="16"
                                      FontWeight="Bold"
@@ -257,7 +273,7 @@
                             </Border>
 
                             <!-- Usuario Receptor de la Entrega de Turno -->
-                            <TextBlock Text="USUARIO A QUIEN SE ENTREGA EL TURNO *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6"/>
+                            <TextBlock Text="OPERADOR RECEPTOR DE LA ENTREGA *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6"/>
                             <ComboBox ItemsSource="{Binding AvailableUsers}"
                                       SelectedItem="{Binding SelectedHandoverUser}"
                                       DisplayMemberPath="FullName"
@@ -281,7 +297,7 @@
                                     IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}">
                                 <Button.ContentTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="Confirmar Cierre de Turno y Arqueo" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold"/>
+                                        <TextBlock Text="🔐 Confirmar Entrega de Turno y Relevo" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold"/>
                                     </DataTemplate>
                                 </Button.ContentTemplate>
                             </Button>

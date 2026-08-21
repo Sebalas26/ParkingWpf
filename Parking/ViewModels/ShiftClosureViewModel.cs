@@ -6,10 +6,12 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
+using Parking.Core.Enums;
 using Parking.Data.Factories;
 using Parking.Entities;
 using Parking.Models.ApiModels;
 using Parking.Services.Contracts;
+using Parking.Views;
 
 namespace Parking.ViewModels;
 
@@ -20,6 +22,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly IReceiptPrinterService _receiptPrinter;
     private readonly IDbConnectionManager _connectionManager;
+    private readonly INavigationService _navigationService;
 
     [ObservableProperty]
     private ShiftSummaryModel _summary = new();
@@ -60,18 +63,23 @@ public partial class ShiftClosureViewModel : ViewModelBase
     [ObservableProperty]
     private User? _selectedHandoverUser;
 
+    [ObservableProperty]
+    private IReadOnlyList<CashWithdrawal> _currentShiftWithdrawals = new List<CashWithdrawal>();
+
     public ShiftClosureViewModel(
         IShiftService shiftService,
         IAuthService authService,
         IDialogService dialogService,
         IReceiptPrinterService receiptPrinter,
-        IDbConnectionManager connectionManager)
+        IDbConnectionManager connectionManager,
+        INavigationService navigationService)
     {
         _shiftService = shiftService;
         _authService = authService;
         _dialogService = dialogService;
         _receiptPrinter = receiptPrinter;
         _connectionManager = connectionManager;
+        _navigationService = navigationService;
         _operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
     }
 
@@ -98,6 +106,33 @@ public partial class ShiftClosureViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task OpenCashWithdrawalDialogAsync()
+    {
+        if (!HasActiveShift)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Sin Turno Activo",
+                "Debe haber un turno operativo abierto para poder registrar retiros o recogidas de efectivo.",
+                DialogNotificationType.Warning);
+            return;
+        }
+
+        var result = await CashWithdrawalDialog.ShowDialogAsync(
+            System.Windows.Application.Current.MainWindow,
+            _authService,
+            _shiftService);
+
+        if (result)
+        {
+            await LoadShiftDataAsync();
+            await _dialogService.ShowAlertAsync(
+                "Retiro Registrado con Éxito",
+                "Se ha registrado el retiro de efectivo de la gaveta y se ha actualizado el balance esperado de caja.",
+                DialogNotificationType.Success);
+        }
+    }
+
+    [RelayCommand]
     private async Task OpenShiftAsync()
     {
         HasFeedback = false;
@@ -111,6 +146,13 @@ public partial class ShiftClosureViewModel : ViewModelBase
             IsSuccessFeedback = true;
             FeedbackMessage = $"Turno abierto exitosamente con base de ${NewShiftBaseAmount:N0}.";
             await LoadShiftDataAsync();
+
+            await _dialogService.ShowAlertAsync(
+                "Turno Operativo Abierto",
+                $"Se ha registrado la apertura del turno con base inicial de ${NewShiftBaseAmount:N0}. Ya puedes iniciar el ingreso de vehículos.",
+                DialogNotificationType.Success);
+
+            _navigationService.NavigateTo<CheckInViewModel>();
         }
         catch (Exception ex)
         {
@@ -141,52 +183,68 @@ public partial class ShiftClosureViewModel : ViewModelBase
         {
             HasFeedback = true;
             IsSuccessFeedback = false;
-            FeedbackMessage = "Debe seleccionar el usuario al que se le realiza la entrega de turno.";
+            FeedbackMessage = "Debe seleccionar el operador receptor al que se le realiza la entrega de turno.";
             return;
         }
 
-        var confirmed = await _dialogService.ShowConfirmationAsync(
-            "Confirmar Cierre de Turno y Arqueo",
-            $"¿Está seguro de cerrar el turno de {OperatorName} y entregarlo a {SelectedHandoverUser.FullName}?\n\n" +
-            $"• Base de Caja: ${Summary.BaseAmount:N0}\n" +
-            $"• Efectivo Esperado: ${Summary.ExpectedCash:N0}\n" +
-            $"• Efectivo Contado: ${ActualCashCounted:N0}\n" +
-            $"• Diferencia: ${CashDifference:N0}");
+        var currentUserId = _authService.CurrentUser?.UserId;
+        var currentUsername = _authService.CurrentUser?.Username?.ToLower();
+        if (SelectedHandoverUser.UserId == currentUserId || (currentUsername != null && SelectedHandoverUser.Username.ToLower() == currentUsername))
+        {
+            HasFeedback = true;
+            IsSuccessFeedback = false;
+            FeedbackMessage = "No puedes entregarte el turno a ti mismo. Selecciona a otro operario receptor.";
+            return;
+        }
 
-        if (!confirmed) return;
+        var cashToHandover = ActualCashCounted > 0 ? ActualCashCounted : Summary.ExpectedCash;
+
+        // Abrir Modal de Recepción y Firma con Contraseña del Operador Receptor
+        var authenticatedReceiver = await ShiftHandoverAuthDialog.ShowAuthAsync(
+            System.Windows.Application.Current.MainWindow,
+            _authService,
+            SelectedHandoverUser,
+            OperatorName,
+            cashToHandover);
+
+        if (authenticatedReceiver == null)
+        {
+            return; // Cancelado o contraseña inválida
+        }
 
         IsBusy = true;
-        BusyMessage = "Liquidando turno, cuadrando caja y generando comprobante...";
+        BusyMessage = $"Entregando caja a {SelectedHandoverUser.FullName} e iniciando nuevo turno...";
 
         try
         {
-            var closedShift = await _shiftService.CloseShiftAsync(
+            // Cerrar turno saliente y abrir inmediatamente el nuevo turno
+            await _shiftService.HandoverAndOpenNextShiftAsync(
                 ActualCashCounted,
                 Notes,
                 SelectedHandoverUser.UserId,
-                SelectedHandoverUser.FullName);
+                SelectedHandoverUser.FullName,
+                cashToHandover);
 
-            if (closedShift != null)
-            {
-                HasFeedback = true;
-                IsSuccessFeedback = true;
-                FeedbackMessage = $"Turno cerrado exitosamente y entregado a {SelectedHandoverUser.FullName}. Diferencia: ${closedShift.CashDifference:N0}.";
-                ActualCashCounted = 0m;
-                Notes = null;
-                await LoadShiftDataAsync();
-            }
-            else
-            {
-                HasFeedback = true;
-                IsSuccessFeedback = false;
-                FeedbackMessage = "No se pudo cerrar el turno. Intente nuevamente.";
-            }
+            // Cambiar de inmediato la sesión activa al operador entrante
+            _authService.SwitchCurrentUser(authenticatedReceiver);
+
+            await _dialogService.ShowAlertAsync(
+                "Entrega de Turno Exitosa",
+                $"El turno ha sido entregado exitosamente a {SelectedHandoverUser.FullName}.\n" +
+                $"El nuevo turno ha quedado abierto con base de ${cashToHandover:N0}.",
+                DialogNotificationType.Success);
+
+            ActualCashCounted = 0m;
+            Notes = null;
+
+            // Redirigir a la pantalla de entradas con la nueva sesión activa
+            _navigationService.NavigateTo<CheckInViewModel>();
         }
         catch (Exception ex)
         {
             HasFeedback = true;
             IsSuccessFeedback = false;
-            FeedbackMessage = $"Error al cerrar turno: {ex.Message}";
+            FeedbackMessage = $"Error al transferir turno: {ex.Message}";
         }
         finally
         {
@@ -209,19 +267,44 @@ public partial class ShiftClosureViewModel : ViewModelBase
             {
                 Summary = await _shiftService.GetCurrentShiftSummaryAsync();
                 RecalculateDifference();
+                CurrentShiftWithdrawals = await _shiftService.GetShiftCashWithdrawalsAsync(active!.ShiftId);
+            }
+            else
+            {
+                CurrentShiftWithdrawals = new List<CashWithdrawal>();
             }
 
             // Cargar usuarios para entrega de turno
             using var db = _connectionManager.CreateDbContext();
-            var users = await db.Users.Where(u => u.IsActive).OrderBy(u => u.FullName).ToListAsync();
+            var currentUserId = _authService.CurrentUser?.UserId;
+            var currentUsername = _authService.CurrentUser?.Username?.ToLower();
+
+            var users = await db.Users
+                .Where(u => u.IsActive && u.FullName != "Alexander Wright" && u.FullName != "Elena Vance")
+                .OrderBy(u => u.FullName)
+                .ToListAsync();
+
+            if (users.Count == 0)
+            {
+                await _connectionManager.InitializeDatabaseAsync();
+                users = await db.Users
+                    .Where(u => u.IsActive && u.FullName != "Alexander Wright" && u.FullName != "Elena Vance")
+                    .OrderBy(u => u.FullName)
+                    .ToListAsync();
+            }
+
             AvailableUsers.Clear();
             foreach (var u in users)
             {
+                // Excluir estrictamente al usuario actual en sesión
+                if (u.UserId == currentUserId || (currentUsername != null && u.Username.ToLower() == currentUsername))
+                {
+                    continue;
+                }
                 AvailableUsers.Add(u);
             }
 
-            var currentUserId = _authService.CurrentUser?.UserId;
-            SelectedHandoverUser = AvailableUsers.FirstOrDefault(u => u.UserId != currentUserId) ?? AvailableUsers.FirstOrDefault();
+            SelectedHandoverUser = AvailableUsers.FirstOrDefault();
 
             ShiftHistory = await _shiftService.GetShiftHistoryAsync(DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
         }

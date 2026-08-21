@@ -157,7 +157,17 @@ public class EfShiftService : IShiftService
             }
         }
 
-        var expectedCash = baseAmount + cash;
+        // Obtener retiros de caja (recogidas del dueño/administración)
+        decimal withdrawals = 0m;
+        if (shiftId != Guid.Empty)
+        {
+            var shiftWithdrawals = await db.CashWithdrawals
+                .Where(w => w.ShiftId == shiftId)
+                .ToListAsync();
+            withdrawals = shiftWithdrawals.Sum(w => w.Amount);
+        }
+
+        var expectedCash = baseAmount + cash - withdrawals;
 
         return new ShiftSummaryModel
         {
@@ -170,6 +180,7 @@ public class EfShiftService : IShiftService
             TotalCardCollected = card,
             TotalTransferCollected = transfer,
             TotalDiscounts = discounts,
+            TotalCashWithdrawals = withdrawals,
             ExpectedCash = expectedCash,
             ActualCashCounted = 0m,
             CashDifference = -expectedCash,
@@ -214,6 +225,7 @@ public class EfShiftService : IShiftService
             local.TotalCardCollected = summary.TotalCardCollected;
             local.TotalTransferCollected = summary.TotalTransferCollected;
             local.TotalDiscounts = summary.TotalDiscounts;
+            local.TotalCashWithdrawals = summary.TotalCashWithdrawals;
             local.ExpectedCash = summary.ExpectedCash;
             local.ActualCashCounted = actualCashCounted;
             local.CashDifference = actualCashCounted - summary.ExpectedCash;
@@ -232,6 +244,64 @@ public class EfShiftService : IShiftService
         CurrentShift = null;
         ShiftStateChanged?.Invoke();
         return closedShift;
+    }
+
+    public async Task<WorkShift> HandoverAndOpenNextShiftAsync(decimal actualCashCounted, string? notes, Guid handoverToUserId, string handoverToUserName, decimal newShiftBaseAmount)
+    {
+        // 1. Cerrar el turno saliente
+        await CloseShiftAsync(actualCashCounted, notes, handoverToUserId, handoverToUserName);
+
+        // 2. Abrir inmediatamente el nuevo turno a nombre del operador receptor
+        var nextShift = new WorkShift
+        {
+            ShiftId = Guid.NewGuid(),
+            UserId = 1,
+            OperatorName = handoverToUserName,
+            StartTimeUtc = DateTime.UtcNow,
+            BaseAmount = newShiftBaseAmount,
+            Status = 0,
+            Notes = $"Turno recibido de relevo por entrega de caja. Base inicial: ${newShiftBaseAmount:N0}",
+            IsSynchronized = false,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        using var db = _connectionManager.CreateDbContext();
+        db.WorkShifts.Add(nextShift);
+        await db.SaveChangesAsync();
+
+        CurrentShift = nextShift;
+        ShiftStateChanged?.Invoke();
+        return nextShift;
+    }
+
+    public async Task<CashWithdrawal> RegisterCashWithdrawalAsync(Guid shiftId, decimal amount, string reason, string authorizedByAdminName, string cashierName)
+    {
+        var withdrawal = new CashWithdrawal
+        {
+            WithdrawalId = Guid.NewGuid(),
+            ShiftId = shiftId,
+            Amount = amount,
+            Reason = reason,
+            AuthorizedByAdminName = authorizedByAdminName,
+            CashierName = cashierName,
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        using var db = _connectionManager.CreateDbContext();
+        db.CashWithdrawals.Add(withdrawal);
+        await db.SaveChangesAsync();
+
+        ShiftStateChanged?.Invoke();
+        return withdrawal;
+    }
+
+    public async Task<IReadOnlyList<CashWithdrawal>> GetShiftCashWithdrawalsAsync(Guid shiftId)
+    {
+        using var db = _connectionManager.CreateDbContext();
+        return await db.CashWithdrawals
+            .Where(w => w.ShiftId == shiftId)
+            .OrderByDescending(w => w.CreatedAtUtc)
+            .ToListAsync();
     }
 
     public async Task<IReadOnlyList<WorkShift>> GetShiftHistoryAsync(DateTime? fromDate = null, DateTime? toDate = null)

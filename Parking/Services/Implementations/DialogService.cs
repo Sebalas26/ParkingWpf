@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
+using Parking.Core.Enums;
 using Parking.Entities;
 using Parking.Services.Contracts;
 using Parking.ViewModels;
@@ -39,20 +40,46 @@ public class DialogService : IDialogService
         }).Task;
     }
 
-    public Task ShowAlertAsync(string title, string message)
+    public Task ShowAlertAsync(string title, string message, DialogNotificationType type = DialogNotificationType.Information)
     {
         return Application.Current.Dispatcher.InvokeAsync(() =>
         {
-            MessageBox.Show(Application.Current.MainWindow, message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+            var resolvedType = type;
+            if (resolvedType == DialogNotificationType.Information)
+            {
+                var lowerTitle = title.ToLowerInvariant();
+                if (lowerTitle.Contains("exit") || lowerTitle.Contains("correct") || lowerTitle.Contains("guardad"))
+                {
+                    resolvedType = DialogNotificationType.Success;
+                }
+                else if (lowerTitle.Contains("error") || lowerTitle.Contains("fall") || lowerTitle.Contains("denegad"))
+                {
+                    resolvedType = DialogNotificationType.Error;
+                }
+                else if (lowerTitle.Contains("advert") || lowerTitle.Contains("sin conexión") || lowerTitle.Contains("cuidado"))
+                {
+                    resolvedType = DialogNotificationType.Warning;
+                }
+            }
+
+            ModernMessageDialog.ShowAlert(Application.Current.MainWindow, title, message, resolvedType);
         }).Task;
     }
 
-    public Task<bool> ShowConfirmationAsync(string title, string message)
+    public Task<bool> ShowConfirmationAsync(string title, string message, DialogNotificationType type = DialogNotificationType.Question, string confirmText = "Confirmar", string cancelText = "Cancelar")
     {
         return Application.Current.Dispatcher.InvokeAsync(() =>
         {
-            var result = MessageBox.Show(Application.Current.MainWindow, message, title, MessageBoxButton.YesNo, MessageBoxImage.Question);
-            return result == MessageBoxResult.Yes;
+            return ModernMessageDialog.ShowConfirmation(Application.Current.MainWindow, title, message, type, confirmText, cancelText);
         }).Task;
     }
+
+    public Task<bool> ShowSyncProgressModalAsync(ISyncEngineService syncEngine)
+    {
+        return Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            return SyncProgressDialog.ShowSyncAsync(Application.Current.MainWindow, syncEngine);
+        }).Task.Unwrap();
+    }
 }
+

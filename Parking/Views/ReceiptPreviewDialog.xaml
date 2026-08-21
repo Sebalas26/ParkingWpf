@@ -152,41 +152,42 @@
 
                         <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,2,0,10"/>
 
-                        <!-- SECCIÓN DUAL: CÓDIGO DE BARRAS 1D + CÓDIGO QR 2D -->
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="1.1*"/>
-                                <ColumnDefinition Width="1*"/>
-                            </Grid.ColumnDefinitions>
-
-                            <!-- Código de Barras 1D (Para lectora óptica / pistola) -->
-                            <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="{DynamicResource BrushBorderMedium}" BorderThickness="1" CornerRadius="6" Padding="8,6" Margin="0,0,6,0">
-                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <TextBlock Text="LECTURA ÓPTICA (1D)" FontSize="8" FontWeight="Bold" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,0,0,4"/>
-                                    <!-- Barcode Real Code 128 Image -->
-                                    <Image Source="{Binding BarcodeImage}"
-                                           Height="48"
-                                           Stretch="Uniform"
-                                           RenderOptions.BitmapScalingMode="NearestNeighbor"
+                        <!-- SECCIÓN EXCLUSIVA: CÓDIGO QR 2D CENTRADO (Para lectura con pistola de caja y consulta) -->
+                        <Border Background="#FFFFFF"
+                                BorderBrush="{DynamicResource BrushBorderMedium}"
+                                BorderThickness="1.5"
+                                CornerRadius="10"
+                                Padding="16,12"
+                                Margin="0,4,0,12"
+                                HorizontalAlignment="Center">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock Text="CÓDIGO DE ACCESO Y SALIDA (QR)"
+                                           FontSize="10"
+                                           FontWeight="Black"
+                                           Foreground="{DynamicResource BrushPrimary}"
                                            HorizontalAlignment="Center"
-                                           Margin="0,0,0,4"/>
-                                    <TextBlock Text="{Binding Ticket.TicketNumber}" FontSize="9" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Código QR 2D (Para celular) -->
-                            <Border Grid.Column="1" Background="#FFFFFF" BorderBrush="{DynamicResource BrushBorderMedium}" BorderThickness="1" CornerRadius="6" Padding="6" Margin="6,0,0,0">
-                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <TextBlock Text="CONSULTA MÓVIL (2D)" FontSize="8" FontWeight="Bold" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,0,0,2"/>
-                                    <Image Source="{Binding QrCodeImage}"
-                                           Width="88" Height="88"
-                                           Stretch="Uniform"
-                                           RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                           Margin="0,0,0,8"/>
+                                <!-- QR Code Image de Alta Definición -->
+                                <Image Source="{Binding QrCodeImage}"
+                                       Width="140" Height="140"
+                                       Stretch="Uniform"
+                                       RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,8"/>
+                                <TextBlock Text="{Binding Ticket.TicketNumber}"
+                                           FontSize="13"
+                                           FontWeight="Black"
+                                           FontFamily="{StaticResource FontFamilyMonospace}"
+                                           Foreground="#000000"
                                            HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Escanee con celular" FontSize="8" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                                </StackPanel>
-                            </Border>
-                        </Grid>
+                                <TextBlock Text="Escanee con lector de caja para liquidar y salida"
+                                           FontSize="9"
+                                           Foreground="#64748B"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,3,0,0"/>
+                            </StackPanel>
+                        </Border>
+
 
                         <TextBlock Text="Conserve este tiquete para retirar su vehículo. En caso de pérdida se cobrará tarifa plena más reposición."
                                    FontSize="9"

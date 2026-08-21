@@ -29,6 +29,7 @@ public class ShiftSummaryModel
     public decimal TotalCardCollected { get; set; }
     public decimal TotalTransferCollected { get; set; }
     public decimal TotalDiscounts { get; set; }
+    public decimal TotalCashWithdrawals { get; set; }
     public decimal ExpectedCash { get; set; }
     public decimal ActualCashCounted { get; set; }
     public decimal CashDifference { get; set; }

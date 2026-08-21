@@ -11,7 +11,6 @@ namespace Parking.ViewModels;
 public partial class ReceiptPreviewViewModel : ViewModelBase
 {
     private readonly IReceiptPrinterService _printerService;
-    private readonly IBarcodeGeneratorService _barcodeGenerator;
 
     [ObservableProperty]
     private ParkingTicket _ticket = new();
@@ -25,27 +24,20 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     [ObservableProperty]
     private BitmapImage? _qrCodeImage;
 
-    [ObservableProperty]
-    private BitmapSource? _barcodeImage;
-
     public string PublicConsultationUrl => $"https://localhost:7023/api/public/tickets/status?plate={Ticket.PlateNumber}";
 
     public event Action? RequestClose;
 
-    public ReceiptPreviewViewModel(
-        IReceiptPrinterService printerService,
-        IBarcodeGeneratorService barcodeGenerator)
+    public ReceiptPreviewViewModel(IReceiptPrinterService printerService)
     {
         _printerService = printerService;
-        _barcodeGenerator = barcodeGenerator;
     }
 
     public void LoadTicket(ParkingTicket ticket)
     {
         Ticket = ticket;
         PrintSuccess = false;
-        QrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(ticket.PlateNumber);
-        BarcodeImage = _barcodeGenerator.GenerateCode128Barcode(ticket.TicketNumber, height: 50, moduleWidth: 2);
+        QrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(ticket.TicketNumber);
     }
 
     [RelayCommand]

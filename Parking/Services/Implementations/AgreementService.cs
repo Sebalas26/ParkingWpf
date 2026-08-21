@@ -31,11 +31,12 @@ public class AgreementService : IAgreementService
     public async Task<IReadOnlyList<CommercialAgreement>> GetAgreementsByStoreAsync(Guid storeId)
     {
         using var db = _connectionManager.CreateDbContext();
-        return await db.CommercialAgreements
+        var items = await db.CommercialAgreements
             .Where(a => a.StoreId == storeId && a.IsActive)
             .Include(a => a.Store)
-            .OrderBy(a => a.MinPurchaseAmount)
             .ToListAsync();
+
+        return items.OrderBy(a => a.MinPurchaseAmount).ToList();
     }
 
     public async Task<CommercialAgreement> CreateAgreementAsync(Guid storeId, string name, decimal minPurchaseAmount, decimal? discountPercentage, decimal? discountFixedAmount, int? maxHoursApplicable)

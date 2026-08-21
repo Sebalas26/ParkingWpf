@@ -6,7 +6,7 @@
              xmlns:conv="clr-namespace:Parking.Core.Converters"
              xmlns:enums="clr-namespace:Parking.Core.Enums"
              mc:Ignorable="d"
-             d:DesignHeight="950" d:DesignWidth="1180"
+             d:DesignHeight="900" d:DesignWidth="1280"
              UseLayoutRounding="True"
              SnapsToDevicePixels="True"
              TextOptions.TextFormattingMode="Display"
@@ -24,7 +24,7 @@
         <!-- Estilo de Selector de Categoría con Estado Activo / Seleccionado Evidente -->
         <Style x:Key="CategoryOptionRadioButton" TargetType="RadioButton">
             <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Margin" Value="4"/>
+            <Setter Property="Margin" Value="0,0,8,8"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
@@ -33,7 +33,7 @@
                                 BorderBrush="{DynamicResource BrushBorderMedium}"
                                 BorderThickness="1.5"
                                 CornerRadius="12"
-                                Padding="14,12"
+                                Padding="12,10"
                                 SnapsToDevicePixels="True">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -45,15 +45,15 @@
                                 <!-- Icon Container -->
                                 <Border x:Name="IconContainer"
                                         Grid.Column="0"
-                                        Width="40" Height="40"
+                                        Width="38" Height="38"
                                         CornerRadius="8"
                                         Background="#F1F5F9"
-                                        Margin="0,0,12,0"
+                                        Margin="0,0,10,0"
                                         VerticalAlignment="Center">
                                     <Path x:Name="IconPath"
                                           Data="{Binding VehicleType, Converter={StaticResource VehicleIconConv}}"
                                           Fill="{DynamicResource BrushPrimary}"
-                                          Width="20" Height="20"
+                                          Width="18" Height="18"
                                           Stretch="Uniform"
                                           HorizontalAlignment="Center"
                                           VerticalAlignment="Center"/>
@@ -64,28 +64,29 @@
                                     <TextBlock x:Name="TitleText"
                                                Text="{Binding DisplayName}"
                                                FontWeight="Bold"
-                                               FontSize="13"
-                                               Foreground="{DynamicResource BrushTextPrimary}"/>
-                                    <TextBlock x:Name="RateText"
-                                               Text="{Binding HourlyRate, Converter={StaticResource CurrencyConv}, StringFormat='{}{0} / hora'}"
                                                FontSize="12"
+                                               Foreground="{DynamicResource BrushTextPrimary}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock x:Name="RateText"
+                                               Text="{Binding HourRate, Converter={StaticResource CurrencyConv}, StringFormat='{}{0} / hora'}"
+                                               FontSize="11"
                                                FontWeight="Bold"
                                                Foreground="{DynamicResource BrushPrimary}"
-                                               Margin="0,3,0,0"/>
+                                               Margin="0,2,0,0"/>
                                 </StackPanel>
 
                                 <!-- Checkmark badge when selected -->
                                 <Border x:Name="CheckBadge"
                                         Grid.Column="2"
-                                        Width="22" Height="22"
-                                        CornerRadius="11"
+                                        Width="20" Height="20"
+                                        CornerRadius="10"
                                         Background="{DynamicResource BrushPrimary}"
                                         Visibility="Collapsed"
                                         VerticalAlignment="Center"
-                                        Margin="8,0,0,0">
+                                        Margin="6,0,0,0">
                                     <Path Data="{StaticResource IconCheck}"
                                           Fill="{DynamicResource BrushTextWhite}"
-                                          Width="12" Height="12"
+                                          Width="10" Height="10"
                                           Stretch="Uniform"
                                           HorizontalAlignment="Center"
                                           VerticalAlignment="Center"/>
@@ -122,11 +123,11 @@
             <Setter Property="Background" Value="{DynamicResource BrushSurfaceBackground}"/>
             <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMedium}"/>
-            <Setter Property="BorderThickness" Value="1.5"/>
-            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="15"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Height" Value="46"/>
-            <Setter Property="Margin" Value="3"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Margin" Value="2"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -135,11 +136,8 @@
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="8"
+                                CornerRadius="6"
                                 SnapsToDevicePixels="True">
-                            <Border.Effect>
-                                <DropShadowEffect BlurRadius="4" Direction="270" ShadowDepth="1" Opacity="0.06" Color="#0B3C49"/>
-                            </Border.Effect>
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -149,7 +147,7 @@
                                 <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSidebarActive}"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSidebarItemActive}"/>
                                 <Setter Property="Foreground" Value="{DynamicResource BrushTextWhite}"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -162,36 +160,50 @@
             <Setter Property="Background" Value="#F1F5F9"/>
             <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMedium}"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="Black"/>
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-        <Grid Margin="24">
-            <!-- Tarjeta Central de Registro de Entrada de Vehículo (Centrada con Márgenes Laterales) -->
-            <Border Background="{DynamicResource BrushSurfaceBackground}"
-                    BorderBrush="{DynamicResource BrushBorderMedium}"
-                    BorderThickness="1"
-                    CornerRadius="16"
-                    Padding="32"
-                    MaxWidth="960"
-                    HorizontalAlignment="Center"
-                    SnapsToDevicePixels="True">
+    <!-- Grid Principal Responsive en 2 Columnas (100% del Ancho de Pantalla) -->
+    <Grid Margin="20">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="1.35*" MinWidth="480"/>
+            <ColumnDefinition Width="1*" MinWidth="360"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- ========================================================================= -->
+        <!-- COLUMNA IZQUIERDA: Formulario Principal de Captura e Ingreso -->
+        <!-- ========================================================================= -->
+        <Border Grid.Column="0"
+                Style="{StaticResource ModernCard}"
+                Margin="0,0,16,0"
+                Padding="22">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
-                    <!-- Header -->
-                    <Grid Margin="0,0,0,24">
-                        <StackPanel>
-                            <TextBlock Text="Registro de Entrada de Vehículo" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                            <TextBlock Text="Capture la placa del vehículo, seleccione la categoría tarifaria y emita el tiquete de ingreso" FontSize="13" Foreground="{DynamicResource BrushTextMuted}" Margin="0,4,0,0"/>
+                    <!-- 1. Header del Módulo -->
+                    <Grid Margin="0,0,0,16">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Registro de Entrada de Vehículo" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                            <TextBlock Text="Capture la placa del vehículo, seleccione la categoría tarifaria y emita el tiquete de ingreso" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
                         </StackPanel>
+                        <Border Grid.Column="1" Background="#E0F2FE" CornerRadius="12" Padding="12,5" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="7" Height="7" Fill="{DynamicResource BrushPrimary}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Terminal Activa" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
                     </Grid>
 
-                    <!-- Feedback Alert -->
+                    <!-- 2. Alerta de Feedback -->
                     <Border Visibility="{Binding HasFeedback, Converter={StaticResource BoolToVis}}"
                             CornerRadius="10"
-                            Padding="16,12"
-                            Margin="0,0,0,20">
+                            Padding="14,10"
+                            Margin="0,0,0,16">
                         <Border.Style>
                             <Style TargetType="Border">
                                 <Setter Property="Background" Value="{DynamicResource BrushSuccessBg}"/>
@@ -205,13 +217,13 @@
                                 </Style.Triggers>
                             </Style>
                         </Border.Style>
-                        <TextBlock Text="{Binding FeedbackMessage}" FontSize="13" FontWeight="Bold" TextWrapping="Wrap">
+                        <TextBlock Text="{Binding FeedbackMessage}" FontSize="12" FontWeight="Bold" TextWrapping="Wrap">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
-                                    <Setter Property="Foreground" Value="{DynamicResource BrushSuccess}"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource BrushSuccessText}"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsSuccessFeedback}" Value="False">
-                                            <Setter Property="Foreground" Value="{DynamicResource BrushDanger}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource BrushDangerText}"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -219,66 +231,68 @@
                         </TextBlock>
                     </Border>
 
-                    <!-- Input Gigante de Placa con Botón de Teclado Táctil -->
+                    <!-- 3. Caja Panorámica de Placa -->
                     <Border Background="#F8FAFC"
                             BorderBrush="{DynamicResource BrushBorderMedium}"
                             BorderThickness="1"
-                            CornerRadius="18"
-                            Padding="24,20"
-                            Margin="0,0,0,24">
+                            CornerRadius="14"
+                            Padding="18,14"
+                            Margin="0,0,0,16">
                         <StackPanel>
-                            <!-- Header de Placa con Botón de Teclado -->
-                            <Grid Margin="0,0,0,14">
+                            <!-- Header de Placa con Botón Teclado -->
+                            <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
 
                                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Border Background="{DynamicResource BrushPrimary}" Width="26" Height="26" CornerRadius="6" Margin="0,0,10,0" VerticalAlignment="Center">
-                                        <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushTextWhite}" Width="14" Height="14" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Border Background="{DynamicResource BrushPrimary}" Width="24" Height="24" CornerRadius="6" Margin="0,0,8,0" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushTextWhite}" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
-                                    <TextBlock Text="DIGITE LA PLACA DEL VEHÍCULO *" FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="DIGITE LA PLACA DEL VEHÍCULO *" FontSize="12" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
                                 </StackPanel>
 
                                 <!-- Botón Teclado Táctil -->
                                 <Button Grid.Column="1"
                                         Command="{Binding ToggleVirtualKeyboardCommand}"
                                         Style="{StaticResource SecondaryButton}"
-                                        Padding="12,6"
+                                        Padding="10,4"
                                         ToolTip="Abrir o cerrar teclado virtual para pantalla táctil">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Data="{StaticResource IconKeyboard}" Fill="{DynamicResource BrushPrimary}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="Teclado Táctil" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                                        <Path Data="{StaticResource IconKeyboard}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Teclado Táctil" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                             </Grid>
 
-                            <!-- Input Masivo Panorámico -->
+                            <!-- Input Masivo de Placa -->
                             <TextBox Text="{Binding PlateNumber, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource PlateInputTextBox}"
-                                     Margin="0,0,0,8"/>
+                                     Height="84"
+                                     FontSize="44"
+                                     Margin="0,0,0,6"/>
 
                             <!-- Banner de Suscriptor Mensual Activo -->
                             <Border Visibility="{Binding IsMonthlySubscriber, Converter={StaticResource BoolToVis}}"
                                     Background="{DynamicResource BrushSuccessBg}"
                                     BorderBrush="{DynamicResource BrushSuccess}"
                                     BorderThickness="1.5"
-                                    CornerRadius="10"
-                                    Padding="14,10"
-                                    Margin="0,0,0,10">
+                                    CornerRadius="8"
+                                    Padding="12,8"
+                                    Margin="0,4,0,8">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" Background="{DynamicResource BrushSuccess}" Margin="0,0,10,0" VerticalAlignment="Center">
-                                        <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="0" Width="22" Height="22" CornerRadius="11" Background="{DynamicResource BrushSuccess}" Margin="0,0,8,0" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushTextWhite}" Width="10" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="VEHÍCULO CON MENSUALIDAD ACTIVA" FontWeight="Black" FontSize="12" Foreground="{DynamicResource BrushSuccess}"/>
-                                        <TextBlock FontSize="11" Foreground="{DynamicResource BrushTextPrimary}">
+                                        <TextBlock Text="VEHÍCULO CON MENSUALIDAD ACTIVA" FontWeight="Black" FontSize="11" Foreground="{DynamicResource BrushSuccessText}"/>
+                                        <TextBlock FontSize="10" Foreground="{DynamicResource BrushTextPrimary}">
                                             <Run Text="Abonado: " FontWeight="SemiBold"/>
                                             <Run Text="{Binding ActiveSubscription.CustomerName}" FontWeight="Bold"/>
                                             <Run Text=" • Doc: "/>
@@ -287,26 +301,26 @@
                                             <Run Text="{Binding ActiveSubscription.EndDate, StringFormat='{}{0:yyyy-MM-dd}'}" FontWeight="Bold"/>
                                         </TextBlock>
                                     </StackPanel>
-                                    <Border Grid.Column="2" Background="{DynamicResource BrushSuccess}" CornerRadius="6" Padding="8,4" VerticalAlignment="Center">
-                                        <TextBlock Text="TARIFA $0.00" FontSize="11" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
+                                    <Border Grid.Column="2" Background="{DynamicResource BrushSuccess}" CornerRadius="6" Padding="6,3" VerticalAlignment="Center">
+                                        <TextBlock Text="TARIFA $0.00" FontSize="10" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
                                     </Border>
                                 </Grid>
                             </Border>
 
                             <TextBlock Text="💡 Las letras y números ingresados se convertirán automáticamente a mayúsculas"
-                                       FontSize="12"
+                                       FontSize="11"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource BrushTextMuted}"
                                        HorizontalAlignment="Center"/>
 
-                            <!-- Teclado Virtual en Pantalla (Desplegable / Táctil) -->
+                            <!-- Teclado Virtual en Pantalla (Desplegable) -->
                             <Border Visibility="{Binding IsVirtualKeyboardVisible, Converter={StaticResource BoolToVis}}"
                                     Background="#EDF2F7"
                                     BorderBrush="{DynamicResource BrushBorderMedium}"
                                     BorderThickness="1"
-                                    CornerRadius="12"
-                                    Padding="12"
-                                    Margin="0,14,0,0">
+                                    CornerRadius="10"
+                                    Padding="8"
+                                    Margin="0,10,0,0">
                                 <StackPanel>
                                     <!-- Fila de Números -->
                                     <UniformGrid Columns="10" Rows="1">
@@ -337,7 +351,7 @@
                                     </UniformGrid>
 
                                     <!-- Fila A - L -->
-                                    <UniformGrid Columns="9" Rows="1" Margin="20,0,20,0">
+                                    <UniformGrid Columns="9" Rows="1" Margin="14,0,14,0">
                                         <Button Content="A" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="A"/>
                                         <Button Content="S" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="S"/>
                                         <Button Content="D" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="D"/>
@@ -352,9 +366,9 @@
                                     <!-- Fila Z - M + Acciones -->
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="1.4*"/>
+                                            <ColumnDefinition Width="1.3*"/>
                                             <ColumnDefinition Width="7*"/>
-                                            <ColumnDefinition Width="1.4*"/>
+                                            <ColumnDefinition Width="1.3*"/>
                                         </Grid.ColumnDefinitions>
 
                                         <Button Grid.Column="0" Content="Limpiar" Style="{StaticResource TouchKeyActionButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="CLEAR"/>
@@ -376,12 +390,12 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Selector de Categorías de Vehículo en Cuadrícula con Estado Seleccionado Activo -->
-                    <TextBlock Text="SELECCIONE LA CATEGORÍA DE VEHÍCULO *" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,10"/>
-                    <ItemsControl ItemsSource="{Binding AvailableRates}" Margin="0,0,0,24">
+                    <!-- 4. Selector de Categorías de Vehículo (Cuadrícula 2x2 Limpia) -->
+                    <TextBlock Text="SELECCIONE LA CATEGORÍA DE VEHÍCULO *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,8"/>
+                    <ItemsControl ItemsSource="{Binding AvailableRates}" Margin="0,0,0,16">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <UniformGrid Columns="2" Rows="2"/>
+                                <UniformGrid Columns="2"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
@@ -401,39 +415,39 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <!-- Teléfono y Observaciones -->
-                    <Grid Margin="0,0,0,24">
+                    <!-- 5. Teléfono y Observaciones (Perfectamente Espaciados) -->
+                    <Grid Margin="0,0,0,18">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="1*"/>
-                            <ColumnDefinition Width="1.5*"/>
+                            <ColumnDefinition Width="1.4*"/>
                         </Grid.ColumnDefinitions>
 
-                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                            <TextBlock Text="TELÉFONO DEL CONDUCTOR (OPCIONAL)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding PhoneNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}" Height="44"/>
+                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                            <TextBlock Text="TELÉFONO DEL CONDUCTOR (OPCIONAL)" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding PhoneNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}" Height="38"/>
                         </StackPanel>
 
-                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                            <TextBlock Text="OBSERVACIONES / NOTAS (OPCIONAL)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}" Height="44"/>
+                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                            <TextBlock Text="OBSERVACIONES / NOTAS (OPCIONAL)" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}" Height="38"/>
                         </StackPanel>
                     </Grid>
 
-                    <!-- Botones de Acción -->
-                    <Grid Margin="0,8,0,0">
+                    <!-- 6. Botones de Acción -->
+                    <Grid Margin="0,4,0,0">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2.5*"/>
+                            <ColumnDefinition Width="2.4*"/>
                             <ColumnDefinition Width="1*"/>
                         </Grid.ColumnDefinitions>
 
                         <Button Grid.Column="0"
                                 Command="{Binding RegisterAndPrintCommand}"
                                 Style="{StaticResource ModernButton}"
-                                Height="56"
-                                Margin="0,0,14,0">
+                                Height="48"
+                                Margin="0,0,10,0">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushTextWhite}" Width="20" Height="20" Stretch="Uniform" Margin="0,0,10,0"/>
-                                <TextBlock Text="Registrar e Imprimir Entrada" FontSize="16" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
+                                <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,8,0"/>
+                                <TextBlock Text="Registrar e Imprimir Entrada" FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
                             </StackPanel>
                         </Button>
 
@@ -441,12 +455,158 @@
                                 Content="Limpiar Formulario"
                                 Command="{Binding ClearFormCommand}"
                                 Style="{StaticResource SecondaryButton}"
-                                Height="56"
-                                FontSize="13"
+                                Height="48"
+                                FontSize="12"
                                 FontWeight="Bold"/>
                     </Grid>
                 </StackPanel>
-            </Border>
-        </Grid>
-    </ScrollViewer>
+            </ScrollViewer>
+        </Border>
+
+        <!-- ========================================================================= -->
+        <!-- COLUMNA DERECHA: Panel de Monitoreo en Vivo, Tarifa Activa y Entradas -->
+        <!-- ========================================================================= -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+                <!-- 1. Tarjeta de Tarifa Vigente Seleccionada -->
+                <Border Style="{StaticResource ModernCard}" Padding="18" Margin="0,0,0,14">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconCreditCard}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Tarifa Activa Seleccionada" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Border Grid.Column="1" Background="#F1F5F9" CornerRadius="6" Padding="6,2">
+                                <TextBlock Text="{Binding CurrentRate.DisplayName}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}"/>
+                            </Border>
+                        </Grid>
+
+                        <!-- Píldoras de Desglose Tarifario -->
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0" Background="#F8FAFC" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="8,6" Margin="0,0,4,0">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="POR MINUTO" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding CurrentRate.MinuteRate, Converter={StaticResource CurrencyConv}}" FontSize="13" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="1" Background="#F8FAFC" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="8,6" Margin="2,0,2,0">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="POR HORA" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding CurrentRate.HourRate, Converter={StaticResource CurrencyConv}}" FontSize="13" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="2" Background="#F8FAFC" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="8,6" Margin="4,0,0,0">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <TextBlock Text="DÍA COMPLETO" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding CurrentRate.FullDayRate, Converter={StaticResource CurrencyConv}}" FontSize="13" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <TextBlock Text="ℹ️ Tiempo de Gracia: 0 min (Cobro por minuto/fracción exacta desde el ingreso)" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 2. Tarjeta de Ocupación en Tiempo Real -->
+                <Border Style="{StaticResource ModernCard}" Padding="18" Margin="0,0,0,14">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Ocupación de Parqueadero" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding Occupancy.OccupancySummary}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border Grid.Column="0" Background="#DCFCE7" CornerRadius="8" Padding="10,6" Margin="0,0,4,0">
+                                <StackPanel>
+                                    <TextBlock Text="DISPONIBLES" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushSuccessText}"/>
+                                    <TextBlock Text="{Binding Occupancy.AvailableSlots, StringFormat='{}{0} cupos'}" FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushSuccessText}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Grid.Column="1" Background="#FEF3C7" CornerRadius="8" Padding="10,6" Margin="4,0,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="OCUPADOS" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushWarningText}"/>
+                                    <TextBlock Text="{Binding Occupancy.OccupiedSlots, StringFormat='{}{0} vehículos'}" FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushWarningText}"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- 3. Tarjeta de Entradas Recientes en el Turno -->
+                <Border Style="{StaticResource ModernCard}" Padding="18">
+                    <StackPanel>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Últimos Vehículos Ingresados" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                            <Border Grid.Column="1" Background="#F1F5F9" CornerRadius="6" Padding="6,2">
+                                <TextBlock Text="Turno Activo" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                            </Border>
+                        </Grid>
+
+                        <!-- ItemsControl de Entradas Recientes -->
+                        <ItemsControl ItemsSource="{Binding RecentEntries}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#F8FAFC" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="0,0,0,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <Border Grid.Column="0" Width="26" Height="26" CornerRadius="6" Background="{DynamicResource BrushPrimary}" Margin="0,0,8,0" VerticalAlignment="Center">
+                                                <Path Data="{Binding VehicleType, Converter={StaticResource VehicleIconConv}}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding PlateNumber}" FontFamily="{StaticResource FontFamilyMonospace}" FontSize="13" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                <TextBlock Text="{Binding VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="10" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                <TextBlock Text="{Binding EntryTime, StringFormat='{}{0:HH:mm:ss}'}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Right"/>
+                                                <TextBlock Text="{Binding TicketNumber}" FontSize="9" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Right"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 </UserControl>
