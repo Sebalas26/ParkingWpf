@@ -22,6 +22,9 @@ public partial class CheckOutViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly IDbConnectionManager _connectionManager;
     private readonly DispatcherTimer _liveCalculationTimer;
+    private DateTime _ticketSelectionTimeUtc;
+    private DateTime _frozenExitTimeUtc;
+    private bool _isPaymentTimeoutDialogShowing;
 
     [ObservableProperty]
     private string _searchQuery = string.Empty;
@@ -34,6 +37,9 @@ public partial class CheckOutViewModel : ViewModelBase
 
     [ObservableProperty]
     private decimal _grossFee;
+
+    [ObservableProperty]
+    private decimal _minuteRate;
 
     [ObservableProperty]
     private decimal _discountAmount;
@@ -357,6 +363,15 @@ public partial class CheckOutViewModel : ViewModelBase
     {
         if (value != null)
         {
+            _ticketSelectionTimeUtc = DateTime.UtcNow;
+            _frozenExitTimeUtc = _ticketSelectionTimeUtc;
+            _isPaymentTimeoutDialogShowing = false;
+
+            var rateInfo = _pricingCalculator.GetRate(value.VehicleType);
+            MinuteRate = rateInfo != null && rateInfo.MinuteRate > 0
+                ? rateInfo.MinuteRate
+                : (rateInfo != null && rateInfo.HourRate > 0 ? Math.Round(rateInfo.HourRate / 60m, 2) : 0m);
+
             IsMonthlyTicket = value.HourlyRate == 0m || (value.Notes?.Contains("Mensualidad", StringComparison.OrdinalIgnoreCase) ?? false);
             if (!IsMonthlyTicket)
             {
@@ -379,6 +394,10 @@ public partial class CheckOutViewModel : ViewModelBase
         else
         {
             _liveCalculationTimer.Stop();
+            _isPaymentTimeoutDialogShowing = false;
+            _ticketSelectionTimeUtc = default;
+            _frozenExitTimeUtc = default;
+            MinuteRate = 0m;
             IsMonthlyTicket = false;
             GrossFee = 0m;
             DiscountAmount = 0m;
@@ -400,10 +419,22 @@ public partial class CheckOutViewModel : ViewModelBase
 
     private void RecalculateLiveFee()
     {
-        if (SelectedTicket == null) return;
+        if (SelectedTicket == null || _ticketSelectionTimeUtc == default) return;
 
-        var now = DateTime.UtcNow;
-        var duration = now - SelectedTicket.EntryTimeUtc;
+        var nowUtc = DateTime.UtcNow;
+
+        // Si transcurrieron 5 minutos (300 segundos) desde que se escaneó/seleccionó el tiquete sin cobrar
+        if ((nowUtc - _ticketSelectionTimeUtc).TotalSeconds >= 300 && !_isPaymentTimeoutDialogShowing)
+        {
+            _isPaymentTimeoutDialogShowing = true;
+            _ = HandlePaymentTimeoutAsync();
+            return;
+        }
+
+        var feeCalculationTime = _frozenExitTimeUtc;
+        var duration = feeCalculationTime - SelectedTicket.EntryTimeUtc;
+        if (duration.TotalSeconds < 0) duration = TimeSpan.Zero;
+
         if (duration.TotalDays >= 1)
         {
             ElapsedTimeString = $"{(int)duration.TotalDays}d {duration.Hours}h {duration.Minutes}min {duration.Seconds}seg";
@@ -427,7 +458,7 @@ public partial class CheckOutViewModel : ViewModelBase
             return;
         }
 
-        GrossFee = _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, now);
+        GrossFee = _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, feeCalculationTime);
 
         if (HasAgreementDiscount && SelectedAgreement != null)
         {
@@ -446,6 +477,39 @@ public partial class CheckOutViewModel : ViewModelBase
         }
     }
 
+    private async Task HandlePaymentTimeoutAsync()
+    {
+        _liveCalculationTimer.Stop();
+
+        if (SelectedTicket == null || _ticketSelectionTimeUtc == default)
+        {
+            _isPaymentTimeoutDialogShowing = false;
+            return;
+        }
+
+        await _dialogService.ShowAlertAsync(
+            "Tiempo Máximo Superado",
+            "Se ha superado el tiempo máximo de pago, refresque la pantalla.",
+            DialogNotificationType.Warning);
+
+        if (SelectedTicket == null || _ticketSelectionTimeUtc == default)
+        {
+            _isPaymentTimeoutDialogShowing = false;
+            return;
+        }
+
+        // Al hacer clic en Aceptar, refrescar tiempo y cobro sumando los 5+ minutos que transcurrieron
+        var nowUtc = DateTime.UtcNow;
+        _ticketSelectionTimeUtc = nowUtc;
+        _frozenExitTimeUtc = nowUtc;
+        _isPaymentTimeoutDialogShowing = false;
+
+        RecalculateLiveFee();
+        AmountTendered = CalculatedFee;
+
+        _liveCalculationTimer.Start();
+    }
+
     [RelayCommand]
     private async Task SearchTicketAsync()
     {
@@ -458,6 +522,9 @@ public partial class CheckOutViewModel : ViewModelBase
         if (ticket != null)
         {
             SelectedTicket = ticket;
+            SearchQuery = string.Empty;
+            HasFeedback = false;
+            FeedbackMessage = null;
         }
         else
         {
@@ -471,7 +538,7 @@ public partial class CheckOutViewModel : ViewModelBase
     private void SelectActiveVehicle(ParkingTicket ticket)
     {
         SelectedTicket = ticket;
-        SearchQuery = ticket.PlateNumber;
+        SearchQuery = string.Empty;
         HasFeedback = false;
         FeedbackMessage = null;
     }
@@ -575,7 +642,8 @@ public partial class CheckOutViewModel : ViewModelBase
                 HasAgreementDiscount ? CustomerPurchaseAmount : null,
                 discount,
                 SelectedPaymentMethodEntity?.Id,
-                IsMonthlyTicket ? "Salida Abonado / Mensualidad" : ExitNotes);
+                IsMonthlyTicket ? "Salida Abonado / Mensualidad" : ExitNotes,
+                _frozenExitTimeUtc);
 
             if (completedTicket != null)
             {
@@ -629,6 +697,9 @@ public partial class CheckOutViewModel : ViewModelBase
             BusyMessage = null;
         }
     }
+
+    [RelayCommand]
+    private void CancelSelection() => ClearSelection();
 
     [RelayCommand]
     private void ClearSelection()

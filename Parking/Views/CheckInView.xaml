@@ -267,7 +267,8 @@
                             </Grid>
 
                             <!-- Input Masivo de Placa -->
-                            <TextBox Text="{Binding PlateNumber, UpdateSourceTrigger=PropertyChanged}"
+                            <TextBox x:Name="PlateTextBox"
+                                     Text="{Binding PlateNumber, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource PlateInputTextBox}"
                                      Height="84"
                                      FontSize="44"

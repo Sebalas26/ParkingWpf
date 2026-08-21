@@ -85,7 +85,8 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBox Grid.Column="0"
+                    <TextBox x:Name="SearchTextBox"
+                             Grid.Column="0"
                              Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource CheckoutSearchTextBox}"
                              Margin="0,0,8,0"/>
@@ -217,9 +218,15 @@
                 Padding="24">
             <Grid>
                 <!-- Cuando hay un tiquete seleccionado -->
-                <ScrollViewer VerticalScrollBarVisibility="Auto"
-                              Visibility="{Binding SelectedTicket, Converter={StaticResource NullToVis}}">
-                    <StackPanel>
+                <Grid Visibility="{Binding SelectedTicket, Converter={StaticResource NullToVis}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Detalle desplazable -->
+                    <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                        <StackPanel Margin="0,0,4,0">
                         <!-- Header con Placa Seleccionada -->
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
@@ -324,8 +331,8 @@
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2" HorizontalAlignment="Right">
-                                    <TextBlock Text="SUBTOTAL BRUTO" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Right"/>
-                                    <TextBlock Text="{Binding GrossFee, Converter={StaticResource CurrencyConv}}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,4,0,0" HorizontalAlignment="Right"/>
+                                    <TextBlock Text="VALOR MINUTO" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Right"/>
+                                    <TextBlock Text="{Binding MinuteRate, Converter={StaticResource CurrencyConv}, StringFormat='{}{0} / min'}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,4,0,0" HorizontalAlignment="Right"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -524,20 +531,27 @@
                                  Height="44"
                                  TextWrapping="Wrap"
                                  Style="{StaticResource ModernTextBox}"
-                                 Margin="0,0,0,18"/>
-
-                        <!-- Botón de Pago Principal -->
-                        <Button Command="{Binding ProcessPaymentCommand}"
-                                Style="{StaticResource ModernButton}"
-                                Height="48"
-                                FontSize="14">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,10,0"/>
-                                <TextBlock Text="Cobrar y Registrar Salida" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}"/>
-                            </StackPanel>
-                        </Button>
+                                 Margin="0,0,0,12"/>
                     </StackPanel>
                 </ScrollViewer>
+
+                <!-- Pie de Página Estático con Botón de Pago Principal -->
+                <Border Grid.Row="1"
+                        BorderBrush="{DynamicResource BrushBorderSubtle}"
+                        BorderThickness="0,1,0,0"
+                        Padding="0,12,0,0"
+                        Background="{DynamicResource BrushSurfaceBackground}">
+                    <Button Command="{Binding ProcessPaymentCommand}"
+                            Style="{StaticResource ModernButton}"
+                            Height="48"
+                            FontSize="14">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,10,0"/>
+                            <TextBlock Text="Cobrar y Registrar Salida" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}"/>
+                        </StackPanel>
+                    </Button>
+                </Border>
+            </Grid>
 
                 <!-- Estado Vacío cuando no hay tiquete seleccionado -->
                 <Grid VerticalAlignment="Center" HorizontalAlignment="Center">

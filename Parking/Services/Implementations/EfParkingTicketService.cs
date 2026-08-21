@@ -125,7 +125,8 @@ public class EfParkingTicketService : IParkingTicketService
         decimal? purchaseAmount,
         decimal discountAmount,
         int? paymentMethodId = null,
-        string? exitNotes = null)
+        string? exitNotes = null,
+        DateTime? customExitTimeUtc = null)
     {
         using var db = _connectionManager.CreateDbContext();
         var ticket = await db.ParkingTickets.FindAsync(ticketId);
@@ -134,7 +135,7 @@ public class EfParkingTicketService : IParkingTicketService
             return null;
         }
 
-        var exitTime = DateTime.UtcNow;
+        var exitTime = customExitTimeUtc ?? DateTime.UtcNow;
         var gross = _pricingCalculator.CalculateFee(ticket.VehicleType, ticket.EntryTimeUtc, exitTime);
         var net = Math.Max(0m, gross - discountAmount);
 

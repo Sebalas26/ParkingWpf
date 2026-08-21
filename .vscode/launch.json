@@ -1,0 +1,33 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": ".NET Core Launch (WPF DLL)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/Parking/bin/Debug/net10.0-windows/Parking.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/Parking",
+            "console": "integratedTerminal",
+            "stopAtEntry": false,
+            "justMyCode": true
+        },
+        {
+            "name": ".NET Core Launch (WPF EXE)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/Parking/bin/Debug/net10.0-windows/Parking.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/Parking",
+            "console": "integratedTerminal",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Adjuntar al proceso (.NET Core)",
+            "type": "coreclr",
+            "request": "attach"
+        }
+    ]
+}
