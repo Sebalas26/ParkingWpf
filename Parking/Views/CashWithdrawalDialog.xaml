@@ -1,0 +1,163 @@
+<Window x:Class="Parking.Views.CashWithdrawalDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Registrar Retiro Parcial de Caja"
+        Width="490"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        KeyDown="Window_KeyDown">
+
+    <Border Margin="16"
+            Background="{DynamicResource BrushSurfaceBackground}"
+            BorderBrush="{DynamicResource BrushBorderMedium}"
+            BorderThickness="1"
+            CornerRadius="16"
+            Padding="24"
+            SnapsToDevicePixels="True">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.18" Color="#0B3C49"/>
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 1. Header -->
+            <Grid Grid.Row="0" Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        Width="44"
+                        Height="44"
+                        CornerRadius="22"
+                        Background="{DynamicResource BrushWarningBg}"
+                        Margin="0,0,14,0"
+                        VerticalAlignment="Center">
+                    <Path Data="{StaticResource IconCash}"
+                          Fill="{DynamicResource BrushWarning}"
+                          Width="20"
+                          Height="20"
+                          Stretch="Uniform"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"/>
+                </Border>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Registrar Retiro / Recogida de Caja"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                    <TextBlock Text="Descargue parcial de efectivo de la gaveta de cobro"
+                               FontSize="11"
+                               Foreground="{DynamicResource BrushTextMuted}"
+                               Margin="0,2,0,0"/>
+                </StackPanel>
+
+                <Button Grid.Column="2"
+                        Click="CancelButton_Click"
+                        Style="{StaticResource SecondaryButton}"
+                        Padding="4"
+                        Width="28"
+                        Height="28"
+                        VerticalAlignment="Top"
+                        ToolTip="Cancelar (Esc)">
+                    <Path Data="{StaticResource IconClose}" Fill="{DynamicResource BrushTextSecondary}" Width="10" Height="10" Stretch="Uniform"/>
+                </Button>
+            </Grid>
+
+            <!-- 2. Form Inputs -->
+            <StackPanel Grid.Row="1" Margin="0,0,0,16">
+                <!-- Amount input -->
+                <TextBlock Text="MONTO A RETIRAR ($) *"
+                           FontSize="10"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource BrushTextMuted}"
+                           Margin="0,0,0,4"/>
+                <TextBox x:Name="AmountTextBox"
+                         Style="{StaticResource ModernTextBox}"
+                         Height="42"
+                         FontSize="16"
+                         FontWeight="Bold"
+                         Margin="0,0,0,12"/>
+
+                <!-- Reason input -->
+                <TextBlock Text="MOTIVO / CONCEPTO DEL RETIRO *"
+                           FontSize="10"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource BrushTextMuted}"
+                           Margin="0,0,0,4"/>
+                <TextBox x:Name="ReasonTextBox"
+                         Style="{StaticResource ModernTextBox}"
+                         Height="38"
+                         FontSize="12"
+                         Tag="Ej: Consignación bancaria, pago a proveedor, caja fuerte..."
+                         Margin="0,0,0,12"/>
+
+                <!-- Admin auth password -->
+                <TextBlock Text="CLAVE DE AUTORIZACIÓN (ADMINISTRADOR) *"
+                           FontSize="10"
+                           FontWeight="Bold"
+                           Foreground="{DynamicResource BrushTextMuted}"
+                           Margin="0,0,0,4"/>
+                <PasswordBox x:Name="AdminPasswordBox"
+                             Style="{StaticResource ModernPasswordBox}"
+                             Height="40"
+                             PasswordChar="●"
+                             Margin="0,0,0,4"/>
+                <TextBlock Text="Requiere autorización de un administrador para descontar de gaveta."
+                           FontSize="10"
+                           Foreground="{DynamicResource BrushTextSecondary}"/>
+
+                <!-- Error banner -->
+                <Border x:Name="ErrorBannerBorder"
+                        Background="{DynamicResource BrushDangerBg}"
+                        CornerRadius="8"
+                        Padding="12,8"
+                        Margin="0,10,0,0"
+                        Visibility="Collapsed">
+                    <TextBlock x:Name="ErrorMessageTextBlock"
+                               Text="Error en validación."
+                               Foreground="{DynamicResource BrushDanger}"
+                               FontSize="11"
+                               FontWeight="Bold"
+                               TextWrapping="Wrap"/>
+                </Border>
+            </StackPanel>
+
+            <!-- 3. Actions -->
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Cancelar"
+                        Click="CancelButton_Click"
+                        Style="{StaticResource SecondaryButton}"
+                        Padding="18,9"
+                        Margin="0,0,10,0"
+                        IsCancel="True"/>
+
+                <Button x:Name="ConfirmButton"
+                        Content="Confirmar Retiro de Caja"
+                        Click="ConfirmButton_Click"
+                        Style="{StaticResource ModernButton}"
+                        Padding="22,9"
+                        IsDefault="True"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

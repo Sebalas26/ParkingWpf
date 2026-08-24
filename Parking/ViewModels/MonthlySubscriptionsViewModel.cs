@@ -5,11 +5,13 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Parking.Core.Enums;
+using Parking.Core.Security;
 using Parking.Entities;
 using Parking.Services.Contracts;
 
 namespace Parking.ViewModels;
 
+[RequirePermission("subscriptions.view", "Mensualidades y Abonados")]
 public partial class MonthlySubscriptionsViewModel : ViewModelBase
 {
     private readonly IMonthlySubscriptionService _subscriptionService;

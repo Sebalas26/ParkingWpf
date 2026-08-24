@@ -272,39 +272,67 @@
                                 </Grid>
                             </Border>
 
-                            <!-- Usuario Receptor de la Entrega de Turno -->
-                            <TextBlock Text="OPERADOR RECEPTOR DE LA ENTREGA *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6"/>
-                            <ComboBox ItemsSource="{Binding AvailableUsers}"
-                                      SelectedItem="{Binding SelectedHandoverUser}"
-                                      DisplayMemberPath="FullName"
-                                      Height="42"
-                                      Style="{StaticResource ModernComboBox}"
-                                      Margin="0,0,0,12"/>
+                            <!-- Aviso informativo si NO hay otros operadores registrados -->
+                            <Border Visibility="{Binding HasAvailableHandoverUsers, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                                    Background="{DynamicResource BrushWarningBg}"
+                                    BorderBrush="{DynamicResource BrushWarning}"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="10,8"
+                                    Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="ℹ️ Sin otros operadores para relevo" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushWarningText}"/>
+                                    <TextBlock Text="No hay más operadores en el sistema. Utiliza 'Cerrar Turno (Fin de Jornada)' para finalizar."
+                                               FontSize="10" Foreground="{DynamicResource BrushTextPrimary}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Usuario Receptor de la Entrega de Turno (Solo visible si hay otros operadores) -->
+                            <StackPanel Visibility="{Binding HasAvailableHandoverUsers, Converter={StaticResource BoolToVis}}" Margin="0,0,0,12">
+                                <TextBlock Text="OPERADOR RECEPTOR DEL RELEVO *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6"/>
+                                <ComboBox ItemsSource="{Binding AvailableUsers}"
+                                          SelectedItem="{Binding SelectedHandoverUser}"
+                                          DisplayMemberPath="FullName"
+                                          Height="40"
+                                          Style="{StaticResource ModernComboBox}"/>
+                            </StackPanel>
 
                             <!-- Notes -->
-                            <TextBlock Text="Observaciones / Novedades de Turno" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,6"/>
+                            <TextBlock Text="Observaciones / Novedades de Cierre" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,6"/>
                             <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
-                                     Height="50"
+                                     Height="45"
                                      TextWrapping="Wrap"
                                      AcceptsReturn="True"
                                      Style="{StaticResource ModernTextBox}"
                                      Margin="0,0,0,16"/>
 
-                            <!-- Submit Action Button -->
-                            <Button Command="{Binding CloseShiftCommand}"
+                            <!-- Botón 1: Cerrar Turno Definitivo (Fin de Jornada / Sin Relevo) -->
+                            <Button Command="{Binding CloseShiftDirectCommand}"
                                     Style="{StaticResource ModernButton}"
                                     Height="42"
+                                    Margin="0,0,0,8"
                                     IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}">
                                 <Button.ContentTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="🔐 Confirmar Entrega de Turno y Relevo" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold"/>
+                                        <TextBlock Text="🔒 Cerrar Turno (Fin de Jornada)" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold"/>
                                     </DataTemplate>
                                 </Button.ContentTemplate>
+                            </Button>
+
+                            <!-- Botón 2: Entregar Turno y Relevar Operador en Caliente -->
+                            <Button Command="{Binding HandoverShiftCommand}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Height="40"
+                                    IsEnabled="{Binding HasAvailableHandoverUsers}">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <TextBlock Text="🤝" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Entregar Turno y Relevar Operador" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                </StackPanel>
                             </Button>
                         </StackPanel>
                     </Border>
 
-                    <!-- Mode B: No Active Shift (Apertura de Turno Prompt) -->
+                    <!-- Mode B: No Active Shift (Apertura de Turno Prompt con Custodia de Turno Anterior) -->
                     <Border Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
                             Background="{DynamicResource BrushCardBackground}"
                             BorderBrush="{DynamicResource BrushBorderMedium}"
@@ -313,12 +341,40 @@
                             Padding="20">
                         <StackPanel>
                             <TextBlock Text="Apertura de Turno Operativo" Style="{StaticResource TextHeaderMedium}" Margin="0,0,0,4"/>
-                            <TextBlock Text="Actualmente no hay turno activo. Establezca la base de caja para iniciar." Style="{StaticResource TextBodySecondary}" Margin="0,0,0,16"/>
+                            <TextBlock Text="Actualmente no hay turno activo. Verifique el saldo de caja e inicie la jornada." Style="{StaticResource TextBodySecondary}" Margin="0,0,0,14"/>
+
+                            <!-- Tarjeta Informativa de Custodia de Turno Anterior -->
+                            <Border Visibility="{Binding HasLastClosedShift, Converter={StaticResource BoolToVis}}"
+                                    Background="{DynamicResource BrushInputBackground}"
+                                    BorderBrush="{DynamicResource BrushPrimary}"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="14,12"
+                                    Margin="0,0,0,14">
+                                <StackPanel>
+                                    <Grid Margin="0,0,0,4">
+                                        <TextBlock Text="💵 CUSTODIA DEL TURNO ANTERIOR" FontSize="11" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}"/>
+                                        <TextBlock HorizontalAlignment="Right"
+                                                   Text="{Binding LastClosedShift.ActualCashCounted, Converter={StaticResource CurrencyConv}}"
+                                                   FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushSuccess}"/>
+                                    </Grid>
+                                    <TextBlock FontSize="11" Foreground="{DynamicResource BrushTextSecondary}">
+                                        <Run Text="Dejado por: " FontWeight="SemiBold"/>
+                                        <Run Text="{Binding LastClosedShift.OperatorName}" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                    </TextBlock>
+                                    <TextBlock FontSize="10" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0">
+                                        <Run Text="Fecha de Cierre: "/>
+                                        <Run Text="{Binding LastClosedShift.EndTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"/>
+                                    </TextBlock>
+                                    <TextBlock Text="ℹ️ Se ha sugerido este monto como base inicial. Confirme físicamente el dinero en gaveta."
+                                               FontSize="10" Foreground="{DynamicResource BrushPrimary}" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </Border>
 
                             <TextBlock Text="Operador Responsable" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding OperatorName, Mode=OneWay}" IsReadOnly="True" Style="{StaticResource ModernTextBox}" Margin="0,0,0,12"/>
 
-                            <TextBlock Text="Monto Base Inicial de Caja ($)" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Monto Base Inicial de Caja ($) *" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding NewShiftBaseAmount, UpdateSourceTrigger=PropertyChanged, StringFormat='N0'}"
                                      FontSize="15"
                                      FontWeight="Bold"
@@ -337,7 +393,7 @@
                                     Height="42">
                                 <Button.ContentTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="Abrir Turno e Iniciar Operación" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold"/>
+                                        <TextBlock Text="🚀 Abrir Turno e Iniciar Operación" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold"/>
                                     </DataTemplate>
                                 </Button.ContentTemplate>
                             </Button>

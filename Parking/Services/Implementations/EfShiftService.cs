@@ -333,4 +333,14 @@ public class EfShiftService : IShiftService
 
         return await query.OrderByDescending(s => s.StartTimeUtc).ToListAsync();
     }
+
+    public async Task<WorkShift?> GetLastClosedShiftAsync()
+    {
+        using var db = _connectionManager.CreateDbContext();
+        return await db.WorkShifts
+            .AsNoTracking()
+            .Where(s => s.Status == 1) // 1 = Closed
+            .OrderByDescending(s => s.EndTimeUtc ?? s.ClosedAtUtc ?? s.CreatedAtUtc)
+            .FirstOrDefaultAsync();
+    }
 }

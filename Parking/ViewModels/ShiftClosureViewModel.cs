@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.EntityFrameworkCore;
 using Parking.Core.Enums;
+using Parking.Core.Security;
 using Parking.Data.Factories;
 using Parking.Entities;
 using Parking.Models.ApiModels;
@@ -15,6 +16,7 @@ using Parking.Views;
 
 namespace Parking.ViewModels;
 
+[RequirePermission("shift.view", "Control de Turno y Arqueo")]
 public partial class ShiftClosureViewModel : ViewModelBase
 {
     private readonly IShiftService _shiftService;
@@ -62,6 +64,15 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
     [ObservableProperty]
     private User? _selectedHandoverUser;
+
+    [ObservableProperty]
+    private bool _hasAvailableHandoverUsers;
+
+    [ObservableProperty]
+    private WorkShift? _lastClosedShift;
+
+    [ObservableProperty]
+    private bool _hasLastClosedShift;
 
     [ObservableProperty]
     private IReadOnlyList<CashWithdrawal> _currentShiftWithdrawals = new List<CashWithdrawal>();
@@ -167,8 +178,11 @@ public partial class ShiftClosureViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Modalidad 1: Cierre Definitivo de Turno (Fin de Jornada / Sin Relevo Inmediato)
+    /// </summary>
     [RelayCommand]
-    private async Task CloseShiftAsync()
+    private async Task CloseShiftDirectAsync()
     {
         HasFeedback = false;
         if (!_shiftService.HasActiveShift && !HasActiveShift)
@@ -179,11 +193,73 @@ public partial class ShiftClosureViewModel : ViewModelBase
             return;
         }
 
-        if (SelectedHandoverUser == null)
+        var confirmed = await _dialogService.ShowConfirmationAsync(
+            "Confirmar Cierre de Turno y Fin de Jornada",
+            $"¿Deseas cerrar el turno definitivamente y finalizar la jornada?\n\n" +
+            $"• Efectivo Contado en Gaveta: ${ActualCashCounted:N0}\n" +
+            $"• Efectivo Esperado: ${Summary.ExpectedCash:N0}\n" +
+            $"• Diferencia de Arqueo: ${CashDifference:N0}\n\n" +
+            $"El sistema quedará en estado cerrado hasta la próxima apertura.",
+            DialogNotificationType.Question,
+            "Cerrar Turno",
+            "Cancelar");
+
+        if (!confirmed) return;
+
+        IsBusy = true;
+        BusyMessage = "Cerrando turno operativo y generando comprobante de arqueo...";
+
+        try
+        {
+            var closedShift = await _shiftService.CloseShiftAsync(ActualCashCounted, Notes, null, null);
+
+            await _dialogService.ShowAlertAsync(
+                "Turno Cerrado con Éxito",
+                $"El turno ha sido cerrado formalmente.\n\n" +
+                $"• Total Arqueo en Gaveta: ${ActualCashCounted:N0}\n" +
+                $"• Total Tiquetes Liquidados: {Summary.TotalTicketsProcessed}\n\n" +
+                $"La caja ha finalizado su jornada.",
+                DialogNotificationType.Success);
+
+            ActualCashCounted = 0m;
+            Notes = null;
+            await LoadShiftDataAsync();
+        }
+        catch (Exception ex)
         {
             HasFeedback = true;
             IsSuccessFeedback = false;
-            FeedbackMessage = "Debe seleccionar el operador receptor al que se le realiza la entrega de turno.";
+            FeedbackMessage = $"Error al cerrar turno: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+            BusyMessage = null;
+        }
+    }
+
+    /// <summary>
+    /// Modalidad 2: Entrega de Turno y Relevo en Caliente a Otro Operador
+    /// </summary>
+    [RelayCommand]
+    private async Task HandoverShiftAsync()
+    {
+        HasFeedback = false;
+        if (!_shiftService.HasActiveShift && !HasActiveShift)
+        {
+            HasFeedback = true;
+            IsSuccessFeedback = false;
+            FeedbackMessage = "No hay ningún turno activo para cerrar.";
+            return;
+        }
+
+        if (!HasAvailableHandoverUsers || SelectedHandoverUser == null)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Sin Operadores para Relevo",
+                "No existen otros operadores registrados en el sistema para realizar el relevo de turno.\n\n" +
+                "Utilice la opción de 'Cerrar Turno (Fin de Jornada)' o registre nuevos usuarios operadores en el módulo de seguridad.",
+                DialogNotificationType.Warning);
             return;
         }
 
@@ -272,26 +348,24 @@ public partial class ShiftClosureViewModel : ViewModelBase
             else
             {
                 CurrentShiftWithdrawals = new List<CashWithdrawal>();
+                LastClosedShift = await _shiftService.GetLastClosedShiftAsync();
+                HasLastClosedShift = LastClosedShift != null;
+                if (HasLastClosedShift)
+                {
+                    NewShiftBaseAmount = LastClosedShift!.ActualCashCounted;
+                }
             }
 
-            // Cargar usuarios para entrega de turno
+            // Cargar usuarios reales para entrega de turno (sin auto-seeding mock)
             using var db = _connectionManager.CreateDbContext();
             var currentUserId = _authService.CurrentUser?.UserId;
             var currentUsername = _authService.CurrentUser?.Username?.ToLower();
 
             var users = await db.Users
-                .Where(u => u.IsActive && u.FullName != "Alexander Wright" && u.FullName != "Elena Vance")
+                .AsNoTracking()
+                .Where(u => u.IsActive)
                 .OrderBy(u => u.FullName)
                 .ToListAsync();
-
-            if (users.Count == 0)
-            {
-                await _connectionManager.InitializeDatabaseAsync();
-                users = await db.Users
-                    .Where(u => u.IsActive && u.FullName != "Alexander Wright" && u.FullName != "Elena Vance")
-                    .OrderBy(u => u.FullName)
-                    .ToListAsync();
-            }
 
             AvailableUsers.Clear();
             foreach (var u in users)
@@ -304,6 +378,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 AvailableUsers.Add(u);
             }
 
+            HasAvailableHandoverUsers = AvailableUsers.Count > 0;
             SelectedHandoverUser = AvailableUsers.FirstOrDefault();
 
             ShiftHistory = await _shiftService.GetShiftHistoryAsync(DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);

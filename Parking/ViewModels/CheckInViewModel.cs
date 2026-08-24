@@ -5,12 +5,14 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Parking.Core.Enums;
+using Parking.Core.Security;
 using Parking.Entities;
 using Parking.Models;
 using Parking.Services.Contracts;
 
 namespace Parking.ViewModels;
 
+[RequirePermission("checkin.view", "Ingreso de Vehículos")]
 public partial class CheckInViewModel : ViewModelBase
 {
     private readonly IParkingTicketService _ticketService;
@@ -34,7 +36,7 @@ public partial class CheckInViewModel : ViewModelBase
     private string? _notes;
 
     [ObservableProperty]
-    private VehicleRate _currentRate = new();
+    private VehicleRate? _currentRate;
 
     [ObservableProperty]
     private IReadOnlyList<VehicleRate> _availableRates = new List<VehicleRate>();
@@ -62,6 +64,9 @@ public partial class CheckInViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isVirtualKeyboardVisible;
+
+    [ObservableProperty]
+    private bool _hasConfiguredRates;
 
     public CheckInViewModel(
         IParkingTicketService ticketService,
@@ -93,7 +98,16 @@ public partial class CheckInViewModel : ViewModelBase
     public override async Task InitializeAsync()
     {
         AvailableRates = await _pricingCalculator.GetAllRatesAsync();
-        UpdateCurrentRate();
+        HasConfiguredRates = AvailableRates.Count > 0;
+        if (HasConfiguredRates)
+        {
+            SelectedVehicleType = AvailableRates[0].VehicleType;
+            UpdateCurrentRate();
+        }
+        else
+        {
+            CurrentRate = null;
+        }
         await RefreshRecentEntriesAndOccupancyAsync();
     }
 
@@ -211,6 +225,16 @@ public partial class CheckInViewModel : ViewModelBase
             await _dialogService.ShowAlertAsync(
                 "Apertura de Turno Requerida",
                 "Debes abrir un turno operativo e indicar la base inicial de caja antes de registrar ingresos.",
+                DialogNotificationType.Warning);
+            return;
+        }
+
+        if (!HasConfiguredRates)
+        {
+            ShowFeedback("No existen tarifas vehiculares configuradas en el sistema. Configure las tarifas antes de continuar.", false);
+            await _dialogService.ShowAlertAsync(
+                "Configuración de Tarifas Requerida",
+                "No existen tarifas vehiculares configuradas ni activas en el sistema. Por favor, crea y sincroniza las tarifas vehiculares antes de emitir tiquetes de ingreso.",
                 DialogNotificationType.Warning);
             return;
         }

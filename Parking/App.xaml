@@ -15,8 +15,13 @@
             <conv:CurrencyConverter x:Key="CurrencyConv"/>
             <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
             <conv:InverseBooleanConverter x:Key="InverseBoolConv"/>
+            <conv:NullToVisibilityConverter x:Key="NullToVis"/>
+            <conv:DurationConverter x:Key="DurationConv"/>
             <conv:VehicleTypeToStringConverter x:Key="VehicleTypeStrConv"/>
             <conv:VehicleTypeToIconConverter x:Key="VehicleIconConv"/>
+            <conv:VehicleTypeToBadgeColorConverter x:Key="VehicleBadgeColorConv"/>
+            <conv:TicketStatusToStringConverter x:Key="TicketStatusStrConv"/>
+            <conv:TicketStatusToColorConverter x:Key="TicketStatusColorConv"/>
             <conv:OccupancyToColorConverter x:Key="OccupancyColorConv"/>
             <conv:ConnectionStatusToColorConverter x:Key="ConnColorConv"/>
             <conv:EqualityToBooleanConverter x:Key="EqualityConv"/>

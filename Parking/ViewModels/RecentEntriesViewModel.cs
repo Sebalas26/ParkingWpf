@@ -4,11 +4,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Parking.Core.Security;
 using Parking.Entities;
 using Parking.Services.Contracts;
 
 namespace Parking.ViewModels;
 
+[RequirePermission("recent_entries.view", "Entradas del Turno / Patio")]
 public partial class RecentEntriesViewModel : ViewModelBase
 {
     private readonly IParkingTicketService _ticketService;

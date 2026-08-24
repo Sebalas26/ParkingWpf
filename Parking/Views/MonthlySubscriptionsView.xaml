@@ -161,22 +161,22 @@
                                  IsChecked="{Binding SelectedFilter, Converter={StaticResource EqualityConv}, ConverterParameter='Todos', Mode=OneWay}"
                                  Command="{Binding FilterByCommand}"
                                  CommandParameter="Todos"
-                                 Style="{StaticResource SegmentTabButton}"/>
+                                 Style="{StaticResource SegmentRadioButton}"/>
                     <RadioButton Content="Activos"
                                  IsChecked="{Binding SelectedFilter, Converter={StaticResource EqualityConv}, ConverterParameter='Activos', Mode=OneWay}"
                                  Command="{Binding FilterByCommand}"
                                  CommandParameter="Activos"
-                                 Style="{StaticResource SegmentTabButton}"/>
+                                 Style="{StaticResource SegmentRadioButton}"/>
                     <RadioButton Content="Por Vencer"
                                  IsChecked="{Binding SelectedFilter, Converter={StaticResource EqualityConv}, ConverterParameter='PorVencer', Mode=OneWay}"
                                  Command="{Binding FilterByCommand}"
                                  CommandParameter="PorVencer"
-                                 Style="{StaticResource SegmentTabButton}"/>
+                                 Style="{StaticResource SegmentRadioButton}"/>
                     <RadioButton Content="Vencidos"
                                  IsChecked="{Binding SelectedFilter, Converter={StaticResource EqualityConv}, ConverterParameter='Vencidos', Mode=OneWay}"
                                  Command="{Binding FilterByCommand}"
                                  CommandParameter="Vencidos"
-                                 Style="{StaticResource SegmentTabButton}"/>
+                                 Style="{StaticResource SegmentRadioButton}"/>
                 </StackPanel>
             </Grid>
         </Border>

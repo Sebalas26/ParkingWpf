@@ -20,10 +20,12 @@ public class SyncEngineService : ISyncEngineService
     private DateTime? _lastSyncTime;
 
     public event EventHandler<string>? SyncStatusChanged;
+    public event Action<int>? TotalCapacityChanged;
 
     public bool IsOnline => _isOnline;
     public int PendingItemsCount => _pendingItemsCount;
     public DateTime? LastSyncTime => _lastSyncTime;
+    public int ServerConfiguredCapacity { get; private set; } = 100;
 
     public string SyncStatusDescription => _isOnline
         ? (_lastSyncTime.HasValue ? $"API Central Online • Sincronizado ({_lastSyncTime.Value:HH:mm})" : "API Central Online • Sincronizado")
@@ -133,6 +135,12 @@ public class SyncEngineService : ISyncEngineService
             return result;
         }
 
+        if (bootstrap.TotalCapacity > 0)
+        {
+            ServerConfiguredCapacity = bootstrap.TotalCapacity;
+            TotalCapacityChanged?.Invoke(bootstrap.TotalCapacity);
+        }
+
         using var db = _dbManager.CreateDbContext();
 
         // 4. Paso 3: Sincronizar Usuarios (60%)
@@ -144,50 +152,76 @@ public class SyncEngineService : ISyncEngineService
             DetailMessage = $"Procesando {bootstrap.Users.Count} usuarios de MySQL..."
         });
 
-        var operatorRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "Operador" || r.Name == "Operator", ct);
+        // Asegurar la existencia de roles base en SQLite antes de insertar usuarios (evita FK constraint violation)
         var adminRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "Administrador" || r.Name == "Admin", ct);
-        var defaultOperatorRoleId = operatorRole?.RoleId ?? Guid.Parse("22222222-2222-2222-2222-222222222222");
-        var defaultAdminRoleId = adminRole?.RoleId ?? Guid.Parse("11111111-1111-1111-1111-111111111111");
+        if (adminRole == null)
+        {
+            adminRole = new Role
+            {
+                RoleId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
+                Name = "Administrador",
+                Description = "Control total y administración"
+            };
+            db.Roles.Add(adminRole);
+        }
+
+        var operatorRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "Operador" || r.Name == "Operator", ct);
+        if (operatorRole == null)
+        {
+            operatorRole = new Role
+            {
+                RoleId = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+                Name = "Operador",
+                Description = "Operación de caja y patio"
+            };
+            db.Roles.Add(operatorRole);
+        }
+        await db.SaveChangesAsync(ct);
 
         // Purgar mock users
         var mockUsers = await db.Users.Where(u => u.FullName == "Alexander Wright" || u.FullName == "Elena Vance" || u.Username == "alexander" || u.Username == "elena").ToListAsync(ct);
         if (mockUsers.Count > 0)
         {
             db.Users.RemoveRange(mockUsers);
+            await db.SaveChangesAsync(ct);
         }
 
         int usersCount = 0;
-        foreach (var apiUser in bootstrap.Users)
+        if (bootstrap.Users != null)
         {
-            var targetRoleId = apiUser.UserRoleId == 1 ? defaultAdminRoleId : defaultOperatorRoleId;
-            var fullName = !string.IsNullOrWhiteSpace(apiUser.FullName)
-                ? apiUser.FullName
-                : $"{apiUser.FirstName} {apiUser.FirstSurname}".Trim();
+            foreach (var apiUser in bootstrap.Users)
+            {
+                var targetRoleId = apiUser.UserRoleId == 1 ? adminRole.RoleId : operatorRole.RoleId;
+                var fullName = !string.IsNullOrWhiteSpace(apiUser.FullName)
+                    ? apiUser.FullName
+                    : $"{apiUser.FirstName} {apiUser.FirstSurname}".Trim();
 
-            var existing = await db.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == apiUser.Username.ToLower(), ct);
-            if (existing != null)
-            {
-                existing.FullName = fullName;
-                existing.Email = apiUser.Email;
-                existing.PasswordHash = apiUser.Password;
-                existing.RoleId = targetRoleId;
-                existing.IsActive = apiUser.IsActive;
-            }
-            else
-            {
-                db.Users.Add(new User
+                var existing = await db.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == apiUser.Username.ToLower(), ct);
+                if (existing != null)
                 {
-                    UserId = Guid.NewGuid(),
-                    Username = apiUser.Username,
-                    FullName = fullName,
-                    Email = apiUser.Email,
-                    PasswordHash = apiUser.Password,
-                    RoleId = targetRoleId,
-                    IsActive = apiUser.IsActive,
-                    CreatedAtUtc = DateTime.UtcNow
-                });
+                    existing.FullName = fullName;
+                    existing.Email = apiUser.Email;
+                    existing.PasswordHash = apiUser.Password;
+                    existing.RoleId = targetRoleId;
+                    existing.IsActive = apiUser.IsActive;
+                }
+                else
+                {
+                    db.Users.Add(new User
+                    {
+                        UserId = Guid.NewGuid(),
+                        Username = apiUser.Username,
+                        FullName = fullName,
+                        Email = apiUser.Email,
+                        PasswordHash = apiUser.Password,
+                        RoleId = targetRoleId,
+                        IsActive = apiUser.IsActive,
+                        CreatedAtUtc = DateTime.UtcNow
+                    });
+                }
+                usersCount++;
             }
-            usersCount++;
+            await db.SaveChangesAsync(ct);
         }
         result.SyncedUsersCount = usersCount;
         await Task.Delay(150, ct);
@@ -223,6 +257,7 @@ public class SyncEngineService : ISyncEngineService
                 }
                 ratesCount++;
             }
+            await db.SaveChangesAsync(ct);
         }
         result.SyncedRatesCount = ratesCount;
         await Task.Delay(150, ct);
@@ -253,6 +288,7 @@ public class SyncEngineService : ISyncEngineService
                     db.Stores.Add(store);
                 }
             }
+            await db.SaveChangesAsync(ct);
         }
 
         int agCount = 0;
@@ -277,6 +313,7 @@ public class SyncEngineService : ISyncEngineService
                 }
                 agCount++;
             }
+            await db.SaveChangesAsync(ct);
         }
         result.SyncedAgreementsCount = agCount;
         await Task.Delay(150, ct);
@@ -305,6 +342,7 @@ public class SyncEngineService : ISyncEngineService
                 existing.VehicleType = ticket.VehicleType;
                 existing.CustomerPhone = ticket.CustomerPhone;
                 existing.Notes = ticket.Notes;
+                existing.OperatorName = !string.IsNullOrWhiteSpace(ticket.OperatorName) ? ticket.OperatorName : "Operador General";
                 existing.EntryTimeUtc = ticket.EntryTimeUtc;
                 existing.ExitTimeUtc = ticket.ExitTimeUtc;
                 existing.TotalDurationMinutes = ticket.TotalDurationMinutes;
@@ -322,6 +360,7 @@ public class SyncEngineService : ISyncEngineService
             }
             else
             {
+                ticket.OperatorName = !string.IsNullOrWhiteSpace(ticket.OperatorName) ? ticket.OperatorName : "Operador General";
                 ticket.IsSynchronized = true;
                 db.ParkingTickets.Add(ticket);
             }
@@ -370,6 +409,12 @@ public class SyncEngineService : ISyncEngineService
             var bootstrap = await _apiClient.GetBootstrapAsync();
             if (bootstrap != null)
             {
+                if (bootstrap.TotalCapacity > 0)
+                {
+                    ServerConfiguredCapacity = bootstrap.TotalCapacity;
+                    TotalCapacityChanged?.Invoke(bootstrap.TotalCapacity);
+                }
+
                 var allIncomingTickets = new List<ParkingTicket>();
                 if (bootstrap.ActiveTickets != null) allIncomingTickets.AddRange(bootstrap.ActiveTickets);
                 if (bootstrap.RecentTickets != null) allIncomingTickets.AddRange(bootstrap.RecentTickets);

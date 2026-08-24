@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Parking.Core.Enums;
 using Parking.Data.Factories;
 using Parking.Entities;
@@ -18,7 +19,8 @@ public class EfParkingTicketService : IParkingTicketService
     private readonly IPricingCalculatorService _pricingCalculator;
     private readonly IApiClientService _apiClient;
     private readonly ISyncEngineService _syncEngine;
-    private int _totalCapacity = 120;
+    private readonly IConfiguration _configuration;
+    private int _totalCapacity = 0;
 
     public event EventHandler<ParkingTicket>? TicketRegistered;
     public event EventHandler<ParkingTicket>? TicketCompleted;
@@ -28,12 +30,20 @@ public class EfParkingTicketService : IParkingTicketService
         IDbConnectionManager connectionManager,
         IPricingCalculatorService pricingCalculator,
         IApiClientService apiClient,
-        ISyncEngineService syncEngine)
+        ISyncEngineService syncEngine,
+        IConfiguration configuration)
     {
         _connectionManager = connectionManager;
         _pricingCalculator = pricingCalculator;
         _apiClient = apiClient;
         _syncEngine = syncEngine;
+        _configuration = configuration;
+        _totalCapacity = int.TryParse(_configuration["ParkingSettings:TotalCapacity"], out var cap) ? cap : 0;
+
+        _syncEngine.TotalCapacityChanged += newCap =>
+        {
+            UpdateTotalCapacity(newCap);
+        };
     }
 
     public async Task<ParkingTicket> RegisterEntryAsync(string plateNumber, VehicleType vehicleType, string? phoneNumber, string? notes, string operatorName, decimal? customHourlyRate = null)
@@ -53,7 +63,7 @@ public class EfParkingTicketService : IParkingTicketService
         var todayCount = await db.ParkingTickets.CountAsync(t => t.EntryTimeUtc.Date == DateTime.UtcNow.Date) + 1;
         var ticketNumber = $"PKF-{DateTime.Now:yyyyMMdd}-{todayCount:D3}";
         var rate = _pricingCalculator.GetRate(vehicleType);
-        var hourlyRate = customHourlyRate ?? rate.HourRate;
+        var hourlyRate = customHourlyRate ?? (rate?.HourRate ?? 0m);
 
         var ticket = new ParkingTicket
         {

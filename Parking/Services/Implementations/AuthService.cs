@@ -51,6 +51,7 @@ public class AuthService : IAuthService
                     SessionToken = apiLogin.Token ?? Guid.NewGuid().ToString(),
                     LoginTime = DateTime.Now
                 };
+                UserSessionChanged?.Invoke(CurrentUser);
                 return true;
             }
         }

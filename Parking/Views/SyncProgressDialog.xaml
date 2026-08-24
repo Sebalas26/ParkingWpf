@@ -1,0 +1,190 @@
+<Window x:Class="Parking.Views.SyncProgressDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Sincronización con API Central"
+        Width="520"
+        SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType">
+
+    <Border Margin="16"
+            Background="{DynamicResource BrushSurfaceBackground}"
+            BorderBrush="{DynamicResource BrushBorderMedium}"
+            BorderThickness="1"
+            CornerRadius="16"
+            Padding="24"
+            SnapsToDevicePixels="True">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.18" Color="#0B3C49"/>
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- 1. Header Section -->
+            <Grid Grid.Row="0" Margin="0,0,0,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0"
+                        Width="44"
+                        Height="44"
+                        CornerRadius="22"
+                        Background="{DynamicResource BrushPrimaryLight}"
+                        Margin="0,0,14,0"
+                        VerticalAlignment="Center">
+                    <Path Data="{StaticResource IconSync}"
+                          Fill="{DynamicResource BrushPrimary}"
+                          Width="20"
+                          Height="20"
+                          Stretch="Uniform"
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"/>
+                </Border>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Sincronización con Servidor Central"
+                               FontSize="16"
+                               FontWeight="Bold"
+                               Foreground="{DynamicResource BrushTextPrimary}"/>
+                    <TextBlock Text="Transferencia bidireccional y actualización de catálogos"
+                               FontSize="11"
+                               Foreground="{DynamicResource BrushTextMuted}"
+                               Margin="0,2,0,0"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- 2. Main Progress Bar and Percentage -->
+            <Border Grid.Row="1"
+                    Background="{DynamicResource BrushAppBackground}"
+                    BorderBrush="{DynamicResource BrushBorderSubtle}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="16"
+                    Margin="0,0,0,14">
+                <StackPanel>
+                    <Grid Margin="0,0,0,8">
+                        <TextBlock x:Name="StepTitleTextBlock"
+                                   Text="Iniciando conexión con el API Central..."
+                                   FontSize="12"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <TextBlock x:Name="PercentageTextBlock"
+                                   Text="0%"
+                                   FontSize="14"
+                                   FontWeight="Black"
+                                   Foreground="{DynamicResource BrushPrimary}"
+                                   HorizontalAlignment="Right"/>
+                    </Grid>
+
+                    <!-- Progress Bar -->
+                    <ProgressBar x:Name="MainProgressBar"
+                                 Height="10"
+                                 Minimum="0"
+                                 Maximum="100"
+                                 Value="0"
+                                 Background="{DynamicResource BrushBorderMedium}"
+                                 Foreground="{DynamicResource BrushPrimary}"
+                                 Margin="0,0,0,10"/>
+
+                    <!-- Detail step message -->
+                    <TextBlock x:Name="DetailMessageTextBlock"
+                               Text="Preparando solicitud de enlace..."
+                               FontSize="11"
+                               Foreground="{DynamicResource BrushTextSecondary}"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 3. Summary Statistics Cards (Visible on completion) -->
+            <Border x:Name="SummaryPanel"
+                    Grid.Row="2"
+                    Background="{DynamicResource BrushSurfaceElevated}"
+                    BorderBrush="{DynamicResource BrushBorderSubtle}"
+                    BorderThickness="1"
+                    CornerRadius="12"
+                    Padding="14,10"
+                    Margin="0,0,0,16"
+                    Visibility="Collapsed">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                        <TextBlock Text="TIQUETES" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="TicketsCountText" Text="0" FontSize="16" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                        <TextBlock Text="TARIFAS" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="RatesCountText" Text="0" FontSize="16" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                        <TextBlock Text="CONVENIOS" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="AgreementsCountText" Text="0" FontSize="16" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="3" HorizontalAlignment="Center">
+                        <TextBlock Text="DESPACHADOS" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="DispatchedCountText" Text="0" FontSize="16" FontWeight="Black" Foreground="{DynamicResource BrushSuccess}" HorizontalAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- 4. Result Status Message Banner -->
+            <Border x:Name="ResultBannerBorder"
+                    Grid.Row="3"
+                    Background="{DynamicResource BrushSuccessBg}"
+                    CornerRadius="8"
+                    Padding="12,8"
+                    Margin="0,0,0,16"
+                    Visibility="Collapsed">
+                <TextBlock x:Name="ResultMessageTextBlock"
+                           Text="Sincronización completada exitosamente."
+                           Foreground="{DynamicResource BrushSuccessText}"
+                           FontSize="11"
+                           FontWeight="SemiBold"
+                           TextWrapping="Wrap"/>
+            </Border>
+
+            <!-- 5. Footer Buttons -->
+            <Grid Grid.Row="4">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Ellipse x:Name="StatusDot" Width="8" Height="8" Fill="{DynamicResource BrushWarning}" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="StatusBadgeText" Text="Sincronizando..." FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                </StackPanel>
+
+                <Button x:Name="ActionButton"
+                        Content="Cerrar"
+                        Click="ActionButton_Click"
+                        Style="{StaticResource ModernButton}"
+                        Padding="22,8"
+                        HorizontalAlignment="Right"
+                        IsEnabled="False"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

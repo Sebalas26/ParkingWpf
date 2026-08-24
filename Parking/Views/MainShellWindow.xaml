@@ -7,6 +7,7 @@
         xmlns:views="clr-namespace:Parking.Views"
         xmlns:conv="clr-namespace:Parking.Core.Converters"
         xmlns:enums="clr-namespace:Parking.Core.Enums"
+        xmlns:security="clr-namespace:Parking.Core.Security"
         mc:Ignorable="d"
         Title="ParkFlow - Terminal POS de Control de Acceso y Caja"
         Height="720"
@@ -90,6 +91,7 @@
                         <RadioButton Content="Ingreso de Vehículos"
                                      Command="{Binding NavigateToCheckInCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=CheckIn, Mode=OneWay}"
+                                     security:Authorize.Permission="checkin.view"
                                      Style="{StaticResource SidebarNavButton}"
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>
@@ -101,6 +103,7 @@
                         <RadioButton Content="Salida y Cobro / Caja"
                                      Command="{Binding NavigateToCheckOutCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=CheckOut, Mode=OneWay}"
+                                     security:Authorize.Permission="checkout.view"
                                      Style="{StaticResource SidebarNavButton}"
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>
@@ -112,6 +115,7 @@
                         <RadioButton Content="Mensualidades"
                                      Command="{Binding NavigateToMonthlySubscriptionsCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=MonthlySubscriptions, Mode=OneWay}"
+                                     security:Authorize.Permission="subscriptions.view"
                                      Style="{StaticResource SidebarNavButton}"
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>
@@ -123,6 +127,7 @@
                         <RadioButton Content="Entradas del Turno"
                                      Command="{Binding NavigateToRecentEntriesCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=RecentEntries, Mode=OneWay}"
+                                     security:Authorize.Permission="recent_entries.view"
                                      Style="{StaticResource SidebarNavButton}"
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>
@@ -134,6 +139,7 @@
                         <RadioButton Content="Panel Financiero"
                                      Command="{Binding NavigateToAnalyticsCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=Analytics, Mode=OneWay}"
+                                     security:Authorize.Permission="analytics.view"
                                      Style="{StaticResource SidebarNavButton}"
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>
@@ -145,6 +151,7 @@
                         <RadioButton Content="Entrega de Turno y Arqueo"
                                      Command="{Binding NavigateToShiftClosureCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=ShiftClosure, Mode=OneWay}"
+                                     security:Authorize.Permission="shift.view"
                                      Style="{StaticResource SidebarNavButton}"
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>

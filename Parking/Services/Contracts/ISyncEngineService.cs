@@ -29,10 +29,13 @@ public class SyncResultReport
 public interface ISyncEngineService
 {
     event EventHandler<string>? SyncStatusChanged;
+    event Action<int>? TotalCapacityChanged;
+
     bool IsOnline { get; }
     string SyncStatusDescription { get; }
     int PendingItemsCount { get; }
     DateTime? LastSyncTime { get; }
+    int ServerConfiguredCapacity { get; }
 
     Task<bool> PerformFullSyncAsync();
     Task<SyncResultReport> PerformFullSyncWithProgressAsync(IProgress<SyncProgressReport> progress, CancellationToken ct = default);
@@ -42,5 +45,3 @@ public interface ISyncEngineService
     Task ProcessPendingQueueAsync();
     Task ClearLocalTicketsMemoryAsync();
 }
-
-

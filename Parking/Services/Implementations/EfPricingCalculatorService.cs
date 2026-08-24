@@ -39,44 +39,30 @@ public class EfPricingCalculatorService : IPricingCalculatorService
             await ReloadRatesAsync();
         }
 
-        var standardOrder = new[] { VehicleType.Motorcycle, VehicleType.Car, VehicleType.Van, VehicleType.HeavyTruck };
-        var result = new List<VehicleRate>();
-
-        foreach (var vt in standardOrder)
-        {
-            var rate = GetRate(vt);
-            if (rate != null && rate.IsActive)
-            {
-                result.Add(rate);
-            }
-        }
-
-        return result;
+        return _ratesCache.Values
+            .Where(r => r.IsActive)
+            .OrderBy(r => r.VehicleType)
+            .ToList();
     }
 
-
-    public VehicleRate GetRate(VehicleType vehicleType)
+    public VehicleRate? GetRate(VehicleType vehicleType)
     {
         if (_ratesCache.TryGetValue(vehicleType, out var rate))
         {
             return rate;
         }
 
-        return new VehicleRate
-        {
-            VehicleType = vehicleType,
-            DisplayName = vehicleType.ToString(),
-            HourRate = 3000m,
-            MinuteRate = 50m,
-            FullDayRate = 25000m,
-            GracePeriodMinutes = 0,
-            IconKey = "IconCar"
-        };
+        return null;
     }
 
     public decimal CalculateFee(VehicleType vehicleType, DateTime entryTime, DateTime exitTime)
     {
         var rate = GetRate(vehicleType);
+        if (rate == null)
+        {
+            return 0m;
+        }
+
         var duration = exitTime - entryTime;
         if (duration.TotalSeconds < 0)
         {

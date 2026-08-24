@@ -5,12 +5,14 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Parking.Core.Enums;
+using Parking.Core.Security;
 using Parking.Entities;
 using Parking.Models;
 using Parking.Services.Contracts;
 
 namespace Parking.ViewModels;
 
+[RequirePermission("analytics.view", "Panel Financiero y Analítica")]
 public partial class AnalyticsViewModel : ViewModelBase
 {
     private readonly IAnalyticsService _analyticsService;
@@ -21,16 +23,16 @@ public partial class AnalyticsViewModel : ViewModelBase
     private FinancialSummary _summary = new();
 
     [ObservableProperty]
-    private int _totalCapacity = 120;
+    private int _totalCapacity;
 
     [ObservableProperty]
-    private int _occupiedSpaces = 0;
+    private int _occupiedSpaces;
 
     [ObservableProperty]
-    private int _availableSpaces = 120;
+    private int _availableSpaces;
 
     [ObservableProperty]
-    private double _occupancyPercentage = 0.0;
+    private double _occupancyPercentage;
 
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -111,7 +113,7 @@ public partial class AnalyticsViewModel : ViewModelBase
             Summary = await _analyticsService.GetDailySummaryAsync();
             var occupancyStats = await _ticketService.GetOccupancyStatsAsync();
 
-            TotalCapacity = occupancyStats.TotalCapacity > 0 ? occupancyStats.TotalCapacity : 120;
+            TotalCapacity = occupancyStats.TotalCapacity;
             OccupiedSpaces = occupancyStats.OccupiedSpots;
             AvailableSpaces = occupancyStats.AvailableSpots;
             OccupancyPercentage = occupancyStats.OccupancyPercentage;

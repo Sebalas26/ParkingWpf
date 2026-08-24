@@ -1,5 +1,8 @@
 using System;
+using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using Parking.Core.Enums;
+using Parking.Core.Security;
 using Parking.Services.Contracts;
 using Parking.ViewModels;
 
@@ -37,6 +40,26 @@ public class NavigationService : INavigationService
 
     public void NavigateTo(Type viewModelType)
     {
+        // 1. Validar permiso requerido mediante [RequirePermission]
+        var reqPermAttr = viewModelType.GetCustomAttribute<RequirePermissionAttribute>();
+        if (reqPermAttr != null)
+        {
+            var permissionService = _serviceProvider.GetService<IPermissionService>() ?? PermissionService.Current;
+            if (!permissionService.HasPermission(reqPermAttr.PermissionKey))
+            {
+                var dialogService = _serviceProvider.GetService<IDialogService>();
+                var moduleName = !string.IsNullOrWhiteSpace(reqPermAttr.DisplayModuleName) 
+                    ? reqPermAttr.DisplayModuleName 
+                    : "solicitado";
+                
+                _ = dialogService?.ShowAlertAsync(
+                    "Acceso Restringido",
+                    $"No tienes los permisos necesarios para acceder al módulo de '{moduleName}'. Consulta con el administrador del sistema.",
+                    DialogNotificationType.Warning);
+                return;
+            }
+        }
+
         if (_serviceProvider.GetRequiredService(viewModelType) is ViewModelBase viewModel)
         {
             CurrentViewModel = viewModel;

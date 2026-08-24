@@ -6,12 +6,14 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Parking.Core.Enums;
+using Parking.Core.Security;
 using Parking.Data.Factories;
 using Parking.Entities;
 using Parking.Services.Contracts;
 
 namespace Parking.ViewModels;
 
+[RequirePermission("checkout.view", "Salida y Cobro / Caja")]
 public partial class CheckOutViewModel : ViewModelBase
 {
     private readonly IParkingTicketService _ticketService;
