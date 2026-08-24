@@ -1,0 +1,339 @@
+<Window x:Class="Parking.Views.MainShellWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:Parking.ViewModels"
+        xmlns:views="clr-namespace:Parking.Views"
+        xmlns:conv="clr-namespace:Parking.Core.Converters"
+        xmlns:enums="clr-namespace:Parking.Core.Enums"
+        mc:Ignorable="d"
+        Title="ParkFlow - Terminal POS de Control de Acceso y Caja"
+        Height="720"
+        Width="1340"
+        MinHeight="660"
+        MinWidth="1100"
+        WindowState="Maximized"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BrushAppBackground}"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        RenderOptions.ClearTypeHint="Enabled"
+        RenderOptions.BitmapScalingMode="HighQuality">
+
+    <Window.Resources>
+        <conv:CurrencyConverter x:Key="CurrencyConv"/>
+        <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:OccupancyToColorConverter x:Key="OccupancyColorConv"/>
+        <conv:ConnectionStatusToColorConverter x:Key="ConnColorConv"/>
+
+        <DataTemplate DataType="{x:Type vm:CheckInViewModel}">
+            <views:CheckInView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CheckOutViewModel}">
+            <views:CheckOutView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:RecentEntriesViewModel}">
+            <views:RecentEntriesView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:AnalyticsViewModel}">
+            <views:AnalyticsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:ShiftClosureViewModel}">
+            <views:ShiftClosureView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:MonthlySubscriptionsViewModel}">
+            <views:MonthlySubscriptionsView/>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Left Sidebar in Figma Dark Petrol Teal (#0B3C49) -->
+        <Border Grid.Column="0"
+                Background="{DynamicResource BrushSidebarBackground}"
+                BorderBrush="{DynamicResource BrushBorderSubtle}"
+                BorderThickness="0,0,1,0"
+                Padding="16,20">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Sidebar Brand Header -->
+                <StackPanel Grid.Row="0" Margin="4,0,0,28">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Background="{DynamicResource BrushPrimary}" CornerRadius="8" Width="36" Height="36" Margin="0,0,10,0">
+                            <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushTextWhite}" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="PARKFLOW" FontSize="18" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
+                            <TextBlock Text="TERMINAL DE CAJA Y ACCESO" FontSize="8" FontWeight="Bold" Foreground="{DynamicResource BrushSidebarText}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- Navigation List: 5 Exclusively Operational Modules in Spanish -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <TextBlock Text="OPERACIÓN EN TERMINAL" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushSidebarText}" Margin="12,0,0,12"/>
+
+                        <!-- 1. Ingreso de Vehículos -->
+                        <RadioButton Content="Ingreso de Vehículos"
+                                     Command="{Binding NavigateToCheckInCommand}"
+                                     IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=CheckIn, Mode=OneWay}"
+                                     Style="{StaticResource SidebarNavButton}"
+                                     Margin="0,0,0,6">
+                            <RadioButton.Tag>
+                                <Path Data="{StaticResource IconCheckIn}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform"/>
+                            </RadioButton.Tag>
+                        </RadioButton>
+
+                        <!-- 2. Salida y Cobro / Caja -->
+                        <RadioButton Content="Salida y Cobro / Caja"
+                                     Command="{Binding NavigateToCheckOutCommand}"
+                                     IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=CheckOut, Mode=OneWay}"
+                                     Style="{StaticResource SidebarNavButton}"
+                                     Margin="0,0,0,6">
+                            <RadioButton.Tag>
+                                <Path Data="{StaticResource IconCheckOut}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform"/>
+                            </RadioButton.Tag>
+                        </RadioButton>
+
+                        <!-- 3. Mensualidades y Abonados -->
+                        <RadioButton Content="Mensualidades"
+                                     Command="{Binding NavigateToMonthlySubscriptionsCommand}"
+                                     IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=MonthlySubscriptions, Mode=OneWay}"
+                                     Style="{StaticResource SidebarNavButton}"
+                                     Margin="0,0,0,6">
+                            <RadioButton.Tag>
+                                <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform"/>
+                            </RadioButton.Tag>
+                        </RadioButton>
+
+                        <!-- 4. Entradas del Turno -->
+                        <RadioButton Content="Entradas del Turno"
+                                     Command="{Binding NavigateToRecentEntriesCommand}"
+                                     IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=RecentEntries, Mode=OneWay}"
+                                     Style="{StaticResource SidebarNavButton}"
+                                     Margin="0,0,0,6">
+                            <RadioButton.Tag>
+                                <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform"/>
+                            </RadioButton.Tag>
+                        </RadioButton>
+
+                        <!-- 5. Panel Financiero -->
+                        <RadioButton Content="Panel Financiero"
+                                     Command="{Binding NavigateToAnalyticsCommand}"
+                                     IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=Analytics, Mode=OneWay}"
+                                     Style="{StaticResource SidebarNavButton}"
+                                     Margin="0,0,0,6">
+                            <RadioButton.Tag>
+                                <Path Data="{StaticResource IconAnalytics}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform"/>
+                            </RadioButton.Tag>
+                        </RadioButton>
+
+                        <!-- 6. Entrega de Turno y Arqueo -->
+                        <RadioButton Content="Entrega de Turno y Arqueo"
+                                     Command="{Binding NavigateToShiftClosureCommand}"
+                                     IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=ShiftClosure, Mode=OneWay}"
+                                     Style="{StaticResource SidebarNavButton}"
+                                     Margin="0,0,0,6">
+                            <RadioButton.Tag>
+                                <Path Data="{StaticResource IconCash}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform"/>
+                            </RadioButton.Tag>
+                        </RadioButton>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Sidebar Footer: Active Operator Profile -->
+                <Border Grid.Row="2"
+                        BorderBrush="#155364"
+                        BorderThickness="0,1,0,0"
+                        Padding="0,14,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Avatar -->
+                        <Border Grid.Column="0"
+                                Width="36"
+                                Height="36"
+                                CornerRadius="18"
+                                Background="#1A5E70"
+                                BorderBrush="#2A7B90"
+                                BorderThickness="1"
+                                Margin="0,0,10,0">
+                            <Path Data="{StaticResource IconUser}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+
+                        <!-- User Info -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding CurrentUser.FullName, FallbackValue='Operador General'}"
+                                       FontSize="12"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource BrushTextWhite}"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding CurrentUser.RoleName, FallbackValue='Operador'}"
+                                       FontSize="10"
+                                       Foreground="{DynamicResource BrushSidebarText}"/>
+                        </StackPanel>
+
+                        <!-- Logout -->
+                        <Button Grid.Column="2"
+                                Command="{Binding LogoutCommand}"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="8,6"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                ToolTip="Cerrar sesión de operador">
+                            <Path Data="{StaticResource IconLogout}" Fill="{DynamicResource BrushSidebarText}" Width="14" Height="14" Stretch="Uniform"/>
+                        </Button>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Right Main View Area -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="60"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Topbar in Clean White with Live Sync Status & Actions -->
+            <Border Grid.Row="0"
+                    Background="{DynamicResource BrushSurfaceBackground}"
+                    BorderBrush="{DynamicResource BrushBorderSubtle}"
+                    BorderThickness="0,0,0,1"
+                    Padding="16,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Subtitle Context -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
+                        <TextBlock Text="Terminal Principal" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <TextBlock Text=" • Control de Acceso y Caja" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <!-- Right: All Pills & Controls in One Clean Flowing Stack -->
+                    <StackPanel Grid.Column="1"
+                                Orientation="Horizontal"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Center">
+
+                        <!-- 1. Botón Sincronizar Novedades Manual -->
+                        <Button Command="{Binding UserManualSyncCommand}"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="8,4"
+                                Margin="0,0,6,0"
+                                ToolTip="Consultar y sincronizar con API Central de inmediato">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushPrimary}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Sincronizar" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <!-- 1.1 Botón Limpiar Caché y Forzar Recarga de Nube -->
+                        <Button Command="{Binding ForceCleanCacheCommand}"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="8,4"
+                                Margin="0,0,8,0"
+                                ToolTip="Limpiar memoria local y forzar actualización total desde la nube">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource BrushTextSecondary}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Limpiar Caché" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+
+                        <!-- 2. API Status Pill -->
+                        <Border Background="{DynamicResource BrushInputBackground}"
+                                BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="8,4"
+                                Margin="0,0,8,0"
+                                ToolTip="{Binding SyncStatusText}">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="7" Height="7" Fill="{Binding IsOnlineMode, Converter={StaticResource ConnColorConv}}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding SyncStatusText}"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource BrushTextSecondary}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 3. Cupos Counter Pill (Real-Time DB Binding) -->
+                        <Border Background="{DynamicResource BrushInputBackground}"
+                                BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="8,4"
+                                Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="7" Height="7" Fill="{DynamicResource BrushSuccess}" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Occupancy.OccupancySummary}"
+                                           FontSize="11"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 4. Live Clock Pill -->
+                        <Border Background="{DynamicResource BrushInputBackground}"
+                                BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                BorderThickness="1"
+                                CornerRadius="14"
+                                Padding="8,4"
+                                Margin="0,0,8,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconClock}" Fill="{DynamicResource BrushPrimary}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding CurrentTimeString}"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource BrushTextSecondary}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 5. Theme Selector -->
+                        <ComboBox ItemsSource="{Binding AvailableThemes}"
+                                  SelectedItem="{Binding SelectedTheme}"
+                                  Style="{StaticResource ModernComboBox}"
+                                  Width="120"
+                                  Height="28">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="8" Height="8" CornerRadius="4" Background="{Binding PrimaryHex}" Margin="0,0,6,0"/>
+                                        <TextBlock Text="{Binding DisplayName}" FontSize="10" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Dynamic Active View -->
+            <ContentControl Grid.Row="1" Content="{Binding ActiveView}"/>
+        </Grid>
+    </Grid>
+</Window>
