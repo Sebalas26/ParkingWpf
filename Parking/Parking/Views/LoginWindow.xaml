@@ -1,0 +1,248 @@
+<Window x:Class="Parking.Views.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:Parking.ViewModels"
+        xmlns:conv="clr-namespace:Parking.Core.Converters"
+        xmlns:enums="clr-namespace:Parking.Core.Enums"
+        mc:Ignorable="d"
+        Title="ParkFlow Enterprise - Inicio de Sesión"
+        Height="620"
+        Width="960"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
+
+    <Window.Resources>
+        <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:InverseBooleanConverter x:Key="InverseBoolConv"/>
+    </Window.Resources>
+
+    <Window.InputBindings>
+        <KeyBinding Key="Enter" Command="{Binding LoginCommand}"/>
+    </Window.InputBindings>
+
+    <Border Background="{DynamicResource BrushAppBackground}"
+            BorderBrush="{DynamicResource BrushBorderMedium}"
+            BorderThickness="1"
+            CornerRadius="16">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.1*"/>
+                <ColumnDefinition Width="1.2*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Banner Izquierdo Profesional -->
+            <Border Grid.Column="0"
+                    Background="{DynamicResource BrushSidebarBackground}"
+                    CornerRadius="16,0,0,16"
+                    Padding="40">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Width="40" Height="40" CornerRadius="10" Background="{DynamicResource BrushPrimary}" Margin="0,0,14,0">
+                            <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushTextWhite}" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="PARKFLOW" FontSize="20" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
+                            <TextBlock Text="CONTROL DE ACCESO Y CAJA" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushSidebarText}"/>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                        <TextBlock Text="Sistema Integral de Control de Acceso y Recaudación de Parqueadero"
+                                   FontSize="22"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource BrushTextWhite}"
+                                   TextWrapping="Wrap"
+                                   LineHeight="30"
+                                   Margin="0,0,0,16"/>
+                        <TextBlock Text="Agilice el registro de entradas, cálculo en caja, seguimiento de cupos en tiempo real, convenios comerciales y arqueo de turnos."
+                                   FontSize="13"
+                                   Foreground="{DynamicResource BrushSidebarText}"
+                                   TextWrapping="Wrap"
+                                   LineHeight="20"
+                                   Margin="0,0,0,32"/>
+
+                        <StackPanel>
+                            <Border Background="#104E5F" CornerRadius="8" Padding="12,10" BorderBrush="#1B6275" BorderThickness="1" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Path Grid.Column="0" Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushSuccess}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,12,0"/>
+                                    <TextBlock Grid.Column="1" Text="Control de Ocupación y Bahías en Tiempo Real" Foreground="{DynamicResource BrushTextWhite}" FontSize="12" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <Border Background="#104E5F" CornerRadius="8" Padding="12,10" BorderBrush="#1B6275" BorderThickness="1" Margin="0,0,0,12">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Path Grid.Column="0" Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushCyan}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,12,0"/>
+                                    <TextBlock Grid.Column="1" Text="Liquidación Automática y Convenios Comerciales" Foreground="{DynamicResource BrushTextWhite}" FontSize="12" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <Border Background="#104E5F" CornerRadius="8" Padding="12,10" BorderBrush="#1B6275" BorderThickness="1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Path Grid.Column="0" Data="{StaticResource IconAnalytics}" Fill="{DynamicResource BrushSuccess}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,12,0"/>
+                                    <TextBlock Grid.Column="1" Text="Control de Turnos Operativos y Arqueo de Caja" Foreground="{DynamicResource BrushTextWhite}" FontSize="12" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="2">
+                        <TextBlock Text="ParkFlow Enterprise • Sistema Profesional de Control de Acceso y Parqueaderos" FontSize="11" Foreground="{DynamicResource BrushSidebarText}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- Lado Derecho: Formulario de Autenticación con Loader -->
+            <Grid Grid.Column="1" Margin="40,30,40,30">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                        <Path Data="{StaticResource IconPalette}" Fill="{DynamicResource BrushTextSecondary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0"/>
+                        <Button Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static enums:AppTheme.MidnightDark}" Width="20" Height="20" Margin="2,0" ToolTip="Oscuro Midnight" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="#6366F1" CornerRadius="10" BorderBrush="#FFFFFF" BorderThickness="1"/>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <Button Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static enums:AppTheme.PureLight}" Width="20" Height="20" Margin="2,0" ToolTip="Blanco / Claro Empresarial" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="#F8FAFC" CornerRadius="10" BorderBrush="#2563EB" BorderThickness="2"/>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <Button Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static enums:AppTheme.OceanBlue}" Width="20" Height="20" Margin="2,0" ToolTip="Azul Océano Zafiro" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="#0284C7" CornerRadius="10" BorderBrush="#38BDF8" BorderThickness="1"/>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <Button Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static enums:AppTheme.ForestEmerald}" Width="20" Height="20" Margin="2,0" ToolTip="Verde Esmeralda Menta" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="#10B981" CornerRadius="10" BorderBrush="#34D399" BorderThickness="1"/>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                        <Button Command="{Binding SelectThemeCommand}" CommandParameter="{x:Static enums:AppTheme.RoyalPurple}" Width="20" Height="20" Margin="2,0" ToolTip="Púrpura Real Neón" Cursor="Hand">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border Background="#A855F7" CornerRadius="10" BorderBrush="#C084FC" BorderThickness="1"/>
+                                </ControlTemplate>
+                            </Button.Template>
+                        </Button>
+                    </StackPanel>
+
+                    <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                        <Button Width="32" Height="32" Click="MinimizeButton_Click" Style="{StaticResource SecondaryButton}" Padding="0" Margin="0,0,8,0">
+                            <Rectangle Width="10" Height="2" Fill="{DynamicResource BrushTextSecondary}"/>
+                        </Button>
+                        <Button Width="32" Height="32" Click="CloseButton_Click" Style="{StaticResource SecondaryButton}" Padding="0">
+                            <Path Data="{StaticResource IconClose}" Fill="{DynamicResource BrushTextSecondary}" Width="10" Height="10" Stretch="Uniform"/>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+
+                <StackPanel Grid.Row="1" VerticalAlignment="Center" MaxWidth="380" HorizontalAlignment="Stretch">
+                    <TextBlock Text="Iniciar Sesión" Style="{StaticResource TextHeaderLarge}" Margin="0,0,0,6"/>
+                    <TextBlock Text="Ingrese sus credenciales de operador para iniciar estación" Style="{StaticResource TextBodySecondary}" Margin="0,0,0,24"/>
+
+                    <Border Background="{DynamicResource BrushDangerBg}"
+                            BorderBrush="{DynamicResource BrushDanger}"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="12,10"
+                            Margin="0,0,0,16"
+                            Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource BrushDanger}" FontSize="12" TextWrapping="Wrap"/>
+                    </Border>
+
+                    <TextBlock Text="Usuario / ID de Operador" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,8"/>
+                    <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                             IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
+                             Style="{StaticResource ModernTextBox}"
+                             Margin="0,0,0,18"/>
+
+                    <TextBlock Text="Contraseña" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,8"/>
+                    <PasswordBox x:Name="UserPasswordBox"
+                                 IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
+                                 Style="{StaticResource ModernPasswordBox}"
+                                 PasswordChanged="UserPasswordBox_PasswordChanged"
+                                 KeyDown="UserPasswordBox_KeyDown"
+                                 Margin="0,0,0,24"/>
+
+                    <!-- Botón de Acceso -->
+                    <Button Command="{Binding LoginCommand}"
+                            IsDefault="True"
+                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
+                            Style="{StaticResource ModernButton}"
+                            Height="46"
+                            Margin="0,0,0,16">
+                        <Button.ContentTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="Acceder a Estación de Trabajo" Foreground="{DynamicResource BrushTextWhite}" FontSize="14" FontWeight="Bold"/>
+                            </DataTemplate>
+                        </Button.ContentTemplate>
+                    </Button>
+
+                    <!-- Loader Visual Animado Activo durante IsBusy -->
+                    <Border Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"
+                            Background="{DynamicResource BrushCardBackground}"
+                            BorderBrush="{DynamicResource BrushBorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="16,12"
+                            Margin="0,4,0,0">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <ProgressBar IsIndeterminate="True"
+                                         Height="4"
+                                         Foreground="{DynamicResource BrushPrimary}"
+                                         Background="{DynamicResource BrushInputBackground}"
+                                         BorderThickness="0"
+                                         Margin="0,0,0,10"/>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding BusyMessage, FallbackValue='Validando credenciales y conectando estación...'}"
+                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                           FontSize="12"
+                                           FontWeight="SemiBold"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <TextBlock Grid.Row="2"
+                           Text="Protegido por Control de Acceso Basado en Roles • ParkFlow Enterprise"
+                           HorizontalAlignment="Center"
+                           Style="{StaticResource TextCaption}"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
