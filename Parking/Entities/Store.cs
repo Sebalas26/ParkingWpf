@@ -6,6 +6,7 @@ namespace Parking.Entities;
 public class Store
 {
     public Guid StoreId { get; set; } = Guid.NewGuid();
+    public int? BranchId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string TaxId { get; set; } = string.Empty;
     public string? PhoneNumber { get; set; }

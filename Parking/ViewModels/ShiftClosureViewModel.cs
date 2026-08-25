@@ -83,7 +83,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
         IDialogService dialogService,
         IReceiptPrinterService receiptPrinter,
         IDbConnectionManager connectionManager,
-        INavigationService navigationService)
+        INavigationService navigationService,
+        ISyncEngineService syncEngine)
     {
         _shiftService = shiftService;
         _authService = authService;
@@ -92,6 +93,11 @@ public partial class ShiftClosureViewModel : ViewModelBase
         _connectionManager = connectionManager;
         _navigationService = navigationService;
         _operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
+
+        syncEngine.DataSynchronized += async () =>
+        {
+            await LoadShiftDataAsync();
+        };
     }
 
     public override async Task InitializeAsync()

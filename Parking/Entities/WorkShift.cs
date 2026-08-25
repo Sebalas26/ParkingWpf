@@ -5,6 +5,7 @@ namespace Parking.Entities;
 public class WorkShift
 {
     public Guid ShiftId { get; set; } = Guid.NewGuid();
+    public int? BranchId { get; set; }
     public int UserId { get; set; }
     public string OperatorName { get; set; } = string.Empty;
     public DateTime StartTimeUtc { get; set; } = DateTime.UtcNow;

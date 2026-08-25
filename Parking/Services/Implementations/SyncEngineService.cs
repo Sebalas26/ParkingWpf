@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Parking.Core.Enums;
@@ -21,6 +23,7 @@ public class SyncEngineService : ISyncEngineService
 
     public event EventHandler<string>? SyncStatusChanged;
     public event Action<int>? TotalCapacityChanged;
+    public event Action? DataSynchronized;
 
     public bool IsOnline => _isOnline;
     public int PendingItemsCount => _pendingItemsCount;
@@ -49,15 +52,15 @@ public class SyncEngineService : ISyncEngineService
     {
         var result = new SyncResultReport();
 
-        // 1. Paso 1: Comprobar Conectividad (15%)
+        // 1. Paso 1: Comprobar Conectividad (10%)
         progress.Report(new SyncProgressReport
         {
-            Percentage = 15,
+            Percentage = 10,
             StepIndex = 1,
             CurrentStepTitle = "Comprobando conexión con servidor central...",
-            DetailMessage = "Verificando disponibilidad de red y respuesta de MySQL Cloud..."
+            DetailMessage = "Verificando disponibilidad de red y respuesta del API Central..."
         });
-        await Task.Delay(250, ct);
+        await Task.Delay(200, ct);
 
         var isApiAvailable = await _apiClient.PingAsync();
         _isOnline = isApiAvailable;
@@ -81,19 +84,19 @@ public class SyncEngineService : ISyncEngineService
 
         progress.Report(new SyncProgressReport
         {
-            Percentage = 25,
+            Percentage = 20,
             StepIndex = 1,
             CurrentStepTitle = "Conexión establecida con éxito",
-            DetailMessage = "Servidor MySQL en línea y listo para transferencia de datos."
+            DetailMessage = "Servidor API Central en línea. Iniciando sincronización integral de 100% de tablas."
         });
         await Task.Delay(150, ct);
 
-        // 2. Paso 2: Despachar cola offline (35%)
+        // 2. Paso 2: Despachar cola offline (30%)
         progress.Report(new SyncProgressReport
         {
-            Percentage = 35,
+            Percentage = 30,
             StepIndex = 2,
-            CurrentStepTitle = "Despachando transacciones pendientes locales...",
+            CurrentStepTitle = "Despachando transacciones locales pendientes...",
             DetailMessage = $"Procesando cola de pendientes ({PendingItemsCount} elementos)..."
         });
 
@@ -103,20 +106,20 @@ public class SyncEngineService : ISyncEngineService
 
         progress.Report(new SyncProgressReport
         {
-            Percentage = 45,
+            Percentage = 40,
             StepIndex = 2,
-            CurrentStepTitle = "Transacciones locales despachadas",
-            DetailMessage = $"Cola procesada correctamente ({result.DispatchedOfflineItemsCount} transacciones enviadas)."
+            CurrentStepTitle = "Transacciones locales procesadas",
+            DetailMessage = $"Cola despachada ({result.DispatchedOfflineItemsCount} transacciones enviadas a MySQL)."
         });
         await Task.Delay(150, ct);
 
-        // 3. Descargar Novedades Centrales (Bootstrap)
+        // 3. Descargar Novedades Centrales (Bootstrap 100% Tablas) (50%)
         progress.Report(new SyncProgressReport
         {
             Percentage = 50,
             StepIndex = 3,
-            CurrentStepTitle = "Descargando novedades del servidor...",
-            DetailMessage = "Solicitando datos de catálogos y tiquetes desde el API..."
+            CurrentStepTitle = "Descargando catálogos y registros desde el servidor...",
+            DetailMessage = "Solicitando datos de todas las entidades desde el API Central..."
         });
 
         var bootstrap = await _apiClient.GetBootstrapAsync();
@@ -143,16 +146,15 @@ public class SyncEngineService : ISyncEngineService
 
         using var db = _dbManager.CreateDbContext();
 
-        // 4. Paso 3: Sincronizar Usuarios (60%)
+        // 4. Paso 3: Sincronizar Roles y Usuarios (60%)
         progress.Report(new SyncProgressReport
         {
             Percentage = 60,
             StepIndex = 3,
-            CurrentStepTitle = "Sincronizando Usuarios y Operadores...",
+            CurrentStepTitle = "Sincronizando Usuarios, Roles y Permisos...",
             DetailMessage = $"Procesando {bootstrap.Users.Count} usuarios de MySQL..."
         });
 
-        // Asegurar la existencia de roles base en SQLite antes de insertar usuarios (evita FK constraint violation)
         var adminRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "Administrador" || r.Name == "Admin", ct);
         if (adminRole == null)
         {
@@ -178,7 +180,6 @@ public class SyncEngineService : ISyncEngineService
         }
         await db.SaveChangesAsync(ct);
 
-        // Purgar mock users
         var mockUsers = await db.Users.Where(u => u.FullName == "Alexander Wright" || u.FullName == "Elena Vance" || u.Username == "alexander" || u.Username == "elena").ToListAsync(ct);
         if (mockUsers.Count > 0)
         {
@@ -224,15 +225,55 @@ public class SyncEngineService : ISyncEngineService
             await db.SaveChangesAsync(ct);
         }
         result.SyncedUsersCount = usersCount;
-        await Task.Delay(150, ct);
+        await Task.Delay(100, ct);
 
-        // 5. Paso 4: Sincronizar Tarifas (75%)
+        // 5. Paso 4: Sincronizar Medios de Pago (70%)
         progress.Report(new SyncProgressReport
         {
-            Percentage = 75,
+            Percentage = 70,
             StepIndex = 4,
+            CurrentStepTitle = "Sincronizando Medios de Pago...",
+            DetailMessage = $"Actualizando {bootstrap.PaymentMethods?.Count ?? 0} medios de pago desde MySQL..."
+        });
+
+        int paymentMethodsCount = 0;
+        if (bootstrap.PaymentMethods != null && bootstrap.PaymentMethods.Count > 0)
+        {
+            foreach (var pm in bootstrap.PaymentMethods)
+            {
+                var existing = await db.PaymentMethods.FirstOrDefaultAsync(p => p.Id == pm.Id, ct);
+                if (existing != null)
+                {
+                    existing.Name = pm.Name;
+                    existing.Icon = string.IsNullOrWhiteSpace(pm.Icon) ? "IconCash" : pm.Icon;
+                    existing.State = pm.State;
+                    existing.RequiresCashTender = pm.RequiresCashTender;
+                }
+                else
+                {
+                    db.PaymentMethods.Add(new PaymentMethodEntity
+                    {
+                        Id = pm.Id,
+                        Name = pm.Name,
+                        Icon = string.IsNullOrWhiteSpace(pm.Icon) ? "IconCash" : pm.Icon,
+                        State = pm.State,
+                        RequiresCashTender = pm.RequiresCashTender
+                    });
+                }
+                paymentMethodsCount++;
+            }
+            await db.SaveChangesAsync(ct);
+        }
+        result.SyncedPaymentMethodsCount = paymentMethodsCount;
+        await Task.Delay(100, ct);
+
+        // 6. Paso 5: Sincronizar Tarifas y Reglas (78%)
+        progress.Report(new SyncProgressReport
+        {
+            Percentage = 78,
+            StepIndex = 5,
             CurrentStepTitle = "Sincronizando Tarifas y Reglas vehiculares...",
-            DetailMessage = $"Actualizando {bootstrap.Rates?.Count ?? 0} tarifas configuradas..."
+            DetailMessage = $"Actualizando {bootstrap.Rates?.Count ?? 0} tarifas vehiculares configuradas..."
         });
 
         int ratesCount = 0;
@@ -260,15 +301,15 @@ public class SyncEngineService : ISyncEngineService
             await db.SaveChangesAsync(ct);
         }
         result.SyncedRatesCount = ratesCount;
-        await Task.Delay(150, ct);
+        await Task.Delay(100, ct);
 
-        // 6. Paso 5: Sincronizar Comercios y Convenios (85%)
+        // 7. Paso 6: Sincronizar Comercios y Convenios (85%)
         progress.Report(new SyncProgressReport
         {
             Percentage = 85,
-            StepIndex = 5,
+            StepIndex = 6,
             CurrentStepTitle = "Sincronizando Comercios y Convenios...",
-            DetailMessage = $"Actualizando {bootstrap.Stores?.Count ?? 0} almacenes y {bootstrap.Agreements?.Count ?? 0} convenios..."
+            DetailMessage = $"Actualizando {bootstrap.Stores?.Count ?? 0} comercios y {bootstrap.Agreements?.Count ?? 0} convenios..."
         });
 
         if (bootstrap.Stores != null)
@@ -316,14 +357,92 @@ public class SyncEngineService : ISyncEngineService
             await db.SaveChangesAsync(ct);
         }
         result.SyncedAgreementsCount = agCount;
-        await Task.Delay(150, ct);
+        await Task.Delay(100, ct);
 
-        // 7. Paso 6: Sincronizar Tiquetes y Guardar Cambios (95%)
+        // 8. Paso 7: Sincronizar Mensualidades y Turnos (92%)
         progress.Report(new SyncProgressReport
         {
-            Percentage = 95,
-            StepIndex = 6,
-            CurrentStepTitle = "Sincronizando Tiquetes activos y Turnos...",
+            Percentage = 92,
+            StepIndex = 7,
+            CurrentStepTitle = "Sincronizando Mensualidades y Turnos...",
+            DetailMessage = $"Actualizando {bootstrap.MonthlySubscriptions?.Count ?? 0} suscripciones y {bootstrap.WorkShifts?.Count ?? 0} turnos..."
+        });
+
+        int subsCount = 0;
+        if (bootstrap.MonthlySubscriptions != null)
+        {
+            foreach (var sub in bootstrap.MonthlySubscriptions)
+            {
+                var existing = await db.MonthlySubscriptions.FirstOrDefaultAsync(s => s.SubscriptionId == sub.SubscriptionId, ct);
+                if (existing != null)
+                {
+                    existing.PlateNumber = sub.PlateNumber;
+                    existing.VehicleType = sub.VehicleType;
+                    existing.CustomerName = sub.CustomerName;
+                    existing.CustomerDocument = sub.CustomerDocument;
+                    existing.CustomerPhone = sub.CustomerPhone;
+                    existing.StartDateUtc = sub.StartDateUtc;
+                    existing.EndDateUtc = sub.EndDateUtc;
+                    existing.MonthlyFee = sub.MonthlyFee;
+                    existing.AmountPaid = sub.AmountPaid;
+                    existing.PaymentMethod = sub.PaymentMethod;
+                    existing.IsActive = sub.IsActive;
+                }
+                else
+                {
+                    db.MonthlySubscriptions.Add(sub);
+                }
+                subsCount++;
+            }
+            await db.SaveChangesAsync(ct);
+        }
+        result.SyncedSubscriptionsCount = subsCount;
+
+        int shiftsCount = 0;
+        if (bootstrap.WorkShifts != null)
+        {
+            foreach (var ws in bootstrap.WorkShifts)
+            {
+                var existing = await db.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == ws.ShiftId, ct);
+                if (existing != null)
+                {
+                    existing.UserId = ws.UserId;
+                    existing.OperatorName = ws.OperatorName;
+                    existing.StartTimeUtc = ws.StartTimeUtc;
+                    existing.EndTimeUtc = ws.EndTimeUtc;
+                    existing.BaseAmount = ws.BaseAmount;
+                    existing.TotalCashCollected = ws.TotalCashCollected;
+                    existing.TotalCardCollected = ws.TotalCardCollected;
+                    existing.TotalTransferCollected = ws.TotalTransferCollected;
+                    existing.TotalDiscounts = ws.TotalDiscounts;
+                    existing.TotalCashWithdrawals = ws.TotalCashWithdrawals;
+                    existing.ExpectedCash = ws.ExpectedCash;
+                    existing.ActualCashCounted = ws.ActualCashCounted;
+                    existing.CashDifference = ws.CashDifference;
+                    existing.TotalTicketsProcessed = ws.TotalTicketsProcessed;
+                    existing.TotalVehiclesEntered = ws.TotalVehiclesEntered;
+                    existing.Status = ws.Status;
+                    existing.HandoverToUserId = ws.HandoverToUserId;
+                    existing.HandoverToUserName = ws.HandoverToUserName;
+                    existing.Notes = ws.Notes;
+                }
+                else
+                {
+                    db.WorkShifts.Add(ws);
+                }
+                shiftsCount++;
+            }
+            await db.SaveChangesAsync(ct);
+        }
+        result.SyncedShiftsCount = shiftsCount;
+        await Task.Delay(100, ct);
+
+        // 9. Paso 8: Sincronizar Tiquetes y Consolidar (98%)
+        progress.Report(new SyncProgressReport
+        {
+            Percentage = 98,
+            StepIndex = 8,
+            CurrentStepTitle = "Sincronizando Tiquetes activos y registros...",
             DetailMessage = "Consolidando registros de acceso y guardando en SQLite..."
         });
 
@@ -372,14 +491,17 @@ public class SyncEngineService : ISyncEngineService
         _lastSyncTime = DateTime.UtcNow;
         _isOnline = true;
         result.Success = true;
-        result.Message = $"Sincronización completada: {usersCount} usuarios, {ratesCount} tarifas, {agCount} convenios y {ticketsCount} tiquetes actualizados.";
+        result.Message = $"Sincronización total exitosa: {usersCount} usuarios, {paymentMethodsCount} medios de pago, {ratesCount} tarifas, {agCount} convenios, {subsCount} mensualidades, {shiftsCount} turnos y {ticketsCount} tiquetes actualizados.";
 
-        // Paso 7: Finalizado (100%)
+        // Notificar a todos los módulos y viewmodels para actualización reactiva en memoria
+        DataSynchronized?.Invoke();
+
+        // Paso 9: Finalizado (100%)
         progress.Report(new SyncProgressReport
         {
             Percentage = 100,
-            StepIndex = 6,
-            CurrentStepTitle = "¡Sincronización completada con éxito!",
+            StepIndex = 8,
+            CurrentStepTitle = "¡Sincronización Total Completada!",
             DetailMessage = result.Message,
             IsSuccessStep = true
         });
@@ -387,8 +509,6 @@ public class SyncEngineService : ISyncEngineService
         SyncStatusChanged?.Invoke(this, SyncStatusDescription);
         return result;
     }
-
-
 
     public async Task<bool> ForceCleanResyncAsync()
     {
@@ -406,38 +526,13 @@ public class SyncEngineService : ISyncEngineService
             await db.SaveChangesAsync();
 
             // 2. Traer bootstrap limpio desde MySQL
-            var bootstrap = await _apiClient.GetBootstrapAsync();
-            if (bootstrap != null)
-            {
-                if (bootstrap.TotalCapacity > 0)
-                {
-                    ServerConfiguredCapacity = bootstrap.TotalCapacity;
-                    TotalCapacityChanged?.Invoke(bootstrap.TotalCapacity);
-                }
-
-                var allIncomingTickets = new List<ParkingTicket>();
-                if (bootstrap.ActiveTickets != null) allIncomingTickets.AddRange(bootstrap.ActiveTickets);
-                if (bootstrap.RecentTickets != null) allIncomingTickets.AddRange(bootstrap.RecentTickets);
-
-                foreach (var t in allIncomingTickets)
-                {
-                    t.IsSynchronized = true;
-                    db.ParkingTickets.Add(t);
-                }
-
-                await db.SaveChangesAsync();
-            }
-
-            _lastSyncTime = DateTime.Now;
-            await RefreshPendingCountAsync();
-            SyncStatusChanged?.Invoke(this, SyncStatusDescription);
-            return true;
+            var report = await PerformFullSyncWithProgressAsync(new Progress<SyncProgressReport>());
+            return report.Success;
         }
 
         await ClearLocalTicketsMemoryAsync();
         return false;
     }
-
 
     public async Task EnqueueOfflineCheckInAsync(ParkingTicket ticket)
     {
@@ -576,4 +671,3 @@ public class SyncEngineService : ISyncEngineService
         }
     }
 }
-

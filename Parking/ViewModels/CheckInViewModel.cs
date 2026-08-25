@@ -74,7 +74,8 @@ public partial class CheckInViewModel : ViewModelBase
         IMonthlySubscriptionService monthlySubscriptionService,
         IAuthService authService,
         IDialogService dialogService,
-        IShiftService shiftService)
+        IShiftService shiftService,
+        ISyncEngineService syncEngine)
     {
         _ticketService = ticketService;
         _pricingCalculator = pricingCalculator;
@@ -82,6 +83,11 @@ public partial class CheckInViewModel : ViewModelBase
         _authService = authService;
         _dialogService = dialogService;
         _shiftService = shiftService;
+
+        syncEngine.DataSynchronized += async () =>
+        {
+            await InitializeAsync();
+        };
 
         _feedbackTimer = new DispatcherTimer
         {

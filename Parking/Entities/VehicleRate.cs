@@ -6,6 +6,7 @@ namespace Parking.Entities;
 public class VehicleRate
 {
     public Guid RateId { get; set; } = Guid.NewGuid();
+    public int? BranchId { get; set; }
     public VehicleType VehicleType { get; set; }
     public string DisplayName { get; set; } = string.Empty;
     public decimal MinuteRate { get; set; }

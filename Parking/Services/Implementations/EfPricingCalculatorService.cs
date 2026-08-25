@@ -16,9 +16,13 @@ public class EfPricingCalculatorService : IPricingCalculatorService
     private readonly IDbConnectionManager _connectionManager;
     private readonly ConcurrentDictionary<VehicleType, VehicleRate> _ratesCache = new();
 
-    public EfPricingCalculatorService(IDbConnectionManager connectionManager)
+    public EfPricingCalculatorService(IDbConnectionManager connectionManager, ISyncEngineService syncEngine)
     {
         _connectionManager = connectionManager;
+        syncEngine.DataSynchronized += async () =>
+        {
+            await ReloadRatesAsync();
+        };
     }
 
     public async Task ReloadRatesAsync()

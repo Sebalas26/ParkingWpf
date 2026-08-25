@@ -106,7 +106,8 @@ public partial class CheckOutViewModel : ViewModelBase
         IStoreService storeService,
         IAgreementService agreementService,
         IDialogService dialogService,
-        IDbConnectionManager connectionManager)
+        IDbConnectionManager connectionManager,
+        ISyncEngineService syncEngine)
     {
         _ticketService = ticketService;
         _pricingCalculator = pricingCalculator;
@@ -115,6 +116,11 @@ public partial class CheckOutViewModel : ViewModelBase
         _agreementService = agreementService;
         _dialogService = dialogService;
         _connectionManager = connectionManager;
+
+        syncEngine.DataSynchronized += async () =>
+        {
+            await InitializeAsync();
+        };
 
         _liveCalculationTimer = new DispatcherTimer
         {

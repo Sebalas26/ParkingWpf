@@ -14,6 +14,8 @@ public class AuthService : IAuthService
 {
     private readonly IDbConnectionManager _connectionManager;
     private readonly IApiClientService _apiClient;
+    private readonly ISessionService _sessionService;
+    private readonly IPermissionService _permissionService;
 
     public event Action<UserSessionModel?>? UserSessionChanged;
     public UserSessionModel? CurrentUser { get; private set; }
@@ -21,28 +23,32 @@ public class AuthService : IAuthService
 
     public AuthService(
         IDbConnectionManager connectionManager,
-        IApiClientService apiClient)
+        IApiClientService apiClient,
+        ISessionService sessionService,
+        IPermissionService permissionService)
     {
         _connectionManager = connectionManager;
         _apiClient = apiClient;
+        _sessionService = sessionService;
+        _permissionService = permissionService;
     }
 
-    public async Task<bool> LoginAsync(string username, string password)
+    public async Task<LoginResultModel> AuthenticateAsync(string username, string password)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
-            return false;
+            return new LoginResultModel { Success = false, ErrorMessage = "Por favor ingrese su usuario y contraseña." };
         }
 
         var normalizedUser = username.Trim().ToLowerInvariant();
 
-        // 1. Intentar autenticar contra el API
+        // 1. Intentar autenticar contra el API Central (Online)
         try
         {
-            var apiLogin = await _apiClient.LoginAsync(username, password);
+            var apiLogin = await _apiClient.LoginAsync(username.Trim(), password);
             if (apiLogin != null && apiLogin.Success)
             {
-                CurrentUser = new UserSessionModel
+                var userModel = new UserSessionModel
                 {
                     UserId = apiLogin.UserId,
                     Username = apiLogin.Username,
@@ -51,16 +57,28 @@ public class AuthService : IAuthService
                     SessionToken = apiLogin.Token ?? Guid.NewGuid().ToString(),
                     LoginTime = DateTime.Now
                 };
-                UserSessionChanged?.Invoke(CurrentUser);
-                return true;
+
+                CurrentUser = userModel;
+                _permissionService.LoadPermissions(Array.Empty<string>(), apiLogin.IsAdmin);
+
+                return new LoginResultModel
+                {
+                    Success = true,
+                    User = userModel,
+                    Branches = apiLogin.Branches ?? new List<BranchModel>()
+                };
+            }
+            else if (apiLogin != null && !string.IsNullOrWhiteSpace(apiLogin.ErrorMessage))
+            {
+                return new LoginResultModel { Success = false, ErrorMessage = apiLogin.ErrorMessage };
             }
         }
         catch
         {
-            // Falla de red, continuar con verificación local
+            // Servidor offline, continuar con validación local en SQLite
         }
 
-        // 2. Autenticación contra Caché Local SQLite (Modo Offline)
+        // 2. Autenticación contra Caché Local SQLite (Offline)
         using var db = _connectionManager.CreateDbContext();
         var passwordHash = DbConnectionManager.HashPassword(password);
 
@@ -75,7 +93,7 @@ public class AuthService : IAuthService
 
         if (user == null || !isValidLocal)
         {
-            return false;
+            return new LoginResultModel { Success = false, ErrorMessage = "Usuario o contraseña incorrectos. Por favor verifique sus datos." };
         }
 
         var sessionToken = Guid.NewGuid().ToString();
@@ -94,7 +112,7 @@ public class AuthService : IAuthService
         db.UserSessions.Add(newSession);
         await db.SaveChangesAsync();
 
-        CurrentUser = new UserSessionModel
+        var localUserModel = new UserSessionModel
         {
             UserId = user.UserId,
             Username = user.Username,
@@ -104,64 +122,51 @@ public class AuthService : IAuthService
             SessionToken = sessionToken,
             LoginTime = DateTime.Now
         };
-        UserSessionChanged?.Invoke(CurrentUser);
 
-        return true;
+        CurrentUser = localUserModel;
+
+        // Cargar sedes locales de SQLite
+        var localBranches = await db.Branches.Where(b => b.IsActive).ToListAsync();
+        var branchesList = localBranches.Select(b => new BranchModel
+        {
+            Id = b.Id,
+            Code = b.Code,
+            Name = b.Name,
+            Address = b.Address,
+            Phone = b.Phone,
+            City = b.City,
+            TotalCapacity = b.TotalCapacity,
+            Notes = b.Notes,
+            IsActive = b.IsActive
+        }).ToList();
+
+        var isAdmin = localUserModel.RoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) || localUserModel.RoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+        _permissionService.LoadPermissions(Array.Empty<string>(), isAdmin);
+
+        return new LoginResultModel
+        {
+            Success = true,
+            User = localUserModel,
+            Branches = branchesList
+        };
+    }
+
+    public async Task<bool> LoginAsync(string username, string password)
+    {
+        var result = await AuthenticateAsync(username, password);
+        if (result.Success && result.User != null)
+        {
+            _sessionService.SetSession(result.User, result.Branches);
+            UserSessionChanged?.Invoke(CurrentUser);
+            return true;
+        }
+        return false;
     }
 
     public async Task<UserSessionModel?> ValidateCredentialsAsync(string username, string password)
     {
-        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password)) return null;
-
-        var normalizedUser = username.Trim().ToLowerInvariant();
-
-        // 1. Intentar validar contra API
-        try
-        {
-            var apiLogin = await _apiClient.LoginAsync(username, password);
-            if (apiLogin != null && apiLogin.Success)
-            {
-                return new UserSessionModel
-                {
-                    UserId = apiLogin.UserId,
-                    Username = apiLogin.Username,
-                    FullName = apiLogin.FullName,
-                    RoleName = apiLogin.RoleName,
-                    SessionToken = apiLogin.Token ?? Guid.NewGuid().ToString(),
-                    LoginTime = DateTime.Now
-                };
-            }
-        }
-        catch { }
-
-        // 2. Validar contra BD Local SQLite
-        using var db = _connectionManager.CreateDbContext();
-        var passwordHash = DbConnectionManager.HashPassword(password);
-
-        var user = await db.Users
-            .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUser && u.IsActive);
-
-        var isValidLocal = user != null && (
-            user.PasswordHash == passwordHash ||
-            user.PasswordHash == password
-        );
-
-        if (user != null && isValidLocal)
-        {
-            return new UserSessionModel
-            {
-                UserId = user.UserId,
-                Username = user.Username,
-                FullName = user.FullName,
-                RoleName = user.Role?.Name ?? "Operador",
-                RoleId = user.RoleId,
-                SessionToken = Guid.NewGuid().ToString(),
-                LoginTime = DateTime.Now
-            };
-        }
-
-        return null;
+        var result = await AuthenticateAsync(username, password);
+        return result.Success ? result.User : null;
     }
 
     public async Task<UserSessionModel?> ValidateAdminAuthorizationAsync(string adminPasswordOrPin)
@@ -194,7 +199,6 @@ public class AuthService : IAuthService
             }
         }
 
-        // Si la clave ingresada es la clave maestra general de administración
         if (cleanPass == "Admin2026*" || cleanPass == "9988")
         {
             var firstAdmin = adminUsers.FirstOrDefault();
@@ -240,6 +244,8 @@ public class AuthService : IAuthService
             }
 
             CurrentUser = null;
+            _sessionService.Clear();
+            _permissionService.Clear();
             UserSessionChanged?.Invoke(null);
         }
     }

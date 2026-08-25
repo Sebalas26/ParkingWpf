@@ -1,16 +1,21 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Parking.Core.Enums;
+using Parking.Models;
 using Parking.Services.Contracts;
+using Parking.Views;
 
 namespace Parking.ViewModels;
 
 public partial class LoginViewModel : ViewModelBase
 {
     private readonly IAuthService _authService;
+    private readonly ISessionService _sessionService;
     private readonly IThemeService _themeService;
 
     [ObservableProperty]
@@ -32,9 +37,13 @@ public partial class LoginViewModel : ViewModelBase
 
     public event Action? LoginSuccessful;
 
-    public LoginViewModel(IAuthService authService, IThemeService themeService)
+    public LoginViewModel(
+        IAuthService authService,
+        ISessionService sessionService,
+        IThemeService themeService)
     {
         _authService = authService;
+        _sessionService = sessionService;
         _themeService = themeService;
         _currentTheme = _themeService.CurrentTheme;
     }
@@ -63,15 +72,50 @@ public partial class LoginViewModel : ViewModelBase
 
         try
         {
-            var success = await _authService.LoginAsync(Username.Trim(), Password);
-            if (success)
+            var authResult = await _authService.AuthenticateAsync(Username.Trim(), Password);
+
+            if (!authResult.Success || authResult.User == null)
             {
+                HasError = true;
+                ErrorMessage = authResult.ErrorMessage ?? "Usuario o contraseña incorrectos. Por favor verifique sus datos.";
+                return;
+            }
+
+            var branches = authResult.Branches;
+
+            // Escenario 1: 0 Sedes asignadas
+            if (branches == null || branches.Count == 0)
+            {
+                HasError = true;
+                ErrorMessage = "El usuario no tiene sedes asignadas o activas. Por favor contacte al administrador del sistema.";
+                return;
+            }
+
+            // Escenario 2: 1 Sede asignada (Login directo)
+            if (branches.Count == 1)
+            {
+                _sessionService.SetSession(authResult.User, branches, branches[0]);
+                LoginSuccessful?.Invoke();
+                return;
+            }
+
+            // Escenario 3: Más de 1 Sede asignada (Modal interactivo)
+            var dialog = new BranchSelectionDialog(branches);
+            if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
+            {
+                dialog.Owner = Application.Current.MainWindow;
+            }
+
+            var dialogResult = dialog.ShowDialog();
+            if (dialogResult == true && dialog.SelectedBranch != null)
+            {
+                _sessionService.SetSession(authResult.User, branches, dialog.SelectedBranch);
                 LoginSuccessful?.Invoke();
             }
             else
             {
                 HasError = true;
-                ErrorMessage = "Usuario o contraseña incorrectos. Por favor verifique sus datos.";
+                ErrorMessage = "Debe seleccionar una sede para ingresar al sistema.";
             }
         }
         catch (Exception ex)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -10,6 +11,7 @@ using Parking.Core.Enums;
 using Parking.Entities;
 using Parking.Models;
 using Parking.Services.Contracts;
+using Parking.Views;
 
 namespace Parking.ViewModels;
 
@@ -17,6 +19,8 @@ public partial class MainShellViewModel : ViewModelBase
 {
     private static readonly CultureInfo SpanishCulture = new("es-ES");
     private readonly IAuthService _authService;
+    private readonly ISessionService _sessionService;
+    private readonly IPermissionService _permissionService;
     private readonly IParkingTicketService _ticketService;
     private readonly INavigationService _navigationService;
     private readonly ISyncEngineService _syncEngine;
@@ -31,6 +35,12 @@ public partial class MainShellViewModel : ViewModelBase
 
     [ObservableProperty]
     private UserSessionModel? _currentUser;
+
+    [ObservableProperty]
+    private BranchModel? _currentBranch;
+
+    [ObservableProperty]
+    private bool _hasMultipleBranches;
 
     [ObservableProperty]
     private string _currentTimeString = string.Empty;
@@ -62,6 +72,8 @@ public partial class MainShellViewModel : ViewModelBase
 
     public MainShellViewModel(
         IAuthService authService,
+        ISessionService sessionService,
+        IPermissionService permissionService,
         IParkingTicketService ticketService,
         INavigationService navigationService,
         ISyncEngineService syncEngine,
@@ -71,6 +83,8 @@ public partial class MainShellViewModel : ViewModelBase
         IShiftService shiftService)
     {
         _authService = authService;
+        _sessionService = sessionService;
+        _permissionService = permissionService;
         _ticketService = ticketService;
         _navigationService = navigationService;
         _syncEngine = syncEngine;
@@ -105,9 +119,15 @@ public partial class MainShellViewModel : ViewModelBase
             SelectedTheme = AvailableThemes.FirstOrDefault(t => t.Theme == theme);
         };
 
-        _authService.UserSessionChanged += user =>
+        _sessionService.UserSessionChanged += user =>
         {
             CurrentUser = user;
+        };
+
+        _sessionService.ActiveBranchChanged += branch =>
+        {
+            CurrentBranch = branch;
+            HasMultipleBranches = _sessionService.HasMultipleBranches;
         };
 
         _clockTimer = new DispatcherTimer
@@ -130,7 +150,10 @@ public partial class MainShellViewModel : ViewModelBase
 
     public override async Task InitializeAsync()
     {
-        CurrentUser = _authService.CurrentUser;
+        CurrentUser = _sessionService.CurrentUser ?? _authService.CurrentUser;
+        CurrentBranch = _sessionService.CurrentBranch;
+        HasMultipleBranches = _sessionService.HasMultipleBranches;
+
         Occupancy = await _ticketService.GetOccupancyStatsAsync();
 
         // 1. Verificar si hay turno activo; si no, abrir pantalla de apertura de turno
@@ -144,10 +167,10 @@ public partial class MainShellViewModel : ViewModelBase
             _navigationService.NavigateTo<CheckInViewModel>();
         }
 
-        // 2. Iniciar programador de sincronización en segundo plano (cada 1 hora)
+        // 2. Iniciar programador de sincronización en segundo plano
         _backgroundSync.Start();
 
-        // 3. Ejecutar primera sincronización con el API en segundo plano sin bloquear la interfaz
+        // 3. Ejecutar primera sincronización con el API en segundo plano
         _ = Task.Run(async () =>
         {
             try
@@ -175,6 +198,34 @@ public partial class MainShellViewModel : ViewModelBase
             MonthlySubscriptionsViewModel => "MonthlySubscriptions",
             _ => "CheckIn"
         };
+    }
+
+    [RelayCommand]
+    public async Task SwitchBranchAsync()
+    {
+        if (!_sessionService.HasMultipleBranches) return;
+
+        var dialog = new BranchSelectionDialog(_sessionService.UserBranches);
+        if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
+        {
+            dialog.Owner = Application.Current.MainWindow;
+        }
+
+        var result = dialog.ShowDialog();
+        if (result == true && dialog.SelectedBranch != null)
+        {
+            _sessionService.SetActiveBranch(dialog.SelectedBranch);
+            CurrentBranch = dialog.SelectedBranch;
+
+            await _dialogService.ShowAlertAsync(
+                "Sede Cambiada",
+                $"Ahora estás operando en la sede: {dialog.SelectedBranch.Name} ({dialog.SelectedBranch.Code})",
+                DialogNotificationType.Success);
+
+            // Refrescar ocupación y vista
+            Occupancy = await _ticketService.GetOccupancyStatsAsync();
+            if (ActiveView is CheckInViewModel) _navigationService.NavigateTo<CheckInViewModel>();
+        }
     }
 
     [RelayCommand]
@@ -211,7 +262,6 @@ public partial class MainShellViewModel : ViewModelBase
             SyncStatusText = _syncEngine.SyncStatusDescription;
             Occupancy = await _ticketService.GetOccupancyStatsAsync();
 
-            // Refrescar de inmediato la pantalla activa con los datos recién sincronizados
             if (ActiveView is ShiftClosureViewModel)
             {
                 _navigationService.NavigateTo<ShiftClosureViewModel>();
@@ -294,7 +344,6 @@ public partial class MainShellViewModel : ViewModelBase
         }
     }
 
-
     private async Task<bool> EnsureActiveShiftAsync()
     {
         var activeShift = await _shiftService.GetActiveShiftAsync();
@@ -311,6 +360,19 @@ public partial class MainShellViewModel : ViewModelBase
         return true;
     }
 
+    private async Task<bool> CheckPermissionAsync(string permissionSlug, string moduleFriendlyName)
+    {
+        if (!_permissionService.HasPermission(permissionSlug))
+        {
+            await _dialogService.ShowAlertAsync(
+                "Acceso Denegado",
+                $"No cuentas con los permisos requeridos para acceder al módulo de {moduleFriendlyName}. Consulta con tu administrador.",
+                DialogNotificationType.Warning);
+            return false;
+        }
+        return true;
+    }
+
     [RelayCommand]
     private void SelectTheme(AppTheme theme)
     {
@@ -320,6 +382,7 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private async Task NavigateToCheckInAsync()
     {
+        if (!await CheckPermissionAsync("CheckIn.View", "Ingreso Vehicular")) return;
         if (await EnsureActiveShiftAsync())
         {
             _navigationService.NavigateTo<CheckInViewModel>();
@@ -329,6 +392,7 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private async Task NavigateToCheckOutAsync()
     {
+        if (!await CheckPermissionAsync("CheckOut.View", "Salida y Cobro")) return;
         if (await EnsureActiveShiftAsync())
         {
             _navigationService.NavigateTo<CheckOutViewModel>();
@@ -338,6 +402,7 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private async Task NavigateToRecentEntriesAsync()
     {
+        if (!await CheckPermissionAsync("RecentEntries.View", "Patio y Entradas Recientes")) return;
         if (await EnsureActiveShiftAsync())
         {
             _navigationService.NavigateTo<RecentEntriesViewModel>();
@@ -347,6 +412,7 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private async Task NavigateToAnalyticsAsync()
     {
+        if (!await CheckPermissionAsync("Analytics.View", "Analítica y Métricas")) return;
         if (await EnsureActiveShiftAsync())
         {
             _navigationService.NavigateTo<AnalyticsViewModel>();
@@ -354,6 +420,12 @@ public partial class MainShellViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private async Task NavigateToShiftClosureAsync()
+    {
+        if (!await CheckPermissionAsync("ShiftClosure.View", "Caja y Turnos")) return;
+        _navigationService.NavigateTo<ShiftClosureViewModel>();
+    }
+
     private void NavigateToShiftClosure()
     {
         _navigationService.NavigateTo<ShiftClosureViewModel>();
@@ -362,12 +434,12 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private async Task NavigateToMonthlySubscriptionsAsync()
     {
+        if (!await CheckPermissionAsync("MonthlySubs.View", "Mensualidades")) return;
         if (await EnsureActiveShiftAsync())
         {
             _navigationService.NavigateTo<MonthlySubscriptionsViewModel>();
         }
     }
-
 
     [RelayCommand]
     private async Task LogoutAsync()

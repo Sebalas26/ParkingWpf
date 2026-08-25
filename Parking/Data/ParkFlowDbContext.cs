@@ -25,6 +25,9 @@ public class ParkFlowDbContext : DbContext
     public DbSet<PendingSyncItem> PendingSyncItems => Set<PendingSyncItem>();
     public DbSet<PaymentMethodEntity> PaymentMethods => Set<PaymentMethodEntity>();
     public DbSet<MonthlySubscription> MonthlySubscriptions => Set<MonthlySubscription>();
+    public DbSet<Branch> Branches => Set<Branch>();
+    public DbSet<UserBranch> UserBranches => Set<UserBranch>();
+    public DbSet<BranchPaymentMethodEntity> BranchPaymentMethods => Set<BranchPaymentMethodEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

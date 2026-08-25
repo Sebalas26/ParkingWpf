@@ -184,7 +184,8 @@
         <!-- 4. Subscriptions DataGrid -->
         <Border Grid.Row="3" Style="{StaticResource ModernCard}" Padding="16">
             <DataGrid ItemsSource="{Binding Subscriptions}"
-                      Style="{StaticResource ModernDataGrid}">
+                      Style="{StaticResource ModernDataGrid}"
+                      IsReadOnly="True">
                 <DataGrid.Columns>
                     <!-- Placa -->
                     <DataGridTemplateColumn Header="PLACA" Width="1.2*">
@@ -236,7 +237,7 @@
                     </DataGridTemplateColumn>
 
                     <!-- Contacto -->
-                    <DataGridTextColumn Header="TELÉFONO" Binding="{Binding CustomerPhone}" Width="1.2*"/>
+                    <DataGridTextColumn Header="TELÉFONO" Binding="{Binding CustomerPhone, Mode=OneWay}" Width="1.2*"/>
 
                     <!-- Vigencia -->
                     <DataGridTemplateColumn Header="VIGENCIA" Width="1.6*">

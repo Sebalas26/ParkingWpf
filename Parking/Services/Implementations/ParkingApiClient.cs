@@ -45,7 +45,7 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<bool> PingAsync()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try
         {
             var response = await _httpClient.GetAsync($"{BaseUrl}/api/health", cts.Token);
@@ -56,7 +56,7 @@ public class ParkingApiClient : IApiClientService
         var fallbackUrl = BaseUrl.Contains("7023") ? "http://localhost:5135" : "https://localhost:7023";
         try
         {
-            using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(5));
             var response = await _httpClient.GetAsync($"{fallbackUrl}/api/health", ctsFallback.Token);
             if (response.IsSuccessStatusCode)
             {
@@ -71,7 +71,7 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<BootstrapSyncResponse?> GetBootstrapAsync()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(6));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
         try
         {
             var response = await _httpClient.GetAsync($"{BaseUrl}/api/sync/bootstrap", cts.Token);

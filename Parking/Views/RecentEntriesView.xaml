@@ -75,7 +75,8 @@
                 <!-- DataGrid of Recent Entries -->
                 <DataGrid Grid.Row="2"
                           ItemsSource="{Binding Entries}"
-                          Style="{StaticResource ModernDataGrid}">
+                          Style="{StaticResource ModernDataGrid}"
+                          IsReadOnly="True">
                     <DataGrid.Columns>
                         <!-- Placa -->
                         <DataGridTemplateColumn Header="PLACA" Width="1.4*">
@@ -115,10 +116,10 @@
                         </DataGridTemplateColumn>
 
                         <!-- Número de Tiquete -->
-                        <DataGridTextColumn Header="TIQUETE #" Binding="{Binding TicketNumber}" Width="1.2*"/>
+                        <DataGridTextColumn Header="TIQUETE #" Binding="{Binding TicketNumber, Mode=OneWay}" Width="1.2*"/>
 
                         <!-- Hora de Ingreso -->
-                        <DataGridTextColumn Header="HORA INGRESO" Binding="{Binding EntryTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" Width="1.4*"/>
+                        <DataGridTextColumn Header="HORA INGRESO" Binding="{Binding EntryTime, Mode=OneWay, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" Width="1.4*"/>
 
                         <!-- Tiempo Transcurrido -->
                         <DataGridTemplateColumn Header="TIEMPO EN PATIO" Width="1.3*">
@@ -150,7 +151,7 @@
                         </DataGridTemplateColumn>
 
                         <!-- Operador -->
-                        <DataGridTextColumn Header="OPERADOR EN TURNO" Binding="{Binding OperatorName}" Width="1.3*"/>
+                        <DataGridTextColumn Header="OPERADOR EN TURNO" Binding="{Binding OperatorName, Mode=OneWay}" Width="1.3*"/>
 
                         <!-- Acción: Reimprimir -->
                         <DataGridTemplateColumn Header="ACCIONES" Width="1.4*">

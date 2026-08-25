@@ -62,7 +62,7 @@ public static class Authorize
             PermissionService.Current.PermissionsChanged -= PermissionService_PermissionsChanged;
             PermissionService.Current.PermissionsChanged += PermissionService_PermissionsChanged;
 
-            void PermissionService_PermissionsChanged(object? s, EventArgs ev)
+            void PermissionService_PermissionsChanged()
             {
                 if (element.Dispatcher.CheckAccess())
                 {

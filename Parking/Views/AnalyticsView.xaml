@@ -282,7 +282,7 @@
                     </Grid>
 
                     <!-- DataGrid -->
-                    <DataGrid Grid.Row="2" ItemsSource="{Binding Transactions}" Style="{StaticResource ModernDataGrid}">
+                    <DataGrid Grid.Row="2" ItemsSource="{Binding Transactions}" Style="{StaticResource ModernDataGrid}" IsReadOnly="True">
                         <DataGrid.Columns>
                             <!-- Placa -->
                             <DataGridTemplateColumn Header="PLACA" Width="1.3*">
@@ -319,10 +319,10 @@
                             </DataGridTemplateColumn>
 
                             <!-- Hora Entrada -->
-                            <DataGridTextColumn Header="HORA ENTRADA" Binding="{Binding EntryTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Width="1.4*"/>
+                            <DataGridTextColumn Header="HORA ENTRADA" Binding="{Binding EntryTime, Mode=OneWay, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Width="1.4*"/>
 
                             <!-- Hora Salida -->
-                            <DataGridTextColumn Header="HORA SALIDA" Binding="{Binding ExitTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Width="1.4*"/>
+                            <DataGridTextColumn Header="HORA SALIDA" Binding="{Binding ExitTime, Mode=OneWay, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Width="1.4*"/>
 
                             <!-- Tiempo Total / Transcurrido -->
                             <DataGridTemplateColumn Header="DURACIÓN" Width="1.3*">

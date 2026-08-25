@@ -22,6 +22,8 @@ public partial class App : Application
     private IConfiguration _configuration = null!;
     private static readonly object _logLock = new();
 
+    public IServiceProvider Services => _serviceProvider;
+
     public App()
     {
         // 1. Capturar excepciones no controladas en el hilo de UI (WPF Dispatcher)
@@ -56,14 +58,6 @@ public partial class App : Application
 
             var connectionManager = _serviceProvider.GetRequiredService<IDbConnectionManager>();
             await connectionManager.InitializeDatabaseAsync();
-
-            // Conectar el servicio de permisos con los cambios de sesión
-            var authService = _serviceProvider.GetRequiredService<IAuthService>();
-            var permissionService = _serviceProvider.GetRequiredService<IPermissionService>();
-            authService.UserSessionChanged += user =>
-            {
-                permissionService.LoadPermissions(user);
-            };
 
             ShowLoginWindow();
         }
@@ -110,7 +104,8 @@ public partial class App : Application
 
         services.AddSingleton<IDbConnectionManager, DbConnectionManager>();
         services.AddSingleton<IThemeService, ThemeService>();
-
+        services.AddSingleton<ISessionService, SessionService>();
+        services.AddSingleton<IPermissionService, PermissionService>();
         services.AddSingleton<IAuthService, AuthService>();
         services.AddSingleton<IShiftService, EfShiftService>();
         services.AddSingleton<IStoreService, StoreService>();
@@ -121,7 +116,6 @@ public partial class App : Application
         services.AddSingleton<IBarcodeGeneratorService, Code128BarcodeGeneratorService>();
         services.AddSingleton<IReceiptPrinterService, MockReceiptPrinterService>();
         services.AddSingleton<IAnalyticsService, EfAnalyticsService>();
-        services.AddSingleton<IPermissionService, PermissionService>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IDialogService, DialogService>();
 
@@ -154,10 +148,6 @@ public partial class App : Application
 
         loginViewModel.LoginSuccessful += () =>
         {
-            var authService = _serviceProvider.GetRequiredService<IAuthService>();
-            var permissionService = _serviceProvider.GetRequiredService<IPermissionService>();
-            permissionService.LoadPermissions(authService.CurrentUser);
-
             ShowMainShellWindow();
             loginWindow.Close();
         };

@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Windows;
+using System.Linq;
 using Parking.Models;
 using Parking.Services.Contracts;
 
@@ -8,78 +8,19 @@ namespace Parking.Services.Implementations;
 
 public class PermissionService : IPermissionService
 {
-    private static IPermissionService? _instance;
-    public static IPermissionService Current => _instance ??= new PermissionService();
-
     private readonly HashSet<string> _permissions = new(StringComparer.OrdinalIgnoreCase);
 
-    public event EventHandler? PermissionsChanged;
+    public static PermissionService Current { get; } = new();
 
-    public IReadOnlySet<string> CurrentPermissions => _permissions;
+    public event Action? PermissionsChanged;
+
     public bool IsAdmin { get; private set; }
-
-    public PermissionService()
-    {
-        _instance = this;
-    }
-
-    public void LoadPermissions(UserSessionModel? userSession)
-    {
-        _permissions.Clear();
-
-        if (userSession == null)
-        {
-            IsAdmin = false;
-            NotifyPermissionsChanged();
-            return;
-        }
-
-        var roleName = userSession.RoleName?.Trim().ToLowerInvariant() ?? string.Empty;
-        var username = userSession.Username?.Trim().ToLowerInvariant() ?? string.Empty;
-        IsAdmin = roleName == "administrador" || roleName == "admin" || username == "admin";
-
-        if (IsAdmin)
-        {
-            // El administrador tiene super-acceso total
-            NotifyPermissionsChanged();
-            return;
-        }
-
-        // Permisos predeterminados para Operador de Turno / Cajero
-        if (roleName == "operador" || roleName == "cajero" || roleName.Length > 0)
-        {
-            _permissions.UnionWith(new[]
-            {
-                "checkin.view",
-                "checkin.create",
-                "checkin.reprint",
-                "checkout.view",
-                "checkout.search",
-                "checkout.apply_discount",
-                "checkout.process_payment",
-                "checkout.reprint_receipt",
-                "subscriptions.view",
-                "subscriptions.create",
-                "subscriptions.renew",
-                "recent_entries.view",
-                "shift.view",
-                "shift.open",
-                "shift.cash_withdrawal",
-                "shift.close",
-                "shift.history",
-                "system.sync",
-                "system.theme"
-            });
-        }
-
-        NotifyPermissionsChanged();
-    }
+    public IReadOnlySet<string> GrantedPermissions => _permissions;
 
     public bool HasPermission(string? permissionSlug)
     {
         if (string.IsNullOrWhiteSpace(permissionSlug)) return true;
         if (IsAdmin) return true;
-
         return _permissions.Contains(permissionSlug.Trim());
     }
 
@@ -87,37 +28,61 @@ public class PermissionService : IPermissionService
     {
         if (IsAdmin) return true;
         if (permissionSlugs == null || permissionSlugs.Length == 0) return true;
-
-        foreach (var slug in permissionSlugs)
-        {
-            if (HasPermission(slug)) return true;
-        }
-
-        return false;
+        return permissionSlugs.Any(HasPermission);
     }
 
     public bool HasAllPermissions(params string[] permissionSlugs)
     {
         if (IsAdmin) return true;
         if (permissionSlugs == null || permissionSlugs.Length == 0) return true;
-
-        foreach (var slug in permissionSlugs)
-        {
-            if (!HasPermission(slug)) return false;
-        }
-
-        return true;
+        return permissionSlugs.All(HasPermission);
     }
 
-    private void NotifyPermissionsChanged()
+    public void LoadPermissions(IEnumerable<string> permissionSlugs, bool isAdmin = false)
     {
-        if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())
+        IsAdmin = isAdmin;
+        _permissions.Clear();
+
+        if (permissionSlugs != null)
         {
-            Application.Current.Dispatcher.Invoke(() => PermissionsChanged?.Invoke(this, EventArgs.Empty));
+            foreach (var p in permissionSlugs.Where(p => !string.IsNullOrWhiteSpace(p)))
+            {
+                _permissions.Add(p.Trim());
+            }
         }
-        else
+
+        if (this != Current)
         {
-            PermissionsChanged?.Invoke(this, EventArgs.Empty);
+            Current.LoadPermissions(permissionSlugs, isAdmin);
         }
+
+        PermissionsChanged?.Invoke();
+    }
+
+    public void LoadPermissions(UserSessionModel? user)
+    {
+        if (user == null)
+        {
+            Clear();
+            return;
+        }
+
+        var isAdmin = user.RoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
+                      user.RoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+
+        LoadPermissions(Array.Empty<string>(), isAdmin);
+    }
+
+    public void Clear()
+    {
+        IsAdmin = false;
+        _permissions.Clear();
+
+        if (this != Current)
+        {
+            Current.Clear();
+        }
+
+        PermissionsChanged?.Invoke();
     }
 }

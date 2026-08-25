@@ -88,10 +88,16 @@ public partial class MonthlySubscriptionsViewModel : ViewModelBase
 
     public MonthlySubscriptionsViewModel(
         IMonthlySubscriptionService subscriptionService,
-        IDialogService dialogService)
+        IDialogService dialogService,
+        ISyncEngineService syncEngine)
     {
         _subscriptionService = subscriptionService;
         _dialogService = dialogService;
+
+        syncEngine.DataSynchronized += async () =>
+        {
+            await LoadSubscriptionsAsync();
+        };
 
         _subscriptionService.SubscriptionsChanged += (s, e) => _ = LoadSubscriptionsAsync();
     }

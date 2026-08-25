@@ -44,4 +44,5 @@ public class LoginApiResponse
     public string FullName { get; set; } = string.Empty;
     public string RoleName { get; set; } = string.Empty;
     public bool IsAdmin { get; set; }
+    public List<BranchModel> Branches { get; set; } = new();
 }

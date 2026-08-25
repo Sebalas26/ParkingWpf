@@ -431,11 +431,12 @@
 
                     <DataGrid ItemsSource="{Binding ShiftHistory}"
                               Style="{StaticResource ModernDataGrid}"
+                              IsReadOnly="True"
                               MaxHeight="360">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="FECHA APERTURA" Binding="{Binding StartTime, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Width="1.3*"/>
-                            <DataGridTextColumn Header="FECHA CIERRE" Binding="{Binding EndTime, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Width="1.3*"/>
-                            <DataGridTextColumn Header="OPERADOR" Binding="{Binding OperatorName}" Width="1.4*"/>
+                            <DataGridTextColumn Header="FECHA APERTURA" Binding="{Binding StartTime, Mode=OneWay, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Width="1.3*"/>
+                            <DataGridTextColumn Header="FECHA CIERRE" Binding="{Binding EndTime, Mode=OneWay, StringFormat='{}{0:dd/MM/yyyy HH:mm}'}" Width="1.3*"/>
+                            <DataGridTextColumn Header="OPERADOR" Binding="{Binding OperatorName, Mode=OneWay}" Width="1.4*"/>
                             <DataGridTemplateColumn Header="BASE CAJA" Width="1.1*">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -478,7 +479,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTextColumn Header="ENTREGADO A" Binding="{Binding HandoverToUserName}" Width="1.3*"/>
+                            <DataGridTextColumn Header="ENTREGADO A" Binding="{Binding HandoverToUserName, Mode=OneWay}" Width="1.3*"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </StackPanel>
