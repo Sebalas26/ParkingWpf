@@ -17,6 +17,102 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-08-25 17:34:00] - [FEAT] [MULTI-BRANCH] [AUTH] - Retorno Global de Sedes para Administradores y Filtrado de Operadores por Sede Activa
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **Módulos Afectados**:
+  - `ParkingApi.Core`: `AuthService.cs`, `BranchService.cs`
+  - `ParkingApi.Domain`: `IBranchRepository.cs`, `IBranchService.cs`
+  - `ParkingApi.Infrastructure`: `BranchRepository.cs`
+  - `ParkingApi`: `BranchesController.cs`
+  - `Parking (WPF)`: `IApiClientService.cs`, `ParkingApiClient.cs`, `ShiftClosureViewModel.cs`
+- **Descripción**:
+  1. **Acceso Global para Administradores**: Se actualizó el endpoint de login en el backend para que los usuarios con rol Administrador reciban siempre el 100% de las sedes activas (`_branchRepository.GetActiveAsync()`). Con 2 o más sedes activas, la terminal WPF despliega de forma automática el modal emergente `BranchSelectionDialog` en el login.
+  2. **Endpoint de Operadores por Sede**: Se implementó el endpoint `GET /api/branches/{id}/users` para consultar los operadores asignados a cada sede en `UserBranches` (junto con los administradores globales).
+  3. **Filtrado Dinámico en Relevos**: En la pantalla de **Control de Turnos** de la terminal, la lista de operadores disponibles para entrega de caja ahora se filtra estrictamente por la sede activa (`CurrentBranch.Id`), impidiendo transferir turnos a operarios de otras sedes.
+- **Verificación**:
+  - `dotnet build ParkingApi.slnx` -> Compilación con **0 errores**.
+  - `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
+
+### [2026-08-25 17:19:00] - [FEAT] [AUTH] [SECURITY] - Sincronización Completa de Sesión en Relevo de Turno y Validación Estricta de Permisos de Operadores
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **Módulos Afectados**:
+  - `Parking/Services/Implementations/AuthService.cs`: Sincronización total de sesión en `SwitchCurrentUser` y asignación de matriz de permisos operativos para el rol de Operador.
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`: Filtrado de operadores con roles operativos en `AvailableUsers`, validación de permisos del receptor previo al relevo y recarga de balance/historial.
+  - `Parking/ViewModels/MainShellViewModel.cs`: Validación de titularidad de caja activa para impedir que un operador ajeno facture sobre un turno que no le pertenece sin previo relevo.
+- **Descripción**:
+  1. **Actualización en Caliente de la UI**: Al relevar el turno, la sesión se sincroniza con `_sessionService`, actualizando de inmediato el Avatar, Nombre y Rol en el pie de página.
+  2. **Resolución de Acceso Denegado**: Se cargan los slugs operativos de terminal para operadores (`checkin.*`, `checkout.*`, `subscriptions.*`, `shift.*`, etc.), permitiendo que el operador entrante continúe facturando sin excepciones de autorización.
+  3. **Protección de Gaveta y Caja**: Solo usuarios activos con roles operativos pueden recibir turnos. Se bloquea la operación cruzada entre operadores si no se ha realizado la entrega de turno formal.
+- **Verificación**: `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
+
+### [2026-08-25 16:03:00] - [FEAT] [WPF] [SECURITY] - Forzado Obligatorio de Apertura de Turno y Guardias de Navegación Operativa
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **Módulos Afectados**:
+  - `Parking/ViewModels/MainShellViewModel.cs`: Validación estricta de turno en arranque (`InitializeAsync`) y guardias en `NavigateToCheckIn`, `NavigateToCheckOut`, `NavigateToMonthlySubscriptions`.
+- **Descripción**:
+  1. **Arranque Guiado**: Al iniciar sesión en la terminal sin turno abierto, el sistema redirige automáticamente a la pantalla de **Control de Turnos** y emite la alerta solicitando ingresar la base inicial de caja.
+  2. **Bloqueo Estricto de Navegación Operativa**: Se bloquea el acceso a *Ingreso de Vehículos*, *Salida y Cobro* y *Mensualidades* si no hay un turno operativo abierto, manteniendo al operador en la pantalla de turnos hasta su apertura.
+  3. **Flujo Fluido**: Tras abrir el turno en `ShiftClosureViewModel`, la terminal redirige automáticamente a *Ingreso de Vehículos* lista para la operación.
+- **Verificación**: `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
+
+### [2026-08-25 15:53:00] - [FIX] [WPF] [UI] - Inclusión de Recurso Vectorial IconBuilding en Icons.xaml
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **Módulos Afectados**:
+  - `Parking/Styles/Icons.xaml`: Geometría vectorial para `IconBuilding`.
+- **Descripción**:
+  - Se corrigió la excepción `XamlParseException` en la línea 238 de `MainShellWindow.xaml` por falta del recurso `IconBuilding` (utilizado en la píldora informativa de Sede Activa en el TopBar).
+- **Verificación**: `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
+
+### [2026-08-25 15:50:00] - [FIX] [WPF] [UI] - Corrección de XamlParseException por Recursos de Iconos Faltantes (IconCalendar, IconCashRegister)
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **Módulos Afectados**:
+  - `Parking/Styles/Icons.xaml`: Inclusión de las geometrías vectoriales `IconCalendar` e `IconCashRegister`.
+- **Descripción**:
+  - Se corrigió la excepción `System.Windows.Markup.XamlParseException` que se producía al abrir la ventana principal `MainShellWindow` luego del login.
+  - La excepción ocurría en la línea 111 de `MainShellWindow.xaml` porque los botones de navegación de *Mensualidades* y *Control de Turnos* hacían referencia estática a `IconCalendar` e `IconCashRegister` que no estaban definidos en el diccionario de recursos vectoriales.
+- **Verificación**: `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
+
+### [2026-08-25 15:46:00] - [FEAT] [AUTH] [SECURITY] - Soporte de Autenticación Flexible Híbrida (Email o Username) y Unificación de DTOs
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **Módulos Afectados**:
+  - `ParkingApi.Domain`: `IUserRepository.cs`
+  - `ParkingApi.Infrastructure`: `UserRepository.cs`
+  - `ParkingApi.Core`: `AuthService.cs`
+  - `Parking (WPF)`: `TicketApiModels.cs`, `UserSessionModel.cs`, `AuthService.cs`
+- **Descripción**:
+  1. **Búsqueda Flexible en Backend**: Se implementó `GetByIdentifierAsync` en `UserRepository`, permitiendo que tanto la PWA (`login-mobile`) como el cliente WPF (`login`) acepten indistintamente el nombre de usuario (`admin`) o el correo electrónico (`admin@parkflow.local`).
+  2. **Alineación de Tipos de Identificadores**: `LoginApiResponse` en WPF se sincronizó con el tipo `int UserId` de la base de datos MySQL, resolviendo las excepciones de deserialización JSON de forma limpia sin alterar el esquema relacional de la base de datos.
+- **Verificación**:
+  - `dotnet build ParkingApi.slnx` -> Compilación con **0 errores**.
+  - `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
+
+### [2026-08-25 14:38:00] - [FIX] [API] - Corrección de Error 500 en Swagger / OpenAPI (/openapi/v1.json)
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **Módulos Afectados**:
+  - `ParkingApi/Program.cs`: Configuración de `AddSwaggerGen` con `ResolveConflictingActions`, `CustomSchemaIds` y mapeo de endpoint `/swagger/v1/swagger.json`.
+- **Descripción**:
+  - Se corrigió la excepción HTTP 500 que impedía cargar la definición de la API en Swagger UI. El error se originaba por la colisión de rutas múltiples y sobrecargas de endpoints en controladores heredados (`UsersController`, `PaymentMethodController`, `RoleActionsController`, etc.) en el generador básico de .NET.
+  - Se configuró la resolución automática de conflictos de acciones y schemas en Swashbuckle, garantizando la renderización limpia de todos los endpoints de `BranchesController`, `AuthController`, etc.
+- **Verificación**: `dotnet build ParkingApi.slnx` -> Compilación con **0 errores**.
+
+### [2026-08-25 14:27:00] - [UI/UX] [BRANDING] [SECURITY] - Identidad Visual Oficial PARK POINT, Eliminación de Selector de Temas y Guardia de Login sin Sedes
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **Módulos Afectados**:
+  - `Parking/Styles/Colors.xaml`: Reemplazo total con paleta oficial de PARK POINT (Verde `#00867A`, Grafito `#1E2A2F`, Gris Concreto `#B9B9B9`, Blanco `#FFFFFF`, Amarillo `#FFC107`, Fondo Neutro `#F4F6F7`).
+  - `Parking/Services/Implementations/ThemeService.cs`: Fijación de la paleta institucional única y eliminación de temas alternos.
+  - `Parking/ViewModels/LoginViewModel.cs`: Bloqueo total de acceso en login ante 0 sedes registradas o sin sedes asignadas con mensaje explicativo; remoción de selector de temas.
+  - `Parking/ViewModels/MainShellViewModel.cs`: Limpieza de comandos y propiedades de temas; navegación con slugs unificados; soporte de cambio de sede interactivo.
+  - `Parking/Views/LoginWindow.xaml`: Actualización a marca PARK POINT ("TU PUNTO DE LLEGADA"), remoción de botones de temas, modernización de banner.
+  - `Parking/Views/MainShellWindow.xaml`: Actualización de títulos y banners a PARK POINT, remoción de combobox de temas, paleta en sidebar Grafito y acentos en Verde.
+  - `Parking/Views/BranchSelectionDialog.xaml` y `ReceiptPreviewDialog.xaml`: Sombra Grafito y membrete oficial PARK POINT.
+- **Descripción**:
+  1. **Identidad Visual Corporativa**: Adoptada la marca oficial **PARK POINT** con el lema *"TU PUNTO DE LLEGADA"* y la paleta de materiales exacta.
+  2. **Eliminación de Cambio de Temas**: Se eliminaron los selectores de temas en Login y MainShell para mantener una estética consistente y profesional.
+  3. **Guardia de Login sin Sedes**: Al intentar loguearse sin sedes registradas, la terminal bloquea el acceso e instruye al usuario a crear la primera sede desde la PWA.
+- **Verificación**:
+  - `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
+  - `dotnet build ParkingApi.slnx` -> Compilación con **0 errores**.
+
 ### [2026-08-25 12:35:00] - [FEAT] [ARCH] [SECURITY] - Arquitectura Multi-Sede (Parqueaderos), Catálogo Maestro RBAC Real y Autorización Declarativa en WPF
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **Módulos Afectados**:

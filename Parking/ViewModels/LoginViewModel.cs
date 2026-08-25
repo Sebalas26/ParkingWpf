@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Parking.Core.Enums;
 using Parking.Models;
 using Parking.Services.Contracts;
 using Parking.Views;
@@ -16,7 +15,6 @@ public partial class LoginViewModel : ViewModelBase
 {
     private readonly IAuthService _authService;
     private readonly ISessionService _sessionService;
-    private readonly IThemeService _themeService;
 
     [ObservableProperty]
     private string _username = string.Empty;
@@ -30,29 +28,14 @@ public partial class LoginViewModel : ViewModelBase
     [ObservableProperty]
     private bool _hasError;
 
-    [ObservableProperty]
-    private AppTheme _currentTheme;
-
-    public IReadOnlyList<ThemeInfo> AvailableThemes => _themeService.GetAvailableThemes();
-
     public event Action? LoginSuccessful;
 
     public LoginViewModel(
         IAuthService authService,
-        ISessionService sessionService,
-        IThemeService themeService)
+        ISessionService sessionService)
     {
         _authService = authService;
         _sessionService = sessionService;
-        _themeService = themeService;
-        _currentTheme = _themeService.CurrentTheme;
-    }
-
-    [RelayCommand]
-    private void SelectTheme(AppTheme theme)
-    {
-        CurrentTheme = theme;
-        _themeService.SetTheme(theme);
     }
 
     [RelayCommand]
@@ -83,11 +66,11 @@ public partial class LoginViewModel : ViewModelBase
 
             var branches = authResult.Branches;
 
-            // Escenario 1: 0 Sedes asignadas
+            // Escenario 1: 0 Sedes disponibles en el sistema o asignadas
             if (branches == null || branches.Count == 0)
             {
                 HasError = true;
-                ErrorMessage = "El usuario no tiene sedes asignadas o activas. Por favor contacte al administrador del sistema.";
+                ErrorMessage = "No existen sedes registradas en el sistema o no tienes sedes asignadas. Por favor ingresa a la administración web (PWA) y crea tu primera sede de parqueadero antes de operar en la terminal.";
                 return;
             }
 

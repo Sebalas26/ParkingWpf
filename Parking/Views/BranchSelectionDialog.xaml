@@ -25,7 +25,7 @@
             Padding="24"
             SnapsToDevicePixels="True">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="28" ShadowDepth="8" Direction="270" Opacity="0.22" Color="#0B3C49"/>
+            <DropShadowEffect BlurRadius="28" ShadowDepth="8" Direction="270" Opacity="0.22" Color="#1E2A2F"/>
         </Border.Effect>
 
         <Grid>

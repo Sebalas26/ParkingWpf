@@ -66,9 +66,9 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel HorizontalAlignment="Stretch" Margin="4,0">
                         <StackPanel HorizontalAlignment="Center" Margin="0,0,0,8">
-                            <TextBlock Text="PARQUEADERO PARKFLOW" FontSize="15" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center"/>
-                            <TextBlock Text="SISTEMA DE CONTROL DE ACCESO" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Center" Margin="0,1,0,0"/>
-                            <TextBlock Text="Terminal 01 • Entrada Principal" FontSize="10" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="PARQUEADERO PARK POINT" FontSize="15" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="TU PUNTO DE LLEGADA" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Center" Margin="0,1,0,0"/>
+                            <TextBlock Text="Terminal 01 • Estación de Control" FontSize="10" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
                         </StackPanel>
 
                         <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,2,0,8"/>

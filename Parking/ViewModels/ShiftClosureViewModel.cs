@@ -25,6 +25,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private readonly IReceiptPrinterService _receiptPrinter;
     private readonly IDbConnectionManager _connectionManager;
     private readonly INavigationService _navigationService;
+    private readonly IApiClientService _apiClient;
+    private readonly ISessionService _sessionService;
 
     [ObservableProperty]
     private ShiftSummaryModel _summary = new();
@@ -84,7 +86,9 @@ public partial class ShiftClosureViewModel : ViewModelBase
         IReceiptPrinterService receiptPrinter,
         IDbConnectionManager connectionManager,
         INavigationService navigationService,
-        ISyncEngineService syncEngine)
+        ISyncEngineService syncEngine,
+        IApiClientService apiClient,
+        ISessionService sessionService)
     {
         _shiftService = shiftService;
         _authService = authService;
@@ -92,6 +96,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
         _receiptPrinter = receiptPrinter;
         _connectionManager = connectionManager;
         _navigationService = navigationService;
+        _apiClient = apiClient;
+        _sessionService = sessionService;
         _operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
 
         syncEngine.DataSynchronized += async () =>
@@ -294,6 +300,23 @@ public partial class ShiftClosureViewModel : ViewModelBase
             return; // Cancelado o contraseña inválida
         }
 
+        var receiverRole = authenticatedReceiver.RoleName?.ToLowerInvariant() ?? string.Empty;
+        var hasValidRole = receiverRole.Contains("operador") ||
+                           receiverRole.Contains("administrador") ||
+                           receiverRole.Contains("admin") ||
+                           receiverRole.Contains("cajero") ||
+                           receiverRole.Contains("operator");
+
+        if (!hasValidRole)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Usuario Sin Permisos Operativos",
+                $"El usuario '{SelectedHandoverUser.FullName}' no cuenta con un rol con permisos para operar la terminal de parqueadero.\n\n" +
+                $"Por favor asigne un rol de Operador o Administrador en la gestión de usuarios antes de transferirle la caja.",
+                DialogNotificationType.Warning);
+            return;
+        }
+
         IsBusy = true;
         BusyMessage = $"Entregando caja a {SelectedHandoverUser.FullName} e iniciando nuevo turno...";
 
@@ -318,6 +341,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
             ActualCashCounted = 0m;
             Notes = null;
+            await LoadShiftDataAsync();
 
             // Redirigir a la pantalla de entradas con la nueva sesión activa
             _navigationService.NavigateTo<CheckInViewModel>();
@@ -362,26 +386,64 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 }
             }
 
-            // Cargar usuarios reales para entrega de turno (sin auto-seeding mock)
+            // Cargar usuarios reales asignados a la sede activa con rol operativo para entrega de turno
             using var db = _connectionManager.CreateDbContext();
             var currentUserId = _authService.CurrentUser?.UserId;
             var currentUsername = _authService.CurrentUser?.Username?.ToLower();
+            var currentBranch = _sessionService.CurrentBranch;
 
-            var users = await db.Users
-                .AsNoTracking()
-                .Where(u => u.IsActive)
-                .OrderBy(u => u.FullName)
-                .ToListAsync();
+            List<User> branchUsers = new();
+
+            if (currentBranch != null && currentBranch.Id > 0)
+            {
+                try
+                {
+                    var apiUsers = await _apiClient.GetBranchUsersAsync(currentBranch.Id);
+                    if (apiUsers != null && apiUsers.Count > 0)
+                    {
+                        var usernames = apiUsers.Select(u => u.Username.ToLower()).ToHashSet();
+                        branchUsers = await db.Users
+                            .Include(u => u.Role)
+                            .AsNoTracking()
+                            .Where(u => u.IsActive && (usernames.Contains(u.Username.ToLower()) || (u.Email != null && usernames.Contains(u.Email.ToLower()))))
+                            .OrderBy(u => u.FullName)
+                            .ToListAsync();
+                    }
+                }
+                catch { }
+            }
+
+            if (branchUsers.Count == 0)
+            {
+                branchUsers = await db.Users
+                    .Include(u => u.Role)
+                    .AsNoTracking()
+                    .Where(u => u.IsActive)
+                    .OrderBy(u => u.FullName)
+                    .ToListAsync();
+            }
 
             AvailableUsers.Clear();
-            foreach (var u in users)
+            foreach (var u in branchUsers)
             {
                 // Excluir estrictamente al usuario actual en sesión
                 if (u.UserId == currentUserId || (currentUsername != null && u.Username.ToLower() == currentUsername))
                 {
                     continue;
                 }
-                AvailableUsers.Add(u);
+
+                // Filtrar únicamente usuarios que tengan un rol operativo válido o de administración
+                var roleName = u.Role?.Name?.ToLowerInvariant() ?? string.Empty;
+                var isAllowedRole = roleName.Contains("operador") ||
+                                    roleName.Contains("administrador") ||
+                                    roleName.Contains("admin") ||
+                                    roleName.Contains("cajero") ||
+                                    roleName.Contains("operator");
+
+                if (isAllowedRole)
+                {
+                    AvailableUsers.Add(u);
+                }
             }
 
             HasAvailableHandoverUsers = AvailableUsers.Count > 0;

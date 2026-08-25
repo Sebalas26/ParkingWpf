@@ -8,7 +8,6 @@ using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Parking.Core.Enums;
-using Parking.Entities;
 using Parking.Models;
 using Parking.Services.Contracts;
 using Parking.Views;
@@ -25,7 +24,6 @@ public partial class MainShellViewModel : ViewModelBase
     private readonly INavigationService _navigationService;
     private readonly ISyncEngineService _syncEngine;
     private readonly IBackgroundSyncScheduler _backgroundSync;
-    private readonly IThemeService _themeService;
     private readonly IDialogService _dialogService;
     private readonly IShiftService _shiftService;
     private readonly DispatcherTimer _clockTimer;
@@ -60,14 +58,6 @@ public partial class MainShellViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSyncing;
 
-    [ObservableProperty]
-    private AppTheme _currentAppTheme = AppTheme.FigmaTeal;
-
-    [ObservableProperty]
-    private ThemeInfo? _selectedTheme;
-
-    public IReadOnlyList<ThemeInfo> AvailableThemes => _themeService.GetAvailableThemes();
-
     public event Action? LogoutRequested;
 
     public MainShellViewModel(
@@ -78,7 +68,6 @@ public partial class MainShellViewModel : ViewModelBase
         INavigationService navigationService,
         ISyncEngineService syncEngine,
         IBackgroundSyncScheduler backgroundSync,
-        IThemeService themeService,
         IDialogService dialogService,
         IShiftService shiftService)
     {
@@ -89,12 +78,8 @@ public partial class MainShellViewModel : ViewModelBase
         _navigationService = navigationService;
         _syncEngine = syncEngine;
         _backgroundSync = backgroundSync;
-        _themeService = themeService;
         _dialogService = dialogService;
         _shiftService = shiftService;
-
-        _currentAppTheme = _themeService.CurrentTheme;
-        _selectedTheme = AvailableThemes.FirstOrDefault(t => t.Theme == _themeService.CurrentTheme) ?? AvailableThemes.First();
 
         _navigationService.CurrentViewModelChanged += (s, vm) =>
         {
@@ -113,12 +98,6 @@ public partial class MainShellViewModel : ViewModelBase
             SyncStatusText = status;
         };
 
-        _themeService.ThemeChanged += (s, theme) =>
-        {
-            CurrentAppTheme = theme;
-            SelectedTheme = AvailableThemes.FirstOrDefault(t => t.Theme == theme);
-        };
-
         _sessionService.UserSessionChanged += user =>
         {
             CurrentUser = user;
@@ -128,6 +107,11 @@ public partial class MainShellViewModel : ViewModelBase
         {
             CurrentBranch = branch;
             HasMultipleBranches = _sessionService.HasMultipleBranches;
+        };
+
+        _shiftService.ShiftStateChanged += () =>
+        {
+            _ = RefreshOccupancyAsync();
         };
 
         _clockTimer = new DispatcherTimer
@@ -140,312 +124,243 @@ public partial class MainShellViewModel : ViewModelBase
         UpdateClock();
     }
 
-    partial void OnSelectedThemeChanged(ThemeInfo? value)
-    {
-        if (value != null && value.Theme != _themeService.CurrentTheme)
-        {
-            _themeService.SetTheme(value.Theme);
-        }
-    }
-
     public override async Task InitializeAsync()
     {
-        CurrentUser = _sessionService.CurrentUser ?? _authService.CurrentUser;
+        CurrentUser = _sessionService.CurrentUser;
         CurrentBranch = _sessionService.CurrentBranch;
         HasMultipleBranches = _sessionService.HasMultipleBranches;
 
-        Occupancy = await _ticketService.GetOccupancyStatsAsync();
+        await RefreshOccupancyAsync();
 
-        // 1. Verificar si hay turno activo; si no, abrir pantalla de apertura de turno
         var activeShift = await _shiftService.GetActiveShiftAsync();
-        if (activeShift == null || activeShift.Status != 0)
+        if (activeShift == null)
         {
             NavigateToShiftClosure();
+            _ = _dialogService.ShowAlertAsync(
+                "Apertura de Turno Requerida",
+                "No hay un turno operativo abierto. Debe ingresar la base inicial de caja y abrir el turno antes de operar en la terminal.",
+                DialogNotificationType.Warning);
         }
         else
         {
-            _navigationService.NavigateTo<CheckInViewModel>();
-        }
+            var isCurrentShiftOwner = CurrentUser != null && (
+                string.Equals(activeShift.OperatorName, CurrentUser.FullName, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(activeShift.OperatorName, CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
 
-        // 2. Iniciar programador de sincronización en segundo plano
-        _backgroundSync.Start();
+            var isAdmin = CurrentUser != null && (
+                CurrentUser.RoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
+                CurrentUser.RoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase));
 
-        // 3. Ejecutar primera sincronización con el API en segundo plano
-        _ = Task.Run(async () =>
-        {
-            try
+            if (!isCurrentShiftOwner && !isAdmin)
             {
-                await ManualSyncAsync();
+                NavigateToShiftClosure();
+                _ = _dialogService.ShowAlertAsync(
+                    "Turno Activo a Nombre de Otro Operador",
+                    $"Existe un turno operativo abierto a nombre de '{activeShift.OperatorName}'.\n\n" +
+                    $"Para operar la terminal con su usuario ('{CurrentUser?.FullName}'), debe solicitar la Entrega / Relevo de Turno o el Cierre de Caja anterior.",
+                    DialogNotificationType.Warning);
             }
-            catch { }
-        });
-    }
-
-    private void UpdateClock()
-    {
-        CurrentTimeString = DateTime.Now.ToString("ddd, dd MMM yyyy • HH:mm:ss", SpanishCulture);
-    }
-
-    private void UpdateSelectedNavSection(ViewModelBase vm)
-    {
-        SelectedNavSection = vm switch
-        {
-            CheckInViewModel => "CheckIn",
-            CheckOutViewModel => "CheckOut",
-            RecentEntriesViewModel => "RecentEntries",
-            AnalyticsViewModel => "Analytics",
-            ShiftClosureViewModel => "ShiftClosure",
-            MonthlySubscriptionsViewModel => "MonthlySubscriptions",
-            _ => "CheckIn"
-        };
+            else
+            {
+                NavigateToCheckIn();
+            }
+        }
     }
 
     [RelayCommand]
-    public async Task SwitchBranchAsync()
+    private async Task RefreshOccupancyAsync()
     {
-        if (!_sessionService.HasMultipleBranches) return;
+        Occupancy = await _ticketService.GetOccupancyStatsAsync();
+    }
 
-        var dialog = new BranchSelectionDialog(_sessionService.UserBranches);
-        if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
+    [RelayCommand]
+    private void SwitchBranch()
+    {
+        var branches = _sessionService.UserBranches;
+        if (branches.Count <= 1) return;
+
+        var dialog = new BranchSelectionDialog(branches)
         {
-            dialog.Owner = Application.Current.MainWindow;
-        }
+            Owner = Application.Current?.MainWindow
+        };
 
         var result = dialog.ShowDialog();
         if (result == true && dialog.SelectedBranch != null)
         {
             _sessionService.SetActiveBranch(dialog.SelectedBranch);
-            CurrentBranch = dialog.SelectedBranch;
-
-            await _dialogService.ShowAlertAsync(
-                "Sede Cambiada",
-                $"Ahora estás operando en la sede: {dialog.SelectedBranch.Name} ({dialog.SelectedBranch.Code})",
-                DialogNotificationType.Success);
-
-            // Refrescar ocupación y vista
-            Occupancy = await _ticketService.GetOccupancyStatsAsync();
-            if (ActiveView is CheckInViewModel) _navigationService.NavigateTo<CheckInViewModel>();
+            _ = RefreshOccupancyAsync();
+            _ = _dialogService.ShowAlertAsync("Sede Actualizada", $"Sede activa cambiada a '{dialog.SelectedBranch.Name}'", DialogNotificationType.Information);
         }
     }
 
     [RelayCommand]
-    public async Task ManualSyncAsync()
+    private async Task ForceSyncAsync()
     {
         if (IsSyncing) return;
-        IsSyncing = true;
-        SyncStatusText = "Sincronizando con API Central...";
 
-        try
-        {
-            await _backgroundSync.TriggerManualSyncAsync();
-            IsOnlineMode = _syncEngine.IsOnline;
-            SyncStatusText = _syncEngine.SyncStatusDescription;
-            Occupancy = await _ticketService.GetOccupancyStatsAsync();
-        }
-        finally
-        {
-            IsSyncing = false;
-        }
-    }
-
-    [RelayCommand]
-    public async Task UserManualSyncAsync()
-    {
-        if (IsSyncing) return;
         IsSyncing = true;
         SyncStatusText = "Sincronizando con API Central...";
 
         try
         {
             var success = await _dialogService.ShowSyncProgressModalAsync(_syncEngine);
-            IsOnlineMode = _syncEngine.IsOnline;
-            SyncStatusText = _syncEngine.SyncStatusDescription;
-            Occupancy = await _ticketService.GetOccupancyStatsAsync();
-
-            if (ActiveView is ShiftClosureViewModel)
-            {
-                _navigationService.NavigateTo<ShiftClosureViewModel>();
-            }
-            else if (ActiveView is CheckInViewModel)
-            {
-                _navigationService.NavigateTo<CheckInViewModel>();
-            }
-            else if (ActiveView is CheckOutViewModel)
-            {
-                _navigationService.NavigateTo<CheckOutViewModel>();
-            }
-            else if (ActiveView is RecentEntriesViewModel)
-            {
-                _navigationService.NavigateTo<RecentEntriesViewModel>();
-            }
+            await RefreshOccupancyAsync();
+            SyncStatusText = success ? "Sincronización completada" : "Sincronización finalizada con advertencias";
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowAlertAsync(
-                "Error de Sincronización",
-                $"Ocurrió un error al sincronizar con el servidor: {ex.Message}",
-                DialogNotificationType.Error);
+            SyncStatusText = $"Error de sincronización: {ex.Message}";
         }
         finally
         {
             IsSyncing = false;
-        }
-    }
-
-    [RelayCommand]
-    public async Task ForceCleanCacheAsync()
-    {
-        if (IsSyncing) return;
-
-        var confirmed = await _dialogService.ShowConfirmationAsync(
-            "Restablecer Caché Local",
-            "¿Deseas limpiar la memoria local y forzar la recarga completa desde la API Central? Esto dejará la terminal exactamente con los datos de la nube.",
-            DialogNotificationType.Question,
-            "Limpiar y Recargar",
-            "Cancelar");
-
-        if (!confirmed) return;
-
-        IsSyncing = true;
-        SyncStatusText = "Restableciendo caché y sincronizando...";
-
-        try
-        {
-            var success = await _syncEngine.ForceCleanResyncAsync();
-            IsOnlineMode = _syncEngine.IsOnline;
-            SyncStatusText = _syncEngine.SyncStatusDescription;
-            Occupancy = await _ticketService.GetOccupancyStatsAsync();
-
-            if (success)
-            {
-                await _dialogService.ShowAlertAsync(
-                    "Caché Restablecida",
-                    "La base de datos local se limpió y sincronizó con la información más reciente de la nube (MySQL) con total éxito.",
-                    DialogNotificationType.Success);
-            }
-            else
-            {
-                await _dialogService.ShowAlertAsync(
-                    "Caché Limpia (Sin Conexión)",
-                    "La memoria local fue limpiada. La sincronización se completará automáticamente al reconectarse a la API.",
-                    DialogNotificationType.Warning);
-            }
-        }
-        catch (Exception ex)
-        {
-            await _dialogService.ShowAlertAsync(
-                "Error al Restablecer",
-                $"Ocurrió un error al restablecer la base local: {ex.Message}",
-                DialogNotificationType.Error);
-        }
-        finally
-        {
-            IsSyncing = false;
-        }
-    }
-
-    private async Task<bool> EnsureActiveShiftAsync()
-    {
-        var activeShift = await _shiftService.GetActiveShiftAsync();
-        if (activeShift == null || activeShift.Status != 0)
-        {
-            await _dialogService.ShowAlertAsync(
-                "Apertura de Turno Requerida",
-                "Debes abrir un turno operativo e indicar la base inicial de caja antes de realizar operaciones o acceder a otros módulos en la terminal.",
-                DialogNotificationType.Warning);
-
-            NavigateToShiftClosure();
-            return false;
-        }
-        return true;
-    }
-
-    private async Task<bool> CheckPermissionAsync(string permissionSlug, string moduleFriendlyName)
-    {
-        if (!_permissionService.HasPermission(permissionSlug))
-        {
-            await _dialogService.ShowAlertAsync(
-                "Acceso Denegado",
-                $"No cuentas con los permisos requeridos para acceder al módulo de {moduleFriendlyName}. Consulta con tu administrador.",
-                DialogNotificationType.Warning);
-            return false;
-        }
-        return true;
-    }
-
-    [RelayCommand]
-    private void SelectTheme(AppTheme theme)
-    {
-        _themeService.SetTheme(theme);
-    }
-
-    [RelayCommand]
-    private async Task NavigateToCheckInAsync()
-    {
-        if (!await CheckPermissionAsync("CheckIn.View", "Ingreso Vehicular")) return;
-        if (await EnsureActiveShiftAsync())
-        {
-            _navigationService.NavigateTo<CheckInViewModel>();
-        }
-    }
-
-    [RelayCommand]
-    private async Task NavigateToCheckOutAsync()
-    {
-        if (!await CheckPermissionAsync("CheckOut.View", "Salida y Cobro")) return;
-        if (await EnsureActiveShiftAsync())
-        {
-            _navigationService.NavigateTo<CheckOutViewModel>();
-        }
-    }
-
-    [RelayCommand]
-    private async Task NavigateToRecentEntriesAsync()
-    {
-        if (!await CheckPermissionAsync("RecentEntries.View", "Patio y Entradas Recientes")) return;
-        if (await EnsureActiveShiftAsync())
-        {
-            _navigationService.NavigateTo<RecentEntriesViewModel>();
-        }
-    }
-
-    [RelayCommand]
-    private async Task NavigateToAnalyticsAsync()
-    {
-        if (!await CheckPermissionAsync("Analytics.View", "Analítica y Métricas")) return;
-        if (await EnsureActiveShiftAsync())
-        {
-            _navigationService.NavigateTo<AnalyticsViewModel>();
-        }
-    }
-
-    [RelayCommand]
-    private async Task NavigateToShiftClosureAsync()
-    {
-        if (!await CheckPermissionAsync("ShiftClosure.View", "Caja y Turnos")) return;
-        _navigationService.NavigateTo<ShiftClosureViewModel>();
-    }
-
-    private void NavigateToShiftClosure()
-    {
-        _navigationService.NavigateTo<ShiftClosureViewModel>();
-    }
-
-    [RelayCommand]
-    private async Task NavigateToMonthlySubscriptionsAsync()
-    {
-        if (!await CheckPermissionAsync("MonthlySubs.View", "Mensualidades")) return;
-        if (await EnsureActiveShiftAsync())
-        {
-            _navigationService.NavigateTo<MonthlySubscriptionsViewModel>();
         }
     }
 
     [RelayCommand]
     private async Task LogoutAsync()
     {
-        _backgroundSync.Stop();
-        await _authService.LogoutAsync();
-        LogoutRequested?.Invoke();
+        var confirmed = await _dialogService.ShowConfirmationAsync(
+            "Cerrar Sesión",
+            "¿Está seguro de que desea cerrar la sesión actual de la terminal?");
+
+        if (confirmed)
+        {
+            _clockTimer.Stop();
+            _sessionService.Clear();
+            LogoutRequested?.Invoke();
+        }
+    }
+
+    private bool ValidateShiftAccess(out string? errorMessage)
+    {
+        errorMessage = null;
+        if (!_shiftService.HasActiveShift)
+        {
+            errorMessage = "Debes abrir un turno operativo e indicar la base inicial de caja antes de registrar movimientos.";
+            return false;
+        }
+
+        var activeShift = _shiftService.CurrentShift;
+        if (activeShift == null) return true;
+
+        var isCurrentShiftOwner = CurrentUser != null && (
+            string.Equals(activeShift.OperatorName, CurrentUser.FullName, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(activeShift.OperatorName, CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
+
+        var isAdmin = CurrentUser != null && (
+            CurrentUser.RoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
+            CurrentUser.RoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+
+        if (!isCurrentShiftOwner && !isAdmin)
+        {
+            errorMessage = $"La caja actual está a nombre de '{activeShift.OperatorName}'. Debe realizarse la Entrega / Relevo de Turno para operar con su cuenta.";
+            return false;
+        }
+
+        return true;
+    }
+
+    [RelayCommand]
+    private void NavigateToCheckIn()
+    {
+        if (!_permissionService.HasPermission("checkin.view"))
+        {
+            _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Ingreso Vehicular.", DialogNotificationType.Warning);
+            return;
+        }
+        if (!ValidateShiftAccess(out var error))
+        {
+            _ = _dialogService.ShowAlertAsync("Apertura de Turno Requerida", error ?? "Turno no disponible", DialogNotificationType.Warning);
+            NavigateToShiftClosure();
+            return;
+        }
+        _navigationService.NavigateTo<CheckInViewModel>();
+    }
+
+    [RelayCommand]
+    private void NavigateToCheckOut()
+    {
+        if (!_permissionService.HasPermission("checkout.view"))
+        {
+            _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Salida y Cobro.", DialogNotificationType.Warning);
+            return;
+        }
+        if (!ValidateShiftAccess(out var error))
+        {
+            _ = _dialogService.ShowAlertAsync("Apertura de Turno Requerida", error ?? "Turno no disponible", DialogNotificationType.Warning);
+            NavigateToShiftClosure();
+            return;
+        }
+        _navigationService.NavigateTo<CheckOutViewModel>();
+    }
+
+    [RelayCommand]
+    private void NavigateToMonthlySubscriptions()
+    {
+        if (!_permissionService.HasPermission("subscriptions.view"))
+        {
+            _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Mensualidades.", DialogNotificationType.Warning);
+            return;
+        }
+        if (!ValidateShiftAccess(out var error))
+        {
+            _ = _dialogService.ShowAlertAsync("Apertura de Turno Requerida", error ?? "Turno no disponible", DialogNotificationType.Warning);
+            NavigateToShiftClosure();
+            return;
+        }
+        _navigationService.NavigateTo<MonthlySubscriptionsViewModel>();
+    }
+
+    [RelayCommand]
+    private void NavigateToRecentEntries()
+    {
+        if (!_permissionService.HasPermission("recent_entries.view"))
+        {
+            _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Patio / Vehículos Recientes.", DialogNotificationType.Warning);
+            return;
+        }
+        _navigationService.NavigateTo<RecentEntriesViewModel>();
+    }
+
+    [RelayCommand]
+    private void NavigateToAnalytics()
+    {
+        if (!_permissionService.HasPermission("analytics.view"))
+        {
+            _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Analítica y Finanzas.", DialogNotificationType.Warning);
+            return;
+        }
+        _navigationService.NavigateTo<AnalyticsViewModel>();
+    }
+
+    [RelayCommand]
+    private void NavigateToShiftClosure()
+    {
+        if (!_permissionService.HasPermission("shift.view"))
+        {
+            _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Control de Turnos y Caja.", DialogNotificationType.Warning);
+            return;
+        }
+        _navigationService.NavigateTo<ShiftClosureViewModel>();
+    }
+
+    private void UpdateSelectedNavSection(ViewModelBase viewModel)
+    {
+        SelectedNavSection = viewModel switch
+        {
+            CheckInViewModel => "CheckIn",
+            CheckOutViewModel => "CheckOut",
+            MonthlySubscriptionsViewModel => "Subscriptions",
+            RecentEntriesViewModel => "RecentEntries",
+            AnalyticsViewModel => "Analytics",
+            ShiftClosureViewModel => "ShiftClosure",
+            _ => string.Empty
+        };
+    }
+
+    private void UpdateClock()
+    {
+        CurrentTimeString = DateTime.Now.ToString("dddd, dd MMMM yyyy  •  HH:mm:ss", SpanishCulture);
     }
 }
