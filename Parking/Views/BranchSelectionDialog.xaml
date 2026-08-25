@@ -50,7 +50,7 @@
                         Background="{DynamicResource BrushPrimaryLight}"
                         Margin="0,0,16,0"
                         VerticalAlignment="Center">
-                    <Path Data="{StaticResource IconCheckIn}"
+                    <Path Data="{StaticResource IconBuilding}"
                           Fill="{DynamicResource BrushPrimary}"
                           Width="22"
                           Height="22"
@@ -115,7 +115,7 @@
                                             Background="{DynamicResource BrushPrimary}"
                                             Margin="0,0,14,0"
                                             VerticalAlignment="Center">
-                                        <Path Data="{StaticResource IconCheckIn}"
+                                        <Path Data="{StaticResource IconBuilding}"
                                               Fill="{DynamicResource BrushTextWhite}"
                                               Width="18"
                                               Height="18"
@@ -188,7 +188,7 @@
             <!-- 4. Footer Actions -->
             <Grid Grid.Row="3">
                 <Button Content="Cancelar Inicio de Sesión"
-                        Style="{StaticResource OutlineButtonStyle}"
+                        Style="{StaticResource SecondaryButton}"
                         HorizontalAlignment="Right"
                         Padding="18,8"
                         Click="OnCancelClicked"/>

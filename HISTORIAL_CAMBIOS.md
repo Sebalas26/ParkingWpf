@@ -17,6 +17,15 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-08-25 17:53:00] - [FIX] [WPF] [UI] - Corrección de XamlParseException en BranchSelectionDialog
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **Módulos Afectados**:
+  - `Parking/Styles/Icons.xaml`: Inclusión del recurso vectorial `IconChevronRight`.
+  - `Parking/Views/BranchSelectionDialog.xaml`: Corrección del recurso de botón (`SecondaryButton` en vez de `OutlineButtonStyle`) e iconos de sede a `IconBuilding`.
+- **Descripción**:
+  1. Se corrigió la excepción `System.Windows.Markup.XamlParseException` que ocurría en `InitializeComponent()` de `BranchSelectionDialog` al abrir el modal de selección de sedes.
+- **Verificación**: `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
+
 ### [2026-08-25 17:34:00] - [FEAT] [MULTI-BRANCH] [AUTH] - Retorno Global de Sedes para Administradores y Filtrado de Operadores por Sede Activa
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **Módulos Afectados**:
