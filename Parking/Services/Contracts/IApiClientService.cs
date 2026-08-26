@@ -11,7 +11,7 @@ public interface IApiClientService
 {
     string BaseUrl { get; set; }
     Task<bool> PingAsync();
-    Task<BootstrapSyncResponse?> GetBootstrapAsync();
+    Task<BootstrapSyncResponse?> GetBootstrapAsync(int? branchId = null);
     Task<ParkingTicket?> CheckInAsync(CheckInApiRequest request);
     Task<ParkingTicket?> CheckOutAsync(CheckOutApiRequest request);
     Task<FinancialSummary?> GetFinancialSummaryAsync();

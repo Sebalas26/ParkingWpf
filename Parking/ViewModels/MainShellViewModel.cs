@@ -26,7 +26,9 @@ public partial class MainShellViewModel : ViewModelBase
     private readonly IBackgroundSyncScheduler _backgroundSync;
     private readonly IDialogService _dialogService;
     private readonly IShiftService _shiftService;
+    private readonly ISignalRClientService _signalRClient;
     private readonly DispatcherTimer _clockTimer;
+    private bool _isSyncPromptOpen;
 
     [ObservableProperty]
     private ViewModelBase? _activeView;
@@ -69,7 +71,8 @@ public partial class MainShellViewModel : ViewModelBase
         ISyncEngineService syncEngine,
         IBackgroundSyncScheduler backgroundSync,
         IDialogService dialogService,
-        IShiftService shiftService)
+        IShiftService shiftService,
+        ISignalRClientService signalRClient)
     {
         _authService = authService;
         _sessionService = sessionService;
@@ -80,6 +83,7 @@ public partial class MainShellViewModel : ViewModelBase
         _backgroundSync = backgroundSync;
         _dialogService = dialogService;
         _shiftService = shiftService;
+        _signalRClient = signalRClient;
 
         _navigationService.CurrentViewModelChanged += (s, vm) =>
         {
@@ -107,11 +111,23 @@ public partial class MainShellViewModel : ViewModelBase
         {
             CurrentBranch = branch;
             HasMultipleBranches = _sessionService.HasMultipleBranches;
+            if (branch != null)
+            {
+                _ = _signalRClient.SetCurrentBranchAsync(branch.Id);
+            }
         };
 
         _shiftService.ShiftStateChanged += () =>
         {
             _ = RefreshOccupancyAsync();
+        };
+
+        _signalRClient.ConfigUpdateRequired += notification =>
+        {
+            Application.Current?.Dispatcher.InvokeAsync(async () =>
+            {
+                await HandleRealtimeNotificationAsync(notification);
+            });
         };
 
         _clockTimer = new DispatcherTimer
@@ -124,11 +140,43 @@ public partial class MainShellViewModel : ViewModelBase
         UpdateClock();
     }
 
+    private async Task HandleRealtimeNotificationAsync(Models.ApiModels.ConfigNotificationDto notification)
+    {
+        if (_isSyncPromptOpen) return;
+
+        // Validar si aplica a la sede activa o es global
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
+        if (notification.BranchId.HasValue && currentBranchId.HasValue && notification.BranchId.Value != currentBranchId.Value)
+        {
+            return;
+        }
+
+        try
+        {
+            _isSyncPromptOpen = true;
+            await _dialogService.ShowSyncRequiredModalAsync(notification, _syncEngine);
+            await RefreshOccupancyAsync();
+        }
+        catch (Exception)
+        {
+        }
+        finally
+        {
+            _isSyncPromptOpen = false;
+        }
+    }
+
     public override async Task InitializeAsync()
     {
         CurrentUser = _sessionService.CurrentUser;
         CurrentBranch = _sessionService.CurrentBranch;
         HasMultipleBranches = _sessionService.HasMultipleBranches;
+
+        _ = _signalRClient.StartAsync();
+        if (CurrentBranch != null)
+        {
+            _ = _signalRClient.SetCurrentBranchAsync(CurrentBranch.Id);
+        }
 
         await RefreshOccupancyAsync();
 

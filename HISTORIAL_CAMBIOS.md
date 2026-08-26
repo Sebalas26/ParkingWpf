@@ -17,7 +17,197 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
-### [2026-08-26 00:50:00] - [FEATURE] [API + PWA] - Conexión Dinámica de Resoluciones de Facturación en Tarjeta de Dashboard
+### [2026-08-26 17:45:00] - [FEATURE] [WPF] [SHIFTS] [OPERATIONS] - Modo de 'Recepción y Toma de Relevo de Caja' para Operadores Entrantes
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"mira ya se tienen los permisos faltaba publicar el api listo ya lo hice, sabes que sucede explicame acá que deberia hacer en la vida real pues estaba abierto el turno lo tenia admin yo ingrese otro usuario que tiene acceso a esa sede, entonces me sale ese mensaje pero deberia decirme que tomar turno y decirme cuanto estaba en caja y yo recibirlo exactamente revelar el turno por que la otra persona no esta, pero hay no aparece esa opcion ese boton no existe. explicame ..."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Detección Automática de Operador Titular vs Operador Entrante (`ShiftClosureViewModel.cs`)**:
+     - Se incorporaron las propiedades `IsShiftOwner`, `ActiveShiftOperatorName` y `ActiveShiftStartTime`.
+     - Si el operador conectado NO es el titular del turno abierto (`IsShiftOwner == false`), la interfaz no le exige entregar la caja a un tercero, sino que se adapta al modo **"Recepción y Toma de Caja"**.
+  2. **Comando `TakeOverShiftCommand`**:
+     - Permite que el operador entrante cuente el dinero físico de la gaveta, verifique la diferencia de arqueo contra el saldo esperado del sistema, y presione *"Recibir Caja, Tomar Turno e Iniciar Operación"*.
+     - El comando cierra formalmente el turno del operador anterior (`activeShift`) con el dinero contado y abre de inmediato el nuevo turno a nombre del operador entrante con esa base, redirigiendo de inmediato a `CheckInViewModel` (Ingreso de Vehículos).
+  3. **UI Adaptativa en XAML (`ShiftClosureView.xaml`)**:
+     - Tarjeta de advertencia informativa indicando quién abrió el turno anterior y quién lo está asumiendo.
+     - Botón principal de acción `ModernButton`: *"🤝 Recibir Caja, Tomar Turno e Iniciar Operación"*.
+- **📦 Componentes Modificados**:
+  - `Parking\ViewModels\ShiftClosureViewModel.cs`
+  - `Parking\Views\ShiftClosureView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"mira esto corri el primer script me encanto ese script me faltaria complementarlo que funciones tengo dentro de hay para ver si de cada modulo pero entonces si sigue siendo error de la logica del wpf por que sigue saliendo que no tengo permisos, si me hago entender, no voy hacer el insert por que eso se hace desde la pwa y veo que lo hace bien el error esta en el wpf analiza bien eso por favor revisa detalladamente."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Reactividad Total en `Parking.Security.Authorize.cs`**:
+     - Se implementó suscripción en `element.Loaded` y `element.Unloaded` a los eventos `PermissionsChanged` tanto de la instancia DI como de `PermissionService.Current`.
+     - La re-evaluación se ejecuta de forma segura en el hilo del `Dispatcher` con `ApplyAuthorization(element)`, resolviendo el bug donde los `RadioButton` del menú lateral quedaban fijados en `Collapsed` tras el inicio de sesión.
+  2. **Resiliencia de Permisos en SQLite Local (`AuthService.cs`)**:
+     - Se añadió fallback resiliente en modo offline cuando la tabla `RolePermissions` en SQLite está vacía (base de datos recién creada o previa a la primera sincronización), garantizando que el operador pueda abrir el terminal sin bloqueos visuales.
+- **📦 Componentes Modificados**:
+  - `Parking\Security\Authorize.cs`
+  - `Parking\Services\Implementations\AuthService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"bueno tengo este problema con los permisos mira que si se asignaron permisos al usuario que tiene el rol 2 pero ingreso en el wpf y me dice que no cuento con los permisos me imagino por que solo ha tomado los datos de la sql lite nada mas pero no ya elimine la db la volvi a mandar a crear y no no sirvio entonces que sucede por que no esta tomando los permisos correctamente ? que sucede hay revisa eso por que administrador si funciona ."*
+  > *"eso esta gravisimo en el sistema no debe a ver nada quemado todo lo que traiga la base de datos si el quisiera crearlo como cajero o cajera o hasta colocar el rol que quisiera desde que tenga los permisos que es lo importante se deberia validar como se te ocurre eso . revisa eso que me acabas de decir esta supremamente mal y eso deberia ir en reglas del agent como colocar eso así eso no es una buena practica"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Incorporación de Regla de Oro en `AGENTS.md`**:
+     - Se añadió la prohibición estricta de usar nombres de roles o listas de permisos quemados (`roleName.Contains(...)` o arrays fijos).
+     - La asignación y validación debe ser 100% data-driven basada en la matriz relacional `RoleAction` / `RolePermission` / `Action.Slug`.
+  2. **Eliminación Total de Permisos Estáticos en WPF (`AuthService.cs`)**:
+     - Se eliminó el array `OperatorPermissions` y el método `GetDefaultPermissionsForRole`.
+     - **Modo Online**: Carga directamente los slugs de `apiLogin.Permissions`.
+     - **Modo Offline (SQLite)**: Carga directamente de la tabla `RolePermissions` los slugs activos para `user.RoleId`.
+     - En `SwitchCurrentUser`, se consultan dinámicamente los permisos del rol en SQLite.
+  3. **Entrega de Permisos Dinámicos en API (`AuthService.cs` & `AuthResponseDto.cs`)**:
+     - Se agregó la propiedad `List<string> Permissions` en `AuthResponseDto` y en `LoginApiResponse` de WPF.
+     - En `LoginStandardAsync`, se consultan los permisos reales del rol desde `_roleActionRepository.GetActionsByRoleAsync(user.UserRoleId)`.
+- **📦 Componentes Modificados**:
+  - `AGENTS.md` (WPF, API y PWA)
+  - `ParkingApi.Domain\Dtos\Auth\AuthResponseDto.cs`
+  - `ParkingApi.Core\Services\Auth\AuthService.cs`
+  - `Parking\Models\ApiModels\TicketApiModels.cs`
+  - `Parking\Services\Implementations\AuthService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"necesito que el api tenga el swagger en produccion para validar si de verdad quedo bien desplegada. revisa que así este configurada."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Configuración del Middleware en `Program.cs` (`ParkingApi`)**:
+     - Se removió la restricción `if (app.Environment.IsDevelopment())` que limitaba Swagger exclusivamente a entornos locales.
+     - Se habilitó `app.UseSwagger()`, `app.UseSwaggerUI(...)` con `RoutePrefix = "swagger"` y redirección automática en la raíz `app.MapGet("/", () => Results.Redirect("/swagger"))` para todos los entornos (Producción, Staging y Desarrollo).
+  2. **Verificación de Endpoints**:
+     - Documentación interactiva accesible en la raíz del dominio (`/`) o directamente en `/swagger`.
+- **📦 Componentes Modificados**:
+  - `ParkingApi/Program.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"esta mal la sincro, por que esta sincronizando todo pero no esta filtrando por la sede especifica, osea ya estoy en una sede debe filtrar que eso que se creo sea para la sede especifica si me explico no que traiga todo el mundo si no solo lo que este asociado a la sede que estoy . analiza eso"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Backend Central (`ParkingApi`)**:
+     - **Endpoint `/api/sync/bootstrap?branchId={branchId}`**: `SyncController.cs` y `ISyncService` / `SyncService.cs` ahora reciben `[From     - **Filtrado 100% Estricto de Datos (Sin Fuga de Registros Null)**:
+       - `Branches`: Retorna la sede activa y su capacidad oficial configurada (`TotalCapacity`).
+       - `Users`: Retorna únicamente usuarios asignados en `UserBranches` para esa sede + administradores globales.
+       - `PaymentMethods`: Retorna los medios de pago configurados en `BranchPaymentMethods` para esa sede (o maestros activos si no hay parametrización exclusiva).
+       - `VehicleRates`: Filtra `r.BranchId == branchId.Value` (Estricto).
+       - `Stores` & `CommercialAgreements`: Filtra `s.BranchId == branchId.Value` y sus convenios.
+       - `WorkShifts`: Filtra `ws.BranchId == branchId.Value`.
+       - `MonthlySubscriptions`: Filtra `s.BranchId == branchId.Value`.
+       - `ParkingTickets`: Filtra `t.BranchId == branchId.Value`.
+  2. **Escritorio Reactivo (`ParkingWpf`)**:
+     - **Cliente API (`ParkingApiClient.cs`)**: Envía el query string `?branchId={branchId}` en `GetBootstrapAsync`.
+     - **Motor de Sincronización (`SyncEngineService.cs`)**: Inyecta `ISessionService` y transmite automáticamente `_sessionService.CurrentBranch?.Id`.
+     - **Aislamiento en Memoria y Poda Local**: `EfPricingCalculatorService.ReloadRatesAsync()` y `SyncEngineService` aíslan estrictamente por sede (`BranchId == currentBranchId.Value`) eliminando cualquier registro con `BranchId = NULL` o de otra sede.para evitar cruces entre sedes.
+- **📦 Componentes Modificados**:
+  - `ParkingApi.Domain/Interfaces/Services/Sync/ISyncService.cs`
+  - `ParkingApi.Core/Services/Sync/SyncService.cs`
+  - `ParkingApi/Controllers/SyncController.cs`
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"tengo el siguiente caso, funciono perfecto cuando desde la pwa crearon la categoria y cuando sincronice genial la trajo y la mostro de una, pero cuando desde la pwa la volvieron a eliminar y le di sincronizar pues el sistema sincronizo pero no igualo la BD acá en local si me hago entender, por que si eliminan alguna tarifa, categoria, convenio, medio de pago, usuario entonces la sincronizacion debe ser bidireccional, lo unico que deberia subir el wpf a la bd por que es el modo offline son los ingresos y salidas y lo de los turnos pero todos los datos parametrizables que vienen de la BD esos siempre se deben sincronizar e estar igual a la bd online si me explico las dos diferencias ? analiza lo que te digo"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Modelo de Sincronización Espejo (Master-Replica)**:
+     - **Upstream (WPF -> API)**: Cola offline procesa y sube ingresos, cobros/salidas (`ParkingTickets`, `TicketDiscounts`) y arqueos de caja (`WorkShifts`).
+     - **Downstream Mirror (API -> WPF)**: La base de datos central en MySQL es la **fuente absoluta de verdad** para los catálogos parametrizables.
+  2. **Poda (*Pruning*) en `SyncEngineService.cs`**:
+     - **Tarifas (`VehicleRates`)**: Compara tipos de vehículos y IDs locales contra el conjunto remoto entregado en el bootstrap; cualquier tarifa que haya sido eliminada en la nube (o si no hay tarifas configuradas) es removida de SQLite (`db.VehicleRates.RemoveRange(...)`).
+     - **Medios de Pago (`PaymentMethods`)**: Remueve medios de pago locales no presentes en el servidor.
+     - **Comercios y Convenios (`Stores` / `CommercialAgreements`)**: Remueve convenios y comercios eliminados en la nube.
+     - **Sedes (`Branches`)**: Remueve sedes no activas/eliminadas en la nube.
+     - **Usuarios (`Users`)**: Remueve usuarios locales eliminados en la nube (preservando sesión del admin).
+     - **Mensualidades (`MonthlySubscriptions`)**: Remueve mensualidades no vigentes/eliminadas en la nube.
+  3. **Reactividad en Vistas e Invocación de Evento `DataSynchronized`**:
+     - Al completar la sincronización, `DataSynchronized?.Invoke()` actualiza la memoria caché en `EfPricingCalculatorService` y refresca reactivamente las vistas (`CheckInViewModel`, `CheckOutViewModel`, `MonthlySubscriptionsViewModel`).
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+
+### [2026-08-26 11:08:00] - [REFACTOR] [DB] [RBAC] - Reestructuración Oficial de Script RBAC Seed (Solo Rol Administrador, DDL para BD Vacía y 15 Módulos)
+- **Autor**: Antigravity AI Assistant & Database Architect
+- **💬 Prompt Original del Usuario**:
+  > *"no debes crear el rol operador esolo es el rol administrrador y todas las funciones para ese rol si me explico ? analiza eso nuevamente"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Aprovisionamiento DDL Autónomo para BD Vacía**:
+     - Se incorporaron las sentencias `CREATE TABLE IF NOT EXISTS` para todas las tablas requeridas por EF Core y la lógica de negocio (`IdentificationType`, `UserRole`, `User`, `Module`, `Operation`, `Action`, `RoleAction`, `UserRoleModule`, `PaymentMethod`, `Branches`, `UserBranches`, `BranchPaymentMethods`, `VehicleRates`, `Stores`, `CommercialAgreements`, `ParkingTickets`, `TicketDiscounts`, `WorkShifts`, `MonthlySubscriptions`, `BillingResolutions`, `VehicleIncidents`).
+  2. **Exclusividad del Rol Administrador**:
+     - Se eliminó la creación estática de los roles *Operador* y *Supervisor*. Únicamente se crea el rol `Administrador` (Id 1) y el usuario inicial `admin`.
+     - Todos los roles operativos adicionales serán creados y parametrizados dinámicamente por el Administrador desde la PWA.
+  3. **Catálogo de 15 Módulos y 69 Acciones**:
+     - Se removió por completo la acción obsoleta `system.theme`.
+     - Se agregaron los módulos y permisos para **Resoluciones de Facturación** (`resolutions.*`) y **Novedades y Bloqueo de Placas** (`novedades.*`), así como **Reportes Consolidados** (`reports.*`).
+     - Se asignó el 100% de los 15 módulos y el 100% de las 69 acciones exclusivamente al rol Administrador.
+  4. **Ajuste en Script de Limpieza**:
+     - Se actualizaron `BillingResolutions` y `VehicleIncidents` en `01_Clean_All_Tables.sql`.
+- **📦 Componentes Modificados**:
+  - `ParkingApi/Scripts/02_Init_RBAC_Seed.sql`
+  - `ParkingApi/Scripts/01_Clean_All_Tables.sql`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Sintaxis MySQL validada: **0 Errores**.
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Tengo una duda, es posible meter signal r al api y al wpf para que sea reactivo ? o eso no es posible ejemplo que me gustaria que si estoy en alguna sede y desde la pwa se le hacen algo a la sede ejemplo modifican los cupos o crean otra categoria y desde que este en linea osea con internet el wpf conectado al api pues deberia salir una alerta que diga es necesario sincronizar y que obligue a sincronizar si me explico ? eso sería posible ?"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Backend SignalR Central (`ParkingApi`)**:
+     - **Hub Central (`ParkingHub.cs`)**: Creado en `/hubs/parking` con soporte para agrupación de terminales por sede (`JoinBranchGroup(branchId)`, `LeaveBranchGroup(branchId)`).
+     - **Contratos y Servicio (`IRealtimeNotificationService`, `RealtimeNotificationService`, `ConfigNotificationDto`)**: Implementado servicio despachador de eventos en tiempo real inyectando `IHubContext<ParkingHub>`.
+     - **Triggers en Controladores**: Notificación automática tras operaciones de mutación en `BranchesController` (cupos/datos/medios de pago), `VehicleRatesController` (tarifas), `AgreementsController` (convenios), `VehicleIncidentsController` (bloqueo/novedades de placas), `ResolutionsController` (resoluciones DIAN) y `PaymentMethodController` (medios de pago).
+     - **Pipeline**: Configurado `builder.Services.AddSignalR()` y `app.MapHub<ParkingHub>("/hubs/parking")`.
+  2. **Escritorio Reactivo (`ParkingWpf`)**:
+     - **Cliente SignalR (`SignalRClientService.cs`, `ISignalRClientService`)**: Integrado `Microsoft.AspNetCore.SignalR.Client` con estrategia de reconexión automática (`WithAutomaticReconnect`), suscripción dinámica a la sede activa (`SetCurrentBranchAsync`) y resiliencia transparente ante modo offline.
+     - **Modal Moderno de Sincronización Requerida (`SyncRequiredDialog.xaml/.cs`)**: Implementado diálogo modal con estilo `ModernButton`, paleta `BrushWarning` / `BrushPrimary`, que bloquea amigablemente la terminal informando el cambio recibido y permitiendo pulsar *"⚡ Sincronizar Ahora"*.
+     - **Flujo Guiado**: Al pulsar sincronizar, invoca el orquestador visual `SyncProgressDialog.ShowSyncAsync()`, ejecuta la sincronización completa paso a paso, actualiza la capacidad en el TopBar y refresca la interfaz en caliente.
+     - **Integración MVVM**: Conectado en `MainShellViewModel.cs` para escuchar `ConfigUpdateRequired` y gestionar cambios de sede activa.
+  3. **Preservación PWA**: Se mantuvo la PWA 100% intacta sin requerir modificaciones.
+- **📦 Componentes Modificados y Creados**:
+  - `ParkingApi/Hubs/ParkingHub.cs` [NEW]
+  - `ParkingApi.Domain/Dtos/Realtime/ConfigNotificationDto.cs` [NEW]
+  - `ParkingApi.Domain/Interfaces/Services/Realtime/IRealtimeNotificationService.cs` [NEW]
+  - `ParkingApi/Services/Realtime/RealtimeNotificationService.cs` [NEW]
+  - `ParkingApi/Controllers/BranchesController.cs`
+  - `ParkingApi/Controllers/VehicleRatesController.cs`
+  - `ParkingApi/Controllers/AgreementsController.cs`
+  - `ParkingApi/Controllers/VehicleIncidentsController.cs`
+  - `ParkingApi/Controllers/ResolutionsController.cs`
+  - `ParkingApi/Controllers/PaymentMethodController.cs`
+  - `ParkingApi/Program.cs`
+  - `Parking/Parking.csproj`
+  - `Parking/Models/ApiModels/ConfigNotificationDto.cs` [NEW]
+  - `Parking/Services/Contracts/ISignalRClientService.cs` [NEW]
+  - `Parking/Services/Implementations/SignalRClientService.cs` [NEW]
+  - `Parking/Views/SyncRequiredDialog.xaml` [NEW]
+  - `Parking/Views/SyncRequiredDialog.xaml.cs` [NEW]
+  - `Parking/Services/Contracts/IDialogService.cs`
+  - `Parking/Services/Implementations/DialogService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/App.xaml.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
   > *"esto conectalo alas diferetntes resoluciones que tenga creada y se hayan usado desde el wpf cuando elijen una resolucion para dar salida a un vehiculo , recuerda no tocar aun wpf"*

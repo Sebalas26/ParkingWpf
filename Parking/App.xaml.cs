@@ -101,6 +101,7 @@ public partial class App : Application
         });
         services.AddSingleton<ISyncEngineService, SyncEngineService>();
         services.AddSingleton<IBackgroundSyncScheduler, BackgroundSyncScheduler>();
+        services.AddSingleton<ISignalRClientService, SignalRClientService>();
 
         services.AddSingleton<IDbConnectionManager, DbConnectionManager>();
         services.AddSingleton<IThemeService, ThemeService>();
