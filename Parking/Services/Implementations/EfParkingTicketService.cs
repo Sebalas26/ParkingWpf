@@ -19,6 +19,7 @@ public class EfParkingTicketService : IParkingTicketService
     private readonly IPricingCalculatorService _pricingCalculator;
     private readonly IApiClientService _apiClient;
     private readonly ISyncEngineService _syncEngine;
+    private readonly ISessionService _sessionService;
     private readonly IConfiguration _configuration;
     private int _totalCapacity = 0;
 
@@ -31,18 +32,33 @@ public class EfParkingTicketService : IParkingTicketService
         IPricingCalculatorService pricingCalculator,
         IApiClientService apiClient,
         ISyncEngineService syncEngine,
+        ISessionService sessionService,
         IConfiguration configuration)
     {
         _connectionManager = connectionManager;
         _pricingCalculator = pricingCalculator;
         _apiClient = apiClient;
         _syncEngine = syncEngine;
+        _sessionService = sessionService;
         _configuration = configuration;
         _totalCapacity = int.TryParse(_configuration["ParkingSettings:TotalCapacity"], out var cap) ? cap : 0;
 
         _syncEngine.TotalCapacityChanged += newCap =>
         {
             UpdateTotalCapacity(newCap);
+        };
+
+        _sessionService.ActiveBranchChanged += async branch =>
+        {
+            if (branch != null && branch.TotalCapacity > 0)
+            {
+                UpdateTotalCapacity(branch.TotalCapacity);
+            }
+            try
+            {
+                OccupancyChanged?.Invoke(this, await GetOccupancyStatsAsync());
+            }
+            catch { }
         };
     }
 
@@ -68,6 +84,7 @@ public class EfParkingTicketService : IParkingTicketService
         var ticket = new ParkingTicket
         {
             TicketId = Guid.NewGuid(),
+            BranchId = _sessionService.CurrentBranch?.Id,
             TicketNumber = ticketNumber,
             PlateNumber = normalizedPlate,
             VehicleType = vehicleType,
@@ -88,32 +105,25 @@ public class EfParkingTicketService : IParkingTicketService
                 var apiResponse = await _apiClient.CheckInAsync(new CheckInApiRequest
                 {
                     TicketId = ticket.TicketId,
-                    TicketNumber = ticket.TicketNumber,
+                    BranchId = ticket.BranchId,
                     PlateNumber = ticket.PlateNumber,
                     VehicleType = ticket.VehicleType,
-                    PhoneNumber = ticket.CustomerPhone,
+                    CustomerPhone = ticket.CustomerPhone,
                     Notes = ticket.Notes,
-                    OperatorName = operatorName,
-                    EntryTimeUtc = ticket.EntryTimeUtc
+                    HourlyRate = ticket.HourlyRate,
+                    OperatorName = ticket.OperatorName
                 });
 
                 if (apiResponse != null)
                 {
+                    ticket.TicketNumber = apiResponse.TicketNumber;
                     ticket.IsSynchronized = true;
-                }
-                else
-                {
-                    await _syncEngine.EnqueueOfflineCheckInAsync(ticket);
                 }
             }
             catch
             {
-                await _syncEngine.EnqueueOfflineCheckInAsync(ticket);
+                // Fallback offline: se guarda localmente para sincronización posterior
             }
-        }
-        else
-        {
-            await _syncEngine.EnqueueOfflineCheckInAsync(ticket);
         }
 
         db.ParkingTickets.Add(ticket);
@@ -162,7 +172,7 @@ public class EfParkingTicketService : IParkingTicketService
         ticket.Status = TicketStatus.Completed;
         ticket.IsSynchronized = false;
 
-        // Intentar registrar en el API si está en línea
+        // Intentar registrar salida en el API si está en línea
         if (_syncEngine.IsOnline)
         {
             try
@@ -228,8 +238,11 @@ public class EfParkingTicketService : IParkingTicketService
     public async Task<IReadOnlyList<ParkingTicket>> GetActiveTicketsAsync()
     {
         using var db = _connectionManager.CreateDbContext();
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
+
         return await db.ParkingTickets
-            .Where(t => t.Status == TicketStatus.Active)
+            .Where(t => t.Status == TicketStatus.Active &&
+                        (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value))
             .OrderByDescending(t => t.EntryTimeUtc)
             .ToListAsync();
     }
@@ -237,8 +250,11 @@ public class EfParkingTicketService : IParkingTicketService
     public async Task<IReadOnlyList<ParkingTicket>> GetCompletedTicketsAsync()
     {
         using var db = _connectionManager.CreateDbContext();
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
+
         return await db.ParkingTickets
-            .Where(t => t.Status == TicketStatus.Completed)
+            .Where(t => t.Status == TicketStatus.Completed &&
+                        (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value))
             .OrderByDescending(t => t.ExitTimeUtc)
             .ToListAsync();
     }
@@ -246,7 +262,10 @@ public class EfParkingTicketService : IParkingTicketService
     public async Task<IReadOnlyList<ParkingTicket>> GetAllTicketsAsync()
     {
         using var db = _connectionManager.CreateDbContext();
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
+
         return await db.ParkingTickets
+            .Where(t => !currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value)
             .OrderByDescending(t => t.EntryTimeUtc)
             .ToListAsync();
     }
@@ -257,9 +276,11 @@ public class EfParkingTicketService : IParkingTicketService
 
         var normalized = query.Trim().ToUpperInvariant();
         using var db = _connectionManager.CreateDbContext();
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
 
         return await db.ParkingTickets.FirstOrDefaultAsync(t =>
             t.Status == TicketStatus.Active &&
+            (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value) &&
             (t.PlateNumber == normalized || t.TicketNumber == normalized));
     }
 
@@ -269,20 +290,41 @@ public class EfParkingTicketService : IParkingTicketService
 
         var normalized = plateNumber.Trim().ToUpperInvariant();
         using var db = _connectionManager.CreateDbContext();
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
 
         return await db.ParkingTickets.AnyAsync(t =>
             t.Status == TicketStatus.Active &&
+            (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value) &&
             t.PlateNumber == normalized);
     }
 
     public async Task<OccupancyStats> GetOccupancyStatsAsync()
     {
         using var db = _connectionManager.CreateDbContext();
-        var occupied = await db.ParkingTickets.CountAsync(t => t.Status == TicketStatus.Active);
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
+
+        var occupied = await db.ParkingTickets.CountAsync(t =>
+            t.Status == TicketStatus.Active &&
+            (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value));
+
+        var capacity = _sessionService.CurrentBranch?.TotalCapacity ?? 0;
+        if (capacity <= 0 && currentBranchId.HasValue)
+        {
+            var branch = await db.Branches.FirstOrDefaultAsync(b => b.Id == currentBranchId.Value);
+            if (branch != null && branch.TotalCapacity > 0)
+            {
+                capacity = branch.TotalCapacity;
+            }
+        }
+
+        if (capacity <= 0)
+        {
+            capacity = _totalCapacity > 0 ? _totalCapacity : _syncEngine.ServerConfiguredCapacity;
+        }
 
         return new OccupancyStats
         {
-            TotalCapacity = _totalCapacity,
+            TotalCapacity = capacity,
             OccupiedSpots = occupied
         };
     }

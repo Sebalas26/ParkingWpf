@@ -61,11 +61,11 @@
 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <TextBlock Text="Seleccionar Sede de Trabajo"
-                               FontSize="18"
+                               FontSize="20"
                                FontWeight="Black"
                                Foreground="{DynamicResource BrushTextPrimary}"/>
                     <TextBlock Text="Tienes acceso a múltiples parqueaderos. Elige la estación donde operarás:"
-                               FontSize="12"
+                               FontSize="14"
                                Foreground="{DynamicResource BrushTextMuted}"
                                Margin="0,3,0,0"
                                TextWrapping="Wrap"/>
@@ -107,28 +107,46 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- Branch Icon -->
+                                    <!-- Branch Icon / Logo -->
                                     <Border Grid.Column="0"
                                             Width="40"
                                             Height="40"
                                             CornerRadius="10"
                                             Background="{DynamicResource BrushPrimary}"
                                             Margin="0,0,14,0"
-                                            VerticalAlignment="Center">
-                                        <Path Data="{StaticResource IconBuilding}"
-                                              Fill="{DynamicResource BrushTextWhite}"
-                                              Width="18"
-                                              Height="18"
-                                              Stretch="Uniform"
-                                              HorizontalAlignment="Center"
-                                              VerticalAlignment="Center"/>
+                                            VerticalAlignment="Center"
+                                            ClipToBounds="True">
+                                        <Grid>
+                                            <Path Data="{StaticResource IconBuilding}"
+                                                  Fill="{DynamicResource BrushTextWhite}"
+                                                  Width="18"
+                                                  Height="18"
+                                                  Stretch="Uniform"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center">
+                                                <Path.Style>
+                                                    <Style TargetType="Path">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding LogoBase64, Converter={StaticResource NullToVis}}" Value="Visible">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Path.Style>
+                                            </Path>
+
+                                            <Image Source="{Binding LogoBase64, Converter={StaticResource Base64ToImageConv}}"
+                                                   Stretch="UniformToFill"
+                                                   Visibility="{Binding LogoBase64, Converter={StaticResource NullToVis}}"/>
+                                        </Grid>
                                     </Border>
 
                                     <!-- Info -->
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding Name}"
-                                                       FontSize="14"
+                                                       FontSize="16"
                                                        FontWeight="Bold"
                                                        Foreground="{DynamicResource BrushTextPrimary}"
                                                        VerticalAlignment="Center"/>
@@ -138,24 +156,24 @@
                                                     Margin="8,0,0,0"
                                                     VerticalAlignment="Center">
                                                 <TextBlock Text="{Binding Code}"
-                                                           FontSize="10"
+                                                           FontSize="12"
                                                            FontWeight="Bold"
                                                            Foreground="{DynamicResource BrushPrimary}"/>
                                             </Border>
                                         </StackPanel>
 
                                         <TextBlock Text="{Binding Address}"
-                                                   FontSize="12"
+                                                   FontSize="14"
                                                    Foreground="{DynamicResource BrushTextSecondary}"
                                                    Margin="0,3,0,0"/>
 
                                         <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                                             <TextBlock Text="Capacidad: "
-                                                       FontSize="11"
+                                                       FontSize="13"
                                                        FontWeight="SemiBold"
                                                        Foreground="{DynamicResource BrushTextMuted}"/>
                                             <TextBlock Text="{Binding TotalCapacity, StringFormat='{}{0} celdas'}"
-                                                       FontSize="11"
+                                                       FontSize="13"
                                                        FontWeight="Bold"
                                                        Foreground="{DynamicResource BrushSuccess}"/>
                                         </StackPanel>

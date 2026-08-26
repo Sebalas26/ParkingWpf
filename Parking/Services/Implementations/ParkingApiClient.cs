@@ -19,6 +19,7 @@ public class ParkingApiClient : IApiClientService
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
+        NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString,
         Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
     };
 
@@ -77,12 +78,15 @@ public class ParkingApiClient : IApiClientService
             var response = await _httpClient.GetAsync($"{BaseUrl}/api/sync/bootstrap", cts.Token);
             if (response.IsSuccessStatusCode)
             {
-                return await response.Content.ReadFromJsonAsync<BootstrapSyncResponse>(JsonOptions, cts.Token);
+                var content = await response.Content.ReadAsStringAsync(cts.Token);
+                return JsonSerializer.Deserialize<BootstrapSyncResponse>(content, JsonOptions);
             }
+            System.Diagnostics.Debug.WriteLine($"[ParkingApiClient] GetBootstrapAsync HTTP Error: {response.StatusCode}");
             return null;
         }
-        catch
+        catch (Exception ex)
         {
+            System.Diagnostics.Debug.WriteLine($"[ParkingApiClient] GetBootstrapAsync Exception: {ex.Message} -> {ex.StackTrace}");
             return null;
         }
     }
@@ -231,12 +235,17 @@ public class ParkingApiClient : IApiClientService
         }
     }
 
-    public async Task<WorkShift?> GetActiveShiftAsync(int? userId = null)
+    public async Task<WorkShift?> GetActiveShiftAsync(int? userId = null, int? branchId = null)
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         try
         {
-            var url = userId.HasValue ? $"{BaseUrl}/api/shifts/active?userId={userId.Value}" : $"{BaseUrl}/api/shifts/active";
+            var queryParams = new List<string>();
+            if (userId.HasValue) queryParams.Add($"userId={userId.Value}");
+            if (branchId.HasValue) queryParams.Add($"branchId={branchId.Value}");
+            var queryString = queryParams.Count > 0 ? "?" + string.Join("&", queryParams) : string.Empty;
+
+            var url = $"{BaseUrl}/api/shifts/active{queryString}";
             var response = await _httpClient.GetAsync(url, cts.Token);
             if (response.IsSuccessStatusCode)
             {
@@ -286,12 +295,18 @@ public class ParkingApiClient : IApiClientService
         }
     }
 
-    public async Task<IReadOnlyList<WorkShift>> GetShiftHistoryAsync(DateTime? fromDate = null, DateTime? toDate = null)
+    public async Task<IReadOnlyList<WorkShift>> GetShiftHistoryAsync(DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null)
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         try
         {
-            var url = $"{BaseUrl}/api/shifts/history";
+            var queryParams = new List<string>();
+            if (fromDate.HasValue) queryParams.Add($"fromDate={fromDate.Value:O}");
+            if (toDate.HasValue) queryParams.Add($"toDate={toDate.Value:O}");
+            if (branchId.HasValue) queryParams.Add($"branchId={branchId.Value}");
+            var queryString = queryParams.Count > 0 ? "?" + string.Join("&", queryParams) : string.Empty;
+
+            var url = $"{BaseUrl}/api/shifts/history{queryString}";
             var response = await _httpClient.GetAsync(url, cts.Token);
             if (response.IsSuccessStatusCode)
             {

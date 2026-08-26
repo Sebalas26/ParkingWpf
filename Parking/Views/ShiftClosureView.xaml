@@ -360,11 +360,11 @@
                                     </Grid>
                                     <TextBlock FontSize="11" Foreground="{DynamicResource BrushTextSecondary}">
                                         <Run Text="Dejado por: " FontWeight="SemiBold"/>
-                                        <Run Text="{Binding LastClosedShift.OperatorName}" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                        <Run Text="{Binding LastClosedShift.OperatorName, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
                                     </TextBlock>
                                     <TextBlock FontSize="10" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0">
                                         <Run Text="Fecha de Cierre: "/>
-                                        <Run Text="{Binding LastClosedShift.EndTime, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"/>
+                                        <Run Text="{Binding LastClosedShift.EndTime, Mode=OneWay, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"/>
                                     </TextBlock>
                                     <TextBlock Text="ℹ️ Se ha sugerido este monto como base inicial. Confirme físicamente el dinero en gaveta."
                                                FontSize="10" Foreground="{DynamicResource BrushPrimary}" FontWeight="SemiBold" Margin="0,4,0,0"/>

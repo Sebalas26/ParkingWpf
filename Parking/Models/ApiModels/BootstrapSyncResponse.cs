@@ -1,9 +1,46 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
-using Parking.Entities;
+using Parking.Core.Enums;
 
 namespace Parking.Models.ApiModels;
+
+public class ApiBranchSyncDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("code")]
+    public string Code { get; set; } = string.Empty;
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("address")]
+    public string Address { get; set; } = string.Empty;
+
+    [JsonPropertyName("phone")]
+    public string? Phone { get; set; }
+
+    [JsonPropertyName("city")]
+    public string? City { get; set; }
+
+    [JsonPropertyName("totalCapacity")]
+    public int TotalCapacity { get; set; } = 100;
+
+    [JsonPropertyName("notes")]
+    public string? Notes { get; set; }
+
+    [JsonPropertyName("logoBase64")]
+    public string? LogoBase64 { get; set; }
+
+    [JsonPropertyName("isActive")]
+    public bool IsActive { get; set; } = true;
+
+    [JsonPropertyName("createdAtUtc")]
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+}
 
 public class ApiUserSyncDto
 {
@@ -38,17 +75,499 @@ public class ApiUserSyncDto
     public bool IsActive { get; set; } = true;
 }
 
+public class ApiPaymentMethodSyncDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("icon")]
+    public string? Icon { get; set; }
+
+    [JsonPropertyName("isActive")]
+    public bool IsActive { get; set; } = true;
+
+    [JsonPropertyName("state")]
+    public bool? State { get; set; }
+
+    [JsonPropertyName("requiresCashTender")]
+    public bool? RequiresCashTender { get; set; }
+
+    public bool GetEffectiveActive() => State ?? IsActive;
+}
+
+public class ApiVehicleRateSyncDto
+{
+    [JsonPropertyName("rateId")]
+    public Guid RateId { get; set; } = Guid.NewGuid();
+
+    [JsonPropertyName("branchId")]
+    public int? BranchId { get; set; }
+
+    [JsonPropertyName("vehicleType")]
+    public object? VehicleType { get; set; }
+
+    [JsonPropertyName("displayName")]
+    public string DisplayName { get; set; } = string.Empty;
+
+    [JsonPropertyName("minuteRate")]
+    public decimal MinuteRate { get; set; }
+
+    [JsonPropertyName("hourRate")]
+    public decimal HourRate { get; set; }
+
+    [JsonPropertyName("fullDayRate")]
+    public decimal FullDayRate { get; set; }
+
+    [JsonPropertyName("gracePeriodMinutes")]
+    public int GracePeriodMinutes { get; set; } = 15;
+
+    [JsonPropertyName("iconKey")]
+    public string? IconKey { get; set; }
+
+    [JsonPropertyName("isActive")]
+    public bool IsActive { get; set; } = true;
+
+    [JsonPropertyName("updatedAtUtc")]
+    public DateTime? UpdatedAtUtc { get; set; }
+
+    public VehicleType GetVehicleType()
+    {
+        if (VehicleType is JsonElement elem)
+        {
+            if (elem.ValueKind == JsonValueKind.Number && Enum.IsDefined(typeof(VehicleType), elem.GetInt32()))
+                return (VehicleType)elem.GetInt32();
+            if (elem.ValueKind == JsonValueKind.String && Enum.TryParse<VehicleType>(elem.GetString(), true, out var vt))
+                return vt;
+        }
+        else if (VehicleType is string s && Enum.TryParse<VehicleType>(s, true, out var vt))
+        {
+            return vt;
+        }
+        else if (VehicleType is int i && Enum.IsDefined(typeof(VehicleType), i))
+        {
+            return (VehicleType)i;
+        }
+        return Parking.Core.Enums.VehicleType.Car;
+    }
+}
+
+public class ApiStoreSyncDto
+{
+    [JsonPropertyName("storeId")]
+    public Guid StoreId { get; set; } = Guid.NewGuid();
+
+    [JsonPropertyName("branchId")]
+    public int? BranchId { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("taxId")]
+    public string? TaxId { get; set; }
+
+    [JsonPropertyName("phoneNumber")]
+    public string? PhoneNumber { get; set; }
+
+    [JsonPropertyName("isActive")]
+    public bool IsActive { get; set; } = true;
+}
+
+public class ApiCommercialAgreementSyncDto
+{
+    [JsonPropertyName("agreementId")]
+    public Guid AgreementId { get; set; } = Guid.NewGuid();
+
+    [JsonPropertyName("storeId")]
+    public Guid StoreId { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("minPurchaseAmount")]
+    public decimal MinPurchaseAmount { get; set; }
+
+    [JsonPropertyName("discountPercentage")]
+    public decimal? DiscountPercentage { get; set; }
+
+    [JsonPropertyName("discountFixedAmount")]
+    public decimal? DiscountFixedAmount { get; set; }
+
+    [JsonPropertyName("maxHoursApplicable")]
+    public int? MaxHoursApplicable { get; set; }
+
+    [JsonPropertyName("isActive")]
+    public bool IsActive { get; set; } = true;
+}
+
+public class ApiWorkShiftSyncDto
+{
+    [JsonPropertyName("shiftId")]
+    public Guid ShiftId { get; set; } = Guid.NewGuid();
+
+    [JsonPropertyName("branchId")]
+    public int? BranchId { get; set; }
+
+    [JsonPropertyName("userId")]
+    public int UserId { get; set; }
+
+    [JsonPropertyName("operatorName")]
+    public string OperatorName { get; set; } = string.Empty;
+
+    [JsonPropertyName("startTimeUtc")]
+    public DateTime StartTimeUtc { get; set; } = DateTime.UtcNow;
+
+    [JsonPropertyName("endTimeUtc")]
+    public DateTime? EndTimeUtc { get; set; }
+
+    [JsonPropertyName("baseAmount")]
+    public decimal BaseAmount { get; set; }
+
+    [JsonPropertyName("totalCashCollected")]
+    public decimal TotalCashCollected { get; set; }
+
+    [JsonPropertyName("totalCardCollected")]
+    public decimal TotalCardCollected { get; set; }
+
+    [JsonPropertyName("totalTransferCollected")]
+    public decimal TotalTransferCollected { get; set; }
+
+    [JsonPropertyName("totalDiscounts")]
+    public decimal TotalDiscounts { get; set; }
+
+    [JsonPropertyName("totalCashWithdrawals")]
+    public decimal TotalCashWithdrawals { get; set; }
+
+    [JsonPropertyName("expectedCash")]
+    public decimal ExpectedCash { get; set; }
+
+    [JsonPropertyName("actualCashCounted")]
+    public decimal ActualCashCounted { get; set; }
+
+    [JsonPropertyName("cashDifference")]
+    public decimal CashDifference { get; set; }
+
+    [JsonPropertyName("totalTicketsProcessed")]
+    public int TotalTicketsProcessed { get; set; }
+
+    [JsonPropertyName("totalVehiclesEntered")]
+    public int TotalVehiclesEntered { get; set; }
+
+    [JsonPropertyName("status")]
+    public object? Status { get; set; }
+
+    [JsonPropertyName("notes")]
+    public string? Notes { get; set; }
+
+    [JsonPropertyName("handoverToUserId")]
+    public Guid? HandoverToUserId { get; set; }
+
+    [JsonPropertyName("handoverToUserName")]
+    public string? HandoverToUserName { get; set; }
+
+    [JsonPropertyName("createdAtUtc")]
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    [JsonPropertyName("closedAtUtc")]
+    public DateTime? ClosedAtUtc { get; set; }
+
+    public int GetNormalizedStatus()
+    {
+        if (Status is JsonElement elem)
+        {
+            if (elem.ValueKind == JsonValueKind.Number) return elem.GetInt32();
+            if (elem.ValueKind == JsonValueKind.String)
+            {
+                var s = elem.GetString();
+                return string.Equals(s, "Closed", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+            }
+        }
+        else if (Status is int i)
+        {
+            return i;
+        }
+        else if (Status is string str)
+        {
+            return string.Equals(str, "Closed", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        }
+        return 0;
+    }
+}
+
+public class ApiMonthlySubscriptionSyncDto
+{
+    [JsonPropertyName("subscriptionId")]
+    public Guid SubscriptionId { get; set; } = Guid.NewGuid();
+
+    [JsonPropertyName("branchId")]
+    public int? BranchId { get; set; }
+
+    [JsonPropertyName("customerName")]
+    public string CustomerName { get; set; } = string.Empty;
+
+    [JsonPropertyName("customerDocument")]
+    public string CustomerDocument { get; set; } = string.Empty;
+
+    [JsonPropertyName("customerPhone")]
+    public string CustomerPhone { get; set; } = string.Empty;
+
+    [JsonPropertyName("customerEmail")]
+    public string? CustomerEmail { get; set; }
+
+    [JsonPropertyName("plateNumber")]
+    public string PlateNumber { get; set; } = string.Empty;
+
+    [JsonPropertyName("vehicleType")]
+    public object? VehicleType { get; set; }
+
+    [JsonPropertyName("startDateUtc")]
+    public DateTime StartDateUtc { get; set; } = DateTime.UtcNow;
+
+    [JsonPropertyName("endDateUtc")]
+    public DateTime EndDateUtc { get; set; } = DateTime.UtcNow.AddMonths(1);
+
+    [JsonPropertyName("monthlyFee")]
+    public decimal MonthlyFee { get; set; }
+
+    [JsonPropertyName("amountPaid")]
+    public decimal AmountPaid { get; set; }
+
+    [JsonPropertyName("paymentMethod")]
+    public object? PaymentMethod { get; set; }
+
+    [JsonPropertyName("isActive")]
+    public bool IsActive { get; set; } = true;
+
+    [JsonPropertyName("notes")]
+    public string? Notes { get; set; }
+
+    [JsonPropertyName("createdAtUtc")]
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    public VehicleType GetVehicleType()
+    {
+        if (VehicleType is JsonElement elem)
+        {
+            if (elem.ValueKind == JsonValueKind.Number && Enum.IsDefined(typeof(VehicleType), elem.GetInt32()))
+                return (VehicleType)elem.GetInt32();
+            if (elem.ValueKind == JsonValueKind.String && Enum.TryParse<VehicleType>(elem.GetString(), true, out var vt))
+                return vt;
+        }
+        else if (VehicleType is string s && Enum.TryParse<VehicleType>(s, true, out var vt))
+        {
+            return vt;
+        }
+        else if (VehicleType is int i && Enum.IsDefined(typeof(VehicleType), i))
+        {
+            return (VehicleType)i;
+        }
+        return Parking.Core.Enums.VehicleType.Car;
+    }
+
+    public PaymentMethod GetPaymentMethod()
+    {
+        if (PaymentMethod is JsonElement elem)
+        {
+            if (elem.ValueKind == JsonValueKind.Number && Enum.IsDefined(typeof(PaymentMethod), elem.GetInt32()))
+                return (PaymentMethod)elem.GetInt32();
+            if (elem.ValueKind == JsonValueKind.String)
+            {
+                var str = elem.GetString();
+                if (string.Equals(str, "Transfer", StringComparison.OrdinalIgnoreCase)) return Parking.Core.Enums.PaymentMethod.DigitalTransfer;
+                if (Enum.TryParse<PaymentMethod>(str, true, out var pm)) return pm;
+            }
+        }
+        else if (PaymentMethod is string s)
+        {
+            if (string.Equals(s, "Transfer", StringComparison.OrdinalIgnoreCase)) return Parking.Core.Enums.PaymentMethod.DigitalTransfer;
+            if (Enum.TryParse<PaymentMethod>(s, true, out var pm)) return pm;
+        }
+        else if (PaymentMethod is int i && Enum.IsDefined(typeof(PaymentMethod), i))
+        {
+            return (PaymentMethod)i;
+        }
+        return Parking.Core.Enums.PaymentMethod.Cash;
+    }
+}
+
+public class ApiParkingTicketSyncDto
+{
+    [JsonPropertyName("ticketId")]
+    public Guid TicketId { get; set; } = Guid.NewGuid();
+
+    [JsonPropertyName("branchId")]
+    public int? BranchId { get; set; }
+
+    [JsonPropertyName("ticketNumber")]
+    public string TicketNumber { get; set; } = string.Empty;
+
+    [JsonPropertyName("plateNumber")]
+    public string PlateNumber { get; set; } = string.Empty;
+
+    [JsonPropertyName("vehicleType")]
+    public object? VehicleType { get; set; }
+
+    [JsonPropertyName("customerPhone")]
+    public string? CustomerPhone { get; set; }
+
+    [JsonPropertyName("bayNumber")]
+    public string? BayNumber { get; set; }
+
+    [JsonPropertyName("notes")]
+    public string? Notes { get; set; }
+
+    [JsonPropertyName("entryTimeUtc")]
+    public DateTime EntryTimeUtc { get; set; } = DateTime.UtcNow;
+
+    [JsonPropertyName("exitTimeUtc")]
+    public DateTime? ExitTimeUtc { get; set; }
+
+    [JsonPropertyName("totalDurationMinutes")]
+    public int TotalDurationMinutes { get; set; }
+
+    [JsonPropertyName("hourlyRate")]
+    public decimal HourlyRate { get; set; }
+
+    [JsonPropertyName("grossAmount")]
+    public decimal GrossAmount { get; set; }
+
+    [JsonPropertyName("discountAmount")]
+    public decimal DiscountAmount { get; set; }
+
+    [JsonPropertyName("netAmount")]
+    public decimal NetAmount { get; set; }
+
+    [JsonPropertyName("amountPaid")]
+    public decimal AmountPaid { get; set; }
+
+    [JsonPropertyName("changeGiven")]
+    public decimal ChangeGiven { get; set; }
+
+    [JsonPropertyName("paymentMethod")]
+    public object? PaymentMethod { get; set; }
+
+    [JsonPropertyName("paymentMethodId")]
+    public int? PaymentMethodId { get; set; }
+
+    [JsonPropertyName("exitNotes")]
+    public string? ExitNotes { get; set; }
+
+    [JsonPropertyName("status")]
+    public object? Status { get; set; }
+
+    [JsonPropertyName("operatorName")]
+    public string OperatorName { get; set; } = "Operador General";
+
+    [JsonPropertyName("isSynchronized")]
+    public bool IsSynchronized { get; set; } = true;
+
+    [JsonPropertyName("createdAtUtc")]
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    public VehicleType GetVehicleType()
+    {
+        if (VehicleType is JsonElement elem)
+        {
+            if (elem.ValueKind == JsonValueKind.Number && Enum.IsDefined(typeof(VehicleType), elem.GetInt32()))
+                return (VehicleType)elem.GetInt32();
+            if (elem.ValueKind == JsonValueKind.String && Enum.TryParse<VehicleType>(elem.GetString(), true, out var vt))
+                return vt;
+        }
+        else if (VehicleType is string s && Enum.TryParse<VehicleType>(s, true, out var vt))
+        {
+            return vt;
+        }
+        else if (VehicleType is int i && Enum.IsDefined(typeof(VehicleType), i))
+        {
+            return (VehicleType)i;
+        }
+        return Parking.Core.Enums.VehicleType.Car;
+    }
+
+    public TicketStatus GetTicketStatus()
+    {
+        if (Status is JsonElement elem)
+        {
+            if (elem.ValueKind == JsonValueKind.Number && Enum.IsDefined(typeof(TicketStatus), elem.GetInt32()))
+                return (TicketStatus)elem.GetInt32();
+            if (elem.ValueKind == JsonValueKind.String && Enum.TryParse<TicketStatus>(elem.GetString(), true, out var st))
+                return st;
+        }
+        else if (Status is string s && Enum.TryParse<TicketStatus>(s, true, out var st))
+        {
+            return st;
+        }
+        else if (Status is int i && Enum.IsDefined(typeof(TicketStatus), i))
+        {
+            return (TicketStatus)i;
+        }
+        return TicketStatus.Active;
+    }
+
+    public PaymentMethod? GetPaymentMethod()
+    {
+        if (PaymentMethod == null) return null;
+        if (PaymentMethod is JsonElement elem)
+        {
+            if (elem.ValueKind == JsonValueKind.Number && Enum.IsDefined(typeof(PaymentMethod), elem.GetInt32()))
+                return (PaymentMethod)elem.GetInt32();
+            if (elem.ValueKind == JsonValueKind.String)
+            {
+                var str = elem.GetString();
+                if (string.Equals(str, "Transfer", StringComparison.OrdinalIgnoreCase)) return Parking.Core.Enums.PaymentMethod.DigitalTransfer;
+                if (Enum.TryParse<PaymentMethod>(str, true, out var pm)) return pm;
+            }
+        }
+        else if (PaymentMethod is string s)
+        {
+            if (string.Equals(s, "Transfer", StringComparison.OrdinalIgnoreCase)) return Parking.Core.Enums.PaymentMethod.DigitalTransfer;
+            if (Enum.TryParse<PaymentMethod>(s, true, out var pm)) return pm;
+        }
+        else if (PaymentMethod is int i && Enum.IsDefined(typeof(PaymentMethod), i))
+        {
+            return (PaymentMethod)i;
+        }
+        return null;
+    }
+}
+
 public class BootstrapSyncResponse
 {
+    [JsonPropertyName("serverTimeUtc")]
     public DateTime ServerTimeUtc { get; set; } = DateTime.UtcNow;
+
+    [JsonPropertyName("totalCapacity")]
     public int TotalCapacity { get; set; } = 120;
+
+    [JsonPropertyName("branches")]
+    public List<ApiBranchSyncDto> Branches { get; set; } = new();
+
+    [JsonPropertyName("users")]
     public List<ApiUserSyncDto> Users { get; set; } = new();
-    public List<PaymentMethodEntity> PaymentMethods { get; set; } = new();
-    public List<VehicleRate> Rates { get; set; } = new();
-    public List<Store> Stores { get; set; } = new();
-    public List<CommercialAgreement> Agreements { get; set; } = new();
-    public List<WorkShift> WorkShifts { get; set; } = new();
-    public List<MonthlySubscription> MonthlySubscriptions { get; set; } = new();
-    public List<ParkingTicket> ActiveTickets { get; set; } = new();
-    public List<ParkingTicket> RecentTickets { get; set; } = new();
+
+    [JsonPropertyName("paymentMethods")]
+    public List<ApiPaymentMethodSyncDto> PaymentMethods { get; set; } = new();
+
+    [JsonPropertyName("rates")]
+    public List<ApiVehicleRateSyncDto> Rates { get; set; } = new();
+
+    [JsonPropertyName("stores")]
+    public List<ApiStoreSyncDto> Stores { get; set; } = new();
+
+    [JsonPropertyName("agreements")]
+    public List<ApiCommercialAgreementSyncDto> Agreements { get; set; } = new();
+
+    [JsonPropertyName("workShifts")]
+    public List<ApiWorkShiftSyncDto> WorkShifts { get; set; } = new();
+
+    [JsonPropertyName("monthlySubscriptions")]
+    public List<ApiMonthlySubscriptionSyncDto> MonthlySubscriptions { get; set; } = new();
+
+    [JsonPropertyName("activeTickets")]
+    public List<ApiParkingTicketSyncDto> ActiveTickets { get; set; } = new();
+
+    [JsonPropertyName("recentTickets")]
+    public List<ApiParkingTicketSyncDto> RecentTickets { get; set; } = new();
 }

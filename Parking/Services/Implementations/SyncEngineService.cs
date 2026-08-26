@@ -227,14 +227,52 @@ public class SyncEngineService : ISyncEngineService
         result.SyncedUsersCount = usersCount;
         await Task.Delay(100, ct);
 
-        // 5. Paso 4: Sincronizar Medios de Pago (70%)
+        // 5. Paso 4: Sincronizar Medios de Pago y Sedes (70%)
         progress.Report(new SyncProgressReport
         {
             Percentage = 70,
             StepIndex = 4,
-            CurrentStepTitle = "Sincronizando Medios de Pago...",
-            DetailMessage = $"Actualizando {bootstrap.PaymentMethods?.Count ?? 0} medios de pago desde MySQL..."
+            CurrentStepTitle = "Sincronizando Medios de Pago y Sedes...",
+            DetailMessage = $"Actualizando {bootstrap.PaymentMethods?.Count ?? 0} medios de pago y {bootstrap.Branches?.Count ?? 0} sedes..."
         });
+
+        if (bootstrap.Branches != null && bootstrap.Branches.Count > 0)
+        {
+            foreach (var br in bootstrap.Branches)
+            {
+                var existingBranch = await db.Branches.FirstOrDefaultAsync(b => b.Id == br.Id, ct);
+                if (existingBranch != null)
+                {
+                    existingBranch.Code = br.Code;
+                    existingBranch.Name = br.Name;
+                    existingBranch.Address = br.Address;
+                    existingBranch.Phone = br.Phone;
+                    existingBranch.City = br.City;
+                    existingBranch.TotalCapacity = br.TotalCapacity;
+                    existingBranch.Notes = br.Notes;
+                    existingBranch.LogoBase64 = br.LogoBase64;
+                    existingBranch.IsActive = br.IsActive;
+                }
+                else
+                {
+                    db.Branches.Add(new Branch
+                    {
+                        Id = br.Id,
+                        Code = br.Code,
+                        Name = br.Name,
+                        Address = br.Address,
+                        Phone = br.Phone,
+                        City = br.City,
+                        TotalCapacity = br.TotalCapacity,
+                        Notes = br.Notes,
+                        LogoBase64 = br.LogoBase64,
+                        IsActive = br.IsActive,
+                        CreatedAtUtc = br.CreatedAtUtc
+                    });
+                }
+            }
+            await db.SaveChangesAsync(ct);
+        }
 
         int paymentMethodsCount = 0;
         if (bootstrap.PaymentMethods != null && bootstrap.PaymentMethods.Count > 0)
@@ -246,8 +284,8 @@ public class SyncEngineService : ISyncEngineService
                 {
                     existing.Name = pm.Name;
                     existing.Icon = string.IsNullOrWhiteSpace(pm.Icon) ? "IconCash" : pm.Icon;
-                    existing.State = pm.State;
-                    existing.RequiresCashTender = pm.RequiresCashTender;
+                    existing.State = pm.GetEffectiveActive();
+                    existing.RequiresCashTender = pm.RequiresCashTender ?? true;
                 }
                 else
                 {
@@ -256,8 +294,8 @@ public class SyncEngineService : ISyncEngineService
                         Id = pm.Id,
                         Name = pm.Name,
                         Icon = string.IsNullOrWhiteSpace(pm.Icon) ? "IconCash" : pm.Icon,
-                        State = pm.State,
-                        RequiresCashTender = pm.RequiresCashTender
+                        State = pm.GetEffectiveActive(),
+                        RequiresCashTender = pm.RequiresCashTender ?? true
                     });
                 }
                 paymentMethodsCount++;
@@ -281,7 +319,8 @@ public class SyncEngineService : ISyncEngineService
         {
             foreach (var rate in bootstrap.Rates)
             {
-                var existing = await db.VehicleRates.FirstOrDefaultAsync(r => r.VehicleType == rate.VehicleType, ct);
+                var vehicleType = rate.GetVehicleType();
+                var existing = await db.VehicleRates.FirstOrDefaultAsync(r => r.VehicleType == vehicleType, ct);
                 if (existing != null)
                 {
                     existing.HourRate = rate.HourRate;
@@ -289,12 +328,25 @@ public class SyncEngineService : ISyncEngineService
                     existing.FullDayRate = rate.FullDayRate;
                     existing.GracePeriodMinutes = rate.GracePeriodMinutes;
                     existing.DisplayName = rate.DisplayName;
-                    existing.IconKey = rate.IconKey;
+                    existing.IconKey = string.IsNullOrWhiteSpace(rate.IconKey) ? "IconCar" : rate.IconKey;
                     existing.IsActive = rate.IsActive;
                 }
                 else
                 {
-                    db.VehicleRates.Add(rate);
+                    db.VehicleRates.Add(new VehicleRate
+                    {
+                        RateId = rate.RateId,
+                        BranchId = rate.BranchId,
+                        VehicleType = vehicleType,
+                        DisplayName = rate.DisplayName,
+                        MinuteRate = rate.MinuteRate,
+                        HourRate = rate.HourRate,
+                        FullDayRate = rate.FullDayRate,
+                        GracePeriodMinutes = rate.GracePeriodMinutes,
+                        IconKey = string.IsNullOrWhiteSpace(rate.IconKey) ? "IconCar" : rate.IconKey,
+                        IsActive = rate.IsActive,
+                        UpdatedAtUtc = rate.UpdatedAtUtc ?? DateTime.UtcNow
+                    });
                 }
                 ratesCount++;
             }
@@ -326,7 +378,15 @@ public class SyncEngineService : ISyncEngineService
                 }
                 else
                 {
-                    db.Stores.Add(store);
+                    db.Stores.Add(new Store
+                    {
+                        StoreId = store.StoreId,
+                        Name = store.Name,
+                        TaxId = store.TaxId,
+                        PhoneNumber = store.PhoneNumber,
+                        IsActive = store.IsActive,
+                        CreatedAtUtc = DateTime.UtcNow
+                    });
                 }
             }
             await db.SaveChangesAsync(ct);
@@ -350,7 +410,18 @@ public class SyncEngineService : ISyncEngineService
                 }
                 else
                 {
-                    db.CommercialAgreements.Add(ag);
+                    db.CommercialAgreements.Add(new CommercialAgreement
+                    {
+                        AgreementId = ag.AgreementId,
+                        StoreId = ag.StoreId,
+                        Name = ag.Name,
+                        MinPurchaseAmount = ag.MinPurchaseAmount,
+                        DiscountPercentage = ag.DiscountPercentage,
+                        DiscountFixedAmount = ag.DiscountFixedAmount,
+                        MaxHoursApplicable = ag.MaxHoursApplicable,
+                        IsActive = ag.IsActive,
+                        CreatedAtUtc = DateTime.UtcNow
+                    });
                 }
                 agCount++;
             }
@@ -377,7 +448,7 @@ public class SyncEngineService : ISyncEngineService
                 if (existing != null)
                 {
                     existing.PlateNumber = sub.PlateNumber;
-                    existing.VehicleType = sub.VehicleType;
+                    existing.VehicleType = sub.GetVehicleType();
                     existing.CustomerName = sub.CustomerName;
                     existing.CustomerDocument = sub.CustomerDocument;
                     existing.CustomerPhone = sub.CustomerPhone;
@@ -385,12 +456,30 @@ public class SyncEngineService : ISyncEngineService
                     existing.EndDateUtc = sub.EndDateUtc;
                     existing.MonthlyFee = sub.MonthlyFee;
                     existing.AmountPaid = sub.AmountPaid;
-                    existing.PaymentMethod = sub.PaymentMethod;
+                    existing.PaymentMethod = sub.GetPaymentMethod();
                     existing.IsActive = sub.IsActive;
                 }
                 else
                 {
-                    db.MonthlySubscriptions.Add(sub);
+                    db.MonthlySubscriptions.Add(new MonthlySubscription
+                    {
+                        SubscriptionId = sub.SubscriptionId,
+                        BranchId = sub.BranchId,
+                        PlateNumber = sub.PlateNumber,
+                        VehicleType = sub.GetVehicleType(),
+                        CustomerName = sub.CustomerName,
+                        CustomerDocument = sub.CustomerDocument,
+                        CustomerPhone = sub.CustomerPhone,
+                        CustomerEmail = sub.CustomerEmail,
+                        StartDateUtc = sub.StartDateUtc,
+                        EndDateUtc = sub.EndDateUtc,
+                        MonthlyFee = sub.MonthlyFee,
+                        AmountPaid = sub.AmountPaid,
+                        PaymentMethod = sub.GetPaymentMethod(),
+                        IsActive = sub.IsActive,
+                        Notes = sub.Notes,
+                        CreatedAtUtc = sub.CreatedAtUtc
+                    });
                 }
                 subsCount++;
             }
@@ -403,6 +492,7 @@ public class SyncEngineService : ISyncEngineService
         {
             foreach (var ws in bootstrap.WorkShifts)
             {
+                var normalizedStatus = ws.GetNormalizedStatus();
                 var existing = await db.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == ws.ShiftId, ct);
                 if (existing != null)
                 {
@@ -421,14 +511,40 @@ public class SyncEngineService : ISyncEngineService
                     existing.CashDifference = ws.CashDifference;
                     existing.TotalTicketsProcessed = ws.TotalTicketsProcessed;
                     existing.TotalVehiclesEntered = ws.TotalVehiclesEntered;
-                    existing.Status = ws.Status;
+                    existing.Status = normalizedStatus;
                     existing.HandoverToUserId = ws.HandoverToUserId;
                     existing.HandoverToUserName = ws.HandoverToUserName;
                     existing.Notes = ws.Notes;
                 }
                 else
                 {
-                    db.WorkShifts.Add(ws);
+                    db.WorkShifts.Add(new WorkShift
+                    {
+                        ShiftId = ws.ShiftId,
+                        BranchId = ws.BranchId,
+                        UserId = ws.UserId,
+                        OperatorName = ws.OperatorName,
+                        StartTimeUtc = ws.StartTimeUtc,
+                        EndTimeUtc = ws.EndTimeUtc,
+                        BaseAmount = ws.BaseAmount,
+                        TotalCashCollected = ws.TotalCashCollected,
+                        TotalCardCollected = ws.TotalCardCollected,
+                        TotalTransferCollected = ws.TotalTransferCollected,
+                        TotalDiscounts = ws.TotalDiscounts,
+                        TotalCashWithdrawals = ws.TotalCashWithdrawals,
+                        ExpectedCash = ws.ExpectedCash,
+                        ActualCashCounted = ws.ActualCashCounted,
+                        CashDifference = ws.CashDifference,
+                        TotalTicketsProcessed = ws.TotalTicketsProcessed,
+                        TotalVehiclesEntered = ws.TotalVehiclesEntered,
+                        Status = normalizedStatus,
+                        HandoverToUserId = ws.HandoverToUserId,
+                        HandoverToUserName = ws.HandoverToUserName,
+                        Notes = ws.Notes,
+                        IsSynchronized = true,
+                        CreatedAtUtc = ws.CreatedAtUtc,
+                        ClosedAtUtc = ws.ClosedAtUtc
+                    });
                 }
                 shiftsCount++;
             }
@@ -446,42 +562,70 @@ public class SyncEngineService : ISyncEngineService
             DetailMessage = "Consolidando registros de acceso y guardando en SQLite..."
         });
 
-        var allIncomingTickets = new List<ParkingTicket>();
+        var allIncomingTickets = new List<ApiParkingTicketSyncDto>();
         if (bootstrap.ActiveTickets != null) allIncomingTickets.AddRange(bootstrap.ActiveTickets);
         if (bootstrap.RecentTickets != null) allIncomingTickets.AddRange(bootstrap.RecentTickets);
 
         int ticketsCount = 0;
         foreach (var ticket in allIncomingTickets)
         {
+            var vehicleType = ticket.GetVehicleType();
+            var status = ticket.GetTicketStatus();
+            var paymentMethod = ticket.GetPaymentMethod();
+
             var existing = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == ticket.TicketId || t.TicketNumber == ticket.TicketNumber, ct);
             if (existing != null)
             {
                 existing.TicketNumber = ticket.TicketNumber;
                 existing.PlateNumber = ticket.PlateNumber;
-                existing.VehicleType = ticket.VehicleType;
+                existing.VehicleType = vehicleType;
                 existing.CustomerPhone = ticket.CustomerPhone;
                 existing.Notes = ticket.Notes;
                 existing.OperatorName = !string.IsNullOrWhiteSpace(ticket.OperatorName) ? ticket.OperatorName : "Operador General";
                 existing.EntryTimeUtc = ticket.EntryTimeUtc;
                 existing.ExitTimeUtc = ticket.ExitTimeUtc;
                 existing.TotalDurationMinutes = ticket.TotalDurationMinutes;
-                existing.Status = ticket.Status;
+                existing.Status = status;
                 existing.HourlyRate = ticket.HourlyRate;
                 existing.GrossAmount = ticket.GrossAmount;
                 existing.DiscountAmount = ticket.DiscountAmount;
                 existing.NetAmount = ticket.NetAmount;
                 existing.AmountPaid = ticket.AmountPaid;
                 existing.ChangeGiven = ticket.ChangeGiven;
-                existing.PaymentMethod = ticket.PaymentMethod;
+                existing.PaymentMethod = paymentMethod;
                 existing.PaymentMethodId = ticket.PaymentMethodId;
                 existing.ExitNotes = ticket.ExitNotes;
                 existing.IsSynchronized = true;
             }
             else
             {
-                ticket.OperatorName = !string.IsNullOrWhiteSpace(ticket.OperatorName) ? ticket.OperatorName : "Operador General";
-                ticket.IsSynchronized = true;
-                db.ParkingTickets.Add(ticket);
+                db.ParkingTickets.Add(new ParkingTicket
+                {
+                    TicketId = ticket.TicketId,
+                    BranchId = ticket.BranchId,
+                    TicketNumber = ticket.TicketNumber,
+                    PlateNumber = ticket.PlateNumber,
+                    VehicleType = vehicleType,
+                    CustomerPhone = ticket.CustomerPhone,
+                    BayNumber = ticket.BayNumber,
+                    Notes = ticket.Notes,
+                    EntryTimeUtc = ticket.EntryTimeUtc,
+                    ExitTimeUtc = ticket.ExitTimeUtc,
+                    TotalDurationMinutes = ticket.TotalDurationMinutes,
+                    HourlyRate = ticket.HourlyRate,
+                    GrossAmount = ticket.GrossAmount,
+                    DiscountAmount = ticket.DiscountAmount,
+                    NetAmount = ticket.NetAmount,
+                    AmountPaid = ticket.AmountPaid,
+                    ChangeGiven = ticket.ChangeGiven,
+                    PaymentMethod = paymentMethod,
+                    PaymentMethodId = ticket.PaymentMethodId,
+                    ExitNotes = ticket.ExitNotes,
+                    Status = status,
+                    OperatorName = !string.IsNullOrWhiteSpace(ticket.OperatorName) ? ticket.OperatorName : "Operador General",
+                    IsSynchronized = true,
+                    CreatedAtUtc = ticket.CreatedAtUtc
+                });
             }
             ticketsCount++;
         }

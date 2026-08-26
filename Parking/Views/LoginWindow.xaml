@@ -7,6 +7,7 @@
         xmlns:conv="clr-namespace:Parking.Core.Converters"
         mc:Ignorable="d"
         Title="Park Point - Control de Acceso y Caja"
+        Icon="/Resources/parkpoint.ico"
         Height="620"
         Width="960"
         WindowStartupLocation="CenterScreen"

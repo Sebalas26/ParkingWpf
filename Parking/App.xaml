@@ -25,6 +25,7 @@
             <conv:OccupancyToColorConverter x:Key="OccupancyColorConv"/>
             <conv:ConnectionStatusToColorConverter x:Key="ConnColorConv"/>
             <conv:EqualityToBooleanConverter x:Key="EqualityConv"/>
+            <conv:Base64ToImageConverter x:Key="Base64ToImageConv"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

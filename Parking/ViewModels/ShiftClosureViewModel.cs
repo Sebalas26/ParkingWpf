@@ -104,6 +104,11 @@ public partial class ShiftClosureViewModel : ViewModelBase
         {
             await LoadShiftDataAsync();
         };
+
+        _sessionService.ActiveBranchChanged += async _ =>
+        {
+            await LoadShiftDataAsync();
+        };
     }
 
     public override async Task InitializeAsync()

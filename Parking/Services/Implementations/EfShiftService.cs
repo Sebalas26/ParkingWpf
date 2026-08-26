@@ -16,6 +16,7 @@ public class EfShiftService : IShiftService
     private readonly IDbConnectionManager _connectionManager;
     private readonly IApiClientService _apiClient;
     private readonly IAuthService _authService;
+    private readonly ISessionService _sessionService;
 
     public WorkShift? CurrentShift { get; private set; }
     public bool HasActiveShift => CurrentShift != null && CurrentShift.Status == 0;
@@ -24,18 +25,24 @@ public class EfShiftService : IShiftService
     public EfShiftService(
         IDbConnectionManager connectionManager,
         IApiClientService apiClient,
-        IAuthService authService)
+        IAuthService authService,
+        ISessionService sessionService)
     {
         _connectionManager = connectionManager;
         _apiClient = apiClient;
         _authService = authService;
+        _sessionService = sessionService;
     }
+
+    private int? CurrentBranchId => _sessionService.CurrentBranch?.Id;
 
     public async Task<WorkShift> OpenShiftAsync(decimal baseAmount, string? notes = null)
     {
         var operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
+        var branchId = CurrentBranchId;
         var request = new OpenShiftApiRequest
         {
+            BranchId = branchId,
             BaseAmount = baseAmount,
             Notes = notes
         };
@@ -51,7 +58,8 @@ public class EfShiftService : IShiftService
         shift ??= new WorkShift
         {
             ShiftId = Guid.NewGuid(),
-            UserId = 1,
+            BranchId = branchId,
+            UserId = _authService.CurrentUser?.ServerUserId ?? 1,
             OperatorName = operatorName,
             StartTimeUtc = DateTime.UtcNow,
             BaseAmount = baseAmount,
@@ -61,6 +69,11 @@ public class EfShiftService : IShiftService
             CreatedAtUtc = DateTime.UtcNow
         };
 
+        if (!shift.BranchId.HasValue)
+        {
+            shift.BranchId = branchId;
+        }
+
         using var db = _connectionManager.CreateDbContext();
         var existing = await db.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == shift.ShiftId);
         if (existing == null)
@@ -69,6 +82,7 @@ public class EfShiftService : IShiftService
         }
         else
         {
+            existing.BranchId = branchId;
             existing.Status = 0;
             existing.BaseAmount = baseAmount;
             existing.Notes = notes;
@@ -82,9 +96,10 @@ public class EfShiftService : IShiftService
 
     public async Task<WorkShift?> GetActiveShiftAsync()
     {
+        var branchId = CurrentBranchId;
         try
         {
-            var apiShift = await _apiClient.GetActiveShiftAsync();
+            var apiShift = await _apiClient.GetActiveShiftAsync(branchId: branchId);
             if (apiShift != null)
             {
                 CurrentShift = apiShift;
@@ -95,9 +110,15 @@ public class EfShiftService : IShiftService
         catch { }
 
         using var db = _connectionManager.CreateDbContext();
-        var localShift = await db.WorkShifts
+        var query = db.WorkShifts.Where(s => s.Status == 0);
+        if (branchId.HasValue && branchId.Value > 0)
+        {
+            query = query.Where(s => s.BranchId == branchId.Value);
+        }
+
+        var localShift = await query
             .OrderByDescending(s => s.StartTimeUtc)
-            .FirstOrDefaultAsync(s => s.Status == 0);
+            .FirstOrDefaultAsync();
 
         CurrentShift = localShift;
         ShiftStateChanged?.Invoke();
@@ -106,6 +127,7 @@ public class EfShiftService : IShiftService
 
     public async Task<ShiftSummaryModel> GetCurrentShiftSummaryAsync()
     {
+        var branchId = CurrentBranchId;
         var activeShift = CurrentShift ?? await GetActiveShiftAsync();
         var startTime = activeShift?.StartTimeUtc ?? DateTime.UtcNow.Date;
         var baseAmount = activeShift?.BaseAmount ?? 0m;
@@ -125,9 +147,15 @@ public class EfShiftService : IShiftService
             catch { }
         }
 
-        // Cálculo local en SQLite
+        // Cálculo local en SQLite filtrado por sede
         using var db = _connectionManager.CreateDbContext();
-        var allTickets = await db.ParkingTickets.ToListAsync();
+        var ticketsQuery = db.ParkingTickets.AsNoTracking().AsQueryable();
+        if (branchId.HasValue && branchId.Value > 0)
+        {
+            ticketsQuery = ticketsQuery.Where(t => t.BranchId == branchId.Value);
+        }
+
+        var allTickets = await ticketsQuery.ToListAsync();
 
         var completedTickets = allTickets
             .Where(t => t.Status == TicketStatus.Completed && (activeShift == null || t.ExitTimeUtc >= startTime))
@@ -172,7 +200,8 @@ public class EfShiftService : IShiftService
         return new ShiftSummaryModel
         {
             ShiftId = shiftId,
-            UserId = 1,
+            BranchId = branchId,
+            UserId = activeShift?.UserId ?? (_authService.CurrentUser?.ServerUserId ?? 1),
             OperatorName = operatorName,
             StartTimeUtc = startTime,
             BaseAmount = baseAmount,
@@ -248,6 +277,8 @@ public class EfShiftService : IShiftService
 
     public async Task<WorkShift> HandoverAndOpenNextShiftAsync(decimal actualCashCounted, string? notes, Guid handoverToUserId, string handoverToUserName, decimal newShiftBaseAmount)
     {
+        var branchId = CurrentBranchId;
+
         // 1. Cerrar el turno saliente
         await CloseShiftAsync(actualCashCounted, notes, handoverToUserId, handoverToUserName);
 
@@ -255,6 +286,7 @@ public class EfShiftService : IShiftService
         var nextShift = new WorkShift
         {
             ShiftId = Guid.NewGuid(),
+            BranchId = branchId,
             UserId = 1,
             OperatorName = handoverToUserName,
             StartTimeUtc = DateTime.UtcNow,
@@ -306,9 +338,10 @@ public class EfShiftService : IShiftService
 
     public async Task<IReadOnlyList<WorkShift>> GetShiftHistoryAsync(DateTime? fromDate = null, DateTime? toDate = null)
     {
+        var branchId = CurrentBranchId;
         try
         {
-            var apiHistory = await _apiClient.GetShiftHistoryAsync(fromDate, toDate);
+            var apiHistory = await _apiClient.GetShiftHistoryAsync(fromDate, toDate, branchId);
             if (apiHistory != null && apiHistory.Count > 0)
             {
                 return apiHistory;
@@ -318,6 +351,11 @@ public class EfShiftService : IShiftService
 
         using var db = _connectionManager.CreateDbContext();
         var query = db.WorkShifts.AsNoTracking().AsQueryable();
+
+        if (branchId.HasValue && branchId.Value > 0)
+        {
+            query = query.Where(s => s.BranchId == branchId.Value);
+        }
 
         if (fromDate.HasValue)
         {
@@ -336,10 +374,18 @@ public class EfShiftService : IShiftService
 
     public async Task<WorkShift?> GetLastClosedShiftAsync()
     {
+        var branchId = CurrentBranchId;
         using var db = _connectionManager.CreateDbContext();
-        return await db.WorkShifts
+        var query = db.WorkShifts
             .AsNoTracking()
-            .Where(s => s.Status == 1) // 1 = Closed
+            .Where(s => s.Status == 1); // 1 = Closed
+
+        if (branchId.HasValue && branchId.Value > 0)
+        {
+            query = query.Where(s => s.BranchId == branchId.Value);
+        }
+
+        return await query
             .OrderByDescending(s => s.EndTimeUtc ?? s.ClosedAtUtc ?? s.CreatedAtUtc)
             .FirstOrDefaultAsync();
     }

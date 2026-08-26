@@ -42,6 +42,18 @@ Este documento define las **Reglas de Oro y Estándares Obligatorios** para cual
 
 ---
 
-## 📝 4. REGISTRO OBLIGATORIO DE CAMBIOS
-1. Toda modificación, corrección de bug o nueva funcionalidad debe registrarse de inmediato en [`HISTORIAL_CAMBIOS.md`](file:///c:/Users/miguelagutierrezg/Documents/Parking/HISTORIAL_CAMBIOS.md) con fecha, componentes afectados y detalle técnico.
-2. Todo cambio debe compilar limpiamente con `dotnet build` (**0 Errores**) antes de dar por finalizada la tarea.
+## 📝 4. PROTOCOLO ESTRICTO DE REGISTRO Y CONTEXTO MULTI-PC
+> [!IMPORTANT]
+> **PRESERVACIÓN DE CONTEXTO ENTRE COMPUTADORES**: Como el desarrollo se realiza alternando entre diferentes estaciones de trabajo (PCs), este protocolo garantiza que la IA nunca pierda el hilo técnico ni el contexto acumulado.
+
+1. **Registro Obligatorio en Cada Modificación**:
+   - Toda modificación, corrección de bug o nueva funcionalidad debe registrarse de inmediato en [`HISTORIAL_CAMBIOS.md`](file:///c:/Users/migue/source/repos/ParkingWpf/HISTORIAL_CAMBIOS.md) antes de finalizar el turno.
+2. **Estructura Requerida para Cada Entrada**:
+   - **`💬 Prompt Original del Usuario`**: Transcripción exacta o requerimiento solicitado por el usuario.
+   - **`🤖 Resumen Técnico para la IA`**: Explicación técnica de arquitectura, contratos de datos modificados, DTOs, entidades, decisiones tomadas, estado del sistema y advertencias relevantes.
+   - **`📦 Componentes Modificados`**: Lista precisa de rutas de archivos modificados, creados o eliminados.
+   - **`✅ Verificación y Compilación`**: Resultado de compilación `dotnet build` (**0 Errores**) y pruebas funcionales.
+3. **Directiva de Reanudación de Sesión (Nuevo PC / Nueva Conversación)**:
+   - Cuando el usuario inicie en otro computador o abra un nuevo chat e indique *"Lee el historial de cambios / contexto"* o similar, la IA **DEBE LEER OBLIGATORIAMENTE `HISTORIAL_CAMBIOS.md`** como primer paso antes de elaborar planes o tocar código.
+4. **Cero Errores de Compilación**:
+   - Todo cambio debe compilar limpiamente con `dotnet build` (**0 Errores**) antes de dar por finalizada la tarea.

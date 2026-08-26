@@ -22,9 +22,9 @@ public interface IApiClientService
 
     // Endpoints de Turnos y Arqueo de Caja
     Task<WorkShift?> OpenShiftAsync(OpenShiftApiRequest request);
-    Task<WorkShift?> GetActiveShiftAsync(int? userId = null);
+    Task<WorkShift?> GetActiveShiftAsync(int? userId = null, int? branchId = null);
     Task<ShiftSummaryModel?> GetShiftSummaryAsync(Guid shiftId);
     Task<WorkShift?> CloseShiftAsync(CloseShiftApiRequest request);
-    Task<IReadOnlyList<WorkShift>> GetShiftHistoryAsync(DateTime? fromDate = null, DateTime? toDate = null);
+    Task<IReadOnlyList<WorkShift>> GetShiftHistoryAsync(DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null);
     Task<IReadOnlyList<ApiUserSyncDto>> GetBranchUsersAsync(int branchId);
 }

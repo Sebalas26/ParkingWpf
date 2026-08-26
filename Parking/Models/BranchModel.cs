@@ -29,6 +29,9 @@ public class BranchModel
     [JsonPropertyName("notes")]
     public string? Notes { get; set; }
 
+    [JsonPropertyName("logoBase64")]
+    public string? LogoBase64 { get; set; }
+
     [JsonPropertyName("isDefault")]
     public bool IsDefault { get; set; }
 

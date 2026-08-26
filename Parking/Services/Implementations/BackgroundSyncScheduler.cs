@@ -9,6 +9,7 @@ public class BackgroundSyncScheduler : IBackgroundSyncScheduler
 {
     private readonly ISyncEngineService _syncEngine;
     private readonly DispatcherTimer _hourlyTimer;
+    private bool _isSyncInProgress;
 
     public event EventHandler? SyncTriggered;
 
@@ -22,15 +23,24 @@ public class BackgroundSyncScheduler : IBackgroundSyncScheduler
         };
         _hourlyTimer.Tick += async (s, e) =>
         {
-            await _syncEngine.PerformFullSyncAsync();
-            SyncTriggered?.Invoke(this, EventArgs.Empty);
+            if (_isSyncInProgress) return;
+            try
+            {
+                _isSyncInProgress = true;
+                await _syncEngine.PerformFullSyncAsync();
+                SyncTriggered?.Invoke(this, EventArgs.Empty);
+            }
+            finally
+            {
+                _isSyncInProgress = false;
+            }
         };
     }
 
     public void Start()
     {
         _hourlyTimer.Start();
-        _ = _syncEngine.PerformFullSyncAsync();
+        _ = TriggerManualSyncAsync();
     }
 
     public void Stop()
@@ -40,7 +50,16 @@ public class BackgroundSyncScheduler : IBackgroundSyncScheduler
 
     public async Task TriggerManualSyncAsync()
     {
-        await _syncEngine.PerformFullSyncAsync();
-        SyncTriggered?.Invoke(this, EventArgs.Empty);
+        if (_isSyncInProgress) return;
+        try
+        {
+            _isSyncInProgress = true;
+            await _syncEngine.PerformFullSyncAsync();
+            SyncTriggered?.Invoke(this, EventArgs.Empty);
+        }
+        finally
+        {
+            _isSyncInProgress = false;
+        }
     }
 }

@@ -4,6 +4,7 @@ namespace Parking.Models.ApiModels;
 
 public class OpenShiftApiRequest
 {
+    public int? BranchId { get; set; }
     public decimal BaseAmount { get; set; } = 0m;
     public string? Notes { get; set; }
 }
@@ -20,6 +21,7 @@ public class CloseShiftApiRequest
 public class ShiftSummaryModel
 {
     public Guid ShiftId { get; set; }
+    public int? BranchId { get; set; }
     public int UserId { get; set; }
     public string OperatorName { get; set; } = string.Empty;
     public DateTime StartTimeUtc { get; set; }

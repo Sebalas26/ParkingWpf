@@ -64,12 +64,12 @@
                                     <TextBlock x:Name="TitleText"
                                                Text="{Binding DisplayName}"
                                                FontWeight="Bold"
-                                               FontSize="12"
+                                               FontSize="14"
                                                Foreground="{DynamicResource BrushTextPrimary}"
                                                TextTrimming="CharacterEllipsis"/>
                                     <TextBlock x:Name="RateText"
                                                Text="{Binding HourRate, Converter={StaticResource CurrencyConv}, StringFormat='{}{0} / hora'}"
-                                               FontSize="11"
+                                               FontSize="13"
                                                FontWeight="Bold"
                                                Foreground="{DynamicResource BrushPrimary}"
                                                Margin="0,2,0,0"/>
@@ -124,7 +124,7 @@
             <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMedium}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontSize" Value="17"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Height" Value="40"/>
             <Setter Property="Margin" Value="2"/>
@@ -160,7 +160,7 @@
             <Setter Property="Background" Value="#F1F5F9"/>
             <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMedium}"/>
-            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="Black"/>
         </Style>
     </UserControl.Resources>
@@ -188,18 +188,18 @@
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="Registro de Entrada de Vehículo" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                            <TextBlock Text="Capture la placa del vehículo, seleccione la categoría tarifaria y emita el tiquete de ingreso" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
+                            <TextBlock Text="Registro de Entrada de Vehículo" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                            <TextBlock Text="Capture la placa del vehículo, seleccione la categoría tarifaria y emita el tiquete de ingreso" FontSize="14" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
                         </StackPanel>
                         <Border Grid.Column="1" Background="#E0F2FE" CornerRadius="12" Padding="12,5" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal">
                                 <Ellipse Width="7" Height="7" Fill="{DynamicResource BrushPrimary}" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Terminal Activa" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                                <TextBlock Text="Terminal Activa" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
                     </Grid>
 
-                    <!-- 2. Alerta de Feedback -->
+                    <!-- 2. Alerta de Feedback (Informativo / Advertencia en Amarillo Institucional) -->
                     <Border Visibility="{Binding HasFeedback, Converter={StaticResource BoolToVis}}"
                             CornerRadius="10"
                             Padding="14,10"
@@ -211,19 +211,19 @@
                                 <Setter Property="BorderThickness" Value="1"/>
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding IsSuccessFeedback}" Value="False">
-                                        <Setter Property="Background" Value="{DynamicResource BrushDangerBg}"/>
-                                        <Setter Property="BorderBrush" Value="{DynamicResource BrushDanger}"/>
+                                        <Setter Property="Background" Value="{DynamicResource BrushWarningBg}"/>
+                                        <Setter Property="BorderBrush" Value="{DynamicResource BrushWarning}"/>
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Border.Style>
-                        <TextBlock Text="{Binding FeedbackMessage}" FontSize="12" FontWeight="Bold" TextWrapping="Wrap">
+                        <TextBlock Text="{Binding FeedbackMessage}" FontSize="14" FontWeight="Bold" TextWrapping="Wrap">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Foreground" Value="{DynamicResource BrushSuccessText}"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsSuccessFeedback}" Value="False">
-                                            <Setter Property="Foreground" Value="{DynamicResource BrushDangerText}"/>
+                                            <Setter Property="Foreground" Value="{DynamicResource BrushWarningText}"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -250,7 +250,7 @@
                                     <Border Background="{DynamicResource BrushPrimary}" Width="24" Height="24" CornerRadius="6" Margin="0,0,8,0" VerticalAlignment="Center">
                                         <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushTextWhite}" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
-                                    <TextBlock Text="DIGITE LA PLACA DEL VEHÍCULO *" FontSize="12" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="DIGITE LA PLACA DEL VEHÍCULO *" FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
                                 </StackPanel>
 
                                 <!-- Botón Teclado Táctil -->
@@ -261,7 +261,7 @@
                                         ToolTip="Abrir o cerrar teclado virtual para pantalla táctil">
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Path Data="{StaticResource IconKeyboard}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="Teclado Táctil" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Teclado Táctil" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
                                     </StackPanel>
                                 </Button>
                             </Grid>
@@ -271,7 +271,7 @@
                                      Text="{Binding PlateNumber, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource PlateInputTextBox}"
                                      Height="84"
-                                     FontSize="44"
+                                     FontSize="46"
                                      Margin="0,0,0,6"/>
 
                             <!-- Banner de Suscriptor Mensual Activo -->
@@ -292,24 +292,24 @@
                                         <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushTextWhite}" Width="10" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                     </Border>
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="VEHÍCULO CON MENSUALIDAD ACTIVA" FontWeight="Black" FontSize="11" Foreground="{DynamicResource BrushSuccessText}"/>
-                                        <TextBlock FontSize="10" Foreground="{DynamicResource BrushTextPrimary}">
+                                        <TextBlock Text="VEHÍCULO CON MENSUALIDAD ACTIVA" FontWeight="Black" FontSize="13" Foreground="{DynamicResource BrushSuccessText}"/>
+                                        <TextBlock FontSize="12" Foreground="{DynamicResource BrushTextPrimary}">
                                             <Run Text="Abonado: " FontWeight="SemiBold"/>
-                                            <Run Text="{Binding ActiveSubscription.CustomerName}" FontWeight="Bold"/>
+                                            <Run Text="{Binding ActiveSubscription.CustomerName, Mode=OneWay}" FontWeight="Bold"/>
                                             <Run Text=" • Doc: "/>
-                                            <Run Text="{Binding ActiveSubscription.CustomerDocument}"/>
+                                            <Run Text="{Binding ActiveSubscription.CustomerDocument, Mode=OneWay}"/>
                                             <Run Text=" • Vence: "/>
                                             <Run Text="{Binding ActiveSubscription.EndDate, StringFormat='{}{0:yyyy-MM-dd}'}" FontWeight="Bold"/>
                                         </TextBlock>
                                     </StackPanel>
                                     <Border Grid.Column="2" Background="{DynamicResource BrushSuccess}" CornerRadius="6" Padding="6,3" VerticalAlignment="Center">
-                                        <TextBlock Text="TARIFA $0.00" FontSize="10" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
+                                        <TextBlock Text="TARIFA $0.00" FontSize="12" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
                                     </Border>
                                 </Grid>
                             </Border>
 
                             <TextBlock Text="💡 Las letras y números ingresados se convertirán automáticamente a mayúsculas"
-                                       FontSize="11"
+                                       FontSize="13"
                                        FontWeight="SemiBold"
                                        Foreground="{DynamicResource BrushTextMuted}"
                                        HorizontalAlignment="Center"/>
@@ -392,7 +392,7 @@
                     </Border>
 
                     <!-- 4. Selector de Categorías de Vehículo (Cuadrícula 2x2 Limpia) -->
-                    <TextBlock Text="SELECCIONE LA CATEGORÍA DE VEHÍCULO *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,8"/>
+                    <TextBlock Text="SELECCIONE LA CATEGORÍA DE VEHÍCULO *" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,8"/>
                     
                     <!-- Banner de Advertencia cuando NO hay tarifas en BD -->
                     <Border Visibility="{Binding HasConfiguredRates, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
@@ -411,9 +411,9 @@
                                 <Path Data="{StaticResource IconWarning}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Text="TARIFAS VEHICULARES SIN CONFIGURAR" FontWeight="Black" FontSize="12" Foreground="{DynamicResource BrushWarningText}"/>
+                                <TextBlock Text="TARIFAS VEHICULARES SIN CONFIGURAR" FontWeight="Black" FontSize="14" Foreground="{DynamicResource BrushWarningText}"/>
                                 <TextBlock Text="No existen tarifas vehiculares configuradas ni activas en la base de datos. Para habilitar el ingreso de vehículos, debes crear y parametrizar las tarifas en el catálogo de Tarifas."
-                                           FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                           FontSize="13" Foreground="{DynamicResource BrushTextPrimary}" TextWrapping="Wrap" Margin="0,2,0,0"/>
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -451,12 +451,12 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Margin="0,0,8,0">
-                            <TextBlock Text="TELÉFONO DEL CONDUCTOR (OPCIONAL)" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
+                            <TextBlock Text="TELÉFONO DEL CONDUCTOR (OPCIONAL)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding PhoneNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}" Height="38"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Margin="8,0,0,0">
-                            <TextBlock Text="OBSERVACIONES / NOTAS (OPCIONAL)" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
+                            <TextBlock Text="OBSERVACIONES / NOTAS (OPCIONAL)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}" Height="38"/>
                         </StackPanel>
                     </Grid>
@@ -475,7 +475,7 @@
                                 Margin="0,0,10,0">
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                 <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,8,0"/>
-                                <TextBlock Text="Registrar e Imprimir Entrada" FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
+                                <TextBlock Text="Registrar e Imprimir Entrada" FontSize="16" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
                             </StackPanel>
                         </Button>
 
@@ -484,7 +484,7 @@
                                 Command="{Binding ClearFormCommand}"
                                 Style="{StaticResource SecondaryButton}"
                                 Height="48"
-                                FontSize="12"
+                                FontSize="14"
                                 FontWeight="Bold"/>
                     </Grid>
                 </StackPanel>
@@ -506,10 +506,10 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                 <Path Data="{StaticResource IconCreditCard}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Tarifa Activa Seleccionada" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                <TextBlock Text="Tarifa Activa Seleccionada" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
                             </StackPanel>
                             <Border Grid.Column="1" Background="#F1F5F9" CornerRadius="6" Padding="6,2">
-                                <TextBlock Text="{Binding CurrentRate.DisplayName}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}"/>
+                                <TextBlock Text="{Binding CurrentRate.DisplayName}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}"/>
                             </Border>
                         </Grid>
 
@@ -523,27 +523,27 @@
 
                             <Border Grid.Column="0" Background="#F8FAFC" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="8,6" Margin="0,0,4,0">
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="POR MINUTO" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="{Binding CurrentRate.MinuteRate, Converter={StaticResource CurrencyConv}}" FontSize="13" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="POR MINUTO" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding CurrentRate.MinuteRate, Converter={StaticResource CurrencyConv}}" FontSize="15" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
 
                             <Border Grid.Column="1" Background="#F8FAFC" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="8,6" Margin="2,0,2,0">
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="POR HORA" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="{Binding CurrentRate.HourRate, Converter={StaticResource CurrencyConv}}" FontSize="13" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="POR HORA" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding CurrentRate.HourRate, Converter={StaticResource CurrencyConv}}" FontSize="15" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
 
                             <Border Grid.Column="2" Background="#F8FAFC" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="8,6" Margin="4,0,0,0">
                                 <StackPanel HorizontalAlignment="Center">
-                                    <TextBlock Text="DÍA COMPLETO" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="{Binding CurrentRate.FullDayRate, Converter={StaticResource CurrencyConv}}" FontSize="13" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                                    <TextBlock Text="DÍA COMPLETO" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding CurrentRate.FullDayRate, Converter={StaticResource CurrencyConv}}" FontSize="15" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                                 </StackPanel>
                             </Border>
                         </Grid>
 
-                        <TextBlock Text="ℹ️ Tiempo de Gracia: 0 min (Cobro por minuto/fracción exacta desde el ingreso)" FontSize="10" Foreground="{DynamicResource BrushTextMuted}"/>
+                        <TextBlock Text="ℹ️ Tiempo de Gracia: 0 min (Cobro por minuto/fracción exacta desde el ingreso)" FontSize="12" Foreground="{DynamicResource BrushTextMuted}"/>
                     </StackPanel>
                 </Border>
 
@@ -557,9 +557,9 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                 <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Ocupación de Parqueadero" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                <TextBlock Text="Ocupación de Parqueadero" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
                             </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{Binding Occupancy.OccupancySummary}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Occupancy.OccupancySummary}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
                         </Grid>
 
                         <Grid Margin="0,0,0,6">
@@ -570,15 +570,15 @@
 
                             <Border Grid.Column="0" Background="#DCFCE7" CornerRadius="8" Padding="10,6" Margin="0,0,4,0">
                                 <StackPanel>
-                                    <TextBlock Text="DISPONIBLES" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushSuccessText}"/>
-                                    <TextBlock Text="{Binding Occupancy.AvailableSlots, StringFormat='{}{0} cupos'}" FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushSuccessText}"/>
+                                    <TextBlock Text="DISPONIBLES" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushSuccessText}"/>
+                                    <TextBlock Text="{Binding Occupancy.AvailableSlots, StringFormat='{}{0} cupos'}" FontSize="16" FontWeight="Black" Foreground="{DynamicResource BrushSuccessText}"/>
                                 </StackPanel>
                             </Border>
 
                             <Border Grid.Column="1" Background="#FEF3C7" CornerRadius="8" Padding="10,6" Margin="4,0,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="OCUPADOS" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushWarningText}"/>
-                                    <TextBlock Text="{Binding Occupancy.OccupiedSlots, StringFormat='{}{0} vehículos'}" FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushWarningText}"/>
+                                    <TextBlock Text="OCUPADOS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushWarningText}"/>
+                                    <TextBlock Text="{Binding Occupancy.OccupiedSlots, StringFormat='{}{0} vehículos'}" FontSize="16" FontWeight="Black" Foreground="{DynamicResource BrushWarningText}"/>
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -595,10 +595,10 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                 <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Últimos Vehículos Ingresados" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                <TextBlock Text="Últimos Vehículos Ingresados" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
                             </StackPanel>
                             <Border Grid.Column="1" Background="#F1F5F9" CornerRadius="6" Padding="6,2">
-                                <TextBlock Text="Turno Activo" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                <TextBlock Text="Turno Activo" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
                             </Border>
                         </Grid>
 
@@ -619,13 +619,13 @@
                                             </Border>
 
                                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding PlateNumber}" FontFamily="{StaticResource FontFamilyMonospace}" FontSize="13" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                                <TextBlock Text="{Binding VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="10" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                                <TextBlock Text="{Binding PlateNumber}" FontFamily="{StaticResource FontFamilyMonospace}" FontSize="15" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                <TextBlock Text="{Binding VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}"/>
                                             </StackPanel>
 
                                             <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
-                                                <TextBlock Text="{Binding EntryTime, StringFormat='{}{0:HH:mm:ss}'}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Right"/>
-                                                <TextBlock Text="{Binding TicketNumber}" FontSize="9" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Right"/>
+                                                <TextBlock Text="{Binding EntryTime, StringFormat='{}{0:HH:mm:ss}'}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Right"/>
+                                                <TextBlock Text="{Binding TicketNumber}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Right"/>
                                             </StackPanel>
                                         </Grid>
                                     </Border>
