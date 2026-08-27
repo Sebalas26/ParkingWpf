@@ -133,6 +133,14 @@ public partial class MainShellViewModel : ViewModelBase
             });
         };
 
+        _apiClient.SessionTerminated += reason =>
+        {
+            Application.Current?.Dispatcher.InvokeAsync(async () =>
+            {
+                await HandleConcurrentSessionTerminatedAsync(reason);
+            });
+        };
+
         _clockTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(1)
@@ -143,8 +151,48 @@ public partial class MainShellViewModel : ViewModelBase
         UpdateClock();
     }
 
+    private bool _isTerminatingSession;
+
+    private async Task HandleConcurrentSessionTerminatedAsync(string? message)
+    {
+        if (_isTerminatingSession) return;
+        _isTerminatingSession = true;
+
+        try
+        {
+            _clockTimer.Stop();
+            await _dialogService.ShowAlertAsync(
+                "Sesión Cerrada en Otro Dispositivo",
+                string.IsNullOrWhiteSpace(message)
+                    ? "Se ha detectado un nuevo inicio de sesión con este usuario desde otra estación de trabajo o dispositivo. Por seguridad, esta sesión se cerrará automáticamente."
+                    : message,
+                DialogNotificationType.Warning);
+
+            _sessionService.Clear();
+            _apiClient.ClearAuthToken();
+            LogoutRequested?.Invoke();
+        }
+        catch
+        {
+            _sessionService.Clear();
+            _apiClient.ClearAuthToken();
+            LogoutRequested?.Invoke();
+        }
+    }
+
     private async Task HandleRealtimeNotificationAsync(Models.ApiModels.ConfigNotificationDto notification)
     {
+        // 0. Manejo reactivo de terminación forzada por inicio de sesión concurrente
+        if (notification.EventType == "UserSessionTerminated")
+        {
+            var currentUser = _sessionService.CurrentUser;
+            if (currentUser != null && notification.UserId.HasValue && currentUser.ServerUserId == notification.UserId.Value)
+            {
+                await HandleConcurrentSessionTerminatedAsync(notification.Message);
+                return;
+            }
+        }
+
         // 1. Manejo reactivo de cambios de permisos y roles en tiempo real
         if (notification.EventType == "PermissionsChanged" || notification.EventType == "RolesChanged")
         {

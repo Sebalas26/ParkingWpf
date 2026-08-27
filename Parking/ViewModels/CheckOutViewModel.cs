@@ -60,6 +60,9 @@ public partial class CheckOutViewModel : ViewModelBase
     private PaymentMethodEntity? _selectedPaymentMethodEntity;
 
     [ObservableProperty]
+    private bool _hasPaymentMethods;
+
+    [ObservableProperty]
     private string _exitNotes = string.Empty;
 
     [ObservableProperty]
@@ -146,26 +149,14 @@ public partial class CheckOutViewModel : ViewModelBase
         {
             using var db = _connectionManager.CreateDbContext();
             var methods = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(db.PaymentMethods.Where(p => p.State));
-            if (!methods.Any())
-            {
-                var defaultCash = new PaymentMethodEntity
-                {
-                    Id = 1,
-                    Name = "Efectivo",
-                    Icon = "IconCash",
-                    State = true,
-                    RequiresCashTender = true
-                };
-                db.PaymentMethods.Add(defaultCash);
-                await db.SaveChangesAsync();
-                methods.Add(defaultCash);
-            }
 
             AvailablePaymentMethods.Clear();
             foreach (var m in methods)
             {
                 AvailablePaymentMethods.Add(m);
             }
+
+            HasPaymentMethods = AvailablePaymentMethods.Count > 0;
 
             SelectedPaymentMethodEntity = AvailablePaymentMethods.FirstOrDefault(p => p.Name.Equals("Efectivo", StringComparison.OrdinalIgnoreCase)) ?? AvailablePaymentMethods.FirstOrDefault();
             if (SelectedPaymentMethodEntity != null)
@@ -622,6 +613,18 @@ public partial class CheckOutViewModel : ViewModelBase
                 FeedbackMessage = $"El valor de compra (${CustomerPurchaseAmount:N0}) no alcanza el mínimo requerido (${SelectedAgreement.MinPurchaseAmount:N0}) para este convenio.";
                 return;
             }
+        }
+
+        if (!IsMonthlyTicket && (!HasPaymentMethods || SelectedPaymentMethodEntity == null))
+        {
+            HasFeedback = true;
+            IsSuccessFeedback = false;
+            FeedbackMessage = "No se puede liquidar el cobro ni dar salida porque no existen medios de pago habilitados para esta sede.";
+            await _dialogService.ShowAlertAsync(
+                "Sin Medios de Pago en Sede",
+                "No es posible procesar el cobro ni dar salida al vehículo porque la sede no cuenta con ningún medio de pago registrado o habilitado en la base de datos.",
+                DialogNotificationType.Warning);
+            return;
         }
 
         var methodEnum = SelectedPaymentMethodEntity?.ToEnum() ?? PaymentMethod.Cash;

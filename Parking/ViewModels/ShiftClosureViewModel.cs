@@ -27,6 +27,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private readonly INavigationService _navigationService;
     private readonly IApiClientService _apiClient;
     private readonly ISessionService _sessionService;
+    private readonly IPermissionService _permissionService;
 
     [ObservableProperty]
     private ShiftSummaryModel _summary = new();
@@ -65,6 +66,24 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private bool _isShiftOwner = true;
 
     [ObservableProperty]
+    private bool _canWithdrawCash;
+
+    [ObservableProperty]
+    private bool _canCloseShift;
+
+    [ObservableProperty]
+    private bool _canHandoverShift;
+
+    [ObservableProperty]
+    private bool _canExportShift;
+
+    [ObservableProperty]
+    private bool _canViewShiftHistory;
+
+    [ObservableProperty]
+    private bool _canOpenShift;
+
+    [ObservableProperty]
     private string _activeShiftOperatorName = string.Empty;
 
     [ObservableProperty]
@@ -97,7 +116,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
         INavigationService navigationService,
         ISyncEngineService syncEngine,
         IApiClientService apiClient,
-        ISessionService sessionService)
+        ISessionService sessionService,
+        IPermissionService permissionService)
     {
         _shiftService = shiftService;
         _authService = authService;
@@ -107,7 +127,14 @@ public partial class ShiftClosureViewModel : ViewModelBase
         _navigationService = navigationService;
         _apiClient = apiClient;
         _sessionService = sessionService;
+        _permissionService = permissionService;
         _operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
+
+        _permissionService.PermissionsChanged += () =>
+        {
+            System.Windows.Application.Current?.Dispatcher.Invoke(UpdatePermissions);
+        };
+        UpdatePermissions();
 
         syncEngine.DataSynchronized += async () =>
         {
@@ -123,7 +150,18 @@ public partial class ShiftClosureViewModel : ViewModelBase
     public override async Task InitializeAsync()
     {
         OperatorName = _authService.CurrentUser?.FullName ?? "Operador General";
+        UpdatePermissions();
         await LoadShiftDataAsync();
+    }
+
+    private void UpdatePermissions()
+    {
+        CanWithdrawCash = _permissionService.HasPermission("shift.cash_withdrawal");
+        CanCloseShift = _permissionService.HasPermission("shift.close");
+        CanHandoverShift = _permissionService.HasPermission("shift.handover");
+        CanExportShift = _permissionService.HasPermission("shift.export");
+        CanViewShiftHistory = _permissionService.HasPermission("shift.history");
+        CanOpenShift = _permissionService.HasPermission("shift.open");
     }
 
     partial void OnActualCashCountedChanged(decimal value)
@@ -145,6 +183,15 @@ public partial class ShiftClosureViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenCashWithdrawalDialogAsync()
     {
+        if (!CanWithdrawCash)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Acceso Denegado",
+                "No cuenta con permisos para registrar retiros o sangrías parciales de caja (shift.cash_withdrawal).",
+                DialogNotificationType.Warning);
+            return;
+        }
+
         if (!HasActiveShift)
         {
             await _dialogService.ShowAlertAsync(
@@ -172,6 +219,15 @@ public partial class ShiftClosureViewModel : ViewModelBase
     [RelayCommand]
     private async Task OpenShiftAsync()
     {
+        if (!CanOpenShift)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Acceso Denegado",
+                "No cuenta con permisos para abrir nuevos turnos operativos (shift.open).",
+                DialogNotificationType.Warning);
+            return;
+        }
+
         HasFeedback = false;
         IsBusy = true;
         BusyMessage = "Abriendo nuevo turno operativo y registrando base de caja...";
@@ -210,6 +266,15 @@ public partial class ShiftClosureViewModel : ViewModelBase
     [RelayCommand]
     private async Task CloseShiftDirectAsync()
     {
+        if (!CanCloseShift)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Acceso Denegado",
+                "No cuenta con permisos para realizar el cierre definitivo de turnos (shift.close).",
+                DialogNotificationType.Warning);
+            return;
+        }
+
         HasFeedback = false;
         if (!_shiftService.HasActiveShift && !HasActiveShift)
         {
@@ -270,6 +335,15 @@ public partial class ShiftClosureViewModel : ViewModelBase
     [RelayCommand]
     private async Task HandoverShiftAsync()
     {
+        if (!CanHandoverShift)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Acceso Denegado",
+                "No cuenta con permisos para realizar la entrega y relevo de turno (shift.handover).",
+                DialogNotificationType.Warning);
+            return;
+        }
+
         HasFeedback = false;
         if (!_shiftService.HasActiveShift && !HasActiveShift)
         {

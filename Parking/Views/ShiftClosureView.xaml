@@ -256,9 +256,9 @@
                                 </Grid>
                             </StackPanel>
 
-                            <!-- Botón para Registrar Retiro Parcial de Efectivo (Solo visible si es el dueño o admin) -->
+                            <!-- Botón para Registrar Retiro Parcial de Efectivo (Sujeto a permiso RBAC shift.cash_withdrawal) -->
                             <Button Command="{Binding OpenCashWithdrawalDialogCommand}"
-                                    Visibility="{Binding IsShiftOwner, Converter={StaticResource BoolToVis}}"
+                                    Visibility="{Binding CanWithdrawCash, Converter={StaticResource BoolToVis}}"
                                     Style="{StaticResource SecondaryButton}"
                                     Height="38"
                                     Margin="0,0,0,14"
@@ -466,7 +466,8 @@
             </Grid>
 
             <!-- 4. Lower Full-Width History Section (100% Width) -->
-            <Border Background="{DynamicResource BrushCardBackground}"
+            <Border Visibility="{Binding CanViewShiftHistory, Converter={StaticResource BoolToVis}}"
+                    Background="{DynamicResource BrushCardBackground}"
                     BorderBrush="{DynamicResource BrushBorderSubtle}"
                     BorderThickness="1"
                     CornerRadius="14"

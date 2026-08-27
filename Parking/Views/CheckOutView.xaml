@@ -385,7 +385,27 @@
 
                         <!-- Selector de Medios de Pago Dinámicos de la BD -->
                         <TextBlock Text="MÉTODO DE PAGO *" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,8"/>
-                        <ItemsControl ItemsSource="{Binding AvailablePaymentMethods}" Margin="0,0,0,16">
+
+                        <!-- Aviso si NO existen medios de pago configurados en la sede -->
+                        <Border Visibility="{Binding HasPaymentMethods, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                                Background="{DynamicResource BrushDangerBg}"
+                                BorderBrush="{DynamicResource BrushDanger}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="14,10"
+                                Margin="0,0,0,16">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="⚠️" FontSize="16" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Sin Medios de Pago Habilitados" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushDangerText}"/>
+                                    <TextBlock Text="No hay medios de pago registrados para esta sede en la base de datos. Configure y asigne medios de pago desde el panel web de administración."
+                                               FontSize="11" Foreground="{DynamicResource BrushTextPrimary}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <ItemsControl ItemsSource="{Binding AvailablePaymentMethods}" Margin="0,0,0,16"
+                                      Visibility="{Binding HasPaymentMethods, Converter={StaticResource BoolToVis}}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <UniformGrid Columns="2" Rows="0"/>

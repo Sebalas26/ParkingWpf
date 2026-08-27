@@ -9,6 +9,7 @@ namespace Parking.Services.Contracts;
 
 public interface IApiClientService
 {
+    event Action<string>? SessionTerminated;
     string BaseUrl { get; set; }
     Task<bool> PingAsync();
     Task<BootstrapSyncResponse?> GetBootstrapAsync(int? branchId = null);

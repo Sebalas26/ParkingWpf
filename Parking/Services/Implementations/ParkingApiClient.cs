@@ -15,6 +15,8 @@ namespace Parking.Services.Implementations;
 
 public class ParkingApiClient : IApiClientService
 {
+    public event Action<string>? SessionTerminated;
+
     private readonly HttpClient _httpClient;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -29,6 +31,14 @@ public class ParkingApiClient : IApiClientService
     {
         _httpClient = httpClient;
         _httpClient.Timeout = TimeSpan.FromSeconds(60);
+    }
+
+    private void CheckUnauthorized(HttpResponseMessage response)
+    {
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            SessionTerminated?.Invoke("La sesión ha sido invalidada porque se inició sesión en otro dispositivo o la sesión ha expirado.");
+        }
     }
 
     public void SetAuthToken(string token)
@@ -80,6 +90,7 @@ public class ParkingApiClient : IApiClientService
                 : $"{BaseUrl}/api/sync/bootstrap";
 
             var response = await _httpClient.GetAsync(url, cts.Token);
+            CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync(cts.Token);
@@ -101,6 +112,7 @@ public class ParkingApiClient : IApiClientService
         try
         {
             var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/tickets/check-in", request, cts.Token);
+            CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions, cts.Token);
@@ -119,6 +131,7 @@ public class ParkingApiClient : IApiClientService
         try
         {
             var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/tickets/check-out", request, cts.Token);
+            CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions, cts.Token);
@@ -137,6 +150,7 @@ public class ParkingApiClient : IApiClientService
         try
         {
             var response = await _httpClient.GetAsync($"{BaseUrl}/api/analytics/daily-summary", cts.Token);
+            CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<FinancialSummary>(JsonOptions, cts.Token);
@@ -227,6 +241,7 @@ public class ParkingApiClient : IApiClientService
         try
         {
             var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/shifts/open", request, cts.Token);
+            CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<WorkShift>(JsonOptions, cts.Token);
@@ -251,6 +266,7 @@ public class ParkingApiClient : IApiClientService
 
             var url = $"{BaseUrl}/api/shifts/active{queryString}";
             var response = await _httpClient.GetAsync(url, cts.Token);
+            CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<WorkShift>(JsonOptions, cts.Token);
@@ -269,6 +285,7 @@ public class ParkingApiClient : IApiClientService
         try
         {
             var response = await _httpClient.GetAsync($"{BaseUrl}/api/shifts/summary/{shiftId}", cts.Token);
+            CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<ShiftSummaryModel>(JsonOptions, cts.Token);
@@ -287,6 +304,7 @@ public class ParkingApiClient : IApiClientService
         try
         {
             var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/shifts/close", request, cts.Token);
+            CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<WorkShift>(JsonOptions, cts.Token);
@@ -312,6 +330,7 @@ public class ParkingApiClient : IApiClientService
 
             var url = $"{BaseUrl}/api/shifts/history{queryString}";
             var response = await _httpClient.GetAsync(url, cts.Token);
+            CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
                 var list = await response.Content.ReadFromJsonAsync<List<WorkShift>>(JsonOptions, cts.Token);
@@ -331,6 +350,7 @@ public class ParkingApiClient : IApiClientService
         try
         {
             var response = await _httpClient.GetAsync($"{BaseUrl}/api/branches/{branchId}/users", cts.Token);
+            CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
                 var list = await response.Content.ReadFromJsonAsync<List<ApiUserSyncDto>>(JsonOptions, cts.Token);
@@ -350,6 +370,7 @@ public class ParkingApiClient : IApiClientService
         try
         {
             var response = await _httpClient.GetAsync($"{BaseUrl}/api/RoleActions/PermissionRole/{roleId}", cts.Token);
+            CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
                 var list = await response.Content.ReadFromJsonAsync<List<ActionRoleDto>>(JsonOptions, cts.Token);
