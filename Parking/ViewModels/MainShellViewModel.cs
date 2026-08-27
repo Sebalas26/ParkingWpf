@@ -22,6 +22,7 @@ public partial class MainShellViewModel : ViewModelBase
     private readonly IPermissionService _permissionService;
     private readonly IParkingTicketService _ticketService;
     private readonly INavigationService _navigationService;
+    private readonly IApiClientService _apiClient;
     private readonly ISyncEngineService _syncEngine;
     private readonly IBackgroundSyncScheduler _backgroundSync;
     private readonly IDialogService _dialogService;
@@ -68,6 +69,7 @@ public partial class MainShellViewModel : ViewModelBase
         IPermissionService permissionService,
         IParkingTicketService ticketService,
         INavigationService navigationService,
+        IApiClientService apiClient,
         ISyncEngineService syncEngine,
         IBackgroundSyncScheduler backgroundSync,
         IDialogService dialogService,
@@ -79,6 +81,7 @@ public partial class MainShellViewModel : ViewModelBase
         _permissionService = permissionService;
         _ticketService = ticketService;
         _navigationService = navigationService;
+        _apiClient = apiClient;
         _syncEngine = syncEngine;
         _backgroundSync = backgroundSync;
         _dialogService = dialogService;
@@ -142,6 +145,28 @@ public partial class MainShellViewModel : ViewModelBase
 
     private async Task HandleRealtimeNotificationAsync(Models.ApiModels.ConfigNotificationDto notification)
     {
+        // 1. Manejo reactivo de cambios de permisos y roles en tiempo real
+        if (notification.EventType == "PermissionsChanged" || notification.EventType == "RolesChanged")
+        {
+            var user = _sessionService.CurrentUser;
+            if (user != null)
+            {
+                var roleId = user.ServerRoleId ?? (user.IsAdmin ? 1 : 2);
+                try
+                {
+                    var updatedPermissions = await _apiClient.GetRolePermissionsAsync(roleId);
+                    if (updatedPermissions != null && updatedPermissions.Count > 0)
+                    {
+                        user.GrantedPermissions = new HashSet<string>(updatedPermissions, StringComparer.OrdinalIgnoreCase);
+                        _permissionService.LoadPermissions(updatedPermissions, user.IsAdmin);
+                        SyncStatusText = $"Permisos actualizados en tiempo real ({DateTime.Now:HH:mm})";
+                    }
+                }
+                catch { }
+            }
+            return;
+        }
+
         if (_isSyncPromptOpen) return;
 
         // Validar si aplica a la sede activa o es global

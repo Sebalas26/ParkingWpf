@@ -27,4 +27,5 @@ public interface IApiClientService
     Task<WorkShift?> CloseShiftAsync(CloseShiftApiRequest request);
     Task<IReadOnlyList<WorkShift>> GetShiftHistoryAsync(DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null);
     Task<IReadOnlyList<ApiUserSyncDto>> GetBranchUsersAsync(int branchId);
+    Task<List<string>> GetRolePermissionsAsync(int roleId);
 }

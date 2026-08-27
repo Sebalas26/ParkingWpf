@@ -343,4 +343,29 @@ public class ParkingApiClient : IApiClientService
             return new List<ApiUserSyncDto>();
         }
     }
+
+    public async Task<List<string>> GetRolePermissionsAsync(int roleId)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        try
+        {
+            var response = await _httpClient.GetAsync($"{BaseUrl}/api/RoleActions/PermissionRole/{roleId}", cts.Token);
+            if (response.IsSuccessStatusCode)
+            {
+                var list = await response.Content.ReadFromJsonAsync<List<ActionRoleDto>>(JsonOptions, cts.Token);
+                if (list != null)
+                {
+                    return list
+                        .Where(a => a.IsActive && !string.IsNullOrWhiteSpace(a.ActionName))
+                        .Select(a => a.ActionName!)
+                        .ToList();
+                }
+            }
+            return new List<string>();
+        }
+        catch
+        {
+            return new List<string>();
+        }
+    }
 }

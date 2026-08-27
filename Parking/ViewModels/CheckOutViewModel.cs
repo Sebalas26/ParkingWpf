@@ -26,6 +26,7 @@ public partial class CheckOutViewModel : ViewModelBase
     private readonly DispatcherTimer _liveCalculationTimer;
     private DateTime _ticketSelectionTimeUtc;
     private DateTime _frozenExitTimeUtc;
+    private int _currentGracePeriodSeconds = 900;
     private bool _isPaymentTimeoutDialogShowing;
 
     [ObservableProperty]
@@ -376,6 +377,7 @@ public partial class CheckOutViewModel : ViewModelBase
             _isPaymentTimeoutDialogShowing = false;
 
             var rateInfo = _pricingCalculator.GetRate(value.VehicleType);
+            _currentGracePeriodSeconds = (rateInfo != null && rateInfo.GracePeriodMinutes > 0 ? rateInfo.GracePeriodMinutes : 15) * 60;
             MinuteRate = rateInfo != null && rateInfo.MinuteRate > 0
                 ? rateInfo.MinuteRate
                 : (rateInfo != null && rateInfo.HourRate > 0 ? Math.Round(rateInfo.HourRate / 60m, 2) : 0m);
@@ -405,6 +407,7 @@ public partial class CheckOutViewModel : ViewModelBase
             _isPaymentTimeoutDialogShowing = false;
             _ticketSelectionTimeUtc = default;
             _frozenExitTimeUtc = default;
+            _currentGracePeriodSeconds = 900;
             MinuteRate = 0m;
             IsMonthlyTicket = false;
             GrossFee = 0m;
@@ -431,8 +434,9 @@ public partial class CheckOutViewModel : ViewModelBase
 
         var nowUtc = DateTime.UtcNow;
 
-        // Si transcurrieron 5 minutos (300 segundos) desde que se escaneó/seleccionó el tiquete sin cobrar
-        if ((nowUtc - _ticketSelectionTimeUtc).TotalSeconds >= 300 && !_isPaymentTimeoutDialogShowing)
+        // Si transcurrió el periodo de gracia configurado desde que se escaneó/seleccionó el tiquete sin cobrar
+        var allowedGraceSeconds = _currentGracePeriodSeconds > 0 ? _currentGracePeriodSeconds : 900;
+        if ((nowUtc - _ticketSelectionTimeUtc).TotalSeconds >= allowedGraceSeconds && !_isPaymentTimeoutDialogShowing)
         {
             _isPaymentTimeoutDialogShowing = true;
             _ = HandlePaymentTimeoutAsync();
@@ -495,9 +499,10 @@ public partial class CheckOutViewModel : ViewModelBase
             return;
         }
 
+        var graceMinutes = _currentGracePeriodSeconds / 60;
         await _dialogService.ShowAlertAsync(
-            "Tiempo Máximo Superado",
-            "Se ha superado el tiempo máximo de pago, refresque la pantalla.",
+            "Periodo de Gracia Superado",
+            $"Se ha superado el tiempo de gracia de liquidación ({graceMinutes} min). Se actualizará el cobro con el tiempo transcurrido.",
             DialogNotificationType.Warning);
 
         if (SelectedTicket == null || _ticketSelectionTimeUtc == default)
@@ -506,7 +511,7 @@ public partial class CheckOutViewModel : ViewModelBase
             return;
         }
 
-        // Al hacer clic en Aceptar, refrescar tiempo y cobro sumando los 5+ minutos que transcurrieron
+        // Al hacer clic en Aceptar, refrescar tiempo y cobro sumando los minutos transcurridos
         var nowUtc = DateTime.UtcNow;
         _ticketSelectionTimeUtc = nowUtc;
         _frozenExitTimeUtc = nowUtc;

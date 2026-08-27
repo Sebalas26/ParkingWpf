@@ -85,10 +85,6 @@ public class EfPricingCalculatorService : IPricingCalculatorService
         }
 
         var totalMinutes = duration.TotalMinutes;
-        if (rate.GracePeriodMinutes > 0 && totalMinutes <= rate.GracePeriodMinutes)
-        {
-            return 0m;
-        }
 
         // Si tiene tarifa por minuto configurada (> 0), liquidar por minutos exactos
         if (rate.MinuteRate > 0)

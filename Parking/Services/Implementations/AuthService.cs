@@ -56,6 +56,7 @@ public class AuthService : IAuthService
                 var userModel = new UserSessionModel
                 {
                     ServerUserId = apiLogin.UserId,
+                    ServerRoleId = apiLogin.RoleId > 0 ? apiLogin.RoleId : (isAdmin ? 1 : 2),
                     UserId = Guid.NewGuid(),
                     Username = apiLogin.Username,
                     FullName = apiLogin.FullName,

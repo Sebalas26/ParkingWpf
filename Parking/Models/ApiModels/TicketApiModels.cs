@@ -52,7 +52,23 @@ public class LoginApiResponse
     public string Username { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public string RoleName { get; set; } = string.Empty;
+    public int RoleId { get; set; }
     public bool IsAdmin { get; set; }
     public List<BranchModel> Branches { get; set; } = new();
     public List<string> Permissions { get; set; } = new();
+}
+
+public class ActionRoleDto
+{
+    [System.Text.Json.Serialization.JsonPropertyName("actionId")]
+    public int ActionId { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("moduleId")]
+    public int ModuleId { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("isActive")]
+    public bool IsActive { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("actionName")]
+    public string? ActionName { get; set; }
 }

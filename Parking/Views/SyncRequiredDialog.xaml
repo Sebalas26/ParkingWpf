@@ -68,7 +68,7 @@
                                 CornerRadius="6" 
                                 Padding="8,2" 
                                 Margin="0,0,8,0">
-                            <TextBlock Text="⚡ TIEMPO REAL (SIGNALR)" 
+                            <TextBlock Text="⚡ SINCRONIZACIÓN EN TIEMPO REAL" 
                                        FontSize="10" 
                                        FontWeight="Bold" 
                                        Foreground="{DynamicResource BrushWarningText}"/>

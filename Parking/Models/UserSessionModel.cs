@@ -7,6 +7,7 @@ public class UserSessionModel
 {
     public Guid UserId { get; set; }
     public int? ServerUserId { get; set; }
+    public int? ServerRoleId { get; set; }
     public string Username { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
     public string RoleName { get; set; } = string.Empty;
