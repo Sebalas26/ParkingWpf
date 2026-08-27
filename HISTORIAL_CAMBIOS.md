@@ -17,6 +17,179 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-08-26 23:46:00] - [ASSETS] [BRANDING] [PWA] [WPF] - Integración del Nuevo Logotipo Oficial de Parking Flow en PWA y Aplicación de Escritorio WPF
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"requiero que este logo sea el que que quede cuando el pwa y el wpf se instalen en el pc y en el cel o cuando quede con el acceso directo [Imagen oficial adjunta con imagotipo 'P' estilizada con carretera y vehículo en paleta verde, blanco y naranja sobre fondo oscuro]"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Generación de Assets de Alta Densidad para la PWA (`ParkingPwa/public/`)**:
+     - Se procesó el logotipo maestro de alta resolución generando:
+       - `pwa-512x512.png`: Icono principal de instalación para Android, Windows y Chrome/Edge.
+       - `pwa-192x192.png`: Icono de acceso directo y pantalla de inicio.
+       - `maskable-icon-512x512.png`: Icono adaptable con zona segura para launchers móviles.
+       - `apple-touch-icon.png` (180x180 px): Icono nativo para iOS / Safari.
+       - `favicon.png` (64x64 px) y `favicon.ico` (multi-capa 64/32/16 px): Icono de pestaña web.
+       - `index.html`: Vinculación de `favicon.png`, `favicon.ico` y `apple-touch-icon.png`.
+  2. **Generación de Archivo Binario .ICO Multi-Resolución para WPF (`ParkingWpf/Parking/Resources/`)**:
+     - Se construyó el archivo `parkpoint.ico` con 6 resoluciones embebidas (256x256, 128x128, 64x64, 48x48, 32x32 y 16x16 px) con codificación PNG/ARGB 32-bit de máxima nitidez.
+     - Este archivo está enlazado como `<ApplicationIcon>` en `Parking.csproj`, lo que define el icono del ejecutable `.exe` y los accesos directos de Windows, además de las ventanas `MainShellWindow.xaml` y `LoginWindow.xaml`.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/public/pwa-512x512.png`
+  - `ParkingPwa/public/pwa-192x192.png`
+  - `ParkingPwa/public/maskable-icon-512x512.png`
+  - `ParkingPwa/public/apple-touch-icon.png`
+  - `ParkingPwa/public/favicon.png`
+  - `ParkingPwa/public/favicon.ico`
+  - `ParkingPwa/index.html`
+  - `ParkingWpf/Parking/Resources/parkpoint.ico`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `npm run build` en ParkingPwa: **0 Errores** (1.40s).
+  - `dotnet build` en ParkingWpf: **0 Errores** (compilación correcta).
+
+
+
+### [2026-08-26 23:38:00] - [FEATURE] [UI/UX] [PWA] [CAJA] - Alineación de Estados, Cierre Dinámico de Cajas y Renombrado Oficial a Parking Flow
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"en el modulo de cajaas, los estanos no seven alineados con el titulo, adicional quiero que exista la opcion para cerrar cajas, otra cosa que requuiero y es que en vez de llamarse parkflow, llamalo parking flow, asi que reemplazalo en el pwa"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Alineación Visual de Estados en Módulo de Caja (`Caja.tsx`)**:
+     - Se ajustó el encabezado `<th className="text-center">ESTADO</th>` y el cuerpo `<td className="text-center">` para que los badges `Abierto` / `Cerrado` queden perfectamente alineados y centrados con su título de columna tanto en *Turno de Caja Activo* como en *Historial Consolidado de Cajas*.
+  2. **Cierre Dinámico de Cajas Abiertas (`Caja.tsx`)**:
+     - Se añadió la columna `<th className="text-right">ACCIONES</th>`.
+     - Para cualquier turno en estado "Abierto" (`!isClosed`), se incorporó el botón **"🔴 Cerrar Caja"** en el historial y en la tarjeta de turno activo.
+     - Al interactuar, el modal de liquidación/arqueo se abre calculando la base, recaudación y efectivo esperado específico de dicho turno (`shiftToClose`), permitiendo registrar el arqueo físico y liquidar el turno con `cajaService.closeShift(...)` contra la API.
+  3. **Renombrado Oficial a "Parking Flow"**:
+     - Se reemplazó "ParkFlow" y "ParkControl" por **"Parking Flow"** en:
+       - `DashboardLayout.tsx`: Sidebar (`app-name`) y Header móvil (`mobile-brand-name`).
+       - `ZeroDataOnboardingWizard.tsx`: Mensaje de bienvenida.
+       - `index.html`: Etiqueta `<title>Parking Flow - Sistema de Estacionamiento</title>`, `apple-mobile-web-app-title` y `application-name`.
+       - `vite.config.ts`: Nombre y short name en el manifest de la PWA.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/caja/ui/Caja.tsx`
+  - `ParkingPwa/src/shared/ui/DashboardLayout.tsx`
+  - `ParkingPwa/src/features/auth/ui/ZeroDataOnboardingWizard.tsx`
+  - `ParkingPwa/index.html`
+  - `ParkingPwa/vite.config.ts`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `npm run build`: **0 Errores** (compilación de producción exitosa en 1.13s).
+  - `oxlint`: **0 Errores**.
+
+
+
+### [2026-08-26 23:31:00] - [UI/UX] [PWA] [MOBILE] - Scroll Horizontal Táctil (table-responsive) en Todos los Módulos y Tablas de Configuración
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"sigo viendo estos errores en la version mobile [Captura 1: Tabla de Roles y Matriz de Permisos cortada en el extremo derecho sin scroll; Captura 2: Tabla de Convenios Comerciales cortada a la derecha]"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Estandarización de Contenedores con Desplazamiento Horizontal (`table-responsive`)**:
+     - Se envolvieron todas las tablas de datos que carecían de contenedor elástico con `<div className="table-responsive" style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>`.
+     - Se asignó a cada tabla un ancho mínimo (`min-width: 480px` a `720px`) para impedir que los datos de las celdas se compacten o deformen.
+  2. **Componentes y Módulos Adaptados**:
+     - `RolesTab.tsx`: Tabla de roles con columnas completas (ID, Nombre, Permisos Asignados, Estado, Botón Configurar Permisos y Editar) desplazable en mobile.
+     - `ConveniosTab.tsx`: Tabla de convenios con logo, descuento, compra mínima, horas máximas, estado y acciones totalmente accesibles.
+     - `VehiculosConfigTab.tsx`: Tabla de catálogo de tipos de vehículos protegida contra desbordes.
+     - `MediosPagoTab.tsx`: Tabla de medios de pago con íconos y acciones protegida con scroll táctil.
+     - `ResolucionesTab.tsx`: Tabla de resoluciones DIAN/Facturación (10 columnas) con scroll suave de 720px.
+     - `TarifasTab.tsx`: Tabla de tarifas horarias/diarias con scroll suave de 600px.
+     - `Vehicles.css`: `.table-card` actualizado con `overflow-x: auto; -webkit-overflow-scrolling: touch;` beneficiando automáticamente a los módulos de `Vehicles`, `Reports`, `Novedades` y `Caja`.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/settings/ui/RolesTab.tsx`
+  - `ParkingPwa/src/features/settings/ui/ConveniosTab.tsx`
+  - `ParkingPwa/src/features/settings/ui/VehiculosConfigTab.tsx`
+  - `ParkingPwa/src/features/settings/ui/MediosPagoTab.tsx`
+  - `ParkingPwa/src/features/settings/ui/ResolucionesTab.tsx`
+  - `ParkingPwa/src/features/settings/ui/TarifasTab.tsx`
+  - `ParkingPwa/src/features/settings/ui/Settings.css`
+  - `ParkingPwa/src/features/vehicles/ui/Vehicles.css`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `npm run build`: **0 Errores** (compilación de producción exitosa en 1.10s).
+  - `oxlint`: **0 Errores**.
+
+
+
+### [2026-08-26 23:17:00] - [UI/UX] [PWA] [MOBILE] - Adaptación de Grid de Tarifas 2x2 y Modal de Usuarios con Altura 100dvh
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ajustame el diseño mobile, para que en el cel se vea bien en los flujos y modulos que te pase en las imagenes [Captura 1: Formulario Nueva Tarifa para esta Sede con campos comprimidos; Captura 2: Modal Crear Nuevo Usuario con botones fuera del viewport]"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Formulario de Tarifas Vehiculares (`ParqueaderosTab.tsx` & `Settings.css`)**:
+     - Se reemplazó la disposición forzada de 4 columnas en línea por la clase `.form-grid-rates`.
+     - En pantallas móviles (`max-width: 640px`), se transforma en un **grid 2x2 equilibrado**:
+       - Fila 1: *Valor Hora ($)* y *Valor Minuto ($)*.
+       - Fila 2: *Máximo Día ($)* y *Gracia (min)*.
+     - Se eliminó el salto de línea en las etiquetas y los inputs cuentan con ancho suficiente para la digitación de montos monetarios.
+  2. **Modal Crear / Editar Usuario (`UsuariosTab.tsx` & `Settings.css`)**:
+     - Se configuró `.modal-content` con `max-height: calc(100dvh - 20px); display: flex; flex-direction: column; overflow: hidden;`.
+     - El formulario y su cuerpo (`.modal-body`) tienen `flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;`.
+     - El pie de página (`.modal-footer`) quedó fijado como barra inferior estática (`flex-shrink: 0; background: #ffffff; border-top: 1px solid #e2e8f0;`), asegurando que los botones *"Cancelar"* y *"Crear Usuario / Guardar Cambios"* permanezcan 100% visibles y accesibles en cualquier tamaño de pantalla móvil.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/settings/ui/ParqueaderosTab.tsx`
+  - `ParkingPwa/src/features/settings/ui/UsuariosTab.tsx`
+  - `ParkingPwa/src/features/settings/ui/Settings.css`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `npm run build`: **0 Errores** (compilación de producción exitosa en 1.16s).
+  - `oxlint`: **0 Errores**.
+
+
+
+### [2026-08-26 23:09:00] - [FEATURE] [PWA] [AUTH] - Opción 'Recordar Usuario' en Inicio de Sesión
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayudame con agregarle al login una opcion para recordar el usuario"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Lógica de Persistencia y Estado (`Login.tsx`)**:
+     - Se inicializan los estados `username` y `rememberUser` consultando de forma perezosa `localStorage.getItem('remembered_username')`.
+     - Si el usuario existe guardado, el input se pre-completa automáticamente y la casilla se marca como activa.
+     - En el método `handleLogin`, tras un inicio de sesión exitoso con la API, se guarda el `username.trim()` si `rememberUser` está activo, o se purga de `localStorage` si está desmarcado.
+     - Por estrictos estándares de seguridad y OWASP, nunca se almacena la contraseña del usuario.
+  2. **Diseño y Estilos (`Login.tsx` & `Login.css`)**:
+     - Se añadió la fila `.login-options-row` con `.remember-user-label` y `.remember-user-checkbox` entre el campo de contraseña y el botón *"Ingresar"*.
+     - Se aplicó la paleta institucional (#07665e), tipografía limpia y soporte táctil óptimo para smartphones y desktop.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/auth/ui/Login.tsx`
+  - `ParkingPwa/src/features/auth/ui/Login.css`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `npm run build`: **0 Errores** (build PWA generado en 1.47s).
+  - `oxlint`: **0 Errores**.
+
+
+
+### [2026-08-26 22:52:00] - [UI/UX] [PWA] [MOBILE] - Optimización de Diseño y Vistas Responsive Mobile (Navbar, Dashboard Hero, Slicers, Gestión de Usuarios y Modales)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayudame ajustar en version mobile mi pwa en las imagenes que te anexe [5 capturas señalando: Top Navbar con selector de sede/refrescar, Dashboard Hero Banner & Slicers, Tabla de Usuarios con columnas cortadas, Sub-pestañas del Modal de Parametrización y Tabla de Tarifas Vehiculares en Modal]"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Top Navbar (`DashboardLayout.css`)**:
+     - Se forzó `flex-wrap: nowrap` en `.header-actions` y `.top-bar` para evitar que el botón de actualizar quiebre a una segunda fila o se superponga flotando bajo la sede.
+     - Se fijó truncado elíptico en `.branch-selector-pill`, `.branch-select-native` y `.branch-name-single` con anchos máximos adaptativos para smartphones (375px–480px).
+  2. **Dashboard Hero Header y Slicers (`Dashboard.css`)**:
+     - Se compactó el banner verde `.dashboard-hero-header` reduciendo padding y ocultando la descripción secundaria extensa en mobile (`display: none`), permitiendo que los KPIs principales ("Venta del Día", "N° de Autos", etc.) queden inmediatamente visibles en el primer viewport.
+     - Se habilitó scroll horizontal táctil suave (`overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;`) en `.slicers-group` para que las sedes y períodos se deslicen fluidamente sin cortarse en los bordes.
+  3. **Gestión de Usuarios (`UsuariosTab.tsx` & `Settings.css`)**:
+     - Se envolvió la tabla de usuarios en un contenedor `.table-responsive` con scroll horizontal y `min-width: 600px`, garantizando que las columnas de rol, estado y acciones se puedan visualizar y acceder cómodamente en smartphones.
+  4. **Sub-pestañas del Modal de Parametrización por Sede (`Settings.css`)**:
+     - Se configuró `.modal-subtabs-nav` con `overflow-x: auto`, `flex-wrap: nowrap` y márgenes optimizados para mobile, permitiendo que las 3 pestañas (*Medios de Pago, Asignación de Usuarios, Tarifas Vehiculares*) se visualicen y deslicen sin salirse del modal.
+  5. **Tabla de Tarifas Vehiculares en Modal (`ParqueaderosTab.tsx`)**:
+     - Se envolvió la tabla de tarifas dentro del modal en un contenedor `.table-responsive` con scroll horizontal, garantizando la visibilidad completa de los valores de hora, minuto, día máximo y tiempo de gracia.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/shared/ui/DashboardLayout.css`
+  - `ParkingPwa/src/features/dashboard/ui/Dashboard.css`
+  - `ParkingPwa/src/features/settings/ui/Settings.css`
+  - `ParkingPwa/src/features/settings/ui/UsuariosTab.tsx`
+  - `ParkingPwa/src/features/settings/ui/ParqueaderosTab.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `npm run build`: **0 Errores** (compilación de producción exitosa en 2.65s).
+  - `oxlint`: **0 Errores** en todos los componentes.
+
+
+
 ### [2026-08-26 17:45:00] - [FEATURE] [WPF] [SHIFTS] [OPERATIONS] - Modo de 'Recepción y Toma de Relevo de Caja' para Operadores Entrantes
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:
