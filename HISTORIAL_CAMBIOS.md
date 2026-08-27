@@ -17,6 +17,106 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-08-27 00:12:00] - [UI/UX] [PWA] [MOBILE] - Bloqueo de Desbordamiento Lateral (Anti-Horizontal Shift) y Ajuste de Encabezado de Métodos de Pago
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"cuando hago el gesto hacia la izquierda en la dashboard en la version mobile, me queda ese espacio que te señale, evitalo y corrigelo, adicional que recuadacion hoy en distribucion por meotodos por pago se ve muy juntos, separalos para version mobile [Captura mostrando espacio blanco a la derecha por desplazamiento horizontal y solapamiento del título de métodos de pago]"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Corrección del Desplazamiento Lateral (Espacio en Blanco a la Derecha)**:
+     - Se identificó que en pantallas móviles pequeñas (< 400px), los elementos combinados de `.top-bar` (`mobile-brand` + `branch-selector-pill` + botón de refrescar) excedían el ancho del viewport (aprox. 404px de ancho), lo cual habilitaba el desplazamiento horizontal involuntario al hacer swipe a la izquierda.
+     - `index.css`: Se añadió blindaje global con `overflow-x: hidden; width: 100%; max-width: 100%;` en `html`, `body` y `#root`.
+     - `DashboardLayout.css`: Se configuró `.top-bar` con `max-width: 100%; overflow: hidden; gap: 6px;` e hijos con `min-width: 0` y `flex-shrink: 1`, y `.main-content` con `overflow-x: hidden;`.
+  2. **Separación y Ajuste en "Distribución por Métodos de Pago" (`Dashboard.css`)**:
+     - Se dotó a `.pie-card-header` de `flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center;` con `min-width: 150px` y `flex: 1` para el título `<h3>`.
+     - Esto asegura que el título *"Distribución por Métodos de Pago"* y la insignia *"Recaudación hoy"* mantengan una separación limpia, sin amontonamiento ni superposición en resoluciones móviles.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/index.css`
+  - `ParkingPwa/src/shared/ui/DashboardLayout.css`
+  - `ParkingPwa/src/features/dashboard/ui/Dashboard.css`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `npm run build`: **0 Errores** (1.38s).
+  - `oxlint`: **0 Errores**.
+
+
+
+### [2026-08-27 00:07:00] - [ASSETS] [BRANDING] [PWA] - Integración del Imagotipo Oficial PNG en Login, Menú Lateral y Barra Superior
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"en el login y en el menu lateral hay un icono de un carro quiero que los reemplaces por el png que te pase [Imagen oficial PNG con fondo transparente]"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Procesamiento del Logo Maestro (`ParkingPwa/public/logo.png`)**:
+     - Se procesó y exportó el logotipo oficial de alta resolución con canal alfa transparente (`/logo.png`) y se actualizaron las densidades de icono PWA (`pwa-512x512.png`, `pwa-192x192.png`, `apple-touch-icon.png`, `favicon.png`).
+  2. **Reemplazo en Pantalla de Login (`Login.tsx` & `Login.css`)**:
+     - En la columna izquierda (hero institucional desktop): Se reemplazó el icono vectorial genérico por `<img src="/logo.png" alt="Parking Flow" className="brand-logo-img" />`.
+     - En la cabecera compacta móvil: Se reemplazó por `<img src="/logo.png" alt="Parking Flow" className="mobile-logo-img" />`.
+     - Se actualizaron los textos de marca a **PARKING FLOW - GESTIÓN INTELIGENTE DE PARQUEADEROS**.
+  3. **Reemplazo en Menú Lateral y Header Móvil (`DashboardLayout.tsx` & `DashboardLayout.css`)**:
+     - Sidebar Header: Se reemplazó el icono de auto por `<img src="/logo.png" alt="Parking Flow" className="sidebar-logo-img" />`.
+     - Barra Superior Móvil: Se reemplazó por `<img src="/logo.png" alt="Parking Flow" className="mobile-header-logo-img" />`.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/public/logo.png`
+  - `ParkingPwa/src/features/auth/ui/Login.tsx`
+  - `ParkingPwa/src/features/auth/ui/Login.css`
+  - `ParkingPwa/src/shared/ui/DashboardLayout.tsx`
+  - `ParkingPwa/src/shared/ui/DashboardLayout.css`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `npm run build`: **0 Errores** (1.29s).
+  - `oxlint`: **0 Errores**.
+
+
+
+### [2026-08-27 00:00:00] - [UI/UX] [PWA] [MOBILE] - Unificación de Scroll y Cabecera Sticky para Evitar Cortes Superiores en Móvil
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"volvi a notar que en la version mobile, cuando me logeo e ingreso, esto no muestra completo la pagina desde los elementos superiores, ajustalos para que se vean bien [Captura mostrando banner verde de dashboard cortado y top-bar oculto]"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico del Corte Superior en Móvil**:
+     - Se identificó la existencia de doble scroll anidado (`.main-content` con `overflow-y: auto` y `.dashboard-container` / `.caja-container` con `height: 100%; overflow-y: auto;`).
+     - Al entrar al Dashboard en navegadores móviles (iOS Safari / Android Chrome), el contenedor exterior sufría un micro-desplazamiento vertical al renderizar, desplazando la barra superior fuera del viewport y dejando visible solo la mitad inferior del banner verde de KPIs.
+  2. **Correcciones Realizadas**:
+     - `DashboardLayout.css`:
+       - Se fijó `.dashboard-layout` con `height: 100dvh; overflow: hidden;` en móviles.
+       - Se convirtió `.top-bar` en cabecera fija/adhesiva (`position: sticky; top: 0; z-index: 100;`) con soporte para `padding-top: max(8px, env(safe-area-inset-top));` para evitar solapamientos con el notch o barras de estado.
+       - Se unificó el scroll vertical exclusivamente en `.main-content` con `-webkit-overflow-scrolling: touch;`.
+     - `Dashboard.css` y `Caja.tsx`:
+       - Se eliminó el `overflow-y: auto` y `height: 100%` redundante de los contenedores internos, permitiendo un flujo de contenido elástico natural.
+     - `DashboardLayout.tsx`:
+       - Se agregó `mainContentRef` con reseteo forzado de scroll `(0, 0)` en cada cambio de ruta.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/shared/ui/DashboardLayout.tsx`
+  - `ParkingPwa/src/shared/ui/DashboardLayout.css`
+  - `ParkingPwa/src/features/dashboard/ui/Dashboard.css`
+  - `ParkingPwa/src/features/caja/ui/Caja.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `npm run build`: **0 Errores** (1.10s).
+  - `oxlint`: **0 Errores**.
+
+
+
+### [2026-08-26 23:56:00] - [BUGFIX] [AUTH] [PWA] - Cierre de Sesión Inmediato en Un Solo Clic sin Rebote de Navegación
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Cuando quiero cerrar sesion, no me lo hace hasta que le oprima 2 veces"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico del Rebote de Navegación**:
+     - Al invocar `authService.logout()`, la función realizaba una llamada asíncrona de red (`apiClient.post('/Auth/logout')`) y borraba `auth_token` solo en el bloque `finally`.
+     - Simultáneamente, `DashboardLayout` ejecutaba `navigate('/')`. En la ruta `/`, el componente guardián `RootAuthHandler` comprobaba `authService.isAuthenticated()`, encontrando el token todavía presente en `localStorage` mientras la petición de red seguía en vuelo, provocando que redirigiera inmediatamente de vuelta al Dashboard (`<Navigate to="/dashboard" replace />`). En el segundo clic, como la petición anterior ya había culminado y purgado el storage, finalmente permitía salir al Login.
+  2. **Corrección Implementada**:
+     - `authService.ts`: Se reestructuró `logout` para remover `auth_token` y `auth_user` de `localStorage` de manera síncrona e inmediata **antes** de disparar la notificación de red a la API.
+     - `DashboardLayout.tsx`: Se convirtió `handleLogout` en función asíncrona que espera la purga y navega a `/` con `{ replace: true }`.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/auth/data/authService.ts`
+  - `ParkingPwa/src/shared/ui/DashboardLayout.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `npm run build`: **0 Errores** (1.37s).
+  - `oxlint`: **0 Errores**.
+
+
+
 ### [2026-08-26 23:46:00] - [ASSETS] [BRANDING] [PWA] [WPF] - Integración del Nuevo Logotipo Oficial de Parking Flow en PWA y Aplicación de Escritorio WPF
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
