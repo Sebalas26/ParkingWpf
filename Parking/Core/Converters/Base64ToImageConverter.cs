@@ -1,0 +1,47 @@
+using System;
+using System.Globalization;
+using System.IO;
+using System.Windows.Data;
+using System.Windows.Media.Imaging;
+
+namespace Parking.Core.Converters;
+
+public class Base64ToImageConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        if (value is not string base64Str || string.IsNullOrWhiteSpace(base64Str))
+        {
+            return null;
+        }
+
+        try
+        {
+            var raw = base64Str;
+            var commaIndex = raw.IndexOf(',');
+            if (commaIndex >= 0 && raw.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                raw = raw[(commaIndex + 1)..];
+            }
+
+            var bytes = System.Convert.FromBase64String(raw.Trim());
+            using var stream = new MemoryStream(bytes);
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.StreamSource = stream;
+            image.EndInit();
+            image.Freeze();
+            return image;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    {
+        return Binding.DoNothing;
+    }
+}
