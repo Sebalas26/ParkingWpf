@@ -70,12 +70,16 @@ public class ParkingApiClient : IApiClientService
         return false;
     }
 
-    public async Task<BootstrapSyncResponse?> GetBootstrapAsync()
+    public async Task<BootstrapSyncResponse?> GetBootstrapAsync(int? branchId = null)
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         try
         {
-            var response = await _httpClient.GetAsync($"{BaseUrl}/api/sync/bootstrap", cts.Token);
+            var url = branchId.HasValue 
+                ? $"{BaseUrl}/api/sync/bootstrap?branchId={branchId.Value}" 
+                : $"{BaseUrl}/api/sync/bootstrap";
+
+            var response = await _httpClient.GetAsync(url, cts.Token);
             if (response.IsSuccessStatusCode)
             {
                 var content = await response.Content.ReadAsStringAsync(cts.Token);

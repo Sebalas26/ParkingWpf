@@ -2,6 +2,7 @@ using System;
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Parking.Services.Contracts;
+using Parking.Services.Implementations;
 
 namespace Parking.Security;
 
@@ -23,12 +24,8 @@ public static class Authorize
         if (Application.Current is App app && app.Services != null)
         {
             _permissionService = app.Services.GetService<IPermissionService>();
-            if (_permissionService != null)
-            {
-                _permissionService.PermissionsChanged += OnPermissionsChanged;
-            }
         }
-        return _permissionService!;
+        return _permissionService ?? PermissionService.Current;
     }
 
     public static readonly DependencyProperty PermissionProperty =
@@ -59,15 +56,50 @@ public static class Authorize
 
     private static void OnPermissionPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is UIElement element)
-        {
-            ApplyAuthorization(element);
-        }
+        if (d is not FrameworkElement element) return;
+
+        ApplyAuthorization(element);
+
+        element.Loaded -= Element_Loaded;
+        element.Loaded += Element_Loaded;
     }
 
-    private static void OnPermissionsChanged()
+    private static void Element_Loaded(object sender, RoutedEventArgs e)
     {
-        // Re-evaluate on UI elements if needed
+        if (sender is not FrameworkElement element) return;
+
+        ApplyAuthorization(element);
+
+        var permService = GetPermissionService();
+        if (permService != null)
+        {
+            permService.PermissionsChanged -= PermissionService_PermissionsChanged;
+            permService.PermissionsChanged += PermissionService_PermissionsChanged;
+        }
+
+        PermissionService.Current.PermissionsChanged -= PermissionService_PermissionsChanged;
+        PermissionService.Current.PermissionsChanged += PermissionService_PermissionsChanged;
+
+        void PermissionService_PermissionsChanged()
+        {
+            if (element.Dispatcher.CheckAccess())
+            {
+                ApplyAuthorization(element);
+            }
+            else
+            {
+                element.Dispatcher.InvokeAsync(() => ApplyAuthorization(element));
+            }
+        }
+
+        element.Unloaded += (us, ue) =>
+        {
+            if (permService != null)
+            {
+                permService.PermissionsChanged -= PermissionService_PermissionsChanged;
+            }
+            PermissionService.Current.PermissionsChanged -= PermissionService_PermissionsChanged;
+        };
     }
 
     public static void ApplyAuthorization(UIElement element)
@@ -76,7 +108,7 @@ public static class Authorize
         if (string.IsNullOrWhiteSpace(permission)) return;
 
         var permService = GetPermissionService();
-        var isAuthorized = permService?.HasPermission(permission) ?? true;
+        var isAuthorized = permService?.HasPermission(permission) ?? PermissionService.Current.HasPermission(permission);
         var behavior = GetBehavior(element);
 
         if (isAuthorized)

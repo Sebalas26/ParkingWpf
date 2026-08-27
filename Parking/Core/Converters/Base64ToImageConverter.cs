@@ -6,33 +6,37 @@ using System.Windows.Media.Imaging;
 
 namespace Parking.Core.Converters;
 
+/// <summary>
+/// Convierte una cadena Base64 (con o sin encabezado data URI) a un objeto BitmapImage utilizable en controles Image de XAML.
+/// </summary>
 public class Base64ToImageConverter : IValueConverter
 {
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is not string base64Str || string.IsNullOrWhiteSpace(base64Str))
-        {
             return null;
-        }
 
         try
         {
-            var raw = base64Str;
-            var commaIndex = raw.IndexOf(',');
-            if (commaIndex >= 0 && raw.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            // Remover prefijo data:image/...;base64, si viene incluido
+            var base64Clean = base64Str;
+            var commaIndex = base64Clean.IndexOf(',');
+            if (commaIndex >= 0 && base64Clean.Substring(0, commaIndex).Contains("base64", StringComparison.OrdinalIgnoreCase))
             {
-                raw = raw[(commaIndex + 1)..];
+                base64Clean = base64Clean.Substring(commaIndex + 1);
             }
 
-            var bytes = System.Convert.FromBase64String(raw.Trim());
-            using var stream = new MemoryStream(bytes);
-            var image = new BitmapImage();
-            image.BeginInit();
-            image.CacheOption = BitmapCacheOption.OnLoad;
-            image.StreamSource = stream;
-            image.EndInit();
-            image.Freeze();
-            return image;
+            var imageBytes = System.Convert.FromBase64String(base64Clean.Trim());
+            using var ms = new MemoryStream(imageBytes);
+
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = ms;
+            bitmap.EndInit();
+            bitmap.Freeze();
+
+            return bitmap;
         }
         catch
         {
@@ -42,6 +46,9 @@ public class Base64ToImageConverter : IValueConverter
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
-        return Binding.DoNothing;
+        throw creativeNotSupported();
     }
+
+    private static NotSupportedException creativeNotSupported() =>
+        new("Base64ToImageConverter solo admite conversión unidireccional (Convert).");
 }

@@ -14,11 +14,16 @@ namespace Parking.Services.Implementations;
 public class EfPricingCalculatorService : IPricingCalculatorService
 {
     private readonly IDbConnectionManager _connectionManager;
+    private readonly ISessionService _sessionService;
     private readonly ConcurrentDictionary<VehicleType, VehicleRate> _ratesCache = new();
 
-    public EfPricingCalculatorService(IDbConnectionManager connectionManager, ISyncEngineService syncEngine)
+    public EfPricingCalculatorService(
+        IDbConnectionManager connectionManager, 
+        ISyncEngineService syncEngine,
+        ISessionService sessionService)
     {
         _connectionManager = connectionManager;
+        _sessionService = sessionService;
         syncEngine.DataSynchronized += async () =>
         {
             await ReloadRatesAsync();
@@ -28,7 +33,13 @@ public class EfPricingCalculatorService : IPricingCalculatorService
     public async Task ReloadRatesAsync()
     {
         using var db = _connectionManager.CreateDbContext();
-        var rates = await db.VehicleRates.Where(r => r.IsActive).ToListAsync();
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
+        var query = db.VehicleRates.Where(r => r.IsActive);
+        if (currentBranchId.HasValue)
+        {
+            query = query.Where(r => r.BranchId == currentBranchId.Value);
+        }
+        var rates = await query.ToListAsync();
         _ratesCache.Clear();
         foreach (var rate in rates)
         {

@@ -12,17 +12,6 @@ namespace Parking.Services.Implementations;
 
 public class AuthService : IAuthService
 {
-    private static readonly string[] OperatorPermissions =
-    {
-        "checkin.view", "checkin.create", "checkin.reprint",
-        "checkout.view", "checkout.search", "checkout.apply_discount", "checkout.process_payment", "checkout.reprint_receipt",
-        "subscriptions.view", "subscriptions.create", "subscriptions.renew",
-        "recent_entries.view", "recent_entries.reprint",
-        "shift.view", "shift.open", "shift.cash_withdrawal", "shift.close", "shift.handover", "shift.history", "shift.export",
-        "analytics.view",
-        "system.sync", "system.theme"
-    };
-
     private readonly IDbConnectionManager _connectionManager;
     private readonly IApiClientService _apiClient;
     private readonly ISessionService _sessionService;
@@ -44,19 +33,6 @@ public class AuthService : IAuthService
         _permissionService = permissionService;
     }
 
-    private static IEnumerable<string> GetDefaultPermissionsForRole(string? roleName, bool isAdmin)
-    {
-        if (isAdmin) return Array.Empty<string>();
-
-        var normalized = roleName?.Trim().ToLowerInvariant() ?? string.Empty;
-        if (normalized.Contains("operador") || normalized.Contains("cajero") || normalized.Contains("operator") || normalized.Contains("cashier"))
-        {
-            return OperatorPermissions;
-        }
-
-        return Array.Empty<string>();
-    }
-
     public async Task<LoginResultModel> AuthenticateAsync(string username, string password)
     {
         if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
@@ -72,7 +48,7 @@ public class AuthService : IAuthService
             var apiLogin = await _apiClient.LoginAsync(username.Trim(), password);
             if (apiLogin != null && apiLogin.Success)
             {
-                var roleName = string.IsNullOrWhiteSpace(apiLogin.RoleName) ? "Operador" : apiLogin.RoleName;
+                var roleName = string.IsNullOrWhiteSpace(apiLogin.RoleName) ? "Usuario" : apiLogin.RoleName;
                 var isAdmin = apiLogin.IsAdmin ||
                               roleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
                               roleName.Equals("Admin", StringComparison.OrdinalIgnoreCase);
@@ -89,7 +65,7 @@ public class AuthService : IAuthService
                 };
 
                 CurrentUser = userModel;
-                var permissions = GetDefaultPermissionsForRole(roleName, isAdmin);
+                var permissions = apiLogin.Permissions ?? new List<string>();
                 _permissionService.LoadPermissions(permissions, isAdmin);
 
                 return new LoginResultModel
@@ -176,7 +152,29 @@ public class AuthService : IAuthService
             IsActive = b.IsActive
         }).ToList();
 
-        var localPermissions = GetDefaultPermissionsForRole(localRoleName, isLocalAdmin);
+        var localPermissions = isLocalAdmin
+            ? new List<string>()
+            : await db.RolePermissions
+                .Include(rp => rp.Permission)
+                .Where(rp => rp.RoleId == user.RoleId && rp.IsGranted && rp.Permission.ActionKey != null)
+                .Select(rp => rp.Permission.ActionKey)
+                .ToListAsync();
+
+        // Resiliencia: Si SQLite no tiene registros de permisos aún (base de datos local recién inicializada),
+        // se activan los permisos operativos de terminal para no bloquear al operador.
+        if (!isLocalAdmin && (localPermissions == null || localPermissions.Count == 0))
+        {
+            localPermissions = new List<string>
+            {
+                "checkin.view", "checkin.create", "checkin.reprint",
+                "checkout.view", "checkout.search", "checkout.apply_discount", "checkout.process_payment", "checkout.reprint_receipt",
+                "subscriptions.view", "subscriptions.create", "subscriptions.renew",
+                "recent_entries.view", "recent_entries.reprint",
+                "shift.view", "shift.open", "shift.cash_withdrawal", "shift.close", "shift.handover", "shift.history", "shift.export",
+                "analytics.view"
+            };
+        }
+
         _permissionService.LoadPermissions(localPermissions, isLocalAdmin);
 
         return new LoginResultModel
@@ -259,7 +257,17 @@ public class AuthService : IAuthService
         var isAdmin = newUser.RoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
                       newUser.RoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase);
 
-        var permissions = GetDefaultPermissionsForRole(newUser.RoleName, isAdmin);
+        List<string> permissions = new();
+        if (!isAdmin && newUser.RoleId != Guid.Empty)
+        {
+            using var db = _connectionManager.CreateDbContext();
+            permissions = db.RolePermissions
+                .Include(rp => rp.Permission)
+                .Where(rp => rp.RoleId == newUser.RoleId && rp.IsGranted && rp.Permission.ActionKey != null)
+                .Select(rp => rp.Permission.ActionKey)
+                .ToList();
+        }
+
         _permissionService.LoadPermissions(permissions, isAdmin);
         _sessionService.SetSession(newUser, _sessionService.UserBranches);
         UserSessionChanged?.Invoke(CurrentUser);

@@ -62,6 +62,15 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private string _operatorName = "Operador General";
 
     [ObservableProperty]
+    private bool _isShiftOwner = true;
+
+    [ObservableProperty]
+    private string _activeShiftOperatorName = string.Empty;
+
+    [ObservableProperty]
+    private DateTime? _activeShiftStartTime;
+
+    [ObservableProperty]
     private ObservableCollection<User> _availableUsers = new();
 
     [ObservableProperty]
@@ -364,6 +373,82 @@ public partial class ShiftClosureViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Modalidad 3: Toma de Relevo / Asunción de Caja por Operador Entrante
+    /// </summary>
+    [RelayCommand]
+    private async Task TakeOverShiftAsync()
+    {
+        HasFeedback = false;
+        var active = await _shiftService.GetActiveShiftAsync();
+        if (active == null)
+        {
+            HasFeedback = true;
+            IsSuccessFeedback = false;
+            FeedbackMessage = "No hay ningún turno activo para asumir.";
+            return;
+        }
+
+        var currentUserId = _authService.CurrentUser?.UserId ?? Guid.NewGuid();
+        var currentFullName = _authService.CurrentUser?.FullName ?? "Operador";
+
+        var confirmed = await _dialogService.ShowConfirmationAsync(
+            "Confirmar Recepción de Turno y Caja",
+            $"¿Deseas asumir el turno y recibir la caja de la terminal?\n\n" +
+            $"• Turno Saliente: {ActiveShiftOperatorName}\n" +
+            $"• Saldo Esperado en Sistema: ${Summary.ExpectedCash:N0}\n" +
+            $"• Efectivo Contado en Gaveta: ${ActualCashCounted:N0}\n" +
+            $"• Diferencia de Arqueo: ${CashDifference:N0}\n\n" +
+            $"Se cerrará formalmente el turno de '{ActiveShiftOperatorName}' y se abrirá tu nuevo turno a nombre de '{currentFullName}' con base de ${ActualCashCounted:N0}.",
+            DialogNotificationType.Question,
+            "Recibir Caja e Iniciar",
+            "Cancelar");
+
+        if (!confirmed) return;
+
+        IsBusy = true;
+        BusyMessage = "Cerrando turno anterior e iniciando tu nuevo turno...";
+
+        try
+        {
+            var note = string.IsNullOrWhiteSpace(Notes)
+                ? $"Relevo asumido por {currentFullName}. Base recibida: ${ActualCashCounted:N0}"
+                : $"{Notes} (Relevo asumido por {currentFullName})";
+
+            await _shiftService.HandoverAndOpenNextShiftAsync(
+                ActualCashCounted,
+                note,
+                currentUserId,
+                currentFullName,
+                ActualCashCounted);
+
+            await _dialogService.ShowAlertAsync(
+                "Turno Asumido con Éxito",
+                $"Has recibido la caja correctamente.\n\n" +
+                $"• Base Inicial de tu Turno: ${ActualCashCounted:N0}\n" +
+                $"• Operador a Cargo: {currentFullName}\n\n" +
+                $"Ya puedes comenzar a registrar ingresos y cobros en el parqueadero.",
+                DialogNotificationType.Success);
+
+            ActualCashCounted = 0m;
+            Notes = null;
+            await LoadShiftDataAsync();
+
+            _navigationService.NavigateTo<CheckInViewModel>();
+        }
+        catch (Exception ex)
+        {
+            HasFeedback = true;
+            IsSuccessFeedback = false;
+            FeedbackMessage = $"Error al asumir turno: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+            BusyMessage = null;
+        }
+    }
+
     private async Task LoadShiftDataAsync()
     {
         IsBusy = true;
@@ -371,17 +456,35 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
         try
         {
+            var currentUserId = _authService.CurrentUser?.UserId;
+            var currentFullName = _authService.CurrentUser?.FullName ?? string.Empty;
+            var currentUsername = _authService.CurrentUser?.Username?.ToLower() ?? string.Empty;
+            var isAdmin = _authService.CurrentUser != null && (
+                _authService.CurrentUser.RoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
+                _authService.CurrentUser.RoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+
             var active = await _shiftService.GetActiveShiftAsync();
             HasActiveShift = active != null;
 
             if (HasActiveShift)
             {
+                ActiveShiftOperatorName = active!.OperatorName ?? "Operador Anterior";
+                ActiveShiftStartTime = active.StartTimeUtc.ToLocalTime();
+
+                IsShiftOwner = isAdmin ||
+                               string.Equals(active.OperatorName, currentFullName, StringComparison.OrdinalIgnoreCase) ||
+                               string.Equals(active.OperatorName, currentUsername, StringComparison.OrdinalIgnoreCase);
+
                 Summary = await _shiftService.GetCurrentShiftSummaryAsync();
+                ActualCashCounted = Summary.ExpectedCash;
                 RecalculateDifference();
                 CurrentShiftWithdrawals = await _shiftService.GetShiftCashWithdrawalsAsync(active!.ShiftId);
             }
             else
             {
+                IsShiftOwner = true;
+                ActiveShiftOperatorName = string.Empty;
+                ActiveShiftStartTime = null;
                 CurrentShiftWithdrawals = new List<CashWithdrawal>();
                 LastClosedShift = await _shiftService.GetLastClosedShiftAsync();
                 HasLastClosedShift = LastClosedShift != null;
@@ -393,8 +496,6 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
             // Cargar usuarios reales asignados a la sede activa con rol operativo para entrega de turno
             using var db = _connectionManager.CreateDbContext();
-            var currentUserId = _authService.CurrentUser?.UserId;
-            var currentUsername = _authService.CurrentUser?.Username?.ToLower();
             var currentBranch = _sessionService.CurrentBranch;
 
             List<User> branchUsers = new();

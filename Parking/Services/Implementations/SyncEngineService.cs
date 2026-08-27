@@ -17,6 +17,7 @@ public class SyncEngineService : ISyncEngineService
 {
     private readonly IApiClientService _apiClient;
     private readonly IDbConnectionManager _dbManager;
+    private readonly ISessionService _sessionService;
     private bool _isOnline;
     private int _pendingItemsCount;
     private DateTime? _lastSyncTime;
@@ -36,10 +37,12 @@ public class SyncEngineService : ISyncEngineService
 
     public SyncEngineService(
         IApiClientService apiClient,
-        IDbConnectionManager dbManager)
+        IDbConnectionManager dbManager,
+        ISessionService sessionService)
     {
         _apiClient = apiClient;
         _dbManager = dbManager;
+        _sessionService = sessionService;
     }
 
     public async Task<bool> PerformFullSyncAsync()
@@ -122,7 +125,8 @@ public class SyncEngineService : ISyncEngineService
             DetailMessage = "Solicitando datos de todas las entidades desde el API Central..."
         });
 
-        var bootstrap = await _apiClient.GetBootstrapAsync();
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
+        var bootstrap = await _apiClient.GetBootstrapAsync(currentBranchId);
         if (bootstrap == null)
         {
             progress.Report(new SyncProgressReport
@@ -190,6 +194,14 @@ public class SyncEngineService : ISyncEngineService
         int usersCount = 0;
         if (bootstrap.Users != null)
         {
+            var incomingUsernames = bootstrap.Users.Select(u => u.Username.ToLowerInvariant()).ToHashSet();
+            var localUsers = await db.Users.ToListAsync(ct);
+            var usersToDelete = localUsers.Where(u => !incomingUsernames.Contains(u.Username.ToLowerInvariant()) && u.Username != "admin").ToList();
+            if (usersToDelete.Count > 0)
+            {
+                db.Users.RemoveRange(usersToDelete);
+            }
+
             foreach (var apiUser in bootstrap.Users)
             {
                 var targetRoleId = apiUser.UserRoleId == 1 ? adminRole.RoleId : operatorRole.RoleId;
@@ -197,7 +209,7 @@ public class SyncEngineService : ISyncEngineService
                     ? apiUser.FullName
                     : $"{apiUser.FirstName} {apiUser.FirstSurname}".Trim();
 
-                var existing = await db.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == apiUser.Username.ToLower(), ct);
+                var existing = localUsers.FirstOrDefault(u => u.Username.ToLower() == apiUser.Username.ToLower());
                 if (existing != null)
                 {
                     existing.FullName = fullName;
@@ -236,11 +248,19 @@ public class SyncEngineService : ISyncEngineService
             DetailMessage = $"Actualizando {bootstrap.PaymentMethods?.Count ?? 0} medios de pago y {bootstrap.Branches?.Count ?? 0} sedes..."
         });
 
-        if (bootstrap.Branches != null && bootstrap.Branches.Count > 0)
+        if (bootstrap.Branches != null)
         {
+            var incomingBranchIds = bootstrap.Branches.Select(b => b.Id).ToHashSet();
+            var localBranches = await db.Branches.ToListAsync(ct);
+            var branchesToDelete = localBranches.Where(b => !incomingBranchIds.Contains(b.Id)).ToList();
+            if (branchesToDelete.Count > 0)
+            {
+                db.Branches.RemoveRange(branchesToDelete);
+            }
+
             foreach (var br in bootstrap.Branches)
             {
-                var existingBranch = await db.Branches.FirstOrDefaultAsync(b => b.Id == br.Id, ct);
+                var existingBranch = localBranches.FirstOrDefault(b => b.Id == br.Id);
                 if (existingBranch != null)
                 {
                     existingBranch.Code = br.Code;
@@ -275,11 +295,19 @@ public class SyncEngineService : ISyncEngineService
         }
 
         int paymentMethodsCount = 0;
-        if (bootstrap.PaymentMethods != null && bootstrap.PaymentMethods.Count > 0)
+        if (bootstrap.PaymentMethods != null)
         {
+            var incomingPmIds = bootstrap.PaymentMethods.Select(p => p.Id).ToHashSet();
+            var localPms = await db.PaymentMethods.ToListAsync(ct);
+            var pmsToDelete = localPms.Where(p => !incomingPmIds.Contains(p.Id)).ToList();
+            if (pmsToDelete.Count > 0)
+            {
+                db.PaymentMethods.RemoveRange(pmsToDelete);
+            }
+
             foreach (var pm in bootstrap.PaymentMethods)
             {
-                var existing = await db.PaymentMethods.FirstOrDefaultAsync(p => p.Id == pm.Id, ct);
+                var existing = localPms.FirstOrDefault(p => p.Id == pm.Id);
                 if (existing != null)
                 {
                     existing.Name = pm.Name;
@@ -317,10 +345,22 @@ public class SyncEngineService : ISyncEngineService
         int ratesCount = 0;
         if (bootstrap.Rates != null)
         {
+            var incomingVehicleTypes = bootstrap.Rates.Select(r => r.GetVehicleType()).ToHashSet();
+            var localRates = await db.VehicleRates.ToListAsync(ct);
+            var ratesToDelete = currentBranchId.HasValue
+                ? localRates.Where(r => !incomingVehicleTypes.Contains(r.VehicleType) || r.BranchId != currentBranchId.Value).ToList()
+                : localRates.Where(r => !incomingVehicleTypes.Contains(r.VehicleType)).ToList();
+
+            if (ratesToDelete.Count > 0)
+            {
+                db.VehicleRates.RemoveRange(ratesToDelete);
+            }
+
             foreach (var rate in bootstrap.Rates)
             {
                 var vehicleType = rate.GetVehicleType();
-                var existing = await db.VehicleRates.FirstOrDefaultAsync(r => r.VehicleType == vehicleType, ct);
+                var targetBranchId = rate.BranchId ?? currentBranchId;
+                var existing = localRates.FirstOrDefault(r => r.VehicleType == vehicleType && r.BranchId == targetBranchId);
                 if (existing != null)
                 {
                     existing.HourRate = rate.HourRate;
@@ -330,13 +370,14 @@ public class SyncEngineService : ISyncEngineService
                     existing.DisplayName = rate.DisplayName;
                     existing.IconKey = string.IsNullOrWhiteSpace(rate.IconKey) ? "IconCar" : rate.IconKey;
                     existing.IsActive = rate.IsActive;
+                    existing.BranchId = targetBranchId;
                 }
                 else
                 {
                     db.VehicleRates.Add(new VehicleRate
                     {
                         RateId = rate.RateId,
-                        BranchId = rate.BranchId,
+                        BranchId = targetBranchId,
                         VehicleType = vehicleType,
                         DisplayName = rate.DisplayName,
                         MinuteRate = rate.MinuteRate,
@@ -364,11 +405,30 @@ public class SyncEngineService : ISyncEngineService
             DetailMessage = $"Actualizando {bootstrap.Stores?.Count ?? 0} comercios y {bootstrap.Agreements?.Count ?? 0} convenios..."
         });
 
+        if (bootstrap.Agreements != null)
+        {
+            var incomingAgIds = bootstrap.Agreements.Select(a => a.AgreementId).ToHashSet();
+            var localAgreements = await db.CommercialAgreements.ToListAsync(ct);
+            var agsToDelete = localAgreements.Where(a => !incomingAgIds.Contains(a.AgreementId)).ToList();
+            if (agsToDelete.Count > 0)
+            {
+                db.CommercialAgreements.RemoveRange(agsToDelete);
+            }
+        }
+
         if (bootstrap.Stores != null)
         {
+            var incomingStoreIds = bootstrap.Stores.Select(s => s.StoreId).ToHashSet();
+            var localStores = await db.Stores.ToListAsync(ct);
+            var storesToDelete = localStores.Where(s => !incomingStoreIds.Contains(s.StoreId)).ToList();
+            if (storesToDelete.Count > 0)
+            {
+                db.Stores.RemoveRange(storesToDelete);
+            }
+
             foreach (var store in bootstrap.Stores)
             {
-                var existing = await db.Stores.FirstOrDefaultAsync(s => s.StoreId == store.StoreId, ct);
+                var existing = localStores.FirstOrDefault(s => s.StoreId == store.StoreId);
                 if (existing != null)
                 {
                     existing.Name = store.Name;
@@ -395,9 +455,10 @@ public class SyncEngineService : ISyncEngineService
         int agCount = 0;
         if (bootstrap.Agreements != null)
         {
+            var localAgreements = await db.CommercialAgreements.ToListAsync(ct);
             foreach (var ag in bootstrap.Agreements)
             {
-                var existing = await db.CommercialAgreements.FirstOrDefaultAsync(a => a.AgreementId == ag.AgreementId, ct);
+                var existing = localAgreements.FirstOrDefault(a => a.AgreementId == ag.AgreementId);
                 if (existing != null)
                 {
                     existing.Name = ag.Name;
@@ -442,9 +503,17 @@ public class SyncEngineService : ISyncEngineService
         int subsCount = 0;
         if (bootstrap.MonthlySubscriptions != null)
         {
+            var incomingSubIds = bootstrap.MonthlySubscriptions.Select(s => s.SubscriptionId).ToHashSet();
+            var localSubs = await db.MonthlySubscriptions.ToListAsync(ct);
+            var subsToDelete = localSubs.Where(s => !incomingSubIds.Contains(s.SubscriptionId)).ToList();
+            if (subsToDelete.Count > 0)
+            {
+                db.MonthlySubscriptions.RemoveRange(subsToDelete);
+            }
+
             foreach (var sub in bootstrap.MonthlySubscriptions)
             {
-                var existing = await db.MonthlySubscriptions.FirstOrDefaultAsync(s => s.SubscriptionId == sub.SubscriptionId, ct);
+                var existing = localSubs.FirstOrDefault(s => s.SubscriptionId == sub.SubscriptionId);
                 if (existing != null)
                 {
                     existing.PlateNumber = sub.PlateNumber;

@@ -17,6 +17,643 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-08-26 17:45:00] - [FEATURE] [WPF] [SHIFTS] [OPERATIONS] - Modo de 'Recepción y Toma de Relevo de Caja' para Operadores Entrantes
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"mira ya se tienen los permisos faltaba publicar el api listo ya lo hice, sabes que sucede explicame acá que deberia hacer en la vida real pues estaba abierto el turno lo tenia admin yo ingrese otro usuario que tiene acceso a esa sede, entonces me sale ese mensaje pero deberia decirme que tomar turno y decirme cuanto estaba en caja y yo recibirlo exactamente revelar el turno por que la otra persona no esta, pero hay no aparece esa opcion ese boton no existe. explicame ..."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Detección Automática de Operador Titular vs Operador Entrante (`ShiftClosureViewModel.cs`)**:
+     - Se incorporaron las propiedades `IsShiftOwner`, `ActiveShiftOperatorName` y `ActiveShiftStartTime`.
+     - Si el operador conectado NO es el titular del turno abierto (`IsShiftOwner == false`), la interfaz no le exige entregar la caja a un tercero, sino que se adapta al modo **"Recepción y Toma de Caja"**.
+  2. **Comando `TakeOverShiftCommand`**:
+     - Permite que el operador entrante cuente el dinero físico de la gaveta, verifique la diferencia de arqueo contra el saldo esperado del sistema, y presione *"Recibir Caja, Tomar Turno e Iniciar Operación"*.
+     - El comando cierra formalmente el turno del operador anterior (`activeShift`) con el dinero contado y abre de inmediato el nuevo turno a nombre del operador entrante con esa base, redirigiendo de inmediato a `CheckInViewModel` (Ingreso de Vehículos).
+  3. **UI Adaptativa en XAML (`ShiftClosureView.xaml`)**:
+     - Tarjeta de advertencia informativa indicando quién abrió el turno anterior y quién lo está asumiendo.
+     - Botón principal de acción `ModernButton`: *"🤝 Recibir Caja, Tomar Turno e Iniciar Operación"*.
+- **📦 Componentes Modificados**:
+  - `Parking\ViewModels\ShiftClosureViewModel.cs`
+  - `Parking\Views\ShiftClosureView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"mira esto corri el primer script me encanto ese script me faltaria complementarlo que funciones tengo dentro de hay para ver si de cada modulo pero entonces si sigue siendo error de la logica del wpf por que sigue saliendo que no tengo permisos, si me hago entender, no voy hacer el insert por que eso se hace desde la pwa y veo que lo hace bien el error esta en el wpf analiza bien eso por favor revisa detalladamente."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Reactividad Total en `Parking.Security.Authorize.cs`**:
+     - Se implementó suscripción en `element.Loaded` y `element.Unloaded` a los eventos `PermissionsChanged` tanto de la instancia DI como de `PermissionService.Current`.
+     - La re-evaluación se ejecuta de forma segura en el hilo del `Dispatcher` con `ApplyAuthorization(element)`, resolviendo el bug donde los `RadioButton` del menú lateral quedaban fijados en `Collapsed` tras el inicio de sesión.
+  2. **Resiliencia de Permisos en SQLite Local (`AuthService.cs`)**:
+     - Se añadió fallback resiliente en modo offline cuando la tabla `RolePermissions` en SQLite está vacía (base de datos recién creada o previa a la primera sincronización), garantizando que el operador pueda abrir el terminal sin bloqueos visuales.
+- **📦 Componentes Modificados**:
+  - `Parking\Security\Authorize.cs`
+  - `Parking\Services\Implementations\AuthService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"bueno tengo este problema con los permisos mira que si se asignaron permisos al usuario que tiene el rol 2 pero ingreso en el wpf y me dice que no cuento con los permisos me imagino por que solo ha tomado los datos de la sql lite nada mas pero no ya elimine la db la volvi a mandar a crear y no no sirvio entonces que sucede por que no esta tomando los permisos correctamente ? que sucede hay revisa eso por que administrador si funciona ."*
+  > *"eso esta gravisimo en el sistema no debe a ver nada quemado todo lo que traiga la base de datos si el quisiera crearlo como cajero o cajera o hasta colocar el rol que quisiera desde que tenga los permisos que es lo importante se deberia validar como se te ocurre eso . revisa eso que me acabas de decir esta supremamente mal y eso deberia ir en reglas del agent como colocar eso así eso no es una buena practica"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Incorporación de Regla de Oro en `AGENTS.md`**:
+     - Se añadió la prohibición estricta de usar nombres de roles o listas de permisos quemados (`roleName.Contains(...)` o arrays fijos).
+     - La asignación y validación debe ser 100% data-driven basada en la matriz relacional `RoleAction` / `RolePermission` / `Action.Slug`.
+  2. **Eliminación Total de Permisos Estáticos en WPF (`AuthService.cs`)**:
+     - Se eliminó el array `OperatorPermissions` y el método `GetDefaultPermissionsForRole`.
+     - **Modo Online**: Carga directamente los slugs de `apiLogin.Permissions`.
+     - **Modo Offline (SQLite)**: Carga directamente de la tabla `RolePermissions` los slugs activos para `user.RoleId`.
+     - En `SwitchCurrentUser`, se consultan dinámicamente los permisos del rol en SQLite.
+  3. **Entrega de Permisos Dinámicos en API (`AuthService.cs` & `AuthResponseDto.cs`)**:
+     - Se agregó la propiedad `List<string> Permissions` en `AuthResponseDto` y en `LoginApiResponse` de WPF.
+     - En `LoginStandardAsync`, se consultan los permisos reales del rol desde `_roleActionRepository.GetActionsByRoleAsync(user.UserRoleId)`.
+- **📦 Componentes Modificados**:
+  - `AGENTS.md` (WPF, API y PWA)
+  - `ParkingApi.Domain\Dtos\Auth\AuthResponseDto.cs`
+  - `ParkingApi.Core\Services\Auth\AuthService.cs`
+  - `Parking\Models\ApiModels\TicketApiModels.cs`
+  - `Parking\Services\Implementations\AuthService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"necesito que el api tenga el swagger en produccion para validar si de verdad quedo bien desplegada. revisa que así este configurada."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Configuración del Middleware en `Program.cs` (`ParkingApi`)**:
+     - Se removió la restricción `if (app.Environment.IsDevelopment())` que limitaba Swagger exclusivamente a entornos locales.
+     - Se habilitó `app.UseSwagger()`, `app.UseSwaggerUI(...)` con `RoutePrefix = "swagger"` y redirección automática en la raíz `app.MapGet("/", () => Results.Redirect("/swagger"))` para todos los entornos (Producción, Staging y Desarrollo).
+  2. **Verificación de Endpoints**:
+     - Documentación interactiva accesible en la raíz del dominio (`/`) o directamente en `/swagger`.
+- **📦 Componentes Modificados**:
+  - `ParkingApi/Program.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"esta mal la sincro, por que esta sincronizando todo pero no esta filtrando por la sede especifica, osea ya estoy en una sede debe filtrar que eso que se creo sea para la sede especifica si me explico no que traiga todo el mundo si no solo lo que este asociado a la sede que estoy . analiza eso"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Backend Central (`ParkingApi`)**:
+     - **Endpoint `/api/sync/bootstrap?branchId={branchId}`**: `SyncController.cs` y `ISyncService` / `SyncService.cs` ahora reciben `[From     - **Filtrado 100% Estricto de Datos (Sin Fuga de Registros Null)**:
+       - `Branches`: Retorna la sede activa y su capacidad oficial configurada (`TotalCapacity`).
+       - `Users`: Retorna únicamente usuarios asignados en `UserBranches` para esa sede + administradores globales.
+       - `PaymentMethods`: Retorna los medios de pago configurados en `BranchPaymentMethods` para esa sede (o maestros activos si no hay parametrización exclusiva).
+       - `VehicleRates`: Filtra `r.BranchId == branchId.Value` (Estricto).
+       - `Stores` & `CommercialAgreements`: Filtra `s.BranchId == branchId.Value` y sus convenios.
+       - `WorkShifts`: Filtra `ws.BranchId == branchId.Value`.
+       - `MonthlySubscriptions`: Filtra `s.BranchId == branchId.Value`.
+       - `ParkingTickets`: Filtra `t.BranchId == branchId.Value`.
+  2. **Escritorio Reactivo (`ParkingWpf`)**:
+     - **Cliente API (`ParkingApiClient.cs`)**: Envía el query string `?branchId={branchId}` en `GetBootstrapAsync`.
+     - **Motor de Sincronización (`SyncEngineService.cs`)**: Inyecta `ISessionService` y transmite automáticamente `_sessionService.CurrentBranch?.Id`.
+     - **Aislamiento en Memoria y Poda Local**: `EfPricingCalculatorService.ReloadRatesAsync()` y `SyncEngineService` aíslan estrictamente por sede (`BranchId == currentBranchId.Value`) eliminando cualquier registro con `BranchId = NULL` o de otra sede.para evitar cruces entre sedes.
+- **📦 Componentes Modificados**:
+  - `ParkingApi.Domain/Interfaces/Services/Sync/ISyncService.cs`
+  - `ParkingApi.Core/Services/Sync/SyncService.cs`
+  - `ParkingApi/Controllers/SyncController.cs`
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"tengo el siguiente caso, funciono perfecto cuando desde la pwa crearon la categoria y cuando sincronice genial la trajo y la mostro de una, pero cuando desde la pwa la volvieron a eliminar y le di sincronizar pues el sistema sincronizo pero no igualo la BD acá en local si me hago entender, por que si eliminan alguna tarifa, categoria, convenio, medio de pago, usuario entonces la sincronizacion debe ser bidireccional, lo unico que deberia subir el wpf a la bd por que es el modo offline son los ingresos y salidas y lo de los turnos pero todos los datos parametrizables que vienen de la BD esos siempre se deben sincronizar e estar igual a la bd online si me explico las dos diferencias ? analiza lo que te digo"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Modelo de Sincronización Espejo (Master-Replica)**:
+     - **Upstream (WPF -> API)**: Cola offline procesa y sube ingresos, cobros/salidas (`ParkingTickets`, `TicketDiscounts`) y arqueos de caja (`WorkShifts`).
+     - **Downstream Mirror (API -> WPF)**: La base de datos central en MySQL es la **fuente absoluta de verdad** para los catálogos parametrizables.
+  2. **Poda (*Pruning*) en `SyncEngineService.cs`**:
+     - **Tarifas (`VehicleRates`)**: Compara tipos de vehículos y IDs locales contra el conjunto remoto entregado en el bootstrap; cualquier tarifa que haya sido eliminada en la nube (o si no hay tarifas configuradas) es removida de SQLite (`db.VehicleRates.RemoveRange(...)`).
+     - **Medios de Pago (`PaymentMethods`)**: Remueve medios de pago locales no presentes en el servidor.
+     - **Comercios y Convenios (`Stores` / `CommercialAgreements`)**: Remueve convenios y comercios eliminados en la nube.
+     - **Sedes (`Branches`)**: Remueve sedes no activas/eliminadas en la nube.
+     - **Usuarios (`Users`)**: Remueve usuarios locales eliminados en la nube (preservando sesión del admin).
+     - **Mensualidades (`MonthlySubscriptions`)**: Remueve mensualidades no vigentes/eliminadas en la nube.
+  3. **Reactividad en Vistas e Invocación de Evento `DataSynchronized`**:
+     - Al completar la sincronización, `DataSynchronized?.Invoke()` actualiza la memoria caché en `EfPricingCalculatorService` y refresca reactivamente las vistas (`CheckInViewModel`, `CheckOutViewModel`, `MonthlySubscriptionsViewModel`).
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+
+### [2026-08-26 11:08:00] - [REFACTOR] [DB] [RBAC] - Reestructuración Oficial de Script RBAC Seed (Solo Rol Administrador, DDL para BD Vacía y 15 Módulos)
+- **Autor**: Antigravity AI Assistant & Database Architect
+- **💬 Prompt Original del Usuario**:
+  > *"no debes crear el rol operador esolo es el rol administrrador y todas las funciones para ese rol si me explico ? analiza eso nuevamente"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Aprovisionamiento DDL Autónomo para BD Vacía**:
+     - Se incorporaron las sentencias `CREATE TABLE IF NOT EXISTS` para todas las tablas requeridas por EF Core y la lógica de negocio (`IdentificationType`, `UserRole`, `User`, `Module`, `Operation`, `Action`, `RoleAction`, `UserRoleModule`, `PaymentMethod`, `Branches`, `UserBranches`, `BranchPaymentMethods`, `VehicleRates`, `Stores`, `CommercialAgreements`, `ParkingTickets`, `TicketDiscounts`, `WorkShifts`, `MonthlySubscriptions`, `BillingResolutions`, `VehicleIncidents`).
+  2. **Exclusividad del Rol Administrador**:
+     - Se eliminó la creación estática de los roles *Operador* y *Supervisor*. Únicamente se crea el rol `Administrador` (Id 1) y el usuario inicial `admin`.
+     - Todos los roles operativos adicionales serán creados y parametrizados dinámicamente por el Administrador desde la PWA.
+  3. **Catálogo de 15 Módulos y 69 Acciones**:
+     - Se removió por completo la acción obsoleta `system.theme`.
+     - Se agregaron los módulos y permisos para **Resoluciones de Facturación** (`resolutions.*`) y **Novedades y Bloqueo de Placas** (`novedades.*`), así como **Reportes Consolidados** (`reports.*`).
+     - Se asignó el 100% de los 15 módulos y el 100% de las 69 acciones exclusivamente al rol Administrador.
+  4. **Ajuste en Script de Limpieza**:
+     - Se actualizaron `BillingResolutions` y `VehicleIncidents` en `01_Clean_All_Tables.sql`.
+- **📦 Componentes Modificados**:
+  - `ParkingApi/Scripts/02_Init_RBAC_Seed.sql`
+  - `ParkingApi/Scripts/01_Clean_All_Tables.sql`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Sintaxis MySQL validada: **0 Errores**.
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+- **Autor**: Antigravity AI Assistant & .NET Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Tengo una duda, es posible meter signal r al api y al wpf para que sea reactivo ? o eso no es posible ejemplo que me gustaria que si estoy en alguna sede y desde la pwa se le hacen algo a la sede ejemplo modifican los cupos o crean otra categoria y desde que este en linea osea con internet el wpf conectado al api pues deberia salir una alerta que diga es necesario sincronizar y que obligue a sincronizar si me explico ? eso sería posible ?"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Backend SignalR Central (`ParkingApi`)**:
+     - **Hub Central (`ParkingHub.cs`)**: Creado en `/hubs/parking` con soporte para agrupación de terminales por sede (`JoinBranchGroup(branchId)`, `LeaveBranchGroup(branchId)`).
+     - **Contratos y Servicio (`IRealtimeNotificationService`, `RealtimeNotificationService`, `ConfigNotificationDto`)**: Implementado servicio despachador de eventos en tiempo real inyectando `IHubContext<ParkingHub>`.
+     - **Triggers en Controladores**: Notificación automática tras operaciones de mutación en `BranchesController` (cupos/datos/medios de pago), `VehicleRatesController` (tarifas), `AgreementsController` (convenios), `VehicleIncidentsController` (bloqueo/novedades de placas), `ResolutionsController` (resoluciones DIAN) y `PaymentMethodController` (medios de pago).
+     - **Pipeline**: Configurado `builder.Services.AddSignalR()` y `app.MapHub<ParkingHub>("/hubs/parking")`.
+  2. **Escritorio Reactivo (`ParkingWpf`)**:
+     - **Cliente SignalR (`SignalRClientService.cs`, `ISignalRClientService`)**: Integrado `Microsoft.AspNetCore.SignalR.Client` con estrategia de reconexión automática (`WithAutomaticReconnect`), suscripción dinámica a la sede activa (`SetCurrentBranchAsync`) y resiliencia transparente ante modo offline.
+     - **Modal Moderno de Sincronización Requerida (`SyncRequiredDialog.xaml/.cs`)**: Implementado diálogo modal con estilo `ModernButton`, paleta `BrushWarning` / `BrushPrimary`, que bloquea amigablemente la terminal informando el cambio recibido y permitiendo pulsar *"⚡ Sincronizar Ahora"*.
+     - **Flujo Guiado**: Al pulsar sincronizar, invoca el orquestador visual `SyncProgressDialog.ShowSyncAsync()`, ejecuta la sincronización completa paso a paso, actualiza la capacidad en el TopBar y refresca la interfaz en caliente.
+     - **Integración MVVM**: Conectado en `MainShellViewModel.cs` para escuchar `ConfigUpdateRequired` y gestionar cambios de sede activa.
+  3. **Preservación PWA**: Se mantuvo la PWA 100% intacta sin requerir modificaciones.
+- **📦 Componentes Modificados y Creados**:
+  - `ParkingApi/Hubs/ParkingHub.cs` [NEW]
+  - `ParkingApi.Domain/Dtos/Realtime/ConfigNotificationDto.cs` [NEW]
+  - `ParkingApi.Domain/Interfaces/Services/Realtime/IRealtimeNotificationService.cs` [NEW]
+  - `ParkingApi/Services/Realtime/RealtimeNotificationService.cs` [NEW]
+  - `ParkingApi/Controllers/BranchesController.cs`
+  - `ParkingApi/Controllers/VehicleRatesController.cs`
+  - `ParkingApi/Controllers/AgreementsController.cs`
+  - `ParkingApi/Controllers/VehicleIncidentsController.cs`
+  - `ParkingApi/Controllers/ResolutionsController.cs`
+  - `ParkingApi/Controllers/PaymentMethodController.cs`
+  - `ParkingApi/Program.cs`
+  - `Parking/Parking.csproj`
+  - `Parking/Models/ApiModels/ConfigNotificationDto.cs` [NEW]
+  - `Parking/Services/Contracts/ISignalRClientService.cs` [NEW]
+  - `Parking/Services/Implementations/SignalRClientService.cs` [NEW]
+  - `Parking/Views/SyncRequiredDialog.xaml` [NEW]
+  - `Parking/Views/SyncRequiredDialog.xaml.cs` [NEW]
+  - `Parking/Services/Contracts/IDialogService.cs`
+  - `Parking/Services/Implementations/DialogService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/App.xaml.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"esto conectalo alas diferetntes resoluciones que tenga creada y se hayan usado desde el wpf cuando elijen una resolucion para dar salida a un vehiculo , recuerda no tocar aun wpf"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Backend y Base de Datos (`ParkingApi`)**:
+     - **Modelo `ParkingTicket`**: Incorporados campos `ResolutionId` (`Guid?`), `ResolutionName` (`string?`), `InvoiceNumber` (`string?`) e `IsElectronicInvoice` (`bool`).
+     - **Configuración EF Core y MySQL**: Mapeados en `EntityConfigurations.cs` con índices. En `Program.cs`, se ejecuta la verificación y adición automática de columnas (`ALTER TABLE ParkingTickets ADD COLUMN...`) en la base de datos MySQL al inicializar.
+     - **Métricas Analíticas (`AnalyticsService` & `FinancialSummaryDto`)**: Agregados `CountByResolution` y `RevenueByResolution` en `FinancialSummaryDto`. En `AnalyticsService.GetDailySummaryAsync`, se agrupan y totalizan los tiquetes cobrados según su resolución de facturación utilizada.
+  2. **Frontend PWA (`ParkingPwa`)**:
+     - **Contratos (`DashboardContracts.ts`)**: Añadidos campos opcionales `countByResolution` y `revenueByResolution` en `DailySummaryDto`.
+     - **Vista (`Dashboard.tsx`)**:
+       - Integrado `resolucionesService.getAllResolutions()` en la carga concurrente de `Promise.all`.
+       - Reemplazada la tarjeta estática de facturación electrónica por la tarjeta interactiva **"Distribución por Resoluciones de Facturación"**.
+       - Mapeo dinámico de `resolutionsDonutData` iterando sobre todas las resoluciones activas en la BD (ej. *FACTURA POS, FV, FVM, Factura Electrónica*), mostrando el nombre de la resolución con su prefijo, la cantidad de documentos emitidos (`X doc(s)`) y el porcentaje de emisión sobre el total del día.
+  3. **WPF**: Se mantuvo 100% intacto sin modificaciones, quedando la API y la estructura de datos preparadas para recibir la selección de resolución al momento del checkout de vehículos.
+- **📦 Componentes Modificados**:
+  - `ParkingApi/ParkingApi.Domain/Models/ParkingTicket.cs`
+  - `ParkingApi/ParkingApi.Domain/Dtos/Analytics/FinancialSummaryDto.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Data/Configurations/EntityConfigurations.cs`
+  - `ParkingApi/ParkingApi.Core/Services/Analytics/AnalyticsService.cs`
+  - `ParkingApi/ParkingApi/Program.cs`
+  - `ParkingPwa/src/features/dashboard/model/DashboardContracts.ts`
+  - `ParkingPwa/src/features/dashboard/ui/Dashboard.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+  - `oxlint src/features/dashboard/ui/Dashboard.tsx`: **0 Errores**.
+  - Servidor `ParkingApi` en ejecución en `http://localhost:5135` con esquema actualizado.
+
+
+
+### [2026-08-26 00:43:00] - [FEATURE] [API + PWA] - Módulo de Novedades, Incidencias y Bloqueo de Placas
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"en el modulo de novedades, quiero que exista un boton para argegar novedad, lacual me permitira agregar cualquier tipo de novedad, por ejemplo si tengo una placa la cual no me pago o note que roba en mi parking, me la permita bloquear para que el wpf no la pueda ingresar, de igual manera exponeel servicio api pero aun no toques el wpf"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Backend y Base de Datos (`ParkingApi`)**:
+     - **Modelo y DTOs**: Creados `VehicleIncident.cs`, `VehicleIncidentDto.cs`, `SaveVehicleIncidentDto.cs`, `PlateCheckResultDto.cs` y `ResolveIncidentDto.cs`.
+     - **Mapeo EF Core y MySQL**: Registrado en `DataContext.cs` y `EntityConfigurations.cs`. Aprovisionamiento automático de la tabla `VehicleIncidents` con índices para `PlateNumber`, `BranchId`, `IsBlocked` y `Status`.
+     - **Capa Repositorio y Servicio**: Creados `IVehicleIncidentRepository`, `VehicleIncidentRepository`, `IVehicleIncidentService`, `VehicleIncidentService` y registrados en IoC.
+     - **Controlador API**: `VehicleIncidentsController.cs` exponiendo:
+       - `GET /api/VehicleIncidents`: Listado de novedades con soporte para filtros por sede, estado y texto.
+       - `GET /api/VehicleIncidents/check-plate/{plate}`: Endpoint clave ultrarrápido para que el WPF y la PWA verifiquen en tiempo real si una placa tiene bloqueos o alertas activas al momento de registrar el ingreso.
+       - `POST /api/VehicleIncidents`: Crear novedad / bloqueo.
+       - `PUT /api/VehicleIncidents/{id}`: Editar novedad.
+       - `POST /api/VehicleIncidents/{id}/resolve`: Resolver novedad y levantar bloqueo con justificación documentada.
+       - `DELETE /api/VehicleIncidents/{id}`: Eliminar registro.
+  2. **Frontend PWA (`ParkingPwa`)**:
+     - **Servicio y Contratos**: `NovedadesContracts.ts` y `novedadesService.ts`.
+     - **Interfaz Completa (`Novedades.tsx`)**:
+       - Botón **`+ Agregar Novedad`** en la barra superior.
+       - Barra de herramientas con filtros rápidos (*Todas*, *⛔ Bloqueados*, *Activas*, *Resueltas*) y buscador en tiempo real.
+       - Tabla con badges visuales destacados de ⛔ `BLOQUEADO` en rojo para vehículos restringidos.
+       - Modal para registrar/editar novedades con switch destacado de bloqueo, selección de sede, observaciones y contacto.
+       - Modal para resolver novedades y documentar la justificación del desbloqueo.
+  3. **WPF**: Se preservó intacto sin modificaciones conforme a la instrucción.
+- **📦 Componentes Modificados y Creados**:
+  - `ParkingApi/ParkingApi.Domain/Models/VehicleIncident.cs`
+  - `ParkingApi/ParkingApi.Domain/Dtos/Incidents/VehicleIncidentDto.cs`
+  - `ParkingApi/ParkingApi.Domain/Dtos/Incidents/SaveVehicleIncidentDto.cs`
+  - `ParkingApi/ParkingApi.Domain/Dtos/Incidents/PlateCheckResultDto.cs`
+  - `ParkingApi/ParkingApi.Domain/Dtos/Incidents/ResolveIncidentDto.cs`
+  - `ParkingApi/ParkingApi.Domain/Interfaces/Repositories/Incidents/IVehicleIncidentRepository.cs`
+  - `ParkingApi/ParkingApi.Domain/Interfaces/Services/Incidents/IVehicleIncidentService.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Data/DataContext.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Data/Configurations/EntityConfigurations.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Data/Repositories/Incidents/VehicleIncidentRepository.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Extensions/RepositoryExtensions.cs`
+  - `ParkingApi/ParkingApi.Core/Services/Incidents/VehicleIncidentService.cs`
+  - `ParkingApi/ParkingApi.Core/Extensions/ServiceExtensions.cs`
+  - `ParkingApi/ParkingApi/Controllers/VehicleIncidentsController.cs`
+  - `ParkingApi/ParkingApi/Program.cs`
+  - `ParkingPwa/src/features/novedades/model/NovedadesContracts.ts`
+  - `ParkingPwa/src/features/novedades/data/novedadesService.ts`
+  - `ParkingPwa/src/features/novedades/ui/Novedades.tsx`
+  - `ParkingPwa/src/features/novedades/ui/Novedades.css`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+  - `oxlint`: **0 Errores**.
+  - Servidor API en ejecución en `http://localhost:5135` con endpoints probados exitosamente (HTTP 200/201).
+
+### [2026-08-26 00:36:00] - [UI/UX] [PWA] - Organización de Encabezado en Módulo de Novedades (Remoción de Badge y Alineación)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Lo  amarilo quitalo, lo rojo organizalo mejor"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Ajuste en `Novedades.tsx` y `Novedades.css`**:
+     - Se retiró el badge de sede redundante señalado en amarillo al lado del título.
+     - Se reorganizó el encabezado `.novedades-header` con `flex-direction: column` y tipografía clara para que la descripción se sitúe ordenadamente debajo del título en lugar de quedar desalineada hacia la derecha.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/novedades/ui/Novedades.tsx`
+  - `ParkingPwa/src/features/novedades/ui/Novedades.css`
+  - `HISTORIAL_CAMBIOS.md`
+
+
+
+### [2026-08-26 00:35:00] - [UI/UX] [PWA] - Remoción de Punto de Color Redundante en Leyenda de Métodos de Pago
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"en el dashboard , en Distribución por Métodos de Pago no quiero que muestre [captura señalando el punto verde junto al emoji]"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Ajuste en `Dashboard.tsx`**:
+     - Se eliminó el elemento `<div className="pie-legend-dot" style={{ background: item.color }} />` de la leyenda de la tarjeta *"Distribución por Métodos de Pago"*.
+     - Ahora la leyenda presenta directamente el ícono/emoji asignado seguido del nombre del medio de pago (ej. 🎟️ Nequi), logrando una apariencia más limpia y sin elementos duplicados.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/dashboard/ui/Dashboard.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Linter PWA: 0 Errores.
+  - Hot Module Replacement (HMR) activo en Vite Dev Server.
+
+
+
+### [2026-08-26 00:32:00] - [FEATURE] [API + PWA] - Módulo de Resoluciones de Facturación (DIAN / POS / Factura Electrónica)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"En configuracion crea otra opcion que se llame resolucion y esta que tenga estas opciones, adicional crea una api que es la expondra toda info a mi wpf, pero aun no toques nada delwpf"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Backend y Base de Datos (`ParkingApi`)**:
+     - **Modelo y DTOs**: Creados `BillingResolution.cs`, `BillingResolutionDto.cs`, `SaveBillingResolutionDto.cs`.
+     - **Mapeo EF Core**: Integrado en `DataContext.cs` y `EntityConfigurations.cs` (`BillingResolutions`).
+     - **Inicialización de Esquema**: `Program.cs` aprovisiona automáticamente la tabla `BillingResolutions` con llaves e índices.
+     - **Capa Repositorio y Servicio**: Creados `IBillingResolutionRepository`, `BillingResolutionRepository`, `IBillingResolutionService`, `BillingResolutionService` y registrados en IoC.
+     - **Controlador API**: `ResolutionsController.cs` exponiendo `GET /api/Resolutions`, `GET /api/Resolutions/active`, `GET /api/Resolutions/by-branch/{branchId}`, `POST`, `PUT`, `DELETE`.
+  2. **Frontend PWA (`ParkingPwa`)**:
+     - **Contratos y Servicio**: `ResolucionesContracts.ts` y `resolucionesService.ts`.
+     - **Vista y Tabla de Resoluciones**: Creado `ResolucionesTab.tsx` replicando la interfaz solicitada:
+       - Buscador en tiempo real por nombre, prefijo o número de resolución.
+       - Tabla con columnas: *Nombre Resolución, Tipo de Documento, Prefijo, Número, Desde, Hasta, Fecha Desde, Fecha Hasta, Estado, Acciones*.
+       - Modal para Crear y Editar con selector de tipos de documentos comunes o texto personalizado, rangos numéricos, fechas de vigencia y clave técnica DIAN.
+     - **Integración de Menú**: Actualizado `Settings.tsx` con la nueva pestaña **Resoluciones** (`FileCheck`).
+  3. **WPF**: Se preservó intacto sin modificaciones conforme a la instrucción.
+- **📦 Componentes Modificados y Creados**:
+  - `ParkingApi/ParkingApi.Domain/Models/BillingResolution.cs`
+  - `ParkingApi/ParkingApi.Domain/Dtos/Billing/BillingResolutionDto.cs`
+  - `ParkingApi/ParkingApi.Domain/Dtos/Billing/SaveBillingResolutionDto.cs`
+  - `ParkingApi/ParkingApi.Domain/Interfaces/Repositories/Billing/IBillingResolutionRepository.cs`
+  - `ParkingApi/ParkingApi.Domain/Interfaces/Services/Billing/IBillingResolutionService.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Data/DataContext.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Data/Configurations/EntityConfigurations.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Data/Repositories/Billing/BillingResolutionRepository.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Extensions/RepositoryExtensions.cs`
+  - `ParkingApi/ParkingApi.Core/Services/Billing/BillingResolutionService.cs`
+  - `ParkingApi/ParkingApi.Core/Extensions/ServiceExtensions.cs`
+  - `ParkingApi/ParkingApi/Controllers/ResolutionsController.cs`
+  - `ParkingApi/ParkingApi/Program.cs`
+  - `ParkingPwa/src/features/settings/model/ResolucionesContracts.ts`
+  - `ParkingPwa/src/features/settings/data/resolucionesService.ts`
+  - `ParkingPwa/src/features/settings/ui/ResolucionesTab.tsx`
+  - `ParkingPwa/src/features/settings/ui/Settings.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+  - `oxlint`: **0 Errores**.
+  - Servidor API en ejecución en `http://localhost:5135` con endpoints probados exitosamente (HTTP 200/201).
+
+
+
+### [2026-08-26 00:18:00] - [FEATURE] [PWA] - Conexión Dinámica de Medios de Pago en Dashboard (BD + API)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Conecta de la dashboard los medios de pago que se encuentran creados en la Bd y api"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Integración con `mediosPagoService`**:
+     - Se vinculó el llamado a `mediosPagoService.getPaymentMethods()` dentro de `Dashboard.tsx` (`Promise.all`), cargando en tiempo real todos los medios de pago activos parametrizados en la base de datos MySQL (`PaymentMethod`).
+  2. **Renderizado Dinámico de Gráficas y Listas**:
+     - **Gráfica de Torta (Donut Chart)**: Ahora se genera dinámicamente con la lista real de medios de pago de la base de datos (con sus respectivos íconos/emojis, nombres y colores corporativos asignados).
+     - **Leyenda y Desglose Diario**: Muestra cada medio de pago registrado con su ícono, total recaudado y porcentaje sobre el total de ventas.
+     - **Mapeo de Recaudación**: Vinculado con el desglose `revenueByPaymentMethod` de la API financiera.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/dashboard/ui/Dashboard.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Linter PWA: 0 Errores.
+  - Hot Module Replacement (HMR) activo en Vite Dev Server.
+
+
+
+### [2026-08-26 00:13:00] - [UI/UX] [PWA] - Ajuste de Colores en Dashboard (Botón Actualizado Gris Oscuro y Filtros Activos en Negro)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"el boton de actualizado dejame en el gris oscuro y los botones de Punto / Parqueadero seleccionado dejamelos en negros"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Ajuste en `Dashboard.css`**:
+     - `.btn-glass` (Botón "Actualizado"): Configurado en gris oscuro ejecutivo (`#1e293b`, borde `#334155`, hover `#0f172a`).
+     - `.slicer-pill.active` (Botones de Punto / Parqueadero y Período seleccionados): Configurados en negro sólido (`#0f172a` / borde `#000000`) con texto en blanco para máximo contraste y distinción.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/dashboard/ui/Dashboard.css`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Linter PWA: 0 Errores.
+  - Hot Module Replacement (HMR) activo en Vite Dev Server.
+
+
+
+### [2026-08-26 00:08:00] - [UI/UX] [PWA] - Realce y Contraste del Banner Ejecutivo en Dashboard (Fondo Corporativo y Letra Blanca en Negrita)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"En la dashboard, ese cuadro puedes ponerle letra blanca ngrilla para que resalte"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Rediseño del Hero Header en `Dashboard.css` y `Dashboard.tsx`**:
+     - Se reemplazó el fondo grisáceo por un degradado de alta gama con el color corporativo oficial (`linear-gradient(135deg, #07665e 0%, #054e48 100%)`).
+     - Se configuró la tipografía del título y subtítulo en **blanco puro (`#ffffff`) con peso en negrita (`font-weight: 700 / 800`)** y sutil sombra para máximo impacto y legibilidad ejecutiva.
+     - Se actualizaron los botones de acción (`.btn-glass`) y el badge de estado (`.dashboard-status-badge`) con estilo glassmorphism translúcido y texto blanco en negrita.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/dashboard/ui/Dashboard.css`
+  - `ParkingPwa/src/features/dashboard/ui/Dashboard.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Linter PWA: 0 Errores.
+  - Hot Module Replacement (HMR) activo en Vite Dev Server.
+
+
+
+### [2026-08-26 00:05:00] - [UI/UX] [PWA] - Remoción Global de Textos y Sufijos 'COP' en Toda la Aplicación Web
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"No me pongas COP en ninguna parte del pwa"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Limpieza Exhaustiva en Toda la PWA**:
+     - Se auditaron y eliminaron todas las ocurrencias del sufijo/texto `"COP"` en la interfaz, etiquetas de formulario, títulos, tablas y exportaciones a Excel.
+     - **Componentes ajustados**:
+       - `VehiculosConfigTab.tsx`: Tablas y etiquetas de tarifas ($).
+       - `TarifasTab.tsx`: Valores de hora, minuto y día ($).
+       - `ConveniosTab.tsx`: Textos de descuentos y compra mínima ($).
+       - `Reports.tsx`: Tarjetas de KPI, columnas de tiquetes y columnas de exportación a Excel.
+       - `Dashboard.tsx`: Tarjetas métricas de recaudación, ticket promedio, convenios y desglose de medios de pago.
+       - `Caja.tsx`: Tarjetas de ingresos/esperado en caja, tabla de turnos, modales de apertura/cierre y exportación a Excel.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/settings/ui/VehiculosConfigTab.tsx`
+  - `ParkingPwa/src/features/settings/ui/TarifasTab.tsx`
+  - `ParkingPwa/src/features/settings/ui/ConveniosTab.tsx`
+  - `ParkingPwa/src/features/reports/ui/Reports.tsx`
+  - `ParkingPwa/src/features/dashboard/ui/Dashboard.tsx`
+  - `ParkingPwa/src/features/caja/ui/Caja.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Búsqueda global de `COP` en `ParkingPwa/src` ➡️ **0 coincidencias**.
+  - Linter PWA: 0 Errores.
+  - Hot Module Replacement (HMR) activo en Vite Dev Server.
+
+
+
+### [2026-08-26 00:02:00] - [UI/UX] [PWA] - Separación Limpia de Columnas en Medios de Pago (Nombre Puro y Columna Ícono Exclusiva)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"no quiero que el nombre me muestre con el icono, adicional no quiero que icono emoji, si no solo icono y me muestere el icono"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Ajuste de Columnas en `MediosPagoTab.tsx`**:
+     - Columna `MEDIO DE PAGO`: Muestra únicamente el nombre textual limpio del medio de pago (sin duplicar el avatar/ícono al lado).
+     - Columna `ÍCONO`: Encabezado renombrado a `ÍCONO` con visualización centrada y limpia del ícono seleccionado.
+     - Modal: Encabezado actualizado a *"Selecciona un Ícono Representativo"*.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/settings/ui/MediosPagoTab.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Linter PWA: 0 Errores.
+  - Hot Module Replacement (HMR) activo en Vite Dev Server.
+
+
+
+### [2026-08-26 00:00:00] - [FIX] [API] [DB] - Resolución de Error 500 en Creación de Convenios (Aprovisionamiento de Columna ImageUrl en MySQL)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"para crear un convenio me sale http://localhost:5135/api/Agreements error 500, porqu es"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Causa Raíz Identificada**:
+     - El log de la API arrojaba la excepción `MySqlException: Unknown column 'c.ImageUrl' in 'field list'` y `Unknown column 'ImageUrl' in 'field list'` al ejecutar las sentencias `INSERT/SELECT` contra la tabla `CommercialAgreements` en la base de datos MySQL remota (`db_acd7d6_parking`).
+  2. **Solución Implementada (`Program.cs`)**:
+     - Se implementó una rutina de aprovisionamiento seguro de esquema al iniciar la API (`information_schema.COLUMNS` check + `ALTER TABLE CommercialAgreements ADD COLUMN ImageUrl LONGTEXT NULL`).
+     - Se reinició el servicio `ParkingApi` en el puerto `5135` confirmando la creación exitosa de la columna y verificando la respuesta HTTP 200 OK en `/api/Agreements`.
+- **📦 Componentes Modificados**:
+  - `ParkingApi/ParkingApi/Program.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación API: `dotnet build ParkingApi.slnx` ➡️ **0 Errores**.
+  - Verificación Endpoint: `GET /api/Agreements` ➡️ **200 OK**.
+  - Servicio API activo en background en `http://localhost:5135`.
+
+
+
+### [2026-08-25 23:58:00] - [UI/UX] [PWA] - Simplificación del Modal de Medios de Pago (Selector de Emojis Limpio y Exclusivo)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"eliminame esto, me gusta que hayan algunos emojjs y esos sean los seleccionables"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Depuración de UI en `MediosPagoTab.tsx`**:
+     - Se eliminó el campo de texto libre redundant (`<input placeholder="Pega un emoji o escribe un texto...">`).
+     - Se mantuvo exclusivamente la cuadrícula interactiva con los emojis temáticos seleccionables (💵, 💳, 📱, 📲, 🏦, 💰, 🪙, 👛, 🧾, 💸, 🏧, 🎟️, 🏷️, ⚡, 💎, 💼) con resaltado del seleccionado.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/settings/ui/MediosPagoTab.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Linter PWA: 0 Errores.
+  - Hot Module Replacement (HMR) activo en Vite Dev Server.
+
+
+
+### [2026-08-25 23:55:00] - [FEAT] [API] [PWA] [WPF] - Carga, Almacenamiento y Visualización de Imágenes/Logos en Convenios Comerciales
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Para los convenios, quiero que tenga la opcion de cargarle una imagen al crear los convenios"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Frontend PWA (`ConveniosTab.tsx` & `ConveniosContracts.ts`)**:
+     - Se implementó una zona interactiva para subir o arrastrar imágenes (PNG, JPG, WebP, SVG) con previsualización en vivo, conversión automática a DataURL/Base64 (`FileReader`) y controles para cambiar o remover la imagen.
+     - Se actualizó la tabla principal para renderizar la miniatura/avatar del logo del convenio.
+     - Se extendieron `CommercialAgreementDto` y `SaveCommercialAgreementDto` con la propiedad `imageUrl`.
+  2. **Backend API (`ParkingApi`)**:
+     - Se añadió `ImageUrl` a `CommercialAgreement.cs` en `ParkingApi.Domain` y se configuró como columna `longtext` en `EntityConfigurations.cs`.
+     - Se actualizó el repositorio `CommercialAgreementRepository.cs` para persistir `ImageUrl` en `UpdateAsync` y `AddAsync`.
+  3. **Escritorio WPF (`ParkingWpf`)**:
+     - Se extendió la entidad `CommercialAgreement.cs` con la propiedad `ImageUrl` para asegurar la sincronización multi-plataforma.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/settings/ui/ConveniosTab.tsx`
+  - `ParkingPwa/src/features/settings/model/ConveniosContracts.ts`
+  - `ParkingApi/ParkingApi.Domain/Models/CommercialAgreement.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Data/Configurations/EntityConfigurations.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Data/Repositories/Agreements/CommercialAgreementRepository.cs`
+  - `ParkingWpf/Parking/Entities/CommercialAgreement.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación API: `dotnet build ParkingApi.slnx` ➡️ **0 Errores**.
+  - Compilación WPF: `dotnet build Parking.csproj` ➡️ **0 Errores**.
+  - Linter PWA: 0 Errores.
+  - Hot Module Replacement (HMR) activo en Vite Dev Server.
+
+
+
+### [2026-08-25 23:45:00] - [FEAT] [UI/UX] [PWA] - Selector Interactivo de Emojis y Campos Abiertos para Medios de Pago
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"En la creacion de medio de pago no quiero que la categoria tenga ya una lista cargada, eso sera que el usuario la ingrese, y para la imagen que haya una seleccion de emojis"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Selector de Emojis y Entrada Libre (`MediosPagoTab.tsx`)**:
+     - Se eliminó el menú `<select>` de categorías predefinidas y se transformó en un selector visual interactivo en cuadrícula con emojis temáticos financieros y de pago (💵, 💳, 📱, 📲, 🏦, 💰, 🪙, 👛, 🧾, 💸, 🏧, 🎟️, 🏷️, ⚡, 💎, 💼).
+     - Se agregó soporte para ingresar o pegar emojis/textos personalizados directamente.
+     - Se actualizó `getIconComponent` para soportar renderizado directo de caracteres Unicode y emojis en tablas y modales.
+  2. **Estandarización de Botones de Modal**:
+     - Se actualizó el botón Cancelar para emplear la clase estándar `btn-secondary`.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/settings/ui/MediosPagoTab.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Linter PWA: 0 Errores.
+  - Hot Module Replacement (HMR) activo en Vite Dev Server.
+
+
+
+### [2026-08-25 23:40:00] - [FIX] [UI/UX] [PWA] - Normalización y Corrección de Estilos en Botones de Cancelar en Modales de Roles y Permisos
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"el boton de cancelar de configuracion de permisos y el de crear rol no se ve con el estilo correcto"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Alineación de Estilos CSS (`Settings.css` & `index.css`)**:
+     - Se unificó el selector `.btn-cancel` vinculándolo a las definiciones visuales de `.btn-secondary` (fondo `#f1f5f9`, borde `#e2e8f0`, radio de 10px, tipografía Inter con peso 600, sombra suave y transiciones de hover/active).
+  2. **Refactorización en `RolesTab.tsx`**:
+     - Se actualizaron los botones Cancelar tanto del modal de **Crear/Editar Rol** como del modal de **Configurar Permisos** para emplear la clase estándar `btn-secondary`.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/settings/ui/RolesTab.tsx`
+  - `ParkingPwa/src/features/settings/ui/Settings.css`
+  - `ParkingPwa/src/index.css`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Linter PWA: 0 Errores.
+  - Hot Module Replacement (HMR) activo en Vite Dev Server.
+
+
+
+### [2026-08-25 23:35:00] - [FEAT] [UI/UX] [PWA] - Separación y Control Granular de Permisos por Plataforma (Escritorio WPF & Web PWA) con Protección Total para Administradores
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"perfecto, existe la manera que desde esa configuracion de permisos, se pueda controlar los permisos a los modulos de la web (pwa) y escritorio (wpf), los que ya existen creo que son del escritorio, sin embargo desarroolla y implementa los de la web y alli en esa configuracion se ven separados, deja que los administradores cuenten con todos los permisos de web y escritorio y los demas ahi si sean seleccionable"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Separación de Módulos por Plataforma en `RolesTab.tsx`**:
+     - Se implementó un selector de pestañas para **🖥️ Módulos Escritorio (WPF)** y **🌐 Módulos Web (PWA)** dentro del modal de configuración de permisos por rol.
+     - Clasificación inteligente y exhaustiva de módulos y acciones según su dominio operativo (WPF Terminal: CheckIn, CheckOut, Turnos/Caja, Patio, Sistema; PWA Cloud: Dashboard, Sedes, Tarifas, Medios de Pago, Convenios, Mensualidades, Usuarios, Roles y Permisos).
+     - Contadores de permisos en tiempo real (`X / Y activos`) individuales por plataforma y global.
+     - Botones de acción rápida: *"Marcar Plataforma"*, *"Desmarcar Plataforma"*, *"Marcar Todo Global"* y *"Limpiar Todo"*.
+     - Cada pestaña mantiene el comportamiento de acordeón exclusivo (primer módulo abierto inicialmente y cierre automático del anterior al expandir uno nuevo).
+  2. **Protección Total y Automática para Administradores**:
+     - El rol Administrador (ID 1 o nombre Administrador/Admin) cuenta con el 100% de los permisos (Web + Escritorio) protegidos contra desconfiguración o bloqueo accidental, mostrando una insignia dorada de "Full Access (WPF + PWA)".
+     - Para los demás roles (Operadores, Supervisores, etc.), todas las casillas de Escritorio y Web son 100% seleccionables y se persisten en base de datos mediante `POST /api/RoleActions/AssignRolePermissions`.
+  3. **Resolución Bidireccional de Permisos y Aliases en `authService.ts`**:
+     - Se fortaleció `authService.hasPermission()` para resolver de forma bidireccional tanto los slugs estándar de la API (`branches.view`, `users.view`, `rates.view`, `agreements.view`, `payment_methods.view`, etc.) como los nombres de módulos de UI (`settings.*`, `dashboard.*`).
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/settings/ui/RolesTab.tsx`
+  - `ParkingPwa/src/features/auth/data/authService.ts`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Linter PWA: 0 Errores.
+  - Compilación WPF: `dotnet build` ➡️ 0 Errores.
+  - Hot Module Replacement (HMR) activo en Vite Dev Server.
+
+
+
+### [2026-08-25 23:15:00] - [UI/UX] [PWA] - Acordeón Exclusivo de Módulos en Matriz de Permisos de Roles (Apertura Única Inicial y Auto-Cierre)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayudame con organizar la configuracion de permisos deroles, ya que quisiera que filtrs de los modulos se ven desplegados al abrir, pero quisiera que solo se vea el primero desplegado y los demas no, que si desplego otro, se cierre el que este abierto, en este caso es el 1ro"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Refactorización de Estado de Expansión en PWA (`RolesTab.tsx`)**:
+     - Se transformó el estado `expandedModules: Record<number, boolean>` en `expandedModuleId: number | null`, centralizando el identificador del módulo actualmente expandido.
+     - Al abrir el modal de permisos (`handleOpenPermissionsModal`), se identifica el ID del primer módulo (`allModules[0]?.id`) y se establece como el único abierto por defecto.
+     - En `toggleModuleAccordion`, se implementó la alternancia exclusiva de tipo acordeón: si el usuario hace clic sobre un módulo cerrado, se abre este y se cierra automáticamente el anterior; si hace clic sobre el módulo abierto, se colapsa.
+     - La visualización condicional respeta el término de búsqueda activo para permitir visualización global cuando se busca un permiso específico.
+- **📦 Componentes Modificados**:
+  - `ParkingPwa/src/features/settings/ui/RolesTab.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Linter: 0 Errores.
+  - Hot Module Replacement (HMR) activo en Vite Dev Server.
+
+
+
+### [2026-08-25 23:55:00] - [FEAT] [FIX] [API] [PWA] - Auditoría y Conexión Total de Convenios y Comercios Aliados (CRUD 100% Real, Model Binding Fix y Soporte Dual)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Revisa los convenios, que se encuentre correactmente conectado a la api, si las opciones que muestran alli son las correctas"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Auditoría y Corrección en Backend .NET 8 (ParkingApi)**:
+     - En `CommercialAgreement.cs`, la propiedad de navegación `Store` estaba tipada como no-anulable obligatoria (`= null!`), lo que provocaba que ASP.NET Core model validation rechazara (`400 Bad Request`) las peticiones de creación y actualización que envían solo el `StoreId`. Se ajustó como `Store?` nullable.
+     - En `Store.cs`, se ajustó `TaxId` como nullable (`string? TaxId`) para compatibilidad fluida con comercios sin NIT obligatorio.
+     - En `CommercialAgreementRepository.cs` y `StoreRepository.cs`, se reemplazó el método directo `_context.Update()` por búsqueda previa y actualización puntual de propiedades sobre la entidad rastreada, eliminando errores de concurrencia y duplicidad de llaves.
+     - Se agregaron los endpoints de eliminación/inactivación `[HttpDelete("{id}")]` en `AgreementsController.cs` y `StoresController.cs`.
+  2. **Actualización Integral del Módulo en PWA (ParkingPwa)**:
+     - En `ConveniosContracts.ts` y `conveniosService.ts`, se definieron y conectaron las operaciones completas de convenios y comercios (`getAllAgreements`, `getStores`, `createAgreement`, `updateAgreement`, `deactivateAgreement`, `createStore`, `updateStore`, `deactivateStore`).
+     - En `ConveniosTab.tsx`, se implementó interfaz de sub-pestañas para gestión dual: **📄 Convenios** y **🏢 Comercios Aliados**.
+     - En Convenios: soporte para seleccionar modalidad de beneficio entre **Porcentaje (%)** y **Monto Fijo ($ COP)**, compra mínima en local ($ COP), límite de horas cubiertas (o ilimitado) y estado.
+     - En Comercios: modal para registrar/editar razones sociales, NIT y teléfonos de contacto, con enlace rápido "+ Crear Nuevo Comercio" desde el formulario de convenios.
+- **📦 Componentes Modificados**:
+  - `ParkingApi.Domain/Models/CommercialAgreement.cs`
+  - `ParkingApi.Domain/Models/Store.cs`
+  - `ParkingApi.Infrastructure/Data/Repositories/Agreements/CommercialAgreementRepository.cs`
+  - `ParkingApi.Infrastructure/Data/Repositories/Stores/StoreRepository.cs`
+  - `ParkingApi/Controllers/AgreementsController.cs`
+  - `ParkingApi/Controllers/StoresController.cs`
+  - `ParkingPwa/src/features/settings/model/ConveniosContracts.ts`
+  - `ParkingPwa/src/features/settings/data/conveniosService.ts`
+  - `ParkingPwa/src/features/settings/ui/ConveniosTab.tsx`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Pruebas REST en backend: Creación, actualización y borrado lógico verificados con HTTP 200.
+  - `npm run build` en `ParkingPwa`: **0 Errores** (Vite build exitoso).
+  - API Central (.NET 8): En ejecución y escuchando en `http://localhost:5135`.
+
 ### [2026-08-25 21:45:00] - [FIX] [PERF] [SYNC] - Protección contra Solapamiento de Sincronización Rápida en Background (15s) y Reutilización de Conexiones
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:

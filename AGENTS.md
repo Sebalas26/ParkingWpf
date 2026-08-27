@@ -42,7 +42,17 @@ Este documento define las **Reglas de Oro y Estándares Obligatorios** para cual
 
 ---
 
-## 📝 4. PROTOCOLO ESTRICTO DE REGISTRO Y CONTEXTO MULTI-PC
+## 🔒 4. PROHIBICIÓN ESTRICTA DE ROLES O PERMISOS QUEMADOS (HARDCODED)
+> [!CAUTION]
+> **PROHIBICIÓN ESTRICTA**: Jamás asumir, validar o asignar permisos mediante comparación de texto de nombres de rol (ej: `roleName.Contains("operador")`, `roleName.Contains("cajero")`, listas estáticas `OperatorPermissions`).
+
+1. **RBAC 100% Basado en Datos**:
+   - La evaluación de permisos en el sistema debe provenir exclusivamente de la matriz relacional de la base de datos (`RoleActions` / `RolePermissions` / `Action.Slug`).
+   - El administrador del sistema tiene libertad absoluta de crear roles con cualquier nombre (*"Cajera Noche"*, *"Auxiliar Patio"*, *"Operario Caja"*, etc.). El código debe evaluar únicamente los slugs de permisos asignados a ese `RoleId`, sin importar el nombre del rol.
+
+---
+
+## 📝 5. PROTOCOLO ESTRICTO DE REGISTRO Y CONTEXTO MULTI-PC
 > [!IMPORTANT]
 > **PRESERVACIÓN DE CONTEXTO ENTRE COMPUTADORES**: Como el desarrollo se realiza alternando entre diferentes estaciones de trabajo (PCs), este protocolo garantiza que la IA nunca pierda el hilo técnico ni el contexto acumulado.
 

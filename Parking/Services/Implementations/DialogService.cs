@@ -81,5 +81,13 @@ public class DialogService : IDialogService
             return SyncProgressDialog.ShowSyncAsync(Application.Current.MainWindow, syncEngine);
         }).Task.Unwrap();
     }
+
+    public Task<bool> ShowSyncRequiredModalAsync(Models.ApiModels.ConfigNotificationDto notification, ISyncEngineService syncEngine)
+    {
+        return Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            return SyncRequiredDialog.ShowDialogAsync(Application.Current.MainWindow, notification, syncEngine);
+        }).Task.Unwrap();
+    }
 }
 
