@@ -117,7 +117,36 @@ public class ParkingApiClient : IApiClientService
             {
                 return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions, cts.Token);
             }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            {
+                try
+                {
+                    var errorObj = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cts.Token);
+                    if (errorObj.TryGetProperty("message", out var msgProp))
+                    {
+                        var msg = msgProp.GetString();
+                        if (!string.IsNullOrWhiteSpace(msg))
+                        {
+                            throw new InvalidOperationException(msg);
+                        }
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    throw;
+                }
+                catch
+                {
+                    // Fallback
+                }
+            }
+
             return null;
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
         }
         catch
         {
@@ -387,6 +416,30 @@ public class ParkingApiClient : IApiClientService
         catch
         {
             return new List<string>();
+        }
+    }
+
+    public async Task<PlateCheckResultDto?> CheckPlateAsync(string plateNumber, int? branchId = null)
+    {
+        if (string.IsNullOrWhiteSpace(plateNumber)) return null;
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        try
+        {
+            var url = branchId.HasValue
+                ? $"{BaseUrl}/api/VehicleIncidents/check-plate/{Uri.EscapeDataString(plateNumber.Trim().ToUpperInvariant())}?branchId={branchId.Value}"
+                : $"{BaseUrl}/api/VehicleIncidents/check-plate/{Uri.EscapeDataString(plateNumber.Trim().ToUpperInvariant())}";
+
+            var response = await _httpClient.GetAsync(url, cts.Token);
+            CheckUnauthorized(response);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<PlateCheckResultDto>(JsonOptions, cts.Token);
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
         }
     }
 }

@@ -54,8 +54,9 @@ public class SyncEngineService : ISyncEngineService
     public async Task<SyncResultReport> PerformFullSyncWithProgressAsync(IProgress<SyncProgressReport> progress, CancellationToken ct = default)
     {
         var result = new SyncResultReport();
-
-        // 1. Paso 1: Comprobar Conectividad (10%)
+        try
+        {
+            // 1. Paso 1: Comprobar Conectividad (10%)
         progress.Report(new SyncProgressReport
         {
             Percentage = 10,
@@ -345,32 +346,40 @@ public class SyncEngineService : ISyncEngineService
         int ratesCount = 0;
         if (bootstrap.Rates != null)
         {
-            var incomingVehicleTypes = bootstrap.Rates.Select(r => r.GetVehicleType()).ToHashSet();
+            var incomingRateIds = bootstrap.Rates.Select(r => r.RateId).ToHashSet();
             var localRates = await db.VehicleRates.ToListAsync(ct);
+
+            // 1. Eliminar tarifas obsoletas que ya no existan en el backend
             var ratesToDelete = currentBranchId.HasValue
-                ? localRates.Where(r => !incomingVehicleTypes.Contains(r.VehicleType) || r.BranchId != currentBranchId.Value).ToList()
-                : localRates.Where(r => !incomingVehicleTypes.Contains(r.VehicleType)).ToList();
+                ? localRates.Where(r => r.BranchId == currentBranchId.Value && !incomingRateIds.Contains(r.RateId)).ToList()
+                : localRates.Where(r => !incomingRateIds.Contains(r.RateId)).ToList();
 
             if (ratesToDelete.Count > 0)
             {
                 db.VehicleRates.RemoveRange(ratesToDelete);
+                await db.SaveChangesAsync(ct);
+                localRates = await db.VehicleRates.ToListAsync(ct);
             }
 
+            // 2. Upsert por clave primaria RateId
             foreach (var rate in bootstrap.Rates)
             {
                 var vehicleType = rate.GetVehicleType();
                 var targetBranchId = rate.BranchId ?? currentBranchId;
-                var existing = localRates.FirstOrDefault(r => r.VehicleType == vehicleType && r.BranchId == targetBranchId);
+                var existing = localRates.FirstOrDefault(r => r.RateId == rate.RateId);
+
                 if (existing != null)
                 {
+                    existing.BranchId = targetBranchId;
+                    existing.VehicleType = vehicleType;
+                    existing.DisplayName = rate.DisplayName;
                     existing.HourRate = rate.HourRate;
                     existing.MinuteRate = rate.MinuteRate;
                     existing.FullDayRate = rate.FullDayRate;
                     existing.GracePeriodMinutes = rate.GracePeriodMinutes;
-                    existing.DisplayName = rate.DisplayName;
                     existing.IconKey = string.IsNullOrWhiteSpace(rate.IconKey) ? "IconCar" : rate.IconKey;
                     existing.IsActive = rate.IsActive;
-                    existing.BranchId = targetBranchId;
+                    existing.UpdatedAtUtc = rate.UpdatedAtUtc ?? DateTime.UtcNow;
                 }
                 else
                 {
@@ -391,6 +400,7 @@ public class SyncEngineService : ISyncEngineService
                 }
                 ratesCount++;
             }
+
             await db.SaveChangesAsync(ct);
         }
         result.SyncedRatesCount = ratesCount;
@@ -620,7 +630,98 @@ public class SyncEngineService : ISyncEngineService
             await db.SaveChangesAsync(ct);
         }
         result.SyncedShiftsCount = shiftsCount;
-        await Task.Delay(100, ct);
+        await Task.Delay(50, ct);
+
+        // 8.5. Sincronizar Novedades y Bloqueos de Placas
+        int incidentsCount = 0;
+        if (bootstrap.Incidents != null)
+        {
+            foreach (var inc in bootstrap.Incidents)
+            {
+                var existingInc = await db.VehicleIncidents
+                    .Include(i => i.IncidentBranches)
+                    .FirstOrDefaultAsync(i => i.IncidentId == inc.IncidentId, ct);
+
+                if (existingInc != null)
+                {
+                    existingInc.BranchId = inc.BranchId;
+                    existingInc.PlateNumber = inc.PlateNumber.Trim().ToUpperInvariant();
+                    existingInc.IncidentType = inc.IncidentType;
+                    existingInc.Description = inc.Description;
+                    existingInc.IsBlocked = inc.IsBlocked;
+                    existingInc.IsGlobal = inc.IsGlobal;
+                    existingInc.Status = inc.Status;
+                    existingInc.ReportedBy = inc.ReportedBy;
+                    existingInc.ResolvedBy = inc.ResolvedBy;
+                    existingInc.ResolvedNotes = inc.ResolvedNotes;
+                    existingInc.ResolvedAtUtc = inc.ResolvedAtUtc;
+
+                    existingInc.IncidentBranches.Clear();
+                    if (inc.BranchIds != null && inc.BranchIds.Count > 0)
+                    {
+                        foreach (var bId in inc.BranchIds)
+                        {
+                            existingInc.IncidentBranches.Add(new VehicleIncidentBranch
+                            {
+                                IncidentId = existingInc.IncidentId,
+                                BranchId = bId
+                            });
+                        }
+                    }
+                    else if (inc.BranchId.HasValue)
+                    {
+                        existingInc.IncidentBranches.Add(new VehicleIncidentBranch
+                        {
+                            IncidentId = existingInc.IncidentId,
+                            BranchId = inc.BranchId.Value
+                        });
+                    }
+                }
+                else
+                {
+                    var newInc = new VehicleIncident
+                    {
+                        IncidentId = inc.IncidentId,
+                        BranchId = inc.BranchId,
+                        PlateNumber = inc.PlateNumber.Trim().ToUpperInvariant(),
+                        IncidentType = inc.IncidentType,
+                        Description = inc.Description,
+                        IsBlocked = inc.IsBlocked,
+                        IsGlobal = inc.IsGlobal,
+                        Status = inc.Status,
+                        ReportedBy = inc.ReportedBy,
+                        ResolvedBy = inc.ResolvedBy,
+                        ResolvedNotes = inc.ResolvedNotes,
+                        CreatedAtUtc = inc.CreatedAtUtc,
+                        ResolvedAtUtc = inc.ResolvedAtUtc
+                    };
+
+                    if (inc.BranchIds != null && inc.BranchIds.Count > 0)
+                    {
+                        foreach (var bId in inc.BranchIds)
+                        {
+                            newInc.IncidentBranches.Add(new VehicleIncidentBranch
+                            {
+                                IncidentId = newInc.IncidentId,
+                                BranchId = bId
+                            });
+                        }
+                    }
+                    else if (inc.BranchId.HasValue)
+                    {
+                        newInc.IncidentBranches.Add(new VehicleIncidentBranch
+                        {
+                            IncidentId = newInc.IncidentId,
+                            BranchId = inc.BranchId.Value
+                        });
+                    }
+
+                    db.VehicleIncidents.Add(newInc);
+                }
+                incidentsCount++;
+            }
+            await db.SaveChangesAsync(ct);
+        }
 
         // 9. Paso 8: Sincronizar Tiquetes y Consolidar (98%)
         progress.Report(new SyncProgressReport
@@ -642,9 +743,11 @@ public class SyncEngineService : ISyncEngineService
             var status = ticket.GetTicketStatus();
             var paymentMethod = ticket.GetPaymentMethod();
 
+            var targetBranchId = ticket.BranchId ?? currentBranchId;
             var existing = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == ticket.TicketId || t.TicketNumber == ticket.TicketNumber, ct);
             if (existing != null)
             {
+                existing.BranchId = targetBranchId;
                 existing.TicketNumber = ticket.TicketNumber;
                 existing.PlateNumber = ticket.PlateNumber;
                 existing.VehicleType = vehicleType;
@@ -671,7 +774,7 @@ public class SyncEngineService : ISyncEngineService
                 db.ParkingTickets.Add(new ParkingTicket
                 {
                     TicketId = ticket.TicketId,
-                    BranchId = ticket.BranchId,
+                    BranchId = targetBranchId,
                     TicketNumber = ticket.TicketNumber,
                     PlateNumber = ticket.PlateNumber,
                     VehicleType = vehicleType,
@@ -721,6 +824,23 @@ public class SyncEngineService : ISyncEngineService
 
         SyncStatusChanged?.Invoke(this, SyncStatusDescription);
         return result;
+        }
+        catch (Exception ex)
+        {
+            var detailedError = ex.InnerException != null ? $"{ex.Message} -> {ex.InnerException.Message}" : ex.Message;
+            progress.Report(new SyncProgressReport
+            {
+                Percentage = 100,
+                StepIndex = 99,
+                CurrentStepTitle = "Error en la sincronización",
+                DetailMessage = $"Novedad: {detailedError}",
+                IsSuccessStep = false
+            });
+            result.Success = false;
+            result.Message = $"Error durante la sincronización: {detailedError}";
+            SyncStatusChanged?.Invoke(this, SyncStatusDescription);
+            return result;
+        }
     }
 
     public async Task<bool> ForceCleanResyncAsync()
@@ -757,11 +877,13 @@ public class SyncEngineService : ISyncEngineService
             PayloadJson = JsonSerializer.Serialize(new CheckInApiRequest
             {
                 TicketId = ticket.TicketId,
+                BranchId = ticket.BranchId,
                 TicketNumber = ticket.TicketNumber,
                 PlateNumber = ticket.PlateNumber,
                 VehicleType = ticket.VehicleType,
                 PhoneNumber = ticket.CustomerPhone,
                 Notes = ticket.Notes,
+                HourlyRate = ticket.HourlyRate,
                 OperatorName = ticket.OperatorName,
                 EntryTimeUtc = ticket.EntryTimeUtc
             }),
@@ -802,6 +924,7 @@ public class SyncEngineService : ISyncEngineService
             PayloadJson = JsonSerializer.Serialize(new CheckOutApiRequest
             {
                 TicketId = ticket.TicketId,
+                BranchId = ticket.BranchId,
                 PaymentMethod = ticket.PaymentMethod ?? PaymentMethod.Cash,
                 AmountPaid = ticket.AmountPaid,
                 ExitTimeUtc = ticket.ExitTimeUtc ?? DateTime.UtcNow

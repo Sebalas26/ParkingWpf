@@ -48,6 +48,18 @@ public partial class CheckInViewModel : ViewModelBase
     private bool _isMonthlySubscriber;
 
     [ObservableProperty]
+    private bool _isPlateBlocked;
+
+    [ObservableProperty]
+    private string? _blockedReason;
+
+    [ObservableProperty]
+    private string? _blockedIncidentType;
+
+    [ObservableProperty]
+    private string? _blockedDescription;
+
+    [ObservableProperty]
     private OccupancyStats _occupancy = new();
 
     [ObservableProperty]
@@ -135,12 +147,42 @@ public partial class CheckInViewModel : ViewModelBase
         {
             ActiveSubscription = null;
             IsMonthlySubscriber = false;
+            IsPlateBlocked = false;
+            BlockedReason = null;
+            BlockedIncidentType = null;
+            BlockedDescription = null;
             return;
+        }
+
+        var normalizedPlate = value.Trim().ToUpperInvariant();
+
+        try
+        {
+            var localBlock = await _ticketService.GetActiveBlockAsync(normalizedPlate);
+            if (localBlock != null)
+            {
+                IsPlateBlocked = true;
+                BlockedIncidentType = localBlock.IncidentType;
+                BlockedDescription = localBlock.Description;
+                BlockedReason = $"VEHÍCULO BLOQUEADO: {localBlock.IncidentType} - {localBlock.Description}";
+            }
+            else
+            {
+                IsPlateBlocked = false;
+                BlockedReason = null;
+                BlockedIncidentType = null;
+                BlockedDescription = null;
+            }
+        }
+        catch
+        {
+            IsPlateBlocked = false;
+            BlockedReason = null;
         }
 
         try
         {
-            var sub = await _monthlySubscriptionService.GetActiveSubscriptionByPlateAsync(value.Trim());
+            var sub = await _monthlySubscriptionService.GetActiveSubscriptionByPlateAsync(normalizedPlate);
             if (sub != null)
             {
                 ActiveSubscription = sub;
@@ -252,6 +294,19 @@ public partial class CheckInViewModel : ViewModelBase
         }
 
         var normalizedPlate = PlateNumber.Trim().ToUpperInvariant();
+
+        if (IsPlateBlocked)
+        {
+            await _dialogService.ShowAlertAsync(
+                "⛔ Ingreso Restringido por Novedad",
+                $"La placa '{normalizedPlate}' presenta un BLOQUEO ACTIVO / LISTA NEGRA en el sistema.\n\n" +
+                $"• Tipo de Novedad: {BlockedIncidentType ?? "Restricción de Ingreso"}\n" +
+                $"• Motivo / Detalle: {BlockedDescription ?? "Vehículo con novedad administrativa."}\n\n" +
+                "⚠️ Este vehículo no tiene autorización para ingresar. Para permitir su acceso, un administrador debe resolver la novedad desde la plataforma web (PWA).",
+                DialogNotificationType.Error);
+            return;
+        }
+
         if (await _ticketService.IsPlateCurrentlyParkedAsync(normalizedPlate))
         {
             ShowFeedback($"El vehículo con placa '{normalizedPlate}' ya se encuentra registrado y activo adentro.", false);
@@ -260,7 +315,6 @@ public partial class CheckInViewModel : ViewModelBase
 
         IsBusy = true;
         BusyMessage = "Registrando ingreso de vehículo y emitiendo tiquete...";
-
 
         try
         {
@@ -288,7 +342,13 @@ public partial class CheckInViewModel : ViewModelBase
             ShowFeedback(successMsg, true);
 
             await _dialogService.ShowReceiptPreviewAsync(ticket);
-
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("BLOQUEO ACTIVO") || ex.Message.Contains("LISTA NEGRA") || ex.Message.Contains("novedad", StringComparison.OrdinalIgnoreCase))
+        {
+            await _dialogService.ShowAlertAsync(
+                "⛔ Ingreso Restringido por Novedad",
+                $"{ex.Message}\n\n⚠️ Para autorizar el ingreso, un administrador debe resolver la novedad desde la plataforma web (PWA).",
+                DialogNotificationType.Error);
         }
         catch (Exception ex)
         {
@@ -308,6 +368,10 @@ public partial class CheckInViewModel : ViewModelBase
         Notes = null;
         ActiveSubscription = null;
         IsMonthlySubscriber = false;
+        IsPlateBlocked = false;
+        BlockedReason = null;
+        BlockedIncidentType = null;
+        BlockedDescription = null;
         SelectedVehicleType = VehicleType.Car;
     }
 

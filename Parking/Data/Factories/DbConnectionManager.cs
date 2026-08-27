@@ -125,6 +125,28 @@ public class DbConnectionManager : IDbConnectionManager
                     ""CashierName"" TEXT NOT NULL,
                     ""CreatedAtUtc"" TEXT NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS ""VehicleIncidents"" (
+                    ""IncidentId"" TEXT NOT NULL PRIMARY KEY,
+                    ""BranchId"" INTEGER NULL,
+                    ""PlateNumber"" TEXT NOT NULL,
+                    ""IncidentType"" TEXT NOT NULL,
+                    ""Description"" TEXT NOT NULL,
+                    ""IsBlocked"" INTEGER NOT NULL DEFAULT 0,
+                    ""IsGlobal"" INTEGER NOT NULL DEFAULT 0,
+                    ""Status"" TEXT NOT NULL DEFAULT 'Activa',
+                    ""ReportedBy"" TEXT NOT NULL DEFAULT '',
+                    ""ResolvedBy"" TEXT NULL,
+                    ""ResolvedNotes"" TEXT NULL,
+                    ""CreatedAtUtc"" TEXT NOT NULL,
+                    ""ResolvedAtUtc"" TEXT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS ""VehicleIncidentBranches"" (
+                    ""IncidentId"" TEXT NOT NULL,
+                    ""BranchId"" INTEGER NOT NULL,
+                    PRIMARY KEY (""IncidentId"", ""BranchId"")
+                );
             ");
 
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PendingSyncItems\" ADD COLUMN \"OperationType\" TEXT DEFAULT '';"); } catch { }
@@ -135,6 +157,7 @@ public class DbConnectionManager : IDbConnectionManager
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"TotalCashWithdrawals\" TEXT DEFAULT '0';"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"PaymentMethodId\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"ExitNotes\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleIncidents\" ADD COLUMN \"IsGlobal\" INTEGER DEFAULT 0;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"GracePeriodMinutes\" = 0;"); } catch { }
         }
         catch { }

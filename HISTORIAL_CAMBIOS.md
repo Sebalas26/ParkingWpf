@@ -17,6 +17,225 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-08-27 11:47:00] - [FEATURE] [ARCHITECTURE] [RELATIONAL] [MULTI-BRANCH] [INCIDENTS] - Arquitectura Relacional Multi-Sede (VehicleIncidentBranches), Fix SQLite y Modal Informativo
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"estoy probando pero ese error no es diciente si me explico . por que primero que todo no es error es que el esa placa tiene una novedad y por eso no se puede registrar deberia mostrar la novedad en una modal explicando el por que no. tengo una duda esas novedades puede ser generales o pueden ser para una sede especifica cuando este null el branchid es que es general ? o como hacemoes eso explicame eso ? .. y si quiero que sea ejemplo tengo 5 sedes y solo aplique para 2 como funcionaria eso ? la bd esta contemplada apra eso ? analiza eso (...) pero esa es la mejor opcion seguro ? no es mejor una tabla relacionada o que ? por que esas cosas de metes un json en una columna no se no me cuadra. analiza eso por que si es necesario hacer eso para 1 para algunas o para todas. realiza el plan completo e incluyendo lo que dijiste de como se muestra esto que se ve horrible si me explico."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Arquitectura Relacional Canónica Multi-Sede (3NF) (`ParkingApi` & MySQL)**:
+     - `VehicleIncidentBranch.cs`: Entidad relacional con clave compuesta `(IncidentId, BranchId)` y relaciones de integridad referencial hacia `VehicleIncident` y `Branch`.
+     - `VehicleIncident.cs`: Agregado `bool IsGlobal` e `ICollection<VehicleIncidentBranch> IncidentBranches`.
+     - `DataContext.cs` y `EntityConfigurations.cs`: Registro de `DbSet<VehicleIncidentBranch>` y mapeo Fluent API.
+     - `SaveVehicleIncidentDto.cs` y `VehicleIncidentDto.cs`: Contratos con `IsGlobal`, `List<int> BranchIds` y `List<string> BranchNames`.
+     - `VehicleIncidentRepository.cs`: Actualizado para filtrar y evaluar `i.IsGlobal || i.BranchId == branchId || i.IncidentBranches.Any(ib => ib.BranchId == branchId.Value)`.
+     - `SyncService.cs`: Sincronización multi-sede de novedades incluyendo las sedes relacionadas.
+  2. **Interfaz de Gestión Multi-Sede en Web PWA (`ParkingPwa`)**:
+     - `NovedadesContracts.ts`: Contratos sincronizados con `isGlobal`, `branchIds` y `branchNames`.
+     - `Novedades.tsx`: Nuevo selector de alcance interactivo con Radio buttons (**🌐 Todas las Sedes (Global)** vs **🏢 Sedes Específicas**) y grilla de checkboxes dinámicos para marcar 1, 2 o más sedes concurrentemente.
+     - Visualización de badges por sede en tabla y modal de detalle.
+  3. **Persistencia Local SQLite y Fix 'no such table' (`Parking` WPF)**:
+     - `DbConnectionManager.cs`: Inclusión de sentencias automáticas `CREATE TABLE IF NOT EXISTS "VehicleIncidents"` y `CREATE TABLE IF NOT EXISTS "VehicleIncidentBranches"`, resolviendo de forma permanente el error de SQLite.
+     - `VehicleIncidentBranch.cs`, `VehicleIncidentBranchConfiguration.cs` y `ParkFlowDbContext.cs`: Soporte SQLite local de la relación N:M.
+     - `SyncEngineService.cs`: Sincronización completa de la entidad e inserción de `VehicleIncidentBranches`.
+     - `EfParkingTicketService.cs`: Validación offline local de bloqueo evaluando `IsGlobal` y `IncidentBranches`.
+  4. **Experiencia de Usuario Profesional y Modal Informativo (`CheckInViewModel.cs`)**:
+     - Eliminación de errores técnicos en banners amarillos para bloqueos de novedades.
+     - En `CheckInViewModel.cs`, si la placa tiene novedad activa, se muestra la tarjeta de advertencia en vivo y al intentar emitir tiquete se despliega la ventana modal informativa detallando la placa, el tipo de novedad, motivo y la instrucción clara de gestión administrativa desde la PWA.
+- **📦 Componentes Modificados**:
+  - `ParkingApi/ParkingApi.Domain/Models/VehicleIncidentBranch.cs`
+  - `ParkingApi/ParkingApi.Domain/Models/VehicleIncident.cs`
+  - `ParkingApi/ParkingApi.Domain/Dtos/Incidents/SaveVehicleIncidentDto.cs`
+  - `ParkingApi/ParkingApi.Domain/Dtos/Incidents/VehicleIncidentDto.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Data/DataContext.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Data/Configurations/EntityConfigurations.cs`
+  - `ParkingApi/ParkingApi.Infrastructure/Data/Repositories/Incidents/VehicleIncidentRepository.cs`
+  - `ParkingApi/ParkingApi.Core/Services/Incidents/VehicleIncidentService.cs`
+  - `ParkingApi/ParkingApi.Core/Services/Sync/SyncService.cs`
+  - `ParkingPwa/src/features/novedades/model/NovedadesContracts.ts`
+  - `ParkingPwa/src/features/novedades/ui/Novedades.tsx`
+  - `Parking/Entities/VehicleIncidentBranch.cs`
+  - `Parking/Entities/VehicleIncident.cs`
+  - `Parking/Data/Configurations/VehicleIncidentBranchConfiguration.cs`
+  - `Parking/Data/ParkFlowDbContext.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `ParkingApi`: `dotnet build` (**0 Errores**).
+  - `ParkingPwa`: `npm run build` (**0 Errores**).
+  - `Parking` (WPF): `dotnet build` (**0 Errores**, 5.82s).
+
+### [2026-08-27 11:06:00] - [FEATURE] [SECURITY] [INCIDENTS] [WPF & API] - Integración Completa de Novedades y Bloqueo de Placas (Lista Negra) en Terminal WPF y Sincronización
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Listo por hay me baje cambios de la PWA y me dijo mi compañero que le agrego algo de placas restingidas osea bloquedas para que no se les permita el ingreso me puedes decir si eso esta analiza y dime . (...) si realiza el plan para integrarlo completo"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Soporte de Sincronización de Novedades en Backend (`ParkingApi`)**:
+     - `SyncDtos.cs`: Se agregó `public List<VehicleIncident> Incidents { get; set; } = new();` a `BootstrapSyncDto`.
+     - `SyncService.cs`: En `GetBootstrapDataAsync`, se inyectó `IVehicleIncidentRepository` y se consultan las novedades activas (`i.Status == "Activa" && (i.BranchId == branchId || i.BranchId == null)`) entregándolas en el payload inicial.
+  2. **Persistencia Local Offline en SQLite (`Parking` WPF)**:
+     - `VehicleIncident.cs` y `VehicleIncidentConfiguration.cs`: Se modeló la entidad e índices compuestos en SQLite local.
+     - `ParkFlowDbContext.cs`: Se agregó el DbSet `VehicleIncidents`.
+     - `SyncEngineService.cs`: Se integró el paso de sincronización de incidencias en SQLite (`Paso 8.5`).
+  3. **Interceptación y Validación en el API Client (`ParkingApiClient.cs`)**:
+     - En `CheckInAsync`: Si el servidor responde `HTTP 400 BadRequest` (debido al bloqueo activo de la placa), se deserializa el mensaje JSON y se propaga como `InvalidOperationException(message)` evitando que sea interpretado como error de red.
+     - Se agregó el método `CheckPlateAsync(string plate, int? branchId)`.
+  4. **Protección Local y Alerta Visual en Tiempo Real (`CheckInViewModel.cs` y `CheckInView.xaml`)**:
+     - En `CheckInViewModel.cs`: Al ingresar la placa en `OnPlateNumberChanged`, se evalúa de inmediato contra `db.VehicleIncidents` si tiene un bloqueo activo, activando `IsPlateBlocked = true` y capturando el tipo de novedad y motivo.
+     - En `CheckInView.xaml`: Se implementó un banner destacado en rojo (`⛔ VEHÍCULO BLOQUEADO (INGRESO RESTRINGIDO)`) con ícono `IconLock`, tipo de novedad y motivo del reporte.
+     - El botón de **"Registrar e Imprimir Entrada"** se inhabilita de inmediato (`IsEnabled = false`, `Opacity = 0.45`) si la placa está bloqueada, impidiendo la emisión física o digital del tiquete.
+- **📦 Componentes Modificados**:
+  - `ParkingApi/ParkingApi.Domain/Dtos/Sync/SyncDtos.cs`
+  - `ParkingApi/ParkingApi.Core/Services/Sync/SyncService.cs`
+  - `Parking/Entities/VehicleIncident.cs`
+  - `Parking/Data/Configurations/VehicleIncidentConfiguration.cs`
+  - `Parking/Data/ParkFlowDbContext.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Contracts/IParkingTicketService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking/Styles/Icons.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `ParkingApi`: `dotnet build` (**0 Errores**).
+  - `Parking` (WPF): `dotnet build` (**0 Errores**, 7.66s).
+
+### [2026-08-27 10:44:00] - [FIX] [MULTI-BRANCH] [SYNC] [OFFLINE] [WPF & API] - Persistencia Estricta de BranchId en Tiquetes y Encolado de Ingresos Offline
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"que pasa en la sincronización debe sincronizar todo lo de la sede siempre filtrando por las sedes si me explico ? no general solo lo que se tienen en la sede recuerda que todas las tablas tienen eso del branch, otra cosa es cuando se agregue un vehiculo no esta guardando el brancid entonces eso es lo que genera error tambien en la sincronización si no trae información revisa eso por que eso debe ser error del api o error del wpf que no guarda el idbranch osea si o si deberia guardar siempre por que todo cambia de ingreso y salida va en una sede especifica me explico. ?"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Persistencia Estricta de `BranchId` en Backend (`ParkingApi`)**:
+     - `CheckInRequestDto.cs` y `CheckOutRequestDto.cs`: Se agregó la propiedad `public int? BranchId { get; set; }`.
+     - `ParkingTicketService.cs`: En `CheckInAsync` se asigna `ticket.BranchId = dto.BranchId`. En `CheckOutAsync`, si el tiquete tenía `BranchId == null`, se actualiza con `dto.BranchId.Value`.
+  2. **Encolado de Ingresos Offline y Sincronización Multi-Sede (`Parking` WPF)**:
+     - `EfParkingTicketService.cs`: En `RegisterEntryAsync`, cuando `ticket.IsSynchronized` es falso (sin conexión a internet o falla en endpoint), se encola inmediatamente la transacción mediante `_syncEngine.EnqueueOfflineCheckInAsync(ticket)`.
+     - `SyncEngineService.cs`: Se incluyó `BranchId = ticket.BranchId` tanto en `EnqueueOfflineCheckInAsync` como en `EnqueueOfflineCheckOutAsync`. En el Paso 8 de sincronización de tiquetes, se asigna `existing.BranchId = targetBranchId` y `newTicket.BranchId = targetBranchId`.
+- **📦 Componentes Modificados**:
+  - `ParkingApi/ParkingApi.Domain/Dtos/Tickets/CheckOutRequestDto.cs`
+  - `ParkingApi/ParkingApi.Core/Services/Tickets/ParkingTicketService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `ParkingApi`: `dotnet build` (**0 Errores**).
+  - `Parking` (WPF): `dotnet build` (**0 Errores**, 7.27s).
+
+### [2026-08-27 10:01:00] - [FIX] [SECURITY] [SYNC] [WPF] - Aislamiento Estricto de Sesiones Concurrentes por Usuario y Sincronización Inmutable de RateId
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"tengo un problema yo inicie sesión solo con el usuario miguel123 en el wpf, y el pwa inicie sesion con el admin osea son diferentes por que me cerro la sesión de todo así inicie con uno de una cierra todos eso esta super mal solo debe cerrar sesión de los que estan logueados con el mismos usuario si me explico. eso es un error garrafal. aparte tengo este problema y muestra offline activo no se y falla la sincronización osea no tienen sentido eso que esta pasando. ? analiza por favor esos cambios. me urge el de seguridad por usuario ."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Aislamiento de Terminación de Sesión por Usuario (`MainShellViewModel.cs`)**:
+     - Se blindó `HandleRealtimeNotificationAsync` para que al recibir el evento SignalR `UserSessionTerminated`, se valide si `currentUser.ServerUserId == notification.UserId.Value`.
+     - Si el evento pertenece a **otro usuario** (ej: `admin` logueándose mientras `miguel123` opera la terminal), el evento se **descarta de inmediato mediante `return;`**, evitando que se abra el diálogo modal de advertencia y protegiendo la sesión del usuario actual.
+  2. **Corrección de Clave Primaria en Sincronización de Tarifas (`SyncEngineService.cs`)**:
+     - Se corrigió la consulta de tarifas vehiculares para realizar el matching directamente por clave primaria `r.RateId == rate.RateId`.
+     - Se eliminó la reasignación prohibida `existing.RateId = rate.RateId;`, previniendo la excepción de EF Core (`The property 'VehicleRate.RateId' is part of a key and so cannot be modified`).
+     - Se garantiza la actualización de valores y la eliminación de registros obsoletos de forma segura.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores**, 6 Warnings conocidas (6.16s).
+
+### [2026-08-27 09:48:00] - [UI/UX] [SYNC] [OFFLINE] [WPF] - Indicador de Conexión en LoginWindow y Sincronización Visual Paso a Paso en Transición de Acceso
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"no entiendo por que no se pudo conectar, segundo esta mal osea a ver como me explico que es lo que quiero que hagas aparece el login bien le doy click me logueo y de una vez lo primeor que hace es realizar la sincronización osea deberia aparecer algo que muestre que esta sincronizando si me explico ya despues de sincronizar si entra al sistema si me explico ? si no tiene conexion a internet apenas estemos en el login no se donde pero coloca algo parecio pero mas pequeño hay te pase la segunda imagen donde uno sepa a si esta conectado a la red o si sale modo offline de una vez sabemos que esta offline sii me explico lo que se quiere. analiza eso."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Píldora de Estado de Red en Pantalla de Login (`LoginWindow.xaml` & `LoginViewModel.cs`)**:
+     - Se integró un badge moderno en la barra superior de `LoginWindow.xaml` con indicador circular de color:
+       - 🟢 Verde (`#10B981`): `API Central Online`
+       - 🔵/🟠 Cian/Ámbar (`#06B6D4` / `#F59E0B`): `Modo Offline (Sin Conexión)`
+     - Al instanciar `LoginViewModel`, se invoca `_apiClient.PingAsync()` para determinar de inmediato la disponibilidad del servidor central antes de que el cajero intente iniciar sesión.
+  2. **Transición con Barra de Progreso de Sincronización Visual (0% - 100%)**:
+     - Al validar credenciales y seleccionar la sede, la pantalla de Login muestra una barra de progreso interactiva (`ProgressBar` con `SyncProgressPercentage`) y el detalle exacto de la operación (`SyncStepDescription`: *"Sincronizando Usuarios y Permisos..."*, *"Sincronizando Tarifas y Reglas..."*, *"Sincronizando Comercios y Convenios..."*, etc.).
+     - Al culminar la sincronización exitosamente (o determinar el modo offline seguro sin excepciones), se abre la ventana principal `MainShellWindow` lista para operar.
+  3. **Eliminación de Alertas de Error Duplicadas en `MainShellViewModel.cs`**:
+     - Se eliminó el diálogo de advertencia intrusivo en `MainShellViewModel.InitializeAsync()`, dejando que la terminal refleje el estado dinámico en su barra de estado de manera limpia y natural.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/LoginViewModel.cs`
+  - `Parking/Views/LoginWindow.xaml`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores**, 6 Warnings conocidas (6.20s).
+
+### [2026-08-27 09:07:00] - [FIX] [SYNC] [OFFLINE] [UI/UX] - Corrección de Sincronización de Tarifas, Auto-Sync al Login con Modo Offline Seguro y Homologación Tipográfica en Cierre de Turno
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"fallo la sincronización, que sucede, sabes otra cosa que si o si deberia pasar apenas se loguee se haga la sincronización con el api se que demora mas entrar pero es lo mejor así garantizamos que el sistema esta full y conectado, dado que no tenga internet y no sea posible por que no esta conectado a internet deberia salir que se iniciara en modo offline por que la wpf debe funcionar por completo en modo offline eso no se ha probador pero revisar para que eso este completo. otra cosa el tamaño de esa letra que dice Fecha Apertura, Fecha Cierre se le aplique a la ultima imagen si ves analiza todo eso."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Corrección de Conflicto en Sincronización de Tarifas (`VehicleRateConfiguration.cs` & `SyncEngineService.cs`)**:
+     - `VehicleRateConfiguration.cs`: Se corrigió el índice de `VehicleRates` reemplazando el índice único global por un índice compuesto por `(BranchId, VehicleType)`.
+     - `SyncEngineService.cs`: Se refactorizó el paso de sincronización de tarifas (78%) a un patrón de **Upsert en memoria**, actualizando propiedades en sitio sin realizar ciclos de borrado/inserción simultáneos que entraban en colisión en SQLite (`DbUpdateException`).
+     - Se añadió un bloque `try/catch` global en `PerformFullSyncWithProgressAsync` con extracción del `InnerException` para diagnóstico transparente.
+  2. **Auto-Sincronización Obligatoria Post-Login con Modo Offline Tolerante (`MainShellViewModel.cs`)**:
+     - En `InitializeAsync()`, se dispara la sincronización integral con el API de forma automática tras autenticarse y cargar la sede.
+     - En caso de indisponibilidad de red, timeout o API apagada, el sistema entra en **Modo Offline Seguro**, notificando al usuario mediante un diálogo informativo no bloqueante y permitiendo la operación total sobre la base de datos local SQLite (`ParkFlowDbContext`).
+  3. **Homologación Tipográfica en Cierre de Turno (`ShiftClosureView.xaml`)**:
+     - Se actualizaron los títulos de las 4 tarjetas KPI (`EFECTIVO COBRADO`, `TARJETAS DÉBITO / CRÉDITO`, `TRANSFERENCIAS / QR`, `DESCUENTOS POR CONVENIOS`) y el banner de volumen (`TIQUETES LIQUIDADOS`, `VEHÍCULOS INGRESADOS`) a `FontSize="13"` y `FontWeight="SemiBold"`, igualando exactamente la tipografía de `FECHA APERTURA` / `FECHA CIERRE`.
+- **📦 Componentes Modificados**:
+  - `Parking/Data/Configurations/VehicleRateConfiguration.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Views/ShiftClosureView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores**, 6 Warnings conocidas (7.30s).
+
+### [2026-08-27 08:16:00] - [UI/UX] [BRANDING] [WPF] - Rediseño de Hero Banner en LoginWindow con Logotipo a Gran Escala y Fondo Homogéneo
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"yo creo que el logo deberia estar en toda esa parte gris o verde como sea si me explico no así de pequeño se ve super mal si me explico. analiza eso por que no se ve supremamente bien. [Captura señalando con círculo rojo todo el panel izquierdo para que el logo ocupe el espacio principal]"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Armonización Cromática del Fondo (`#111822`)**:
+     - Se ajustó el fondo del panel izquierdo de `LoginWindow.xaml` a `#111822` (valor hexadecimal exacto del fondo de `logo.jpeg`), eliminando cortes y contornos rígidos y fusionando el arte de forma ininterrumpida.
+  2. **Exhibición del Imagotipo en Gran Formato (Hero Banner Centrado)**:
+     - Se eliminó el recuadro diminuto de 52px, los textos comerciales extensos y las tres tarjetas de viñetas operativas que saturaban la pantalla.
+     - Se ubicó el imagotipo oficial en el centro visual con `MaxWidth="380"`, `Stretch="Uniform"` y `RenderOptions.BitmapScalingMode="HighQuality"`.
+  3. **Píldora de Identificación y Pie Minimalista**:
+     - Se agregó una píldora estética estilizada: `● Terminal POS • Control de Acceso y Recaudación` (`#1A2332` con borde `#2A384C`) y copyright minimalista en el pie de página.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/LoginWindow.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores**, 6 Warnings conocidas (6.62s).
+
+### [2026-08-27 07:59:00] - [ASSETS] [BRANDING] [WPF] - Integración del Logotipo Oficial (.jpeg) en Login, Barra de Título, Sidebar y Recibos
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"ya agrege pero es .jpg la imagen no png entonces analiza pero ya esta en la route que me dijhiste"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Configuración de Recurso Embebido (`Parking/Parking.csproj`)**:
+     - Se vinculó `Resources\logo.jpeg` con Build Action `<Resource Include="Resources\logo.jpeg" />` para que el compilador de .NET empaquete el imagotipo de alta resolución dentro del ensamblado ejecutable.
+  2. **Integración en Pantalla de Acceso (`LoginWindow.xaml`)**:
+     - Reemplazo del contenedor y glifo genérico de auto por el control `<Image Source="/Resources/logo.jpeg" Height="52" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>`.
+     - Actualización del título de la ventana a `"Parking Flow - Control de Acceso y Caja"` y ajuste de membretes de pie de página a `"PARKING FLOW • Tu punto de llegada"`.
+  3. **Integración en Ventana Principal (`MainShellWindow.xaml`)**:
+     - **TitleBar Superior**: Inserción del imagotipo escalado a 22px junto con el título `"PARKING FLOW"`.
+     - **Sidebar Brand Header**: Visualización del imagotipo institucional con lógica de fallback automático (si la sede activa tiene un logotipo `LogoBase64` cargado en base de datos, este prevalece; en caso contrario, se renderiza `logo.jpeg` con escalado de alta fidelidad).
+     - Actualización de `Title` a `"Parking Flow - Terminal POS de Control de Acceso y Caja"`.
+  4. **Ajuste en Membrete de Impresión de Recibos (`ReceiptPreviewDialog.xaml`)**:
+     - Actualización del encabezado por defecto del ticket a `"PARKING FLOW"`.
+- **📦 Componentes Modificados**:
+  - `Parking/Parking.csproj`
+  - `Parking/Views/LoginWindow.xaml`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores**, 6 Warnings conocidas de nulabilidad (6.56s).
+
 ### [2026-08-27 00:12:00] - [UI/UX] [PWA] [MOBILE] - Bloqueo de Desbordamiento Lateral (Anti-Horizontal Shift) y Ajuste de Encabezado de Métodos de Pago
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

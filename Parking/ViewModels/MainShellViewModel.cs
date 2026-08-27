@@ -182,15 +182,15 @@ public partial class MainShellViewModel : ViewModelBase
 
     private async Task HandleRealtimeNotificationAsync(Models.ApiModels.ConfigNotificationDto notification)
     {
-        // 0. Manejo reactivo de terminación forzada por inicio de sesión concurrente
+        // 0. Manejo reactivo de terminación forzada por inicio de sesión concurrente (estrictamente para el mismo usuario)
         if (notification.EventType == "UserSessionTerminated")
         {
             var currentUser = _sessionService.CurrentUser;
             if (currentUser != null && notification.UserId.HasValue && currentUser.ServerUserId == notification.UserId.Value)
             {
                 await HandleConcurrentSessionTerminatedAsync(notification.Message);
-                return;
             }
+            return;
         }
 
         // 1. Manejo reactivo de cambios de permisos y roles en tiempo real
@@ -250,6 +250,9 @@ public partial class MainShellViewModel : ViewModelBase
         {
             _ = _signalRClient.SetCurrentBranchAsync(CurrentBranch.Id);
         }
+
+        IsOnlineMode = _syncEngine.IsOnline;
+        SyncStatusText = _syncEngine.SyncStatusDescription;
 
         await RefreshOccupancyAsync();
 

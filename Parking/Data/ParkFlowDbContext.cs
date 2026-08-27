@@ -28,6 +28,8 @@ public class ParkFlowDbContext : DbContext
     public DbSet<Branch> Branches => Set<Branch>();
     public DbSet<UserBranch> UserBranches => Set<UserBranch>();
     public DbSet<BranchPaymentMethodEntity> BranchPaymentMethods => Set<BranchPaymentMethodEntity>();
+    public DbSet<VehicleIncident> VehicleIncidents => Set<VehicleIncident>();
+    public DbSet<VehicleIncidentBranch> VehicleIncidentBranches => Set<VehicleIncidentBranch>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

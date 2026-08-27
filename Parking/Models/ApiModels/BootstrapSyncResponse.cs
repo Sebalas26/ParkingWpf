@@ -533,6 +533,51 @@ public class ApiParkingTicketSyncDto
     }
 }
 
+public class ApiVehicleIncidentSyncDto
+{
+    [JsonPropertyName("incidentId")]
+    public Guid IncidentId { get; set; } = Guid.NewGuid();
+
+    [JsonPropertyName("branchId")]
+    public int? BranchId { get; set; }
+
+    [JsonPropertyName("isGlobal")]
+    public bool IsGlobal { get; set; }
+
+    [JsonPropertyName("branchIds")]
+    public List<int> BranchIds { get; set; } = new();
+
+    [JsonPropertyName("plateNumber")]
+    public string PlateNumber { get; set; } = string.Empty;
+
+    [JsonPropertyName("incidentType")]
+    public string IncidentType { get; set; } = string.Empty;
+
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = string.Empty;
+
+    [JsonPropertyName("isBlocked")]
+    public bool IsBlocked { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = "Activa";
+
+    [JsonPropertyName("reportedBy")]
+    public string ReportedBy { get; set; } = string.Empty;
+
+    [JsonPropertyName("resolvedBy")]
+    public string? ResolvedBy { get; set; }
+
+    [JsonPropertyName("resolvedNotes")]
+    public string? ResolvedNotes { get; set; }
+
+    [JsonPropertyName("createdAtUtc")]
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    [JsonPropertyName("resolvedAtUtc")]
+    public DateTime? ResolvedAtUtc { get; set; }
+}
+
 public class BootstrapSyncResponse
 {
     [JsonPropertyName("serverTimeUtc")]
@@ -570,4 +615,37 @@ public class BootstrapSyncResponse
 
     [JsonPropertyName("recentTickets")]
     public List<ApiParkingTicketSyncDto> RecentTickets { get; set; } = new();
+
+    [JsonPropertyName("incidents")]
+    public List<ApiVehicleIncidentSyncDto> Incidents { get; set; } = new();
+}
+
+public class PlateCheckResultDto
+{
+    [JsonPropertyName("plateNumber")]
+    public string PlateNumber { get; set; } = string.Empty;
+
+    [JsonPropertyName("hasIncidents")]
+    public bool HasIncidents { get; set; }
+
+    [JsonPropertyName("isBlocked")]
+    public bool IsBlocked { get; set; }
+
+    [JsonPropertyName("reason")]
+    public string Reason { get; set; } = string.Empty;
+
+    [JsonPropertyName("incidentType")]
+    public string IncidentType { get; set; } = string.Empty;
+
+    [JsonPropertyName("description")]
+    public string Description { get; set; } = string.Empty;
+
+    [JsonPropertyName("reportedBy")]
+    public string ReportedBy { get; set; } = string.Empty;
+
+    [JsonPropertyName("reportedAtUtc")]
+    public DateTime? ReportedAtUtc { get; set; }
+
+    [JsonPropertyName("incidentId")]
+    public Guid? IncidentId { get; set; }
 }

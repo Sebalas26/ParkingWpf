@@ -8,7 +8,7 @@
         xmlns:conv="clr-namespace:Parking.Core.Converters"
         xmlns:security="clr-namespace:Parking.Security"
         mc:Ignorable="d"
-        Title="Park Point - Terminal POS de Control de Acceso y Caja"
+        Title="Parking Flow - Terminal POS de Control de Acceso y Caja"
         Icon="/Resources/parkpoint.ico"
         Height="900" Width="1440"
         MinHeight="720" MinWidth="1024"
@@ -107,7 +107,7 @@
         </Grid.RowDefinitions>
 
         <!-- ========================================================================= -->
-        <!-- 1. BARRA DE TÍTULO MODERNA (CUSTOM TITLEBAR INTEGRADO PARK POINT)         -->
+        <!-- 1. BARRA DE TÍTULO MODERNA (CUSTOM TITLEBAR INTEGRADO PARKING FLOW)        -->
         <!-- ========================================================================= -->
         <Border Grid.Row="0"
                 Background="#152024"
@@ -122,10 +122,10 @@
 
                 <!-- Left: Application Brand & Isotype -->
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
-                    <Border Background="{DynamicResource BrushPrimary}" CornerRadius="5" Width="22" Height="22" Margin="0,0,8,0">
-                        <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    <Border Background="#111827" CornerRadius="5" Width="22" Height="22" Margin="0,0,8,0" ClipToBounds="True">
+                        <Image Source="/Resources/logo.jpeg" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
                     </Border>
-                    <TextBlock Text="PARK POINT" FontWeight="Black" FontSize="12" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
+                    <TextBlock Text="PARKING FLOW" FontWeight="Black" FontSize="12" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
                     <TextBlock Text=" • Terminal POS de Control de Acceso y Caja" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" VerticalAlignment="Center"/>
                 </StackPanel>
 
@@ -156,7 +156,7 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Left Sidebar en Grafito PARK POINT (#1E2A2F) -->
+            <!-- Left Sidebar en Grafito (#1E2A2F) -->
             <Border Grid.Column="0"
                     Background="{DynamicResource BrushSidebarBackground}"
                     BorderBrush="{DynamicResource BrushBorderSubtle}"
@@ -169,38 +169,51 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Sidebar Brand Header PARK POINT con Soporte de Logo Dinámico de Sede -->
-                    <StackPanel Grid.Row="0" Margin="4,0,0,28">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <Border Background="{DynamicResource BrushPrimary}" CornerRadius="8" Width="38" Height="38" Margin="0,0,10,0" ClipToBounds="True">
-                                <Grid>
-                                    <Path Data="{StaticResource IconCar}"
-                                          Fill="{DynamicResource BrushTextWhite}"
-                                          Width="20" Height="20"
-                                          Stretch="Uniform"
-                                          HorizontalAlignment="Center"
-                                          VerticalAlignment="Center">
-                                        <Path.Style>
-                                            <Style TargetType="Path">
-                                                <Setter Property="Visibility" Value="Visible"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding CurrentBranch.LogoBase64, Converter={StaticResource NullToVis}}" Value="Visible">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Path.Style>
-                                    </Path>
-                                    <Image Source="{Binding CurrentBranch.LogoBase64, Converter={StaticResource Base64ToImageConv}}"
-                                           Stretch="UniformToFill"
-                                           Visibility="{Binding CurrentBranch.LogoBase64, Converter={StaticResource NullToVis}}"/>
-                                </Grid>
+                    <!-- Sidebar Brand Header PARKING FLOW con Soporte de Logo Dinámico de Sede -->
+                    <StackPanel Grid.Row="0" Margin="4,0,0,24">
+                        <!-- Caso 1: Sede con logo personalizado (CurrentBranch.LogoBase64 != null) -->
+                        <StackPanel Orientation="Horizontal"
+                                    VerticalAlignment="Center"
+                                    Visibility="{Binding CurrentBranch.LogoBase64, Converter={StaticResource NullToVis}}">
+                            <Border Width="38" Height="38" CornerRadius="8" Margin="0,0,10,0" ClipToBounds="True" Background="#111827">
+                                <Image Source="{Binding CurrentBranch.LogoBase64, Converter={StaticResource Base64ToImageConv}}"
+                                       Stretch="UniformToFill"
+                                       RenderOptions.BitmapScalingMode="HighQuality"/>
                             </Border>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="PARK POINT" FontSize="21" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
-                                <TextBlock Text="TU PUNTO DE LLEGADA" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushPrimaryLight}"/>
+                                <TextBlock Text="{Binding CurrentBranch.Name, FallbackValue='PARKING FLOW'}"
+                                           FontSize="16"
+                                           FontWeight="Black"
+                                           Foreground="{DynamicResource BrushTextWhite}"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxWidth="170"/>
+                                <TextBlock Text="SEDE ACTIVA" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushPrimaryLight}"/>
                             </StackPanel>
                         </StackPanel>
+
+                        <!-- Caso 2: Logo Oficial Parking Flow por defecto (CurrentBranch.LogoBase64 == null) -->
+                        <Border CornerRadius="10"
+                                Background="#111827"
+                                BorderBrush="#25343B"
+                                BorderThickness="1"
+                                Padding="8,4"
+                                HorizontalAlignment="Left"
+                                ClipToBounds="True">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding CurrentBranch.LogoBase64, Converter={StaticResource NullToVis}}" Value="Visible">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Image Source="/Resources/logo.jpeg"
+                                   Height="44"
+                                   Stretch="Uniform"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                        </Border>
                     </StackPanel>
 
                 <!-- Navigation List: Módulos Operativos -->

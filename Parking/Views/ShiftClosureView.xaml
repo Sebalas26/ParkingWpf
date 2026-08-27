@@ -86,7 +86,7 @@
                                 Margin="0,0,6,10">
                             <StackPanel>
                                 <Grid>
-                                    <TextBlock Text="EFECTIVO COBRADO" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                    <TextBlock Text="EFECTIVO COBRADO" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
                                     <Path HorizontalAlignment="Right" Data="{StaticResource IconCash}" Fill="{DynamicResource BrushSuccess}" Width="16" Height="16" Stretch="Uniform"/>
                                 </Grid>
                                 <TextBlock Text="{Binding Summary.TotalCashCollected, Converter={StaticResource CurrencyConv}}"
@@ -107,7 +107,7 @@
                                 Margin="6,0,0,10">
                             <StackPanel>
                                 <Grid>
-                                    <TextBlock Text="TARJETAS DÉBITO / CRÉDITO" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                    <TextBlock Text="TARJETAS DÉBITO / CRÉDITO" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
                                     <Path HorizontalAlignment="Right" Data="{StaticResource IconCard}" Fill="{DynamicResource BrushPrimary}" Width="16" Height="16" Stretch="Uniform"/>
                                 </Grid>
                                 <TextBlock Text="{Binding Summary.TotalCardCollected, Converter={StaticResource CurrencyConv}}"
@@ -128,7 +128,7 @@
                                 Margin="0,0,6,0">
                             <StackPanel>
                                 <Grid>
-                                    <TextBlock Text="TRANSFERENCIAS / QR" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                    <TextBlock Text="TRANSFERENCIAS / QR" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
                                     <Path HorizontalAlignment="Right" Data="{StaticResource IconQr}" Fill="{DynamicResource BrushCyan}" Width="16" Height="16" Stretch="Uniform"/>
                                 </Grid>
                                 <TextBlock Text="{Binding Summary.TotalTransferCollected, Converter={StaticResource CurrencyConv}}"
@@ -149,7 +149,7 @@
                                 Margin="6,0,0,0">
                             <StackPanel>
                                 <Grid>
-                                    <TextBlock Text="DESCUENTOS POR CONVENIOS" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                    <TextBlock Text="DESCUENTOS POR CONVENIOS" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
                                     <Path HorizontalAlignment="Right" Data="{StaticResource IconDiscount}" Fill="{DynamicResource BrushWarning}" Width="16" Height="16" Stretch="Uniform"/>
                                 </Grid>
                                 <TextBlock Text="{Binding Summary.TotalDiscounts, Converter={StaticResource CurrencyConv}}"
@@ -175,12 +175,12 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" HorizontalAlignment="Center">
-                                <TextBlock Text="Tiquetes Liquidados" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="TIQUETES LIQUIDADOS" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
                                 <TextBlock Text="{Binding Summary.TotalTicketsProcessed}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                             </StackPanel>
                             <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource BrushBorderSubtle}" Margin="16,0"/>
                             <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                                <TextBlock Text="Vehículos Ingresados" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
+                                <TextBlock Text="VEHÍCULOS INGRESADOS" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
                                 <TextBlock Text="{Binding Summary.TotalVehiclesEntered}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
                             </StackPanel>
                         </Grid>

@@ -20,6 +20,7 @@ public interface IParkingTicketService
     Task<IReadOnlyList<ParkingTicket>> GetAllTicketsAsync();
     Task<ParkingTicket?> FindActiveTicketAsync(string query);
     Task<bool> IsPlateCurrentlyParkedAsync(string plateNumber);
+    Task<VehicleIncident?> GetActiveBlockAsync(string plateNumber);
     Task<OccupancyStats> GetOccupancyStatsAsync();
     void UpdateTotalCapacity(int newCapacity);
 }

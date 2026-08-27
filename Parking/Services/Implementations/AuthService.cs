@@ -43,7 +43,7 @@ public class AuthService : IAuthService
         var normalizedUser = username.Trim().ToLowerInvariant();
 
         // 1. Intentar autenticar contra el API Central (Online)
-        try
+        try 
         {
             var apiLogin = await _apiClient.LoginAsync(username.Trim(), password);
             if (apiLogin != null && apiLogin.Success)
@@ -64,7 +64,7 @@ public class AuthService : IAuthService
                     SessionToken = apiLogin.Token ?? Guid.NewGuid().ToString(),
                     LoginTime = DateTime.Now
                 };
-
+                
                 CurrentUser = userModel;
                 var permissions = apiLogin.Permissions ?? new List<string>();
                 _permissionService.LoadPermissions(permissions, isAdmin);

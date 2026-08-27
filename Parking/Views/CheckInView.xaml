@@ -308,6 +308,41 @@
                                 </Grid>
                             </Border>
 
+                            <!-- Banner de Placa Bloqueada / Lista Negra (Alerta Destacada) -->
+                            <Border Visibility="{Binding IsPlateBlocked, Converter={StaticResource BoolToVis}}"
+                                    Background="#FEF2F2"
+                                    BorderBrush="{DynamicResource BrushDanger}"
+                                    BorderThickness="2"
+                                    CornerRadius="8"
+                                    Padding="14,10"
+                                    Margin="0,4,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Border Grid.Column="0" Width="26" Height="26" CornerRadius="13" Background="{DynamicResource BrushDanger}" Margin="0,0,10,0" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource IconLock}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="⛔ VEHÍCULO BLOQUEADO (INGRESO RESTRINGIDO)" FontWeight="Black" FontSize="13" Foreground="{DynamicResource BrushDanger}"/>
+                                            <Border Background="{DynamicResource BrushDanger}" CornerRadius="4" Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding BlockedIncidentType, FallbackValue='LISTA NEGRA'}" FontSize="11" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock FontSize="12" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,2,0,0" TextWrapping="Wrap">
+                                            <Run Text="Motivo: " FontWeight="Bold" Foreground="{DynamicResource BrushDanger}"/>
+                                            <Run Text="{Binding BlockedDescription, Mode=OneWay}"/>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <Border Grid.Column="2" Background="#FEE2E2" BorderBrush="{DynamicResource BrushDanger}" BorderThickness="1" CornerRadius="6" Padding="8,4" VerticalAlignment="Center">
+                                        <TextBlock Text="BLOQUEADO" FontSize="11" FontWeight="Black" Foreground="{DynamicResource BrushDanger}"/>
+                                    </Border>
+                                </Grid>
+                            </Border>
+
                             <TextBlock Text="💡 Las letras y números ingresados se convertirán automáticamente a mayúsculas"
                                        FontSize="13"
                                        FontWeight="SemiBold"
@@ -470,9 +505,18 @@
 
                         <Button Grid.Column="0"
                                 Command="{Binding RegisterAndPrintCommand}"
-                                Style="{StaticResource ModernButton}"
                                 Height="48"
                                 Margin="0,0,10,0">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource ModernButton}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPlateBlocked}" Value="True">
+                                            <Setter Property="IsEnabled" Value="False"/>
+                                            <Setter Property="Opacity" Value="0.45"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                 <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,8,0"/>
                                 <TextBlock Text="Registrar e Imprimir Entrada" FontSize="16" FontWeight="Black" Foreground="{DynamicResource BrushTextWhite}"/>

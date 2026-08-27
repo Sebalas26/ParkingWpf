@@ -12,6 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Resource Include="Resources\logo.jpeg" />
     <Resource Include="Resources\parkpoint.ico" />
   </ItemGroup>
 

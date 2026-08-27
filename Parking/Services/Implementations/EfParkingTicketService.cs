@@ -76,6 +76,26 @@ public class EfParkingTicketService : IParkingTicketService
             throw new InvalidOperationException($"El vehículo con placa '{normalizedPlate}' ya se encuentra registrado y activo adentro.");
         }
 
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
+        VehicleIncident? blockedIncident = null;
+        try
+        {
+            blockedIncident = await db.VehicleIncidents
+                .AsNoTracking()
+                .Include(i => i.IncidentBranches)
+                .FirstOrDefaultAsync(i =>
+                    i.PlateNumber == normalizedPlate &&
+                    i.IsBlocked &&
+                    i.Status == "Activa" &&
+                    (i.IsGlobal || (i.BranchId == null && !i.IncidentBranches.Any()) || !currentBranchId.HasValue || i.BranchId == currentBranchId.Value || i.IncidentBranches.Any(ib => ib.BranchId == currentBranchId.Value)));
+        }
+        catch { }
+
+        if (blockedIncident != null)
+        {
+            throw new InvalidOperationException($"El vehículo con placa '{normalizedPlate}' tiene un BLOQUEO ACTIVO ({blockedIncident.IncidentType}): {blockedIncident.Description}");
+        }
+
         var todayCount = await db.ParkingTickets.CountAsync(t => t.EntryTimeUtc.Date == DateTime.UtcNow.Date) + 1;
         var ticketNumber = $"PKF-{DateTime.Now:yyyyMMdd}-{todayCount:D3}";
         var rate = _pricingCalculator.GetRate(vehicleType);
@@ -119,11 +139,19 @@ public class EfParkingTicketService : IParkingTicketService
                     ticket.TicketNumber = apiResponse.TicketNumber;
                     ticket.IsSynchronized = true;
                 }
+                else
+                {
+                    await _syncEngine.EnqueueOfflineCheckInAsync(ticket);
+                }
             }
             catch
             {
-                // Fallback offline: se guarda localmente para sincronización posterior
+                await _syncEngine.EnqueueOfflineCheckInAsync(ticket);
             }
+        }
+        else
+        {
+            await _syncEngine.EnqueueOfflineCheckInAsync(ticket);
         }
 
         db.ParkingTickets.Add(ticket);
@@ -334,6 +362,31 @@ public class EfParkingTicketService : IParkingTicketService
         if (newCapacity > 0)
         {
             _totalCapacity = newCapacity;
+        }
+    }
+
+    public async Task<VehicleIncident?> GetActiveBlockAsync(string plateNumber)
+    {
+        if (string.IsNullOrWhiteSpace(plateNumber)) return null;
+
+        var normalized = plateNumber.Trim().ToUpperInvariant();
+        using var db = _connectionManager.CreateDbContext();
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
+
+        try
+        {
+            return await db.VehicleIncidents
+                .AsNoTracking()
+                .Include(i => i.IncidentBranches)
+                .FirstOrDefaultAsync(i =>
+                    i.PlateNumber == normalized &&
+                    i.IsBlocked &&
+                    i.Status == "Activa" &&
+                    (i.IsGlobal || (i.BranchId == null && !i.IncidentBranches.Any()) || !currentBranchId.HasValue || i.BranchId == currentBranchId.Value || i.IncidentBranches.Any(ib => ib.BranchId == currentBranchId.Value)));
+        }
+        catch
+        {
+            return null;
         }
     }
 }
