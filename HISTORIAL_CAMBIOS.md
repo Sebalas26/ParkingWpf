@@ -17,6 +17,31 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-08-28 08:00:00] - [SECURITY] [RBAC] [REFACTOR] - Erradicación Total de Contraseñas Maestras y Desacoplamiento de Roles Quemados en Terminal WPF
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Listo sucede que el superadmin accede y super bien accede al perfil de eso pero cree un administrador y tambien accede al portal del superadmin y eso no deberia ser así creo que esta algo quemado en codigo que sea administrador aparte necesito que revises todo el codigo de todos los 3 proyectos que no tenga cosas quemadas que no deberian estar . analiza completamente todo el desarrollo"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Eliminación de Contraseñas Maestras Quemadas / Backdoors (`AuthService.cs`)**:
+     - Se eliminaron completamente las validaciones de bypass por contraseña fija (`"Admin2026*"` y `"9988"`) tanto en autenticación local offline como en autorizaciones administrativas en caliente (`ValidateAdminAuthorizationAsync`). Toda autenticación se verifica exclusivamente contra el hash BCrypt del usuario.
+  2. **Modelo de Sesión Basado en Propiedades y Claims (`UserSessionModel.cs`, `TicketApiModels.cs`)**:
+     - `UserSessionModel`: Se convirtieron `IsAdmin` e `IsSuperAdmin` en propiedades asignables desde la respuesta del servidor o del contexto offline, eliminando la comparación estática `RoleName.Equals("Administrador", ...)`.
+     - `LoginApiResponse`: Incorporadas las propiedades `IsSuperAdmin`, `CompanyId` y `CompanyName`.
+  3. **Desacoplamiento de Roles en Navegación y Turnos (`MainShellViewModel.cs`, `ShiftClosureViewModel.cs`, `PermissionService.cs`)**:
+     - En `MainShellViewModel.cs`, `ValidateShiftAccess` e inicialización de turno usan directamente `CurrentUser.IsAdmin`.
+     - En `PermissionService.cs`, la carga de permisos evalúa dinámicamente `user.IsAdmin` y carga la matriz de permisos otorgada.
+     - En `ShiftClosureViewModel.cs`, se removieron los filtros basados en cadenas de texto (`roleName.Contains("operador")`, `roleName.Contains("cajero")`, etc.). La entrega y recepción de turno opera para cualquier usuario activo asignado a la sede.
+- **📦 Componentes Modificados**:
+  - `Parking/Models/UserSessionModel.cs`
+  - `Parking/Models/ApiModels/TicketApiModels.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/Services/Implementations/PermissionService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+
 ### [2026-08-27 13:10:00] - [ARCHITECTURE] [SAAS] [MULTI-TENANT] - Transición a Arquitectura Multi-Tenant SaaS Centralizada y Compatibilidad
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

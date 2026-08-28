@@ -388,22 +388,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
             return; // Cancelado o contraseña inválida
         }
 
-        var receiverRole = authenticatedReceiver.RoleName?.ToLowerInvariant() ?? string.Empty;
-        var hasValidRole = receiverRole.Contains("operador") ||
-                           receiverRole.Contains("administrador") ||
-                           receiverRole.Contains("admin") ||
-                           receiverRole.Contains("cajero") ||
-                           receiverRole.Contains("operator");
-
-        if (!hasValidRole)
-        {
-            await _dialogService.ShowAlertAsync(
-                "Usuario Sin Permisos Operativos",
-                $"El usuario '{SelectedHandoverUser.FullName}' no cuenta con un rol con permisos para operar la terminal de parqueadero.\n\n" +
-                $"Por favor asigne un rol de Operador o Administrador en la gestión de usuarios antes de transferirle la caja.",
-                DialogNotificationType.Warning);
-            return;
-        }
+        // Relevo validado con credenciales del operador receptor
 
         IsBusy = true;
         BusyMessage = $"Entregando caja a {SelectedHandoverUser.FullName} e iniciando nuevo turno...";
@@ -533,9 +518,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
             var currentUserId = _authService.CurrentUser?.UserId;
             var currentFullName = _authService.CurrentUser?.FullName ?? string.Empty;
             var currentUsername = _authService.CurrentUser?.Username?.ToLower() ?? string.Empty;
-            var isAdmin = _authService.CurrentUser != null && (
-                _authService.CurrentUser.RoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
-                _authService.CurrentUser.RoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+            var isAdmin = _authService.CurrentUser != null && _authService.CurrentUser.IsAdmin;
 
             var active = await _shiftService.GetActiveShiftAsync();
             HasActiveShift = active != null;
@@ -612,18 +595,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
                     continue;
                 }
 
-                // Filtrar únicamente usuarios que tengan un rol operativo válido o de administración
-                var roleName = u.Role?.Name?.ToLowerInvariant() ?? string.Empty;
-                var isAllowedRole = roleName.Contains("operador") ||
-                                    roleName.Contains("administrador") ||
-                                    roleName.Contains("admin") ||
-                                    roleName.Contains("cajero") ||
-                                    roleName.Contains("operator");
-
-                if (isAllowedRole)
-                {
-                    AvailableUsers.Add(u);
-                }
+                AvailableUsers.Add(u);
             }
 
             HasAvailableHandoverUsers = AvailableUsers.Count > 0;

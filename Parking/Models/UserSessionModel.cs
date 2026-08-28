@@ -14,17 +14,18 @@ public class UserSessionModel
     public Guid RoleId { get; set; }
     public string SessionToken { get; set; } = string.Empty;
     public DateTime LoginTime { get; set; } = DateTime.Now;
-    public bool IsAdmin => RoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) || RoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+    public bool IsAdmin { get; set; }
+    public bool IsSuperAdmin { get; set; }
 
     public HashSet<string> GrantedPermissions { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     public bool HasPermission(string moduleKey, string actionKey)
     {
-        if (IsAdmin)
+        if (IsSuperAdmin)
         {
             return true;
         }
 
-        return GrantedPermissions.Contains($"{moduleKey}.{actionKey}");
+        return GrantedPermissions.Contains($"{moduleKey}.{actionKey}") || GrantedPermissions.Contains(actionKey);
     }
 }

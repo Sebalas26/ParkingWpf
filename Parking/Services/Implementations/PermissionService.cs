@@ -53,7 +53,7 @@ public class PermissionService : IPermissionService
 
         if (this != Current)
         {
-            Current.LoadPermissions(permissionSlugs, isAdmin);
+            Current.LoadPermissions(permissionSlugs ?? Array.Empty<string>(), isAdmin);
         }
 
         PermissionsChanged?.Invoke();
@@ -67,10 +67,9 @@ public class PermissionService : IPermissionService
             return;
         }
 
-        var isAdmin = user.RoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
-                      user.RoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+        var isAdmin = user.IsAdmin;
 
-        LoadPermissions(Array.Empty<string>(), isAdmin);
+        LoadPermissions(user.GrantedPermissions ?? (IEnumerable<string>)Array.Empty<string>(), isAdmin);
     }
 
     public void Clear()

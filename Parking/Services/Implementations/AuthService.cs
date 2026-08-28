@@ -49,9 +49,8 @@ public class AuthService : IAuthService
             if (apiLogin != null && apiLogin.Success)
             {
                 var roleName = string.IsNullOrWhiteSpace(apiLogin.RoleName) ? "Usuario" : apiLogin.RoleName;
-                var isAdmin = apiLogin.IsAdmin ||
-                              roleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
-                              roleName.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+                var isSuperAdmin = apiLogin.IsSuperAdmin;
+                var isAdmin = apiLogin.IsAdmin || isSuperAdmin;
 
                 var userModel = new UserSessionModel
                 {
@@ -61,6 +60,8 @@ public class AuthService : IAuthService
                     Username = apiLogin.Username,
                     FullName = apiLogin.FullName,
                     RoleName = roleName,
+                    IsAdmin = isAdmin,
+                    IsSuperAdmin = isSuperAdmin,
                     SessionToken = apiLogin.Token ?? Guid.NewGuid().ToString(),
                     LoginTime = DateTime.Now
                 };
@@ -96,8 +97,7 @@ public class AuthService : IAuthService
 
         var isValidLocal = user != null && (
             user.PasswordHash == passwordHash ||
-            user.PasswordHash == password ||
-            password == "Admin2026*" || password == "9988"
+            user.PasswordHash == password
         );
 
         if (user == null || !isValidLocal)
@@ -132,6 +132,8 @@ public class AuthService : IAuthService
             FullName = user.FullName,
             RoleName = localRoleName,
             RoleId = user.RoleId,
+            IsAdmin = isLocalAdmin,
+            IsSuperAdmin = false,
             SessionToken = sessionToken,
             LoginTime = DateTime.Now
         };
@@ -219,7 +221,7 @@ public class AuthService : IAuthService
 
         foreach (var admin in adminUsers)
         {
-            if (admin.PasswordHash == passwordHash || admin.PasswordHash == cleanPass || cleanPass == "Admin2026*" || cleanPass == "9988")
+            if (admin.PasswordHash == passwordHash || admin.PasswordHash == cleanPass)
             {
                 return new UserSessionModel
                 {
@@ -228,25 +230,12 @@ public class AuthService : IAuthService
                     FullName = admin.FullName,
                     RoleName = admin.Role?.Name ?? "Administrador",
                     RoleId = admin.RoleId,
+                    IsAdmin = true,
+                    IsSuperAdmin = false,
                     SessionToken = Guid.NewGuid().ToString(),
                     LoginTime = DateTime.Now
                 };
             }
-        }
-
-        if (cleanPass == "Admin2026*" || cleanPass == "9988")
-        {
-            var firstAdmin = adminUsers.FirstOrDefault();
-            return new UserSessionModel
-            {
-                UserId = firstAdmin?.UserId ?? Guid.NewGuid(),
-                Username = firstAdmin?.Username ?? "admin",
-                FullName = firstAdmin?.FullName ?? "Administrador Autorizante",
-                RoleName = "Administrador",
-                RoleId = firstAdmin?.RoleId ?? Guid.Parse("11111111-1111-1111-1111-111111111111"),
-                SessionToken = Guid.NewGuid().ToString(),
-                LoginTime = DateTime.Now
-            };
         }
 
         return null;
@@ -255,8 +244,7 @@ public class AuthService : IAuthService
     public void SwitchCurrentUser(UserSessionModel newUser)
     {
         CurrentUser = newUser;
-        var isAdmin = newUser.RoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
-                      newUser.RoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+        var isAdmin = newUser.IsAdmin;
 
         List<string> permissions = new();
         if (!isAdmin && newUser.RoleId != Guid.Empty)

@@ -271,9 +271,7 @@ public partial class MainShellViewModel : ViewModelBase
                 string.Equals(activeShift.OperatorName, CurrentUser.FullName, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(activeShift.OperatorName, CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
 
-            var isAdmin = CurrentUser != null && (
-                CurrentUser.RoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
-                CurrentUser.RoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+            var isAdmin = CurrentUser != null && CurrentUser.IsAdmin;
 
             if (!isCurrentShiftOwner && !isAdmin)
             {
@@ -372,9 +370,7 @@ public partial class MainShellViewModel : ViewModelBase
             string.Equals(activeShift.OperatorName, CurrentUser.FullName, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(activeShift.OperatorName, CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
 
-        var isAdmin = CurrentUser != null && (
-            CurrentUser.RoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
-            CurrentUser.RoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase));
+        var isAdmin = CurrentUser != null && CurrentUser.IsAdmin;
 
         if (!isCurrentShiftOwner && !isAdmin)
         {
