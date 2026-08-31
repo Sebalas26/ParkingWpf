@@ -101,6 +101,7 @@ public partial class CheckOutViewModel : ViewModelBase
     public ObservableCollection<ParkingTicket> ActiveVehicles { get; } = new();
     public ObservableCollection<Store> AvailableStores { get; } = new();
     public ObservableCollection<CommercialAgreement> AvailableAgreements { get; } = new();
+    public ObservableCollection<CommercialAgreement> BranchAgreements { get; } = new();
     public ObservableCollection<PaymentMethodEntity> AvailablePaymentMethods { get; } = new();
 
     public CheckOutViewModel(
@@ -199,9 +200,15 @@ public partial class CheckOutViewModel : ViewModelBase
     {
         var stores = await _storeService.GetActiveStoresAsync();
         AvailableStores.Clear();
+        BranchAgreements.Clear();
         foreach (var s in stores)
         {
             AvailableStores.Add(s);
+            var agreements = await _agreementService.GetAgreementsByStoreAsync(s.StoreId);
+            foreach (var a in agreements)
+            {
+                BranchAgreements.Add(a);
+            }
         }
     }
 

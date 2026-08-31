@@ -329,12 +329,35 @@
                         <!-- Sección de Convenios y Comercios Aliados -->
                         <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,20">
                             <StackPanel>
-                                <CheckBox Content="Aplicar Convenio de Comercio Aliado"
-                                          IsChecked="{Binding HasAgreementDiscount}"
-                                          Foreground="{DynamicResource BrushTextPrimary}"
-                                          FontWeight="Bold"
-                                          FontSize="15"
-                                          Margin="0,0,0,12"/>
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <CheckBox Grid.Column="0" Content="Aplicar Convenio de Comercio Aliado"
+                                              IsChecked="{Binding HasAgreementDiscount}"
+                                              Foreground="{DynamicResource BrushTextPrimary}"
+                                              FontWeight="Bold"
+                                              FontSize="15"
+                                              VerticalAlignment="Center"/>
+
+                                    <!-- Logos de los convenios cargados -->
+                                    <ItemsControl Grid.Column="1" ItemsSource="{Binding BranchAgreements}" Margin="12,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Left">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderBrush="{DynamicResource BrushBorderMedium}" BorderThickness="1" CornerRadius="6" Background="#FFFFFF" Width="60" Height="36" Margin="0,0,8,0" Padding="4" ToolTip="{Binding Name}">
+                                                    <Image Source="{Binding ImageUrl, TargetNullValue='/Resources/logo.jpeg', FallbackValue='/Resources/logo.jpeg'}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Grid>
 
                                 <StackPanel Visibility="{Binding HasAgreementDiscount, Converter={StaticResource BoolToVis}}">
                                     <!-- Selector de Almacén Aliado -->

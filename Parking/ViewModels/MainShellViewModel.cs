@@ -61,6 +61,9 @@ public partial class MainShellViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSyncing;
 
+    [ObservableProperty]
+    private bool _hasActiveShift;
+
     public event Action? LogoutRequested;
 
     public MainShellViewModel(
@@ -122,6 +125,7 @@ public partial class MainShellViewModel : ViewModelBase
 
         _shiftService.ShiftStateChanged += () =>
         {
+            HasActiveShift = _shiftService.HasActiveShift;
             _ = RefreshOccupancyAsync();
         };
 
@@ -253,6 +257,7 @@ public partial class MainShellViewModel : ViewModelBase
 
         IsOnlineMode = _syncEngine.IsOnline;
         SyncStatusText = _syncEngine.SyncStatusDescription;
+        HasActiveShift = _shiftService.HasActiveShift;
 
         await RefreshOccupancyAsync();
 

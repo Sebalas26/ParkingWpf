@@ -24,6 +24,7 @@ public partial class CheckInViewModel : ViewModelBase
     private readonly DispatcherTimer _feedbackTimer;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RegisterAndPrintCommand))]
     private string _plateNumber = string.Empty;
 
     [ObservableProperty]
@@ -263,7 +264,12 @@ public partial class CheckInViewModel : ViewModelBase
         _feedbackTimer.Start();
     }
 
-    [RelayCommand]
+    private bool CanRegisterAndPrint()
+    {
+        return !string.IsNullOrWhiteSpace(PlateNumber) && PlateNumber.Trim().Length > 0;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanRegisterAndPrint))]
     private async Task RegisterAndPrintAsync()
     {
         var activeShift = await _shiftService.GetActiveShiftAsync();

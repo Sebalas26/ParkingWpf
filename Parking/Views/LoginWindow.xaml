@@ -156,12 +156,29 @@
                              Margin="0,0,0,18"/>
 
                     <TextBlock Text="Contraseña" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,8"/>
-                    <PasswordBox x:Name="UserPasswordBox"
+                    <Grid Margin="0,0,0,24">
+                        <PasswordBox x:Name="UserPasswordBox"
+                                     IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
+                                     Style="{StaticResource ModernPasswordBox}"
+                                     PasswordChanged="UserPasswordBox_PasswordChanged"
+                                     KeyDown="UserPasswordBox_KeyDown"/>
+                        <TextBox x:Name="VisiblePasswordTextBox"
                                  IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
-                                 Style="{StaticResource ModernPasswordBox}"
-                                 PasswordChanged="UserPasswordBox_PasswordChanged"
-                                 KeyDown="UserPasswordBox_KeyDown"
-                                 Margin="0,0,0,24"/>
+                                 Style="{StaticResource ModernTextBox}"
+                                 Visibility="Collapsed"
+                                 TextChanged="VisiblePasswordTextBox_TextChanged"
+                                 KeyDown="UserPasswordBox_KeyDown"/>
+                        <Button x:Name="TogglePasswordButton"
+                                Click="TogglePasswordButton_Click"
+                                HorizontalAlignment="Right"
+                                Width="40"
+                                Margin="2"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Cursor="Hand">
+                            <Path x:Name="TogglePasswordIcon" Data="{StaticResource IconEye}" Fill="{DynamicResource BrushTextSecondary}" Width="18" Height="18" Stretch="Uniform"/>
+                        </Button>
+                    </Grid>
 
                     <!-- Botón de Acceso -->
                     <Button Command="{Binding LoginCommand}"

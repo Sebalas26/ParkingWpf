@@ -75,6 +75,18 @@
 
                 <!-- Left Column: Metrics KPI Cards & Ticket Volume Banner -->
                 <StackPanel Grid.Column="0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Opacity" Value="1"/>
+                            <Setter Property="IsEnabled" Value="True"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasActiveShift}" Value="False">
+                                    <Setter Property="Opacity" Value="0.3"/>
+                                    <Setter Property="IsEnabled" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
                     <!-- Live Breakdown Cards (2x2 Grid) -->
                     <UniformGrid Columns="2" Rows="2" Margin="0,0,0,16">
                         <!-- Card 1: Efectivo Cobrado -->
@@ -416,21 +428,19 @@
                                     Margin="0,0,0,14">
                                 <StackPanel>
                                     <Grid Margin="0,0,0,4">
-                                        <TextBlock Text="💵 CUSTODIA DEL TURNO ANTERIOR" FontSize="11" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}"/>
+                                        <TextBlock Text="💵 CUSTODIA DEL TURNO ANTERIOR" FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}"/>
                                         <TextBlock HorizontalAlignment="Right"
                                                    Text="{Binding LastClosedShift.ActualCashCounted, Converter={StaticResource CurrencyConv}}"
-                                                   FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushSuccess}"/>
+                                                   FontSize="16" FontWeight="Black" Foreground="{DynamicResource BrushSuccess}"/>
                                     </Grid>
-                                    <TextBlock FontSize="11" Foreground="{DynamicResource BrushTextSecondary}">
+                                    <TextBlock FontSize="14" Foreground="{DynamicResource BrushTextSecondary}">
                                         <Run Text="Dejado por: " FontWeight="SemiBold"/>
                                         <Run Text="{Binding LastClosedShift.OperatorName, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
                                     </TextBlock>
-                                    <TextBlock FontSize="10" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0">
+                                    <TextBlock FontSize="14" Foreground="Black" Margin="0,2,0,0">
                                         <Run Text="Fecha de Cierre: "/>
                                         <Run Text="{Binding LastClosedShift.EndTime, Mode=OneWay, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"/>
                                     </TextBlock>
-                                    <TextBlock Text="ℹ️ Se ha sugerido este monto como base inicial. Confirme físicamente el dinero en gaveta."
-                                               FontSize="10" Foreground="{DynamicResource BrushPrimary}" FontWeight="SemiBold" Margin="0,4,0,0"/>
                                 </StackPanel>
                             </Border>
 
@@ -472,6 +482,18 @@
                     BorderThickness="1"
                     CornerRadius="14"
                     Padding="20">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Opacity" Value="1"/>
+                        <Setter Property="IsEnabled" Value="True"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding HasActiveShift}" Value="False">
+                                <Setter Property="Opacity" Value="0.3"/>
+                                <Setter Property="IsEnabled" Value="False"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
                 <StackPanel>
                     <Grid Margin="0,0,0,14">
                         <Grid.ColumnDefinitions>

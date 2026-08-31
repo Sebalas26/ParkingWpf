@@ -181,23 +181,7 @@
                 Padding="22">
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
-                    <!-- 1. Header del Módulo -->
-                    <Grid Margin="0,0,0,16">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Registro de Entrada de Vehículo" FontSize="22" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                            <TextBlock Text="Capture la placa del vehículo, seleccione la categoría tarifaria y emita el tiquete de ingreso" FontSize="14" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
-                        </StackPanel>
-                        <Border Grid.Column="1" Background="#E0F2FE" CornerRadius="12" Padding="12,5" VerticalAlignment="Center">
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="7" Height="7" Fill="{DynamicResource BrushPrimary}" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Terminal Activa" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
+
 
                     <!-- 2. Alerta de Feedback (Informativo / Advertencia en Amarillo Institucional) -->
                     <Border Visibility="{Binding HasFeedback, Converter={StaticResource BoolToVis}}"
@@ -270,8 +254,8 @@
                             <TextBox x:Name="PlateTextBox"
                                      Text="{Binding PlateNumber, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource PlateInputTextBox}"
-                                     Height="84"
-                                     FontSize="46"
+                                     Height="160"
+                                     FontSize="90"
                                      Margin="0,0,0,6"/>
 
                             <!-- Banner de Suscriptor Mensual Activo -->
@@ -342,12 +326,6 @@
                                     </Border>
                                 </Grid>
                             </Border>
-
-                            <TextBlock Text="💡 Las letras y números ingresados se convertirán automáticamente a mayúsculas"
-                                       FontSize="13"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource BrushTextMuted}"
-                                       HorizontalAlignment="Center"/>
 
                             <!-- Teclado Virtual en Pantalla (Desplegable) -->
                             <Border Visibility="{Binding IsVirtualKeyboardVisible, Converter={StaticResource BoolToVis}}"
@@ -586,8 +564,6 @@
                                 </StackPanel>
                             </Border>
                         </Grid>
-
-                        <TextBlock Text="ℹ️ Tiempo de Gracia: 0 min (Cobro por minuto/fracción exacta desde el ingreso)" FontSize="12" Foreground="{DynamicResource BrushTextMuted}"/>
                     </StackPanel>
                 </Border>
 

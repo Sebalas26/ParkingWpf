@@ -10,6 +10,16 @@
                 <ResourceDictionary Source="Styles/Icons.xaml"/>
                 <ResourceDictionary Source="Styles/Controls.xaml"/>
             </ResourceDictionary.MergedDictionaries>
+            
+            <!-- Global Font and Typography Overrides -->
+            <Style TargetType="Window">
+                <Setter Property="FontFamily" Value="{StaticResource FontFamilyPrimary}"/>
+                <Setter Property="TextElement.FontFamily" Value="{StaticResource FontFamilyPrimary}"/>
+            </Style>
+            
+            <Style TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource FontFamilyPrimary}"/>
+            </Style>
 
             <!-- Global Converters for universal access across Views and DataGridColumns -->
             <conv:CurrencyConverter x:Key="CurrencyConv"/>

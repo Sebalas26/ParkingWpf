@@ -54,147 +54,89 @@
                 </Button>
             </Grid>
 
-            <!-- 2. Thermal Ticket Paper Container -->
+            <!-- 2. Thermal Ticket Paper Container (Estilo POS Blanco y Negro) -->
             <Border Grid.Row="1"
-                    Background="{DynamicResource BrushSurfaceBackground}"
-                    BorderBrush="{DynamicResource BrushBorderSubtle}"
+                    Background="#FFFFFF"
+                    BorderBrush="{DynamicResource BrushBorderMedium}"
                     BorderThickness="1"
-                    CornerRadius="10"
-                    Padding="14,12"
+                    CornerRadius="0"
+                    Padding="16,20"
                     Margin="0,0,0,12"
                     MaxHeight="480">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <StackPanel HorizontalAlignment="Stretch" Margin="4,0">
-                        <StackPanel HorizontalAlignment="Center" Margin="0,0,0,8">
-                            <TextBlock Text="PARKING FLOW" FontSize="15" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center"/>
-                            <TextBlock Text="TU PUNTO DE LLEGADA" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Center" Margin="0,1,0,0"/>
-                            <TextBlock Text="Terminal 01 • Estación de Control" FontSize="10" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
+                    <StackPanel HorizontalAlignment="Stretch" Margin="0,0">
+                        <!-- LOGO (igual al del Login) -->
+                        <Image Source="/Resources/logo.jpeg"
+                               Height="50"
+                               Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,10"/>
+
+                        <!-- CÓDIGO QR EN LA PARTE SUPERIOR -->
+                        <Image Source="{Binding QrCodeImage}"
+                               Width="160" Height="160"
+                               Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="NearestNeighbor"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,12"/>
+
+                        <!-- ENCABEZADO DE EMPRESA -->
+                        <TextBlock Text="EDIFICIO T7 T8 CEMSA" FontSize="16" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                        <TextBlock Text="NIT: 900.914.246-2" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                        <TextBlock Text="CALLE 26 #57-83" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+
+                        <TextBlock Text="****************************************" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4"/>
+
+                        <!-- INFORMACION DEL TIQUETE -->
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
+                            <TextBlock Text="TIQUETE No: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            <TextBlock Text="{Binding Ticket.TicketNumber}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" FontWeight="Bold"/>
                         </StackPanel>
 
-                        <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,2,0,8"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
+                            <TextBlock Text="FECHA: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            <TextBlock Text="{Binding Ticket.EntryTime, StringFormat='{}{0:yyyy/MM/dd HH:mm:ss}'}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                        </StackPanel>
+                        
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,8">
+                            <TextBlock Text="VEHICULO: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            <TextBlock Text="{Binding Ticket.VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                        </StackPanel>
 
-                        <!-- Placa y Categoría -->
-                        <Border Background="{DynamicResource BrushInputBackground}"
-                                BorderBrush="{DynamicResource BrushBorderMedium}"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12,8"
-                                Margin="0,0,0,10">
-                            <StackPanel HorizontalAlignment="Center">
-                                <TextBlock Text="PLACA DEL VEHÍCULO" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Center"/>
-                                <TextBlock Text="{Binding Ticket.PlateNumber}" FontSize="22" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center"/>
-                                <TextBlock Text="{Binding Ticket.VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushCyan}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                            </StackPanel>
+                        <!-- INVERTED PLATE TEXT (Fondo negro, letras blancas) -->
+                        <Border Background="#000000" HorizontalAlignment="Center" Padding="16,4" Margin="0,4,0,8">
+                            <TextBlock Text="{Binding Ticket.PlateNumber}" FontSize="28" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#FFFFFF"/>
                         </Border>
 
-                        <Grid Margin="0,0,0,6">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Tiquete #:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Ticket.TicketNumber}" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" FontSize="11"/>
-                        </Grid>
+                        <TextBlock Text="****************************************" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4"/>
+                        
+                        <!-- TEXTO DE TARIFAS Y POLIZA -->
+                        <TextBlock Text="TARIFA MOTO $80 - AUTO $110" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2"/>
+                        <TextBlock Text="POLIZA RESPONSABILIDAD CIVIL" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2"/>
+                        <TextBlock Text="#27690 BERKLEY SEGUROS S.A" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2"/>
+                        <TextBlock Text="RECLAMOS TEL: 3902389 EXT 104" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2,0,16"/>
 
-                        <Grid Margin="0,0,0,6">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Fecha y Hora Ingreso:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Ticket.EntryTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" FontSize="11"/>
-                        </Grid>
-
-                        <Grid Margin="0,0,0,6" Visibility="{Binding Ticket.ExitTime, Converter={StaticResource NullToVis}}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Fecha y Hora Salida:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Ticket.ExitTime, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" FontSize="11"/>
-                        </Grid>
-
-                        <Grid Margin="0,0,0,6" Visibility="{Binding Ticket.ExitTime, Converter={StaticResource NullToVis}}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Duración Total:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Ticket.FormattedDuration}" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="Bold" FontSize="11"/>
-                        </Grid>
-
-                        <Grid Margin="0,0,0,6">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Tarifa Base por Hora:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Ticket.HourlyRate, Converter={StaticResource CurrencyConv}}" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" FontSize="11"/>
-                        </Grid>
-
-                        <Grid Margin="0,0,0,6" Visibility="{Binding Ticket.ExitTime, Converter={StaticResource NullToVis}}">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Total Pagado:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="12" FontWeight="Bold"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Ticket.TotalAmount, Converter={StaticResource CurrencyConv}}" Foreground="{DynamicResource BrushSuccess}" FontWeight="Black" FontSize="14"/>
-                        </Grid>
-
-                        <Grid Margin="0,0,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Operador en Turno:" Foreground="{DynamicResource BrushTextSecondary}" FontSize="11"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Ticket.OperatorName}" Foreground="{DynamicResource BrushTextPrimary}" FontWeight="SemiBold" FontSize="11"/>
-                        </Grid>
-
-                        <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,2,0,10"/>
-
-                        <!-- SECCIÓN EXCLUSIVA: CÓDIGO QR 2D CENTRADO (Para lectura con pistola de caja y consulta) -->
-                        <Border Background="#FFFFFF"
-                                BorderBrush="{DynamicResource BrushBorderMedium}"
-                                BorderThickness="1.5"
-                                CornerRadius="10"
-                                Padding="16,12"
-                                Margin="0,4,0,12"
-                                HorizontalAlignment="Center">
-                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                                <TextBlock Text="CÓDIGO DE ACCESO Y SALIDA (QR)"
-                                           FontSize="10"
-                                           FontWeight="Black"
-                                           Foreground="{DynamicResource BrushPrimary}"
-                                           HorizontalAlignment="Center"
-                                           Margin="0,0,0,8"/>
-                                <!-- QR Code Image de Alta Definición -->
-                                <Image Source="{Binding QrCodeImage}"
-                                       Width="140" Height="140"
-                                       Stretch="Uniform"
-                                       RenderOptions.BitmapScalingMode="NearestNeighbor"
-                                       HorizontalAlignment="Center"
-                                       Margin="0,0,0,8"/>
-                                <TextBlock Text="{Binding Ticket.TicketNumber}"
-                                           FontSize="13"
-                                           FontWeight="Black"
-                                           FontFamily="{StaticResource FontFamilyMonospace}"
-                                           Foreground="#000000"
-                                           HorizontalAlignment="Center"/>
-                                <TextBlock Text="Escanee con lector de caja para liquidar y salida"
-                                           FontSize="9"
-                                           Foreground="#64748B"
-                                           HorizontalAlignment="Center"
-                                           Margin="0,3,0,0"/>
+                        <!-- SECCIÓN EXCLUSIVA PARA LA SALIDA (Si ya salió) -->
+                        <StackPanel Visibility="{Binding Ticket.ExitTime, Converter={StaticResource NullToVis}}">
+                            <TextBlock Text="****************************************" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4"/>
+                            
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
+                                <TextBlock Text="SALIDA: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.ExitTime, StringFormat='{}{0:yyyy/MM/dd HH:mm:ss}'}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                             </StackPanel>
-                        </Border>
-
-
-                        <TextBlock Text="Conserve este tiquete para retirar su vehículo. En caso de pérdida se cobrará tarifa plena más reposición."
-                                   FontSize="9"
-                                   Foreground="{DynamicResource BrushTextMuted}"
-                                   TextWrapping="Wrap"
-                                   TextAlignment="Center"
-                                   Margin="0,2,0,0"/>
+                            
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
+                                <TextBlock Text="DURACION: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.FormattedDuration}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+                            
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
+                                <TextBlock Text="TOTAL: " FontSize="18" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.TotalAmount, Converter={StaticResource CurrencyConv}}" FontSize="18" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+                        </StackPanel>
+                        
                     </StackPanel>
                 </ScrollViewer>
             </Border>

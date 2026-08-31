@@ -17,6 +17,174 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-08-30 23:15:00] - [Funcionalidad/UI] [WPF] - Visualización de Logos de Convenios Activos
+- **Autor**: Antigravity AI Assistant
+- **💬 Prompt Original del Usuario**:
+  > *"Quisiera que en esta pantalla me cargue los logos de los convenios que se encuentran registrados para esa sede"*
+- **🤖 Resumen Técnico para la IA**:
+  1. En `CheckOutViewModel.cs` se creó la colección `BranchAgreements`.
+  2. Al ejecutar `LoadStoresAsync()` (que trae las tiendas activas de la sede), se invocó `_agreementService.GetAgreementsByStoreAsync` para cada una de ellas con el fin de recolectar todos los convenios y poblar `BranchAgreements`.
+  3. En `CheckOutView.xaml` se incrustó un `ItemsControl` horizontal a la derecha del `CheckBox` *"Aplicar Convenio"*.
+  4. Este `ItemsControl` renderiza una previsualización pequeña (tarjeta de imagen con tooltip) por cada convenio disponible usando su `ImageUrl` (con fallback dinámico al logo principal en caso de ausencia de imagen).
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+### [2026-08-30 22:54:00] - [UI/UX] [WPF] - Rediseño Profesional de Tiquete Térmico
+- **Autor**: Antigravity AI Assistant
+- **💬 Prompt Original del Usuario**:
+  > *"la impresion que me genera, quisiera que me generara una mas pro (basate en la 2da imagen), quisiera que la generaras en blanco negro, ademas que tuviese el logo que tiene el login en la parte superior"*
+- **🤖 Resumen Técnico para la IA**:
+  1. Se reestructuró por completo el contenedor principal en `ReceiptPreviewDialog.xaml`.
+  2. Se adoptó una estética monocromática `blanco/negro` típica de las impresoras térmicas (fondos blancos sólidos, textos `#000000`).
+  3. Se incluyó el logo (`logo.jpeg`) en la parte superior y se movió el Código QR también hacia arriba, imitando la foto de referencia.
+  4. Se reemplazaron las líneas sólidas por cadenas de asteriscos `***` como divisores para mayor fidelidad a los tiquetes físicos reales.
+  5. Se implementó la placa invertida (fondo negro y letras blancas) para la rápida visualización del operario.
+  6. Se usaron tipografías monoespaciadas (`FontFamilyMonospace`) para darle el efecto de impresión matricial/térmica profesional.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+### [2026-08-30 22:06:00] - [UI/UX] [WPF] - Optimización de Espacio y Placa Gigante
+- **Autor**: Antigravity AI Assistant
+- **💬 Prompt Original del Usuario**:
+  > *"Elimina esto y aprovecha esos texta para aumentar el cuadro donde se digita la placa"*
+- **🤖 Resumen Técnico para la IA**:
+  1. Se eliminó por completo el bloque `<Grid>` del "Header del Módulo" (que contenía los textos "Registro de Entrada de Vehículo" y el badge de "Terminal Activa") en `CheckInView.xaml` para liberar espacio vertical en la columna izquierda.
+  2. Se aplicaron los tamaños masivos directamente al `PlateTextBox` (`Height="160"` y `FontSize="90"`) ocupando el espacio liberado por el header, sin romper el diseño de 2 columnas ni provocar scroll horizontal.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckInView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+### [2026-08-30 21:55:00] - [UI/UX] [WPF] - Toggle de Contraseña en Inicio de Sesión
+- **Autor**: Antigravity AI Assistant
+- **💬 Prompt Original del Usuario**:
+  > *"ayudame con el login que tenga un icono para ver la clave"*
+- **🤖 Resumen Técnico para la IA**:
+  1. Se agregaron las geometrías de íconos `IconEye` y `IconEyeOff` a `Icons.xaml` para mantener la estandarización de recursos vectoriales.
+  2. En `LoginWindow.xaml`, se reemplazó el `PasswordBox` solitario por un `Grid` superpuesto que contiene el `PasswordBox`, un `TextBox` en modo `Collapsed` y un `Button` transparente de alternancia alineado a la derecha.
+  3. En `LoginWindow.xaml.cs`, se implementó la lógica en Code-Behind para alternar la visibilidad entre el `TextBox` y el `PasswordBox`, copiando el texto entre ellos al cambiar, y se actualizaron los manejadores del Enter Key para leer de la caja visible actual.
+- **📦 Componentes Modificados**:
+  - `Parking/Styles/Icons.xaml`
+  - `Parking/Views/LoginWindow.xaml`
+  - `Parking/Views/LoginWindow.xaml.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+### [2026-08-30 21:47:00] - [UI/UX] [WPF] - Ajuste de Tamaño Masivo en Caja de Placa
+- **Autor**: Antigravity AI Assistant
+- **💬 Prompt Original del Usuario**:
+  > *"quisiera que donde se ingresa la placa tenga este tamaño, sin que las otras cards se corten, dejalas responsive tambien"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Ajuste XAML (`CheckInView.xaml`)**: Se incrementó drásticamente el alto (`Height="160"`) y el tamaño de la fuente (`FontSize="90"`) del `PlateTextBox`.
+  2. **Responsividad**: Dado que la fila inferior del Grid (`Row 1`) posee un `Height="*"`, absorbe dinámicamente el espacio restante. Los contenedores de las columnas inferiores ya cuentan con `ScrollViewer` (`VerticalScrollBarVisibility="Auto"`), lo que garantiza que las tarjetas (Cards) nunca se corten irreparablemente; simplemente habilitarán el scroll vertical si la pantalla es muy pequeña.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckInView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+### [2026-08-30 21:20:00] - [UI/UX] [WPF] - Reorganización Panorámica de Pantalla (Eliminación de Título y Expansión de Placa)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Quiero que me reorganices esta pantalla , donde lo rojo quiero que me quede en lo que te encerre en azul y lo de verde eliminalo, dejame el tamaño del rojocon mas 4 de size"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Reestructuración de XAML (`CheckInView.xaml`)**:
+     - Se añadió `RowDefinitions` al Grid principal para dividir la vista horizontalmente (Top/Bottom).
+     - Se extrajo todo el bloque de la "Caja Panorámica de Placa" (junto con la alerta de feedback) hacia una fila superior (`Grid.Row="0" Grid.ColumnSpan="2"`) logrando que abarque todo el ancho de la pantalla sobre ambas columnas inferiores.
+     - Se eliminó por completo el "Header del Módulo" (Texto de Registro y Terminal Activa).
+  2. **Ajuste de Fuentes**:
+     - Se incrementó nuevamente en +4 el tamaño de todos los textos dentro de la caja de placa (`FontSize="56"`, rótulos superiores a `20` y `19`).
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckInView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores**.
+  - XAML compilado sin problemas y aplicativo reiniciado.
+
+### [2026-08-30 20:49:00] - [UI/UX] [WPF] - Ajuste de Tamaño en Cuadro de Texto de Placa
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"ayudame que este cuadro se vea un poco mas ancho y con 4 mas de size en el text"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Ajuste de Dimensiones (`CheckInView.xaml`)**:
+     - Se incrementó el `Height` de `PlateTextBox` de 84 a 100 para que se vea más amplio (ancho/alto) en la interfaz.
+     - Se incrementó su `FontSize` en +4 (pasando de 48 a 52) para garantizar máxima legibilidad durante la captura de placas a distancia o con pantallas táctiles.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckInView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores**.
+
+### [2026-08-30 20:47:00] - [UI/UX] [WPF] - Validación Visual del Botón de Ingreso (Botón Gris)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"ayudame con que este boton se muestre en gris y quede inhabiitado hasta que el campo de la placa tenga min 1 letra, cuando ya detecte , ahi si se pnga en verde osea en el color que ya esta"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Validación MVVM (`CheckInViewModel.cs`)**:
+     - Se añadió lógica de evaluación `CanExecute` (`CanRegisterAndPrint()`) al comando `RegisterAndPrintCommand` evaluando que `PlateNumber` no esté vacío.
+     - Se decoró la propiedad `_plateNumber` con `[NotifyCanExecuteChangedFor(nameof(RegisterAndPrintCommand))]` para revaluar en cada pulsación de tecla.
+  2. **Estilo Visual (`CheckInView.xaml`)**:
+     - Se añadió un `Trigger` en `IsEnabled="False"` para forzar explícitamente el cambio de color a gris (`Background="#B0BEC5"`, `BorderBrush="#B0BEC5"`) cuando el comando no está disponible.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/Views/CheckInView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores**.
+  - Reinicio del aplicativo ejecutado correctamente.
+
+### [2026-08-30 20:39:00] - [UI/UX] [WPF] - Incremento General de Tamaño de Fuente en Registro de Entrada (Check-In)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"podrias subirle 2 mas al fontsize de esta pantalla"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Aumento de Tamaño de Fuente (`CheckInView.xaml`)**:
+     - Se realizó un incremento global de +2 puntos en todos los atributos `FontSize` definidos en la vista de Ingreso de Vehículos.
+     - Esto mejora la legibilidad general de toda la pantalla (títulos, campos, notas, botones y paneles laterales) sin comprometer la estructura del layout.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckInView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores**.
+  - Reinicio del aplicativo ejecutado correctamente.
+
+### [2026-08-30 20:25:00] - [UI/UX] [WPF] - Configuración Global de la Tipografía (Inter)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"perfecto, ahora ayudame a que todo el wpf tenga como fuente de texto (inter)"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Actualización de FontFamilyPrimary (`Typography.xaml`)**:
+     - Se añadió `Inter` como la primera prioridad en la pila de fuentes de la aplicación para `<FontFamily x:Key="FontFamilyPrimary">`.
+  2. **Aplicación Global y Herencia en toda la Aplicación (`App.xaml`)**:
+     - Se introdujeron Estilos Base implícitos (`TargetType="Window"` y `TargetType="TextBlock"`) dentro de los recursos globales de la aplicación.
+     - Esto asegura que cualquier texto (`TextElement.FontFamily`, `TextBlock` y el `Window` por defecto) que no especifique explícitamente una fuente herede y aplique `Inter` instantáneamente.
+- **📦 Componentes Modificados**:
+  - `Parking/Styles/Typography.xaml`
+  - `Parking/App.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Se espera un reinicio del aplicativo para aplicar los cambios a nivel de `App.xaml`.
+
+### [2026-08-30 20:16:00] - [UI/UX] [WPF] - Opacidad y Deshabilitación Visual de Interfaz al no tener Turno Activo
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayduame con algo, cuando un usuario ingresa a mi wpf y no he abierto caja, el actualmente obliga a que la persona abra caja para permitirle avanzar, sin embargo quisiera que todo lo que te señale en rjo se vea opaco haciendo la alucion de que se encuentra inactivo"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Exposición del Estado del Turno (`MainShellViewModel.cs`)**:
+     - Se añadió la propiedad `HasActiveShift` (`[ObservableProperty] private bool _hasActiveShift;`).
+     - Se actualiza su valor suscribiéndose al evento `_shiftService.ShiftStateChanged` y durante la inicialización `InitializeAsync()`.
+  2. **Bloqueo Visual de la Barra Lateral (`MainShellWindow.xaml`)**:
+     - Se agregó un `Style` con `DataTrigger` al `StackPanel` que contiene los botones de navegación (`CheckIn`, `CheckOut`, etc.). Si `HasActiveShift` es `False`, se aplica `Opacity="0.3"` y `IsEnabled="False"`.
+  3. **Bloqueo Visual de la Vista de Turnos (`ShiftClosureView.xaml`)**:
+     - Se añadieron triggers similares (`Opacity="0.3"` y `IsEnabled="False"`) al `StackPanel` que agrupa las tarjetas KPI superiores (Efectivo, Tarjetas, etc.) y al `Border` inferior que contiene el historial (`DataGrid`).
+     - Esto centra la atención del usuario de manera forzosa en la tarjeta central "Apertura de Turno Operativo".
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `Parking/Views/ShiftClosureView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores**. (Compilación reiniciada exitosamente).
+
 ### [2026-08-28 08:00:00] - [SECURITY] [RBAC] [REFACTOR] - Erradicación Total de Contraseñas Maestras y Desacoplamiento de Roles Quemados en Terminal WPF
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

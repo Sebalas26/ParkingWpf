@@ -219,6 +219,18 @@
                 <!-- Navigation List: Módulos Operativos -->
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel>
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Opacity" Value="1"/>
+                                <Setter Property="IsEnabled" Value="True"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasActiveShift}" Value="False">
+                                        <Setter Property="Opacity" Value="0.3"/>
+                                        <Setter Property="IsEnabled" Value="False"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
                         <TextBlock Text="OPERACIÓN EN TERMINAL" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushSidebarText}" Margin="12,0,0,12"/>
 
                         <!-- 1. Ingreso de Vehículos -->
