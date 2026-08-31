@@ -1,4 +1,4 @@
-# Historial Oficial de Modificaciones y Control de Cambios
+﻿# Historial Oficial de Modificaciones y Control de Cambios
 **Proyecto**: ParkFlow Desktop (WPF) & API Central  
 **Fecha de Creación**: 2026-08-24  
 
@@ -16,6 +16,25 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 ---
 
 ## 📋 Registro Cronológico de Cambios
+
+### [2026-08-30 23:59:00] - [UI/UX] [WPF] - Corrección de Cobertura de Fondo Oscuro (Backdrop) en Modal de Cobro y Liquidación
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Pero la pantallaoscura no se ve ajustada"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico**: CheckOutDialog.xaml tenía propiedades quemadas Height="800" Width="1000" con fondo translúcido #B3000000. Al abrirse sobre una ventana maximizada o de mayor resolución, el telón/overlay oscuro solo cubría ese rectángulo central de 1000x800 px, dejando los costados sin oscurecer.
+  2. **Remoción de Restricciones Fijas (CheckOutDialog.xaml)**: Se eliminaron los atributos Height="800" y Width="1000" del elemento raíz <Window>.
+  3. **Ajuste y Sincronización Dinámica con Ventana Principal (CheckOutDialog.xaml.cs)**:
+     - En el evento Loaded, se evalúa el estado del Owner (MainWindow).
+     - Si el Owner está maximizado, la ventana modal se maximiza (WindowState = WindowState.Maximized) para cubrir el 100% de la pantalla de forma uniforme.
+     - Si está en modo normal, hereda dinámicamente Left, Top, Width y Height del Owner.
+     - El card de cobro (Border Width="550") permanece centrado en el medio de la pantalla con su comportamiento de cierre al hacer clic en el backdrop oscuro.
+- **📦 Componentes Modificados**:
+  - Parking/Views/CheckOutDialog.xaml
+  - Parking/Views/CheckOutDialog.xaml.cs
+  - HISTORIAL_CAMBIOS.md
+- **✅ Verificación y Compilación**:
+  - dotnet build: **0 Errores, 0 Advertencias**.
 
 ### [2026-08-30 20:30:00] - [SECURITY] [RBAC] [SYNC] - Estandarización Canónica de Permisos RBAC, Motor de Alias Resiliente y Sincronización Offline en Terminal WPF
 - **Autor**: Antigravity AI Assistant & Software Architect

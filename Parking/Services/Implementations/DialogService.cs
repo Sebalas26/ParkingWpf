@@ -89,5 +89,35 @@ public class DialogService : IDialogService
             return SyncRequiredDialog.ShowDialogAsync(Application.Current.MainWindow, notification, syncEngine);
         }).Task.Unwrap();
     }
+
+    public Task<bool> ShowCheckOutDialogAsync(object viewModel)
+    {
+        return Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            var dialog = new CheckOutDialog();
+            dialog.DataContext = viewModel;
+            dialog.Owner = Application.Current.MainWindow;
+            
+            Action requestCloseHandler = () =>
+            {
+                dialog.DialogResult = true; // We can set result to true to signify it closed intentionally
+                dialog.Close();
+            };
+
+            if (viewModel is CheckOutViewModel checkoutVm)
+            {
+                checkoutVm.RequestCloseDialog += requestCloseHandler;
+            }
+
+            var result = dialog.ShowDialog();
+
+            if (viewModel is CheckOutViewModel checkoutVmUnsub)
+            {
+                checkoutVmUnsub.RequestCloseDialog -= requestCloseHandler;
+            }
+
+            return result ?? false;
+        }).Task;
+    }
 }
 

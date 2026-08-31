@@ -29,6 +29,8 @@ public partial class CheckOutViewModel : ViewModelBase
     private int _currentGracePeriodSeconds = 900;
     private bool _isPaymentTimeoutDialogShowing;
 
+    public event Action? RequestCloseDialog;
+
     [ObservableProperty]
     private string _searchQuery = string.Empty;
 
@@ -398,6 +400,13 @@ public partial class CheckOutViewModel : ViewModelBase
             HasAgreementDiscount = false;
             RecalculateLiveFee();
             AmountTendered = CalculatedFee;
+
+            var dialogResult = await _dialogService.ShowCheckOutDialogAsync(this);
+            if (SelectedTicket != null && !dialogResult)
+            {
+                SelectedTicket = null;
+                RequestCloseDialog?.Invoke();
+            }
         }
         else
         {
@@ -675,6 +684,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 var change = completedTicket.ChangeGiven;
 
                 SelectedTicket = null;
+                RequestCloseDialog?.Invoke();
                 SearchQuery = string.Empty;
                 AmountTendered = 0m;
                 ChangeDue = 0m;
@@ -722,12 +732,10 @@ public partial class CheckOutViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void CancelSelection() => ClearSelection();
-
-    [RelayCommand]
-    private void ClearSelection()
+    private void CancelSelection()
     {
         SelectedTicket = null;
+        RequestCloseDialog?.Invoke();
         SearchQuery = string.Empty;
         AmountTendered = 0m;
         ChangeDue = 0m;
