@@ -12,7 +12,7 @@ using Parking.Services.Contracts;
 
 namespace Parking.ViewModels;
 
-[RequirePermission("analytics.view", "Panel Financiero y Analítica")]
+[RequirePermission("analytics.view_dashboard", "Panel Financiero y Analítica")]
 public partial class AnalyticsViewModel : ViewModelBase
 {
     private readonly IAnalyticsService _analyticsService;

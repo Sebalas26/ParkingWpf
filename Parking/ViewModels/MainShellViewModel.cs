@@ -389,7 +389,7 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToCheckIn()
     {
-        if (!_permissionService.HasPermission("checkin.view"))
+        if (!_permissionService.HasPermission("checkin.create_ticket"))
         {
             _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Ingreso Vehicular.", DialogNotificationType.Warning);
             return;
@@ -406,7 +406,7 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToCheckOut()
     {
-        if (!_permissionService.HasPermission("checkout.view"))
+        if (!_permissionService.HasPermission("checkout.process_payment"))
         {
             _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Salida y Cobro.", DialogNotificationType.Warning);
             return;
@@ -423,7 +423,7 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToMonthlySubscriptions()
     {
-        if (!_permissionService.HasPermission("subscriptions.view"))
+        if (!_permissionService.HasPermission("subscriptions.view_list"))
         {
             _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Mensualidades.", DialogNotificationType.Warning);
             return;
@@ -440,7 +440,7 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToRecentEntries()
     {
-        if (!_permissionService.HasPermission("recent_entries.view"))
+        if (!_permissionService.HasPermission("monitoring.view_occupancy"))
         {
             _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Patio / Vehículos Recientes.", DialogNotificationType.Warning);
             return;
@@ -451,7 +451,7 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToAnalytics()
     {
-        if (!_permissionService.HasPermission("analytics.view"))
+        if (!_permissionService.HasPermission("analytics.view_dashboard"))
         {
             _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Analítica y Finanzas.", DialogNotificationType.Warning);
             return;
@@ -462,7 +462,7 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToShiftClosure()
     {
-        if (!_permissionService.HasPermission("shift.view"))
+        if (!_permissionService.HasPermission("shifts.view_current"))
         {
             _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Control de Turnos y Caja.", DialogNotificationType.Warning);
             return;

@@ -169,12 +169,13 @@ public class AuthService : IAuthService
         {
             localPermissions = new List<string>
             {
-                "checkin.view", "checkin.create", "checkin.reprint",
+                "checkin.view", "checkin.create_ticket", "checkin.create", "checkin.reprint",
                 "checkout.view", "checkout.search", "checkout.apply_discount", "checkout.process_payment", "checkout.reprint_receipt",
-                "subscriptions.view", "subscriptions.create", "subscriptions.renew",
-                "recent_entries.view", "recent_entries.reprint",
+                "subscriptions.view", "subscriptions.view_list", "subscriptions.create_subscription", "subscriptions.create", "subscriptions.renew_subscription", "subscriptions.renew",
+                "monitoring.view_occupancy", "monitoring.search_vehicles", "monitoring.force_exit", "monitoring.export", "recent_entries.view", "recent_entries.reprint",
+                "shifts.view_current", "shifts.open", "shifts.blind_count", "shifts.close", "shifts.view_history", "shifts.reprint_closure",
                 "shift.view", "shift.open", "shift.cash_withdrawal", "shift.close", "shift.handover", "shift.history", "shift.export",
-                "analytics.view"
+                "analytics.view_dashboard", "analytics.income_reports", "analytics.occupancy_reports", "analytics.audit_reports", "analytics.export", "analytics.view"
             };
         }
 

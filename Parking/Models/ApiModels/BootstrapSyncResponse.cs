@@ -578,6 +578,36 @@ public class ApiVehicleIncidentSyncDto
     public DateTime? ResolvedAtUtc { get; set; }
 }
 
+public class ApiUserRoleSyncDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("role")]
+    public string Role { get; set; } = string.Empty;
+
+    [JsonPropertyName("description")]
+    public string? Description { get; set; }
+
+    [JsonPropertyName("isActive")]
+    public bool IsActive { get; set; } = true;
+}
+
+public class ApiRoleActionSyncDto
+{
+    [JsonPropertyName("roleId")]
+    public int RoleId { get; set; }
+
+    [JsonPropertyName("actionSlug")]
+    public string ActionSlug { get; set; } = string.Empty;
+
+    [JsonPropertyName("actionName")]
+    public string? ActionName { get; set; }
+
+    [JsonPropertyName("isActive")]
+    public bool IsActive { get; set; } = true;
+}
+
 public class BootstrapSyncResponse
 {
     [JsonPropertyName("serverTimeUtc")]
@@ -591,6 +621,12 @@ public class BootstrapSyncResponse
 
     [JsonPropertyName("users")]
     public List<ApiUserSyncDto> Users { get; set; } = new();
+
+    [JsonPropertyName("userRoles")]
+    public List<ApiUserRoleSyncDto> UserRoles { get; set; } = new();
+
+    [JsonPropertyName("roleActions")]
+    public List<ApiRoleActionSyncDto> RoleActions { get; set; } = new();
 
     [JsonPropertyName("paymentMethods")]
     public List<ApiPaymentMethodSyncDto> PaymentMethods { get; set; } = new();
