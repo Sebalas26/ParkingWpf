@@ -10,7 +10,7 @@ using Parking.Services.Contracts;
 
 namespace Parking.ViewModels;
 
-[RequirePermission("recent_entries.view", "Entradas del Turno / Patio")]
+[RequirePermission("monitoring.view_occupancy", "Entradas del Turno / Patio")]
 public partial class RecentEntriesViewModel : ViewModelBase
 {
     private readonly IParkingTicketService _ticketService;

@@ -185,6 +185,104 @@ public class SyncEngineService : ISyncEngineService
         }
         await db.SaveChangesAsync(ct);
 
+        // Sincronizar Catálogo de Roles RBAC si vienen en el Bootstrap
+        var roleMapping = new Dictionary<int, Guid>();
+        roleMapping[1] = adminRole.RoleId;
+        roleMapping[2] = operatorRole.RoleId;
+
+        if (bootstrap.UserRoles != null && bootstrap.UserRoles.Count > 0)
+        {
+            var existingRoles = await db.Roles.ToListAsync(ct);
+            foreach (var ur in bootstrap.UserRoles)
+            {
+                var match = existingRoles.FirstOrDefault(r => r.Name.Equals(ur.Role, StringComparison.OrdinalIgnoreCase));
+                if (match != null)
+                {
+                    match.Description = ur.Description ?? match.Description;
+                    match.IsActive = ur.IsActive;
+                    roleMapping[ur.Id] = match.RoleId;
+                }
+                else
+                {
+                    var newRole = new Role
+                    {
+                        RoleId = Guid.NewGuid(),
+                        Name = ur.Role,
+                        Description = ur.Description,
+                        IsActive = ur.IsActive
+                    };
+                    db.Roles.Add(newRole);
+                    roleMapping[ur.Id] = newRole.RoleId;
+                }
+            }
+            await db.SaveChangesAsync(ct);
+        }
+
+        // Sincronizar Permisos de Roles (RoleActions -> RolePermissions)
+        if (bootstrap.RoleActions != null && bootstrap.RoleActions.Count > 0)
+        {
+            var allModules = await db.AppModules.ToListAsync(ct);
+            var defaultModule = allModules.FirstOrDefault() ?? new AppModule
+            {
+                ModuleId = Guid.NewGuid(),
+                ModuleKey = "general",
+                DisplayName = "General",
+                IconKey = "IconSettings"
+            };
+            if (!allModules.Contains(defaultModule))
+            {
+                db.AppModules.Add(defaultModule);
+                await db.SaveChangesAsync(ct);
+            }
+
+            var allPermissions = await db.AppPermissions.ToListAsync(ct);
+            var allRolePermissions = await db.RolePermissions.ToListAsync(ct);
+
+            foreach (var ra in bootstrap.RoleActions)
+            {
+                if (string.IsNullOrWhiteSpace(ra.ActionSlug)) continue;
+
+                var perm = allPermissions.FirstOrDefault(p => p.ActionKey.Equals(ra.ActionSlug, StringComparison.OrdinalIgnoreCase));
+                if (perm == null)
+                {
+                    perm = new AppPermission
+                    {
+                        PermissionId = Guid.NewGuid(),
+                        ModuleId = defaultModule.ModuleId,
+                        ActionKey = ra.ActionSlug,
+                        DisplayName = ra.ActionName ?? ra.ActionSlug,
+                        Description = ra.ActionName
+                    };
+                    db.AppPermissions.Add(perm);
+                    allPermissions.Add(perm);
+                    await db.SaveChangesAsync(ct);
+                }
+
+                if (roleMapping.TryGetValue(ra.RoleId, out var targetRoleId))
+                {
+                    var rolePerm = allRolePermissions.FirstOrDefault(rp => rp.RoleId == targetRoleId && rp.PermissionId == perm.PermissionId);
+                    if (rolePerm != null)
+                    {
+                        rolePerm.IsGranted = ra.IsActive;
+                    }
+                    else
+                    {
+                        var newRp = new RolePermission
+                        {
+                            RolePermissionId = Guid.NewGuid(),
+                            RoleId = targetRoleId,
+                            PermissionId = perm.PermissionId,
+                            IsGranted = ra.IsActive,
+                            GrantedAtUtc = DateTime.UtcNow
+                        };
+                        db.RolePermissions.Add(newRp);
+                        allRolePermissions.Add(newRp);
+                    }
+                }
+            }
+            await db.SaveChangesAsync(ct);
+        }
+
         var mockUsers = await db.Users.Where(u => u.FullName == "Alexander Wright" || u.FullName == "Elena Vance" || u.Username == "alexander" || u.Username == "elena").ToListAsync(ct);
         if (mockUsers.Count > 0)
         {
@@ -205,7 +303,16 @@ public class SyncEngineService : ISyncEngineService
 
             foreach (var apiUser in bootstrap.Users)
             {
-                var targetRoleId = apiUser.UserRoleId == 1 ? adminRole.RoleId : operatorRole.RoleId;
+                Guid targetRoleId;
+                if (roleMapping.TryGetValue(apiUser.UserRoleId, out var mappedId))
+                {
+                    targetRoleId = mappedId;
+                }
+                else
+                {
+                    targetRoleId = apiUser.UserRoleId == 1 ? adminRole.RoleId : operatorRole.RoleId;
+                }
+
                 var fullName = !string.IsNullOrWhiteSpace(apiUser.FullName)
                     ? apiUser.FullName
                     : $"{apiUser.FirstName} {apiUser.FirstSurname}".Trim();

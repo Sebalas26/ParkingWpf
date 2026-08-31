@@ -16,7 +16,7 @@ using Parking.Views;
 
 namespace Parking.ViewModels;
 
-[RequirePermission("shift.view", "Control de Turno y Arqueo")]
+[RequirePermission("shifts.view_current", "Control de Turno y Arqueo")]
 public partial class ShiftClosureViewModel : ViewModelBase
 {
     private readonly IShiftService _shiftService;
@@ -156,12 +156,12 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
     private void UpdatePermissions()
     {
-        CanWithdrawCash = _permissionService.HasPermission("shift.cash_withdrawal");
-        CanCloseShift = _permissionService.HasPermission("shift.close");
-        CanHandoverShift = _permissionService.HasPermission("shift.handover");
-        CanExportShift = _permissionService.HasPermission("shift.export");
-        CanViewShiftHistory = _permissionService.HasPermission("shift.history");
-        CanOpenShift = _permissionService.HasPermission("shift.open");
+        CanWithdrawCash = _permissionService.HasPermission("shifts.blind_count");
+        CanCloseShift = _permissionService.HasPermission("shifts.close");
+        CanHandoverShift = _permissionService.HasPermission("shifts.close");
+        CanExportShift = _permissionService.HasPermission("shifts.reprint_closure");
+        CanViewShiftHistory = _permissionService.HasPermission("shifts.view_history");
+        CanOpenShift = _permissionService.HasPermission("shifts.open");
     }
 
     partial void OnActualCashCountedChanged(decimal value)

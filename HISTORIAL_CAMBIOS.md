@@ -17,6 +17,36 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-08-30 20:30:00] - [SECURITY] [RBAC] [SYNC] - Estandarización Canónica de Permisos RBAC, Motor de Alias Resiliente y Sincronización Offline en Terminal WPF
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"AUDITORÍA TÉCNICA EXHAUSTIVA: SISTEMA DE PERMISOS (PWA/API/WPF) Y MULTI-TENANCY SaaS. Diagnóstico del flujo de permisos (PWA -> API -> WPF), blindaje de aislamiento multi-tenant SaaS (Organizaciones y Sedes), cero errores de compilación y registro estricto en HISTORIAL_CAMBIOS.md."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Motor de Permisos Canónico y Aliases Bidireccionales (`PermissionService.cs`)**:
+     - Se implementó una matriz de resolución de permisos que soporta coincidencia exacta, comodines globales (`*`, `all`), comodines a nivel de módulo (`shifts.*`, `monitoring.*`, `analytics.*`) y mapeo bidireccional de alias entre slugs canónicos de backend/PWA (`shifts.view_current`, `monitoring.view_occupancy`, `analytics.view_dashboard`) y nombres de vista de WPF (`shift.view`, `recent_entries.view`, `analytics.view`).
+  2. **Estandarización en XAML y ViewModels**:
+     - `MainShellWindow.xaml`: Se actualizaron los botones del sidebar a los slugs canónicos (`checkin.create_ticket`, `checkout.process_payment`, `subscriptions.view_list`, `monitoring.view_occupancy`, `shifts.view_current`, `analytics.view_dashboard`).
+     - `MainShellViewModel.cs`: Comandos de navegación actualizados a slugs canónicos.
+     - `ShiftClosureViewModel.cs`, `RecentEntriesViewModel.cs`, `AnalyticsViewModel.cs`: Decoradores `[RequirePermission]` y comprobaciones de permisos actualizados a slugs canónicos.
+  3. **Persistencia Dinámica de Roles y Permisos en SQLite (`SyncEngineService.cs`, `BootstrapSyncResponse.cs`)**:
+     - Se crearon los DTOs `ApiUserRoleSyncDto` y `ApiRoleActionSyncDto` en `BootstrapSyncResponse.cs`.
+     - `SyncEngineService.cs` ahora sincroniza dinámicamente los `UserRoles` recibidos en el payload bootstrap con la tabla `db.Roles` y crea/actualiza `db.AppPermissions` y `db.RolePermissions` en SQLite local.
+     - `AuthService.cs`: Se actualizaron las listas de fallback offline para incluir slugs canónicos y evitar bloqueos si SQLite es nuevo.
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/PermissionService.cs`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking/ViewModels/RecentEntriesViewModel.cs`
+  - `Parking/ViewModels/AnalyticsViewModel.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+- **✅ Verificación y Compilación**:
+  - `dotnet build` ejecutado en `c:\Users\migue\source\repos\ParkingWpf` con resultado exitoso (**0 Errores**).
+
+---
+
 ### [2026-08-28 08:00:00] - [SECURITY] [RBAC] [REFACTOR] - Erradicación Total de Contraseñas Maestras y Desacoplamiento de Roles Quemados en Terminal WPF
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

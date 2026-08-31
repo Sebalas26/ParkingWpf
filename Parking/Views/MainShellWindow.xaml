@@ -225,7 +225,7 @@
                         <RadioButton Content="Ingreso de Vehículos"
                                      Command="{Binding NavigateToCheckInCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=CheckIn, Mode=OneWay}"
-                                     security:Authorize.Permission="checkin.view"
+                                     security:Authorize.Permission="checkin.create_ticket"
                                      Style="{StaticResource SidebarNavButton}"
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>
@@ -237,7 +237,7 @@
                         <RadioButton Content="Salida y Cobro / Caja"
                                      Command="{Binding NavigateToCheckOutCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=CheckOut, Mode=OneWay}"
-                                     security:Authorize.Permission="checkout.view"
+                                     security:Authorize.Permission="checkout.process_payment"
                                      Style="{StaticResource SidebarNavButton}"
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>
@@ -249,7 +249,7 @@
                         <RadioButton Content="Mensualidades"
                                      Command="{Binding NavigateToMonthlySubscriptionsCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=Subscriptions, Mode=OneWay}"
-                                     security:Authorize.Permission="subscriptions.view"
+                                     security:Authorize.Permission="subscriptions.view_list"
                                      Style="{StaticResource SidebarNavButton}"
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>
@@ -261,7 +261,7 @@
                         <RadioButton Content="Vehículos en Patio"
                                      Command="{Binding NavigateToRecentEntriesCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=RecentEntries, Mode=OneWay}"
-                                     security:Authorize.Permission="recent_entries.view"
+                                     security:Authorize.Permission="monitoring.view_occupancy"
                                      Style="{StaticResource SidebarNavButton}"
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>
@@ -275,7 +275,7 @@
                         <RadioButton Content="Control de Turnos"
                                      Command="{Binding NavigateToShiftClosureCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=ShiftClosure, Mode=OneWay}"
-                                     security:Authorize.Permission="shift.view"
+                                     security:Authorize.Permission="shifts.view_current"
                                      Style="{StaticResource SidebarNavButton}"
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>
@@ -287,7 +287,7 @@
                         <RadioButton Content="Analítica y Finanzas"
                                      Command="{Binding NavigateToAnalyticsCommand}"
                                      IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=Analytics, Mode=OneWay}"
-                                     security:Authorize.Permission="analytics.view"
+                                     security:Authorize.Permission="analytics.view_dashboard"
                                      Style="{StaticResource SidebarNavButton}"
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>
