@@ -147,6 +147,24 @@ public class DbConnectionManager : IDbConnectionManager
                     ""BranchId"" INTEGER NOT NULL,
                     PRIMARY KEY (""IncidentId"", ""BranchId"")
                 );
+
+                CREATE TABLE IF NOT EXISTS ""BillingResolutions"" (
+                    ""ResolutionId"" TEXT NOT NULL PRIMARY KEY,
+                    ""CompanyId"" INTEGER NULL,
+                    ""BranchId"" INTEGER NULL,
+                    ""Name"" TEXT NOT NULL DEFAULT '',
+                    ""DocumentType"" TEXT NOT NULL DEFAULT '',
+                    ""Prefix"" TEXT NOT NULL DEFAULT '',
+                    ""ResolutionNumber"" TEXT NOT NULL DEFAULT '',
+                    ""FromNumber"" INTEGER NOT NULL DEFAULT 1,
+                    ""ToNumber"" INTEGER NOT NULL DEFAULT 1,
+                    ""CurrentNumber"" INTEGER NOT NULL DEFAULT 1,
+                    ""ValidFrom"" TEXT NOT NULL,
+                    ""ValidTo"" TEXT NOT NULL,
+                    ""TechnicalKey"" TEXT NULL,
+                    ""IsActive"" INTEGER NOT NULL DEFAULT 1,
+                    ""CreatedAtUtc"" TEXT NOT NULL
+                );
             ");
 
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PendingSyncItems\" ADD COLUMN \"OperationType\" TEXT DEFAULT '';"); } catch { }

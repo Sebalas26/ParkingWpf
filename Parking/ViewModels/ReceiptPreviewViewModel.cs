@@ -11,6 +11,7 @@ namespace Parking.ViewModels;
 public partial class ReceiptPreviewViewModel : ViewModelBase
 {
     private readonly IReceiptPrinterService _printerService;
+    private readonly ISessionService _sessionService;
 
     [ObservableProperty]
     private ParkingTicket _ticket = new();
@@ -22,22 +23,48 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private bool _printSuccess;
 
     [ObservableProperty]
-    private BitmapImage? _qrCodeImage;
+    private System.Windows.Media.ImageSource? _barcodeImage;
 
-    public string PublicConsultationUrl => $"https://localhost:7023/api/public/tickets/status?plate={Ticket.PlateNumber}";
+    [ObservableProperty]
+    private string _branchName = "PARKING FLOW";
+
+    [ObservableProperty]
+    private string _branchNit = "NIT: 900.914.246-2";
+
+    [ObservableProperty]
+    private string _branchAddress = "CALLE 26 #57-83";
+
+    [ObservableProperty]
+    private string _formattedRateText = string.Empty;
+
+    [ObservableProperty]
+    private System.Windows.Media.ImageSource? _consultationQrCodeImage;
+
+    public string PublicConsultationUrl => "https://www.parking-flow.com/mockup-consulta";
 
     public event Action? RequestClose;
 
-    public ReceiptPreviewViewModel(IReceiptPrinterService printerService)
+    public ReceiptPreviewViewModel(IReceiptPrinterService printerService, ISessionService sessionService)
     {
         _printerService = printerService;
+        _sessionService = sessionService;
     }
 
     public void LoadTicket(ParkingTicket ticket)
     {
         Ticket = ticket;
         PrintSuccess = false;
-        QrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(ticket.TicketNumber);
+        BarcodeImage = Services.Implementations.BarcodeGeneratorService.GenerateCode128(ticket.PlateNumber);
+
+        var currentBranch = _sessionService.CurrentBranch;
+        BranchName = !string.IsNullOrWhiteSpace(currentBranch?.Name) ? currentBranch.Name.ToUpperInvariant() : "PARKING FLOW";
+        BranchAddress = !string.IsNullOrWhiteSpace(currentBranch?.Address) ? currentBranch.Address.ToUpperInvariant() : "CALLE 26 #57-83";
+        BranchNit = !string.IsNullOrWhiteSpace(currentBranch?.Notes) && currentBranch.Notes.StartsWith("NIT", StringComparison.OrdinalIgnoreCase)
+            ? currentBranch.Notes
+            : "NIT: 900.914.246-2";
+
+        FormattedRateText = $"TARIFA: {ticket.HourlyRate:C0} / HORA";
+        ConsultationQrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode("https://www.parking-flow.com/mockup-consulta", 8);
     }
 
     [RelayCommand]

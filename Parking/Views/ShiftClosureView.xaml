@@ -445,7 +445,11 @@
                             </Border>
 
                             <TextBlock Text="Operador Responsable" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding OperatorName, Mode=OneWay}" IsReadOnly="True" Style="{StaticResource ModernTextBox}" Margin="0,0,0,12"/>
+                            <TextBlock Text="{Binding OperatorName, Mode=OneWay}"
+                                       FontSize="15"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource BrushTextPrimary}"
+                                       Margin="0,0,0,14"/>
 
                             <TextBlock Text="Monto Base Inicial de Caja ($) *" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding NewShiftBaseAmount, UpdateSourceTrigger=PropertyChanged, StringFormat='N0'}"

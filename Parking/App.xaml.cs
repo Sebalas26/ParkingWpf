@@ -111,6 +111,7 @@ public partial class App : Application
         services.AddSingleton<IShiftService, EfShiftService>();
         services.AddSingleton<IStoreService, StoreService>();
         services.AddSingleton<IAgreementService, AgreementService>();
+        services.AddSingleton<IBillingResolutionService, BillingResolutionService>();
         services.AddSingleton<IPricingCalculatorService, EfPricingCalculatorService>();
         services.AddSingleton<IParkingTicketService, EfParkingTicketService>();
         services.AddSingleton<IMonthlySubscriptionService, EfMonthlySubscriptionService>();

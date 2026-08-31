@@ -18,8 +18,24 @@ public class Base64ToImageConverter : IValueConverter
 
         try
         {
+            var trimmed = base64Str.Trim();
+            if (trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("pack://", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("/", StringComparison.OrdinalIgnoreCase))
+            {
+                var uriSource = trimmed.StartsWith("/") ? new Uri(trimmed, UriKind.Relative) : new Uri(trimmed, UriKind.Absolute);
+                var uriBitmap = new BitmapImage();
+                uriBitmap.BeginInit();
+                uriBitmap.UriSource = uriSource;
+                uriBitmap.CacheOption = BitmapCacheOption.OnLoad;
+                uriBitmap.EndInit();
+                uriBitmap.Freeze();
+                return uriBitmap;
+            }
+
             // Remover prefijo data:image/...;base64, si viene incluido
-            var base64Clean = base64Str;
+            var base64Clean = trimmed;
             var commaIndex = base64Clean.IndexOf(',');
             if (commaIndex >= 0 && base64Clean.Substring(0, commaIndex).Contains("base64", StringComparison.OrdinalIgnoreCase))
             {

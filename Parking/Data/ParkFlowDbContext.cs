@@ -30,6 +30,7 @@ public class ParkFlowDbContext : DbContext
     public DbSet<BranchPaymentMethodEntity> BranchPaymentMethods => Set<BranchPaymentMethodEntity>();
     public DbSet<VehicleIncident> VehicleIncidents => Set<VehicleIncident>();
     public DbSet<VehicleIncidentBranch> VehicleIncidentBranches => Set<VehicleIncidentBranch>();
+    public DbSet<BillingResolution> BillingResolutions => Set<BillingResolution>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

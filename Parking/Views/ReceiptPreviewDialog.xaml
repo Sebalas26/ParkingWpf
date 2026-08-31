@@ -73,18 +73,18 @@
                                HorizontalAlignment="Center"
                                Margin="0,0,0,10"/>
 
-                        <!-- CÓDIGO QR EN LA PARTE SUPERIOR -->
-                        <Image Source="{Binding QrCodeImage}"
-                               Width="160" Height="160"
+                        <!-- CÓDIGO DE BARRAS CODE 128 EN LA PARTE SUPERIOR (PLACA) -->
+                        <Image Source="{Binding BarcodeImage}"
+                               Width="280" Height="85"
                                Stretch="Uniform"
                                RenderOptions.BitmapScalingMode="NearestNeighbor"
                                HorizontalAlignment="Center"
                                Margin="0,0,0,12"/>
 
-                        <!-- ENCABEZADO DE EMPRESA -->
-                        <TextBlock Text="EDIFICIO T7 T8 CEMSA" FontSize="16" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
-                        <TextBlock Text="NIT: 900.914.246-2" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
-                        <TextBlock Text="CALLE 26 #57-83" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                        <!-- ENCABEZADO DE EMPRESA / SEDE DINÁMICA -->
+                        <TextBlock Text="{Binding BranchName}" FontSize="16" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding BranchNit}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                        <TextBlock Text="{Binding BranchAddress}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,0,0,8"/>
 
                         <TextBlock Text="****************************************" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4"/>
 
@@ -101,7 +101,7 @@
                         
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,8">
                             <TextBlock Text="VEHICULO: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                            <TextBlock Text="{Binding Ticket.VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            <TextBlock Text="{Binding Ticket.VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="14" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                         </StackPanel>
 
                         <!-- INVERTED PLATE TEXT (Fondo negro, letras blancas) -->
@@ -111,11 +111,18 @@
 
                         <TextBlock Text="****************************************" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4"/>
                         
-                        <!-- TEXTO DE TARIFAS Y POLIZA -->
-                        <TextBlock Text="TARIFA MOTO $80 - AUTO $110" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2"/>
-                        <TextBlock Text="POLIZA RESPONSABILIDAD CIVIL" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2"/>
-                        <TextBlock Text="#27690 BERKLEY SEGUROS S.A" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2"/>
-                        <TextBlock Text="RECLAMOS TEL: 3902389 EXT 104" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2,0,16"/>
+                        <!-- TEXTO DE TARIFA DEL VEHÍCULO -->
+                        <TextBlock Text="{Binding FormattedRateText}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2"/>
+
+                        <!-- QR DE CONSULTA EN LÍNEA -->
+                        <Image Source="{Binding ConsultationQrCodeImage}"
+                               Width="110" Height="110"
+                               Stretch="Uniform"
+                               RenderOptions.BitmapScalingMode="NearestNeighbor"
+                               HorizontalAlignment="Center"
+                               Margin="0,6,0,2"/>
+                        <TextBlock Text="CONSULTE SU ESTADO EN LÍNEA" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                        <TextBlock Text="PARKING - FLOW" FontSize="13" FontWeight="Bold" FontFamily="Raleway, Segoe UI, sans-serif" Foreground="#000000" HorizontalAlignment="Center" Margin="0,16,0,12"/>
 
                         <!-- SECCIÓN EXCLUSIVA PARA LA SALIDA (Si ya salió) -->
                         <StackPanel Visibility="{Binding Ticket.ExitTime, Converter={StaticResource NullToVis}}">

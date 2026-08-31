@@ -67,6 +67,7 @@ public class EfParkingTicketService : IParkingTicketService
         var normalizedPlate = plateNumber.Trim().ToUpperInvariant();
         using var db = _connectionManager.CreateDbContext();
 
+        // 1. Validar si el vehículo se encuentra registrado y activo adentro
         var isAlreadyParked = await db.ParkingTickets.AnyAsync(t =>
             t.Status == TicketStatus.Active &&
             t.PlateNumber == normalizedPlate);
@@ -143,6 +144,11 @@ public class EfParkingTicketService : IParkingTicketService
                 {
                     await _syncEngine.EnqueueOfflineCheckInAsync(ticket);
                 }
+            }
+            catch (InvalidOperationException)
+            {
+                // Errores de validación de negocio del servidor (placa bloqueada o ya adentro). Propagar inmediatamente.
+                throw;
             }
             catch
             {
@@ -318,11 +324,9 @@ public class EfParkingTicketService : IParkingTicketService
 
         var normalized = plateNumber.Trim().ToUpperInvariant();
         using var db = _connectionManager.CreateDbContext();
-        var currentBranchId = _sessionService.CurrentBranch?.Id;
 
         return await db.ParkingTickets.AnyAsync(t =>
             t.Status == TicketStatus.Active &&
-            (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value) &&
             t.PlateNumber == normalized);
     }
 

@@ -1,4 +1,4 @@
-﻿# Historial Oficial de Modificaciones y Control de Cambios
+# Historial Oficial de Modificaciones y Control de Cambios
 **Proyecto**: ParkFlow Desktop (WPF) & API Central  
 **Fecha de Creación**: 2026-08-24  
 
@@ -16,6 +16,263 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 ---
 
 ## 📋 Registro Cronológico de Cambios
+
+### [2026-08-31 17:38:00] - [BUGFIX] [INTEGRITY] [WPF] - Validación Estricta de Placa Única Activa y Control de Duplicidad en Ingreso
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Me dejo pero ahora me quitaste la logica de que permite ingresar la placa mas de una vez, observando el admin ahi quedaron 2, el ingreso de la placa solo debe permitirse una vez por registro, es decir que si existe una placa ya ingresada, no permita mas veces, sin embargo que si le doy salida por el pwa o wpf ya se actualice el proceso y permita inhgresar de nuevo qeu fue algo que estaba fallando"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Restablecimiento de la Regla de Placa Única**:
+     - Se eliminó el auto-cierre prematuro que existía dentro de `RegisterEntryAsync` en `EfParkingTicketService.cs`.
+     - Se configuró la verificación estricta de placa activa en `RegisterEntryAsync` e `IsPlateCurrentlyParkedAsync`: Si la placa ya tiene un tiquete con `Status == TicketStatus.Active`, se bloquea el ingreso arrojando la excepción correspondiente.
+  2. **Propagación Inmediata de Excepciones del Servidor**:
+     - En `EfParkingTicketService.cs`, se capturó y re-lanzó de forma explícita `InvalidOperationException` al invocar `_apiClient.CheckInAsync(...)`, evitando que el cliente WPF encole tiquetes duplicados de forma offline cuando el servidor rechaza el ingreso.
+  3. **Ciclo de Vida y Liberación de Placa**:
+     - Al procesar la salida desde la PWA (o WPF), la reconciliación del motor de sincronización (`SyncEngineService.cs`) actualiza el estado del tiquete a `Completed`, liberando la placa para permitir su nuevo ingreso limpio.
+- **📦 Componentes Modificados**:
+  - `ParkingWpf/Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build` (**0 Errores**).
+
+### [2026-08-31 17:18:00] - [BUGFIX] [SYNC] [WPF] - Reconciliación de Tiquetes Salidos desde PWA y Validación de Ingreso por Sede
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"estoy teniendo este problema al entrar un vehiculo , pero el vehiculo estaba ingresado en otra, ya le di salida desde el administrador pwa, pero en el wpf me sigue restringiendo el ingreso de esa placa"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico**: Al dar salida a un vehículo desde la PWA, el backend central lo removía de los activos. Sin embargo, en SQLite local el registro anterior quedaba en estado `Active` huérfano porque la sincronización solo iteraba los tiquetes presentes en el payload entrante.
+  2. **Reconciliación Automática en `SyncEngineService.cs`**:
+     - Se añadió un paso de reconciliación antes de guardar: si un tiquete figura como `Active` localmente pero ya no está en `bootstrap.ActiveTickets` del servidor, se marca automáticamente como `Completed` en SQLite.
+  3. **Validación de Ingreso por Sede (`EfParkingTicketService.cs`)**:
+     - Se ajustó la validación previa de ingreso para evaluar únicamente la sede activa (`t.BranchId == currentBranchId`).
+     - Si existen registros huérfanos previos de la misma placa en SQLite, se liberan y marcan como `Completed` automáticamente permitiendo el registro e impresión normal de la entrada.
+- **📦 Componentes Modificados**:
+  - `ParkingWpf/Parking/Services/Implementations/SyncEngineService.cs`
+  - `ParkingWpf/Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build` (**0 Errores**).
+
+### [2026-08-31 16:57:00] - [FEATURE] [SYNC] [WPF] - Sincronización y Selector de Resoluciones de Facturación DIAN por Sede en Salida de Vehículos
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayudame a que esto quede un poco mas para la izquierda y me dejes un espacio para incluir la resoluciones que me envia el pwa por la sincro y estan almacenadas en BD, ya quedepende de ello se relaciona a una factura pos o por factura, sin embargo conectala a las que me retorna ya la BD por sede elegida y logeada en el wpf"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Sincronización Backend / API**:
+     - Se integró `Resolutions` (`BillingResolution`) en `BootstrapSyncDto` (`ParkingApi.Domain.Dtos.Sync.SyncDtos.cs`) y se inyectó `IBillingResolutionRepository` en `SyncService.cs` para entregar las resoluciones activas asociadas a la sede y empresa.
+  2. **Persistencia Local y Capa de Servicio (WPF)**:
+     - Se creó la entidad `BillingResolution.cs` en `Parking/Entities/` y se registró `DbSet<BillingResolution> BillingResolutions` en `ParkFlowDbContext.cs`.
+     - Se extendió `BootstrapSyncResponse.cs` con `ApiBillingResolutionSyncDto` y `SyncEngineService.cs` para el upsert local en SQLite.
+     - Se crearon `IBillingResolutionService.cs` y `BillingResolutionService.cs`, registrados como Singleton en `App.xaml.cs`.
+  3. **UI / UX en `CheckOutView.xaml`**:
+     - Se rediseñó el encabezado de `VEHÍCULOS ACTIVOS ADENTRO` a 3 columnas:
+       - **Izquierda**: Icono + Título "VEHÍCULOS ACTIVOS ADENTRO".
+       - **Centro-Izquierda**: Selector/Badge de Resolución DIAN Activa de la sede (`SelectedResolution`) indicando tipo de documento (`Factura POS`), prefijo y consecutivo actual (`#CurrentNumber`).
+       - **Derecha**: Badge de conteo de vehículos en patio (`{0} en Patio`).
+- **📦 Componentes Modificados**:
+  - `ParkingApi/ParkingApi.Domain/Dtos/Sync/SyncDtos.cs`
+  - `ParkingApi/ParkingApi.Core/Services/Sync/SyncService.cs`
+  - `ParkingWpf/Parking/Entities/BillingResolution.cs` (Nuevo)
+  - `ParkingWpf/Parking/Data/ParkFlowDbContext.cs`
+  - `ParkingWpf/Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `ParkingWpf/Parking/Services/Implementations/SyncEngineService.cs`
+  - `ParkingWpf/Parking/Services/Contracts/IBillingResolutionService.cs` (Nuevo)
+  - `ParkingWpf/Parking/Services/Implementations/BillingResolutionService.cs` (Nuevo)
+  - `ParkingWpf/Parking/Styles/Icons.xaml`
+  - `ParkingWpf/Parking/App.xaml.cs`
+  - `ParkingWpf/Parking/ViewModels/CheckOutViewModel.cs`
+  - `ParkingWpf/Parking/Views/CheckOutView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación limpia `dotnet build` (**0 Errores**).
+
+### [2026-08-31 16:07:00] - [UI/UX] [FEATURE] [WPF] - Botones Interactivos de Convenios por Logo con Icono de Ojo y Pop-up Flotante de 6 Segundos
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"ahi me cargo la imagen del convenio, pero quiero que esa imagen sea el boton que el usuario seleccione para hacer descuento del covenio, adicional que tenga en una esquina del boton un icono de ojo para ver toda la descripcion del convenio, ahi puedes traer toda la info del convenio , eso muestralo como un pop up que se abra y se cierre en 6 segundos , que no sea tan grande para que no sea tan invasivo"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Logos de Convenio como Botones Interactivos (`CheckOutDialog.xaml`)**:
+     - Se transformó la galería de convenios para que cada logo sea un botón interactivo (`ToggleSelectAgreementCommand`).
+     - Al hacer click sobre el logo, se aplica / deselecciona directamente el convenio, recalculando en tiempo real el descuento y el total neto a pagar.
+     - Se agregó un indicador visual de selección activa con check (`IconCheck`) y borde de resaltado.
+  2. **Icono de Ojo en la Esquina Superior Derecha**:
+     - Cada botón de convenio incluye un botón circular con la geometría `IconEye` en su esquina.
+  3. **Pop-up Informativo con Autocierre en 6 Segundos**:
+     - Al presionar el ojo, se abre un pop-up modal compacto y no invasivo que detalla el nombre del convenio, comercio asociado y reglas de descuento.
+     - Se controla mediante un `DispatcherTimer` de 6 segundos en `CheckOutViewModel.cs` para su cierre automático, permitiendo además el cierre manual mediante el botón 'X'.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación limpia con 0 errores.
+
+### [2026-08-31 15:42:00] - [FIX] [SYNC] [WPF] - Corrección de Cobro por Tiempo/Tarifa y Sincronización de Convenios con Imágenes de la PWA
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Bien, dejamelo asi, ahora ayudame a saber porque no me esta cobran el valor de acuerdo al tiempo y tarifa, asi mismo quisiera que me cargaras los convenios que se crean desde la pwa y se almacenan en la bd, carga la imagen con la que quedan almacenadas"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Corrección de Cálculo de Tarifa ($0.00 -> Valor Real)**:
+     - En `CheckOutViewModel.cs`, se removió la condición `value.HourlyRate == 0m` en `IsMonthlyTicket`. Anteriormente, cualquier tiquete con tarifa por minuto o sin tarifa horaria fija al momento de check-in era catalogado erróneamente como mensualidad gratis, forzando `CalculatedFee = 0m`.
+     - Ahora la liquidación en vivo evalúa y aplica fielmente los minutos/horas transcurridos multiplicados por la tarifa activa configurada (`_pricingCalculator.CalculateFee`).
+  2. **Sincronización y Renderizado de Convenios e Imágenes (PWA -> WPF)**:
+     - Se añadió `ImageUrl` a `ApiCommercialAgreementSyncDto` en `BootstrapSyncResponse.cs`.
+     - Se actualizó `SyncEngineService.cs` para persistir `ImageUrl` en SQLite local (`CommercialAgreements`).
+     - Se potenció `Base64ToImageConverter.cs` con soporte híbrido para data URIs en Base64 y URLs HTTP/HTTPS/pack.
+     - Se integró la tarjeta de convenios comerciales en `CheckOutDialog.xaml` mostrando los logos/fotos subidos desde la PWA.
+- **📦 Componentes Modificados**:
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Core/Converters/Base64ToImageConverter.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación limpia con 0 errores.
+
+### [2026-08-31 14:43:00] - [UI/UX] [WPF] - Ampliación de Ancho y Limpieza Visual en Diálogo de Cobro (CheckOutDialog)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"quisiera que me ancharas mas esta pantalla dialog para que quepa mas informacion, adicionalo lo que esta en verde eliminalo"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Ampliación de Ancho (`CheckOutDialog.xaml`)**:
+     - Se incrementó el ancho de la tarjeta modal a `Width="800"` (anteriormente 550px), dando máxima amplitud a los botones de métodos de pago y campos numéricos de caja.
+  2. **Eliminación de Elementos Redundantes / No Deseados**:
+     - Se removió el banner de mensualidad activa (`IsMonthlyTicket`).
+     - Se removió la sección completa de convenios de comercio aliado.
+     - Se ajustaron los botones de billetes rápidos en 4 columnas (`Exacto`, `$5K`, `$10K`, `$50K`), eliminando `$20K` y `$100K`.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación limpia con 0 errores.
+
+### [2026-08-31 14:15:00] - [UI/UX] [PRINT] [WPF] - Reemplazo de URL por Texto 'PARKING - FLOW' en Fuente Raleway
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"en la impresion quiero que esto me reemplace por la palabra PARKING - FLOW en negrilla y en fuente de raleway y tenga 2 lineas de espacion entre consulte su estado y la palabra que te pedi"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Ajuste en `ReceiptPreviewDialog.xaml`**:
+     - Se reemplazó el texto estático de la URL por `PARKING - FLOW` en negrilla (`FontWeight="Bold"`), con tipografía `Raleway` y un margen superior de 2 líneas (`Margin="0,16,0,12"`).
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación limpia con 0 errores.
+
+### [2026-08-31 13:01:00] - [FEAT] [PRINT] [WPF] - Parametrización Dinámica de Datos de Sede, Tarifa y QR de Consulta en Tiquete Térmico
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"en la impresion de la etiqueta quisiera que en el ciruclo amarillo me reemplace 1- nombre de la sede que se encuentra seleccionada en el wpf , el nit y la direccion, valida porque eso me lo retorna la BD , en lo azul pon el tipo de medio seleccionado cuadno ingreso el vehiculo , en lo rojo pon la tarifa del tipo de vehiculo elegido, y en lo verde las 3 filas reemplazalas por un QR que me lleve a esta url https://www.parking-flow.com/mockup-consulta"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Encabezado Dinámico de Sede (`ReceiptPreviewViewModel.cs`, `ReceiptPreviewDialog.xaml`)**:
+     - Se integró `ISessionService` para proyectar `BranchName`, `BranchNit` y `BranchAddress` de la sede activa.
+  2. **Tipo de Vehículo y Tarifa**:
+     - Se enlazó el tipo de vehículo seleccionado en negrita y la tarifa horaria calculada (`FormattedRateText`, ej. `TARIFA: $3.500 / HORA`).
+  3. **Código QR de Consulta Web**:
+     - Se sustituyeron las 3 líneas estáticas de póliza por un código QR generado dinámicamente apuntando a `https://www.parking-flow.com/mockup-consulta` con subtítulo informativo.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación limpia con 0 errores.
+
+### [2026-08-31 12:31:00] - [UI/UX] [WPF] - Altura Compacta y 100% Adaptativa al Contenido en Tarjetas de Patio
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Bien pero la altura de los componentes es mucho, dejamelo adaptitivos al text"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Ajuste en `CheckOutView.xaml`**:
+     - Se configuró `VerticalAlignment="Top"` en `ItemsControl`, `UniformGrid` y en cada tarjeta `Border`, eliminando el estiramiento vertical innecesario.
+     - Se compactó el padding interno a `14,10` y los márgenes verticales entre filas a `8px`, logrando tarjetas esbeltas y ceñidas al texto.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckOutView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación limpia con 0 errores.
+
+### [2026-08-31 12:18:00] - [UI/UX] [WPF] - Distribución Uniforme en 2 Columnas de Tarjetas de Vehículos Activos
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"bien, ahora ayudame a organizar esos componentes , por que ahi se pueden mostrar por fila de a 2"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Distribución en `CheckOutView.xaml`**:
+     - Se reemplazó el `WrapPanel` por `<UniformGrid Columns="2"/>` en el listado de vehículos activos en patio.
+     - Se sustituyó el ancho rígido `Width="460"` por `HorizontalAlignment="Stretch"` y `Margin="0,0,12,12"`, garantizando que cada fila contenga exactamente 2 tarjetas distribuidas al 50% del ancho disponible sin espacios desaprovechados.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckOutView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación limpia con 0 errores.
+
+### [2026-08-31 12:01:00] - [FEAT] [PRINT] [WPF] - Sustitución de Código QR por Código de Barras Code 128 con Placa en Tiquete Térmico
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"en la impresion de la etiqueta reemplazame el codigo qr por uno de barras code 128, el cual contenga la placa ingresada al ingresar vehiculo, la cual es la misam que esta debajo de la impresion"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Servicio `BarcodeGeneratorService.cs`**:
+     - Se creó un generador de códigos de barras estándar **Code 128** usando `ZXing.Net` (`BarcodeWriterPixelData`), generando `BitmapSource` de alta nitidez en escala de grises / monocromático para impresión térmica de 58/80mm y pantalla.
+  2. **Integración en ViewModel y Vista (`ReceiptPreviewViewModel.cs`, `ReceiptPreviewDialog.xaml`)**:
+     - Se reemplazó el binding del QR por `BarcodeImage`, alimentado directamente por la placa ingresada (`ticket.PlateNumber`).
+     - Se ajustó el visor del tiquete con dimensiones rectangulares óptimas (`280x85px`) con escalado `NearestNeighbor`.
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/BarcodeGeneratorService.cs` (Nuevo)
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación limpia con 0 errores y renderizado validado.
+
+### [2026-08-31 11:46:00] - [FEAT] [UI/UX] [WPF] - Acceso con Tecla Enter al Digitar Placa y Limpieza de Encabezado de Ocupación
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Quiero que en esta pantalla cuando la persona digite la placa, permita el acceso dando enter y por el bton de registrar e imprimir entrada . adicional eliminame lo que te señale en verde que es informacion innecesaria"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Acceso con Enter al Digitar Placa (`CheckInView.xaml`, `CheckInView.xaml.cs`)**:
+     - Se configuraron `InputBindings` (`KeyBinding Key="Return"`, `KeyBinding Key="Enter"`) vinculados a `RegisterAndPrintCommand`.
+     - Se implementó el manejador `PlateTextBox_KeyDown` para disparar el comando de registro e impresión al pulsar `Enter` de manera instantánea.
+  2. **Limpieza del Encabezado de Ocupación (`CheckInView.xaml`)**:
+     - Se removió el texto resumen redundante `OccupancySummary` (*"34 disponibles / 3 ocupados"*) del encabezado, evitando el recorte de texto del título (*"Ocupación de Parqueadero"*) y manteniendo las píldoras inferiores de disponibles y ocupados limpias y claras.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking/Views/CheckInView.xaml.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - XAML y C# validados limpiamente con 0 errores.
+
+### [2026-08-31 11:34:00] - [UI/UX] [WPF] - Cambio de Campo 'Operador Responsable' a Texto Plano en Apertura de Turno
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Cuando este en la pantalla para abriri caja, este cuadro no deberia de verse como un cuadro seleccionable si no debe ser un text plano , dejalo como si no un boton"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Ajuste en `ShiftClosureView.xaml`**:
+     - Se reemplazó el control interactivo `<TextBox IsReadOnly="True" Style="{StaticResource ModernTextBox}" .../>` por un `<TextBlock>` de texto plano informativo (`FontSize="15"`, `FontWeight="SemiBold"`, `Foreground="{DynamicResource BrushTextPrimary}"`).
+     - Se eliminó el aspecto de recuadro/botón editable y seleccionable en el flujo de apertura de caja.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ShiftClosureView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - XAML y C# validados limpiamente con 0 errores.
+
+### [2026-08-31 10:33:00] - [UI/UX] [WPF] - Rediseño y Ajuste Proporcional del Cuadro de Captura de Placa en Salida y Liquidación
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayudame que en mi wpf me ajuste esta pantalla , donde el cuadro de donde se ingresa la placa quede mas angosta y alta, algo como deje el cuadro rojo"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Distribución Integral y Solución de Recorte (`CheckOutView.xaml`)**:
+     - Se configuró la caja de búsqueda para abarcar de forma fluida el ancho completo de la tarjeta superior (`Grid.Column="0"` con `Width="*"`, `Height="100"` y tipografía `48px Black Monospace`), evitando márgenes vacíos antiestéticos.
+     - Se ajustó el botón `"Buscar / Cobrar"` con `MinWidth="210"`, `Height="100"` y `Padding="24,0"`, eliminando por completo el recorte de texto observado (*"Buscar / Cobra"*).
+     - **Rediseño Adaptativo de Tarjetas de Patio**: Se rediseñó el `DataTemplate` de las tarjetas de vehículos activos a `Width="460"`, `CornerRadius="16"`, `Padding="18,16"` y una arquitectura interna en 2 niveles (Fila 1: Icono + Placa 22px y Categoría; Fila 2: Hora de entrada y tiempo transcurrido en pastilla destacada sin colisiones, junto con el botón Liquidar).
+  2. **Actualización de Estilo Visual (`Controls.xaml` -> `CheckoutSearchTextBox`)**:
+     - Altura establecida en `100px` con `FontSize="48"` y alineación centrada.
+     - Radio de borde `CornerRadius="16"` con sombra institucional suave.
+- **📦 Componentes Modificados**:
+  - `Parking/Styles/Controls.xaml`
+  - `Parking/Views/CheckOutView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - XAML y C# validados y estructurados correctamente con 0 errores de sintaxis/diseño.
 
 ### [2026-08-30 23:59:00] - [UI/UX] [WPF] - Corrección de Cobertura de Fondo Oscuro (Backdrop) en Modal de Cobro y Liquidación
 - **Autor**: Antigravity AI Assistant & Software Architect

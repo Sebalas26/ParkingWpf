@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
+using Parking.ViewModels;
 
 namespace Parking.Views;
 
@@ -60,5 +61,17 @@ public partial class CheckInView : UserControl
                 Keyboard.Focus(PlateTextBox);
             }
         }));
+    }
+
+    private void PlateTextBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter || e.Key == Key.Return)
+        {
+            if (DataContext is CheckInViewModel vm && vm.RegisterAndPrintCommand.CanExecute(null))
+            {
+                vm.RegisterAndPrintCommand.Execute(null);
+                e.Handled = true;
+            }
+        }
     }
 }

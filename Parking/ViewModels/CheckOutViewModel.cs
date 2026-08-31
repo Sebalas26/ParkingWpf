@@ -21,6 +21,8 @@ public partial class CheckOutViewModel : ViewModelBase
     private readonly IMonthlySubscriptionService _monthlySubscriptionService;
     private readonly IStoreService _storeService;
     private readonly IAgreementService _agreementService;
+    private readonly IBillingResolutionService _billingResolutionService;
+    private readonly ISessionService _sessionService;
     private readonly IDialogService _dialogService;
     private readonly IDbConnectionManager _connectionManager;
     private readonly DispatcherTimer _liveCalculationTimer;
@@ -41,10 +43,10 @@ public partial class CheckOutViewModel : ViewModelBase
     private bool _isMonthlyTicket;
 
     [ObservableProperty]
-    private decimal _grossFee;
+    private decimal _minuteRate;
 
     [ObservableProperty]
-    private decimal _minuteRate;
+    private decimal _grossFee;
 
     [ObservableProperty]
     private decimal _discountAmount;
@@ -56,22 +58,22 @@ public partial class CheckOutViewModel : ViewModelBase
     private string _elapsedTimeString = "0min 0seg";
 
     [ObservableProperty]
+    private decimal _amountTendered;
+
+    [ObservableProperty]
+    private decimal _changeDue;
+
+    [ObservableProperty]
     private PaymentMethod _selectedPaymentMethod = PaymentMethod.Cash;
 
     [ObservableProperty]
     private PaymentMethodEntity? _selectedPaymentMethodEntity;
 
     [ObservableProperty]
-    private bool _hasPaymentMethods;
+    private bool _hasPaymentMethods = true;
 
     [ObservableProperty]
-    private string _exitNotes = string.Empty;
-
-    [ObservableProperty]
-    private decimal _amountTendered;
-
-    [ObservableProperty]
-    private decimal _changeDue;
+    private string? _exitNotes;
 
     [ObservableProperty]
     private bool _hasAgreementDiscount;
@@ -100,11 +102,29 @@ public partial class CheckOutViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSuccessFeedback;
 
+    [ObservableProperty]
+    private bool _isAgreementPopupOpen;
+
+    [ObservableProperty]
+    private CommercialAgreement? _popupAgreement;
+
+    [ObservableProperty]
+    private string _popupDiscountSummary = string.Empty;
+
+    [ObservableProperty]
+    private BillingResolution? _selectedResolution;
+
+    [ObservableProperty]
+    private bool _hasResolutions;
+
+    private readonly DispatcherTimer _agreementPopupTimer;
+
     public ObservableCollection<ParkingTicket> ActiveVehicles { get; } = new();
     public ObservableCollection<Store> AvailableStores { get; } = new();
     public ObservableCollection<CommercialAgreement> AvailableAgreements { get; } = new();
     public ObservableCollection<CommercialAgreement> BranchAgreements { get; } = new();
     public ObservableCollection<PaymentMethodEntity> AvailablePaymentMethods { get; } = new();
+    public ObservableCollection<BillingResolution> AvailableResolutions { get; } = new();
 
     public CheckOutViewModel(
         IParkingTicketService ticketService,
@@ -112,6 +132,8 @@ public partial class CheckOutViewModel : ViewModelBase
         IMonthlySubscriptionService monthlySubscriptionService,
         IStoreService storeService,
         IAgreementService agreementService,
+        IBillingResolutionService billingResolutionService,
+        ISessionService sessionService,
         IDialogService dialogService,
         IDbConnectionManager connectionManager,
         ISyncEngineService syncEngine)
@@ -121,6 +143,8 @@ public partial class CheckOutViewModel : ViewModelBase
         _monthlySubscriptionService = monthlySubscriptionService;
         _storeService = storeService;
         _agreementService = agreementService;
+        _billingResolutionService = billingResolutionService;
+        _sessionService = sessionService;
         _dialogService = dialogService;
         _connectionManager = connectionManager;
 
@@ -135,6 +159,16 @@ public partial class CheckOutViewModel : ViewModelBase
         };
         _liveCalculationTimer.Tick += (s, e) => RecalculateLiveFee();
 
+        _agreementPopupTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(6)
+        };
+        _agreementPopupTimer.Tick += (s, e) =>
+        {
+            _agreementPopupTimer.Stop();
+            IsAgreementPopupOpen = false;
+        };
+
         _ticketService.TicketRegistered += (s, t) => _ = LoadActiveVehiclesAsync();
         _ticketService.TicketCompleted += (s, t) => _ = LoadActiveVehiclesAsync();
     }
@@ -144,6 +178,27 @@ public partial class CheckOutViewModel : ViewModelBase
         await LoadPaymentMethodsAsync();
         await LoadActiveVehiclesAsync();
         await LoadStoresAsync();
+        await LoadResolutionsAsync();
+    }
+
+    private async Task LoadResolutionsAsync()
+    {
+        try
+        {
+            var currentBranchId = _sessionService.CurrentBranch?.Id;
+            var resolutions = await _billingResolutionService.GetActiveResolutionsByBranchAsync(currentBranchId);
+            AvailableResolutions.Clear();
+            foreach (var r in resolutions)
+            {
+                AvailableResolutions.Add(r);
+            }
+            HasResolutions = AvailableResolutions.Count > 0;
+            if (SelectedResolution == null || !AvailableResolutions.Any(r => r.ResolutionId == SelectedResolution.ResolutionId))
+            {
+                SelectedResolution = AvailableResolutions.FirstOrDefault(r => r.DocumentType.Contains("POS", StringComparison.OrdinalIgnoreCase)) ?? AvailableResolutions.FirstOrDefault();
+            }
+        }
+        catch { }
     }
 
     private async Task LoadPaymentMethodsAsync()
@@ -212,6 +267,19 @@ public partial class CheckOutViewModel : ViewModelBase
                 BranchAgreements.Add(a);
             }
         }
+
+        try
+        {
+            var allAgreements = await _agreementService.GetAllAgreementsAsync();
+            foreach (var a in allAgreements.Where(a => a.IsActive))
+            {
+                if (!BranchAgreements.Any(ba => ba.AgreementId == a.AgreementId))
+                {
+                    BranchAgreements.Add(a);
+                }
+            }
+        }
+        catch { }
     }
 
     partial void OnSearchQueryChanged(string value)
@@ -352,6 +420,66 @@ public partial class CheckOutViewModel : ViewModelBase
         RecalculateLiveFee();
     }
 
+    [RelayCommand]
+    private void ToggleSelectAgreement(CommercialAgreement? agreement)
+    {
+        if (agreement == null) return;
+
+        if (SelectedAgreement?.AgreementId == agreement.AgreementId && HasAgreementDiscount)
+        {
+            SelectedAgreement = null;
+            HasAgreementDiscount = false;
+            DiscountAmount = 0m;
+        }
+        else
+        {
+            SelectedAgreement = agreement;
+            HasAgreementDiscount = true;
+            CustomerPurchaseAmount = agreement.MinPurchaseAmount;
+        }
+
+        RecalculateLiveFee();
+    }
+
+    [RelayCommand]
+    private void ShowAgreementDetails(CommercialAgreement? agreement)
+    {
+        if (agreement == null) return;
+
+        PopupAgreement = agreement;
+
+        var parts = new List<string>();
+        if (agreement.DiscountPercentage.HasValue && agreement.DiscountPercentage.Value > 0)
+        {
+            parts.Add($"Descuento: {agreement.DiscountPercentage.Value:N0}%");
+        }
+        if (agreement.DiscountFixedAmount.HasValue && agreement.DiscountFixedAmount.Value > 0)
+        {
+            parts.Add($"Monto Fijo: ${agreement.DiscountFixedAmount.Value:N0}");
+        }
+        if (agreement.MinPurchaseAmount > 0)
+        {
+            parts.Add($"Compra Mínima: ${agreement.MinPurchaseAmount:N0}");
+        }
+        if (agreement.MaxHoursApplicable.HasValue && agreement.MaxHoursApplicable.Value > 0)
+        {
+            parts.Add($"Máx. {agreement.MaxHoursApplicable.Value} horas");
+        }
+
+        PopupDiscountSummary = parts.Count > 0 ? string.Join(" • ", parts) : "Tarifa de convenio preferencial";
+
+        IsAgreementPopupOpen = true;
+        _agreementPopupTimer.Stop();
+        _agreementPopupTimer.Start();
+    }
+
+    [RelayCommand]
+    private void CloseAgreementPopup()
+    {
+        _agreementPopupTimer.Stop();
+        IsAgreementPopupOpen = false;
+    }
+
     partial void OnCustomerPurchaseAmountChanged(decimal value) => RecalculateLiveFee();
 
     partial void OnHasAgreementDiscountChanged(bool value)
@@ -382,7 +510,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 ? rateInfo.MinuteRate
                 : (rateInfo != null && rateInfo.HourRate > 0 ? Math.Round(rateInfo.HourRate / 60m, 2) : 0m);
 
-            IsMonthlyTicket = value.HourlyRate == 0m || (value.Notes?.Contains("Mensualidad", StringComparison.OrdinalIgnoreCase) ?? false);
+            IsMonthlyTicket = (value.Notes?.Contains("Mensualidad", StringComparison.OrdinalIgnoreCase) ?? false);
             if (!IsMonthlyTicket)
             {
                 try

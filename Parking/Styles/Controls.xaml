@@ -149,17 +149,17 @@
 
     <Style x:Key="CheckoutSearchTextBox" TargetType="TextBox">
         <Setter Property="FontFamily" Value="{StaticResource FontFamilyMonospace}"/>
-        <Setter Property="FontSize" Value="30"/>
+        <Setter Property="FontSize" Value="48"/>
         <Setter Property="FontWeight" Value="Black"/>
-        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Height" Value="68"/>
-        <Setter Property="Padding" Value="18,6"/>
+        <Setter Property="Height" Value="100"/>
+        <Setter Property="Padding" Value="16,6"/>
         <Setter Property="CharacterCasing" Value="Upper"/>
         <Setter Property="Background" Value="{DynamicResource BrushSurfaceBackground}"/>
         <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
-        <Setter Property="BorderThickness" Value="2.5"/>
+        <Setter Property="BorderThickness" Value="3"/>
         <Setter Property="CaretBrush" Value="{DynamicResource BrushPrimary}"/>
         <Setter Property="Template">
             <Setter.Value>
@@ -168,8 +168,11 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="14"
+                            CornerRadius="16"
                             SnapsToDevicePixels="True">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="12" Direction="270" ShadowDepth="2" Opacity="0.08" Color="#0B3C49"/>
+                        </Border.Effect>
                         <ScrollViewer x:Name="PART_ContentHost"
                                       Focusable="false"
                                       VerticalAlignment="Center"
@@ -180,11 +183,11 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="true">
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
-                            <Setter TargetName="border" Property="BorderThickness" Value="3"/>
+                            <Setter TargetName="border" Property="BorderThickness" Value="3.5"/>
                         </Trigger>
                         <Trigger Property="IsFocused" Value="true">
                             <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
-                            <Setter TargetName="border" Property="BorderThickness" Value="3"/>
+                            <Setter TargetName="border" Property="BorderThickness" Value="3.5"/>
                             <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSurfaceBackground}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>

@@ -256,7 +256,13 @@
                                      Style="{StaticResource PlateInputTextBox}"
                                      Height="160"
                                      FontSize="90"
-                                     Margin="0,0,0,6"/>
+                                     KeyDown="PlateTextBox_KeyDown"
+                                     Margin="0,0,0,6">
+                                <TextBox.InputBindings>
+                                    <KeyBinding Key="Return" Command="{Binding RegisterAndPrintCommand}"/>
+                                    <KeyBinding Key="Enter" Command="{Binding RegisterAndPrintCommand}"/>
+                                </TextBox.InputBindings>
+                            </TextBox>
 
                             <!-- Banner de Suscriptor Mensual Activo -->
                             <Border Visibility="{Binding IsMonthlySubscriber, Converter={StaticResource BoolToVis}}"
@@ -570,17 +576,10 @@
                 <!-- 2. Tarjeta de Ocupación en Tiempo Real -->
                 <Border Style="{StaticResource ModernCard}" Padding="18" Margin="0,0,0,14">
                     <StackPanel>
-                        <Grid Margin="0,0,0,10">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Ocupación de Parqueadero" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <TextBlock Grid.Column="1" Text="{Binding Occupancy.OccupancySummary}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
-                        </Grid>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,10">
+                            <Path Data="{StaticResource IconCar}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Ocupación de Parqueadero" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                        </StackPanel>
 
                         <Grid Margin="0,0,0,6">
                             <Grid.ColumnDefinitions>

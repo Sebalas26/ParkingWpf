@@ -585,6 +585,7 @@ public class SyncEngineService : ISyncEngineService
                     existing.MaxHoursApplicable = ag.MaxHoursApplicable;
                     existing.MinPurchaseAmount = ag.MinPurchaseAmount;
                     existing.IsActive = ag.IsActive;
+                    existing.ImageUrl = ag.ImageUrl;
                 }
                 else
                 {
@@ -598,6 +599,7 @@ public class SyncEngineService : ISyncEngineService
                         DiscountFixedAmount = ag.DiscountFixedAmount,
                         MaxHoursApplicable = ag.MaxHoursApplicable,
                         IsActive = ag.IsActive,
+                        ImageUrl = ag.ImageUrl,
                         CreatedAtUtc = DateTime.UtcNow
                     });
                 }
@@ -830,6 +832,61 @@ public class SyncEngineService : ISyncEngineService
             await db.SaveChangesAsync(ct);
         }
 
+        // 8.5 Sincronizar Resoluciones de Facturación DIAN
+        if (bootstrap.Resolutions != null)
+        {
+            var incomingResIds = bootstrap.Resolutions.Select(r => r.ResolutionId).ToHashSet();
+            var localResolutions = await db.BillingResolutions.ToListAsync(ct);
+            var resToDelete = localResolutions.Where(r => !incomingResIds.Contains(r.ResolutionId)).ToList();
+            if (resToDelete.Count > 0)
+            {
+                db.BillingResolutions.RemoveRange(resToDelete);
+            }
+
+            foreach (var res in bootstrap.Resolutions)
+            {
+                var existing = localResolutions.FirstOrDefault(r => r.ResolutionId == res.ResolutionId);
+                if (existing != null)
+                {
+                    existing.CompanyId = res.CompanyId;
+                    existing.BranchId = res.BranchId;
+                    existing.Name = res.Name;
+                    existing.DocumentType = res.DocumentType;
+                    existing.Prefix = res.Prefix;
+                    existing.ResolutionNumber = res.ResolutionNumber;
+                    existing.FromNumber = res.FromNumber;
+                    existing.ToNumber = res.ToNumber;
+                    existing.CurrentNumber = res.CurrentNumber;
+                    existing.ValidFrom = res.ValidFrom;
+                    existing.ValidTo = res.ValidTo;
+                    existing.TechnicalKey = res.TechnicalKey;
+                    existing.IsActive = res.IsActive;
+                }
+                else
+                {
+                    db.BillingResolutions.Add(new BillingResolution
+                    {
+                        ResolutionId = res.ResolutionId,
+                        CompanyId = res.CompanyId,
+                        BranchId = res.BranchId,
+                        Name = res.Name,
+                        DocumentType = res.DocumentType,
+                        Prefix = res.Prefix,
+                        ResolutionNumber = res.ResolutionNumber,
+                        FromNumber = res.FromNumber,
+                        ToNumber = res.ToNumber,
+                        CurrentNumber = res.CurrentNumber,
+                        ValidFrom = res.ValidFrom,
+                        ValidTo = res.ValidTo,
+                        TechnicalKey = res.TechnicalKey,
+                        IsActive = res.IsActive,
+                        CreatedAtUtc = DateTime.UtcNow
+                    });
+                }
+            }
+            await db.SaveChangesAsync(ct);
+        }
+
         // 9. Paso 8: Sincronizar Tiquetes y Consolidar (98%)
         progress.Report(new SyncProgressReport
         {
@@ -838,6 +895,25 @@ public class SyncEngineService : ISyncEngineService
             CurrentStepTitle = "Sincronizando Tiquetes activos y registros...",
             DetailMessage = "Consolidando registros de acceso y guardando en SQLite..."
         });
+
+        // Reconciliación: Si un tiquete figura como Activo en SQLite pero ya NO está activo en el servidor central (salida dada desde PWA u otra terminal)
+        if (bootstrap.ActiveTickets != null)
+        {
+            var serverActiveTicketIds = bootstrap.ActiveTickets.Select(t => t.TicketId).ToHashSet();
+            var serverActivePlates = bootstrap.ActiveTickets.Select(t => t.PlateNumber.Trim().ToUpperInvariant()).ToHashSet();
+
+            var localActiveTickets = await db.ParkingTickets.Where(t => t.Status == TicketStatus.Active).ToListAsync(ct);
+            foreach (var localActive in localActiveTickets)
+            {
+                var normalizedLocalPlate = localActive.PlateNumber.Trim().ToUpperInvariant();
+                if (!serverActiveTicketIds.Contains(localActive.TicketId) && !serverActivePlates.Contains(normalizedLocalPlate))
+                {
+                    localActive.Status = TicketStatus.Completed;
+                    localActive.ExitTimeUtc ??= DateTime.UtcNow;
+                    localActive.IsSynchronized = true;
+                }
+            }
+        }
 
         var allIncomingTickets = new List<ApiParkingTicketSyncDto>();
         if (bootstrap.ActiveTickets != null) allIncomingTickets.AddRange(bootstrap.ActiveTickets);

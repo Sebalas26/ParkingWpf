@@ -200,6 +200,54 @@ public class ApiCommercialAgreementSyncDto
 
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
+
+    [JsonPropertyName("imageUrl")]
+    public string? ImageUrl { get; set; }
+}
+
+public class ApiBillingResolutionSyncDto
+{
+    [JsonPropertyName("resolutionId")]
+    public Guid ResolutionId { get; set; } = Guid.NewGuid();
+
+    [JsonPropertyName("companyId")]
+    public int? CompanyId { get; set; }
+
+    [JsonPropertyName("branchId")]
+    public int? BranchId { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("documentType")]
+    public string DocumentType { get; set; } = string.Empty;
+
+    [JsonPropertyName("prefix")]
+    public string Prefix { get; set; } = string.Empty;
+
+    [JsonPropertyName("resolutionNumber")]
+    public string ResolutionNumber { get; set; } = string.Empty;
+
+    [JsonPropertyName("fromNumber")]
+    public long FromNumber { get; set; }
+
+    [JsonPropertyName("toNumber")]
+    public long ToNumber { get; set; }
+
+    [JsonPropertyName("currentNumber")]
+    public long CurrentNumber { get; set; }
+
+    [JsonPropertyName("validFrom")]
+    public DateTime ValidFrom { get; set; }
+
+    [JsonPropertyName("validTo")]
+    public DateTime ValidTo { get; set; }
+
+    [JsonPropertyName("technicalKey")]
+    public string? TechnicalKey { get; set; }
+
+    [JsonPropertyName("isActive")]
+    public bool IsActive { get; set; } = true;
 }
 
 public class ApiWorkShiftSyncDto
@@ -654,6 +702,9 @@ public class BootstrapSyncResponse
 
     [JsonPropertyName("incidents")]
     public List<ApiVehicleIncidentSyncDto> Incidents { get; set; } = new();
+
+    [JsonPropertyName("resolutions")]
+    public List<ApiBillingResolutionSyncDto> Resolutions { get; set; } = new();
 }
 
 public class PlateCheckResultDto
