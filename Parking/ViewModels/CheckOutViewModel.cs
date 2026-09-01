@@ -195,7 +195,11 @@ public partial class CheckOutViewModel : ViewModelBase
             HasResolutions = AvailableResolutions.Count > 0;
             if (SelectedResolution == null || !AvailableResolutions.Any(r => r.ResolutionId == SelectedResolution.ResolutionId))
             {
-                SelectedResolution = AvailableResolutions.FirstOrDefault(r => r.DocumentType.Contains("POS", StringComparison.OrdinalIgnoreCase)) ?? AvailableResolutions.FirstOrDefault();
+                SelectedResolution = AvailableResolutions.FirstOrDefault(r => (r.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                                            || (r.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                                            || (r.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false))
+                                     ?? AvailableResolutions.FirstOrDefault(r => r.DocumentType.Contains("POS", StringComparison.OrdinalIgnoreCase))
+                                     ?? AvailableResolutions.FirstOrDefault();
             }
         }
         catch { }
@@ -223,6 +227,30 @@ public partial class CheckOutViewModel : ViewModelBase
             }
         }
         catch { }
+    }
+
+    partial void OnSelectedPaymentMethodEntityChanged(PaymentMethodEntity? value)
+    {
+        if (value != null)
+        {
+            SelectedPaymentMethod = value.ToEnum();
+            if (!value.RequiresCashTender)
+            {
+                AmountTendered = CalculatedFee;
+                ChangeDue = 0m;
+            }
+            else
+            {
+                CalculateChange();
+            }
+        }
+    }
+
+    [RelayCommand]
+    private void SelectResolution(BillingResolution resolution)
+    {
+        if (resolution == null) return;
+        SelectedResolution = resolution;
     }
 
     [RelayCommand]
@@ -529,6 +557,26 @@ public partial class CheckOutViewModel : ViewModelBase
             RecalculateLiveFee();
             AmountTendered = CalculatedFee;
 
+            if (AvailablePaymentMethods.Count > 0 && (SelectedPaymentMethodEntity == null || !SelectedPaymentMethodEntity.Name.Equals("Efectivo", StringComparison.OrdinalIgnoreCase)))
+            {
+                SelectedPaymentMethodEntity = AvailablePaymentMethods.FirstOrDefault(p => p.Name.Equals("Efectivo", StringComparison.OrdinalIgnoreCase)) ?? AvailablePaymentMethods.FirstOrDefault();
+            }
+
+            if (AvailableResolutions.Count > 0)
+            {
+                var fvmRes = AvailableResolutions.FirstOrDefault(r => (r.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                                    || (r.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                                    || (r.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false));
+                if (fvmRes != null)
+                {
+                    SelectedResolution = fvmRes;
+                }
+                else if (SelectedResolution == null)
+                {
+                    SelectedResolution = AvailableResolutions.FirstOrDefault();
+                }
+            }
+
             var dialogResult = await _dialogService.ShowCheckOutDialogAsync(this);
             if (SelectedTicket != null && !dialogResult)
             {
@@ -792,6 +840,12 @@ public partial class CheckOutViewModel : ViewModelBase
             var paidAmount = IsMonthlyTicket ? 0m : (requiresCash ? AmountTendered : CalculatedFee);
             var discount = IsMonthlyTicket ? 0m : DiscountAmount;
 
+            string? generatedInvoiceNumber = null;
+            if (SelectedResolution != null && !IsMonthlyTicket)
+            {
+                generatedInvoiceNumber = await _billingResolutionService.ConsumeNextInvoiceNumberAsync(SelectedResolution.ResolutionId);
+            }
+
             var completedTicket = await _ticketService.ProcessExitAsync(
                 SelectedTicket.TicketId,
                 methodEnum,
@@ -803,7 +857,10 @@ public partial class CheckOutViewModel : ViewModelBase
                 discount,
                 SelectedPaymentMethodEntity?.Id,
                 IsMonthlyTicket ? "Salida Abonado / Mensualidad" : ExitNotes,
-                _frozenExitTimeUtc);
+                _frozenExitTimeUtc,
+                SelectedResolution?.ResolutionId,
+                SelectedResolution?.Name ?? SelectedResolution?.DocumentType,
+                generatedInvoiceNumber);
 
             if (completedTicket != null)
             {

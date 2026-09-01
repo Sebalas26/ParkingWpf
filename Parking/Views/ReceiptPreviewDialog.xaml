@@ -65,13 +65,14 @@
                     MaxHeight="480">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel HorizontalAlignment="Stretch" Margin="0,0">
-                        <!-- LOGO (igual al del Login) -->
-                        <Image Source="/Resources/logo.jpeg"
-                               Height="50"
-                               Stretch="Uniform"
-                               RenderOptions.BitmapScalingMode="HighQuality"
-                               HorizontalAlignment="Center"
-                               Margin="0,0,0,10"/>
+                        <!-- TÍTULO DE MARCA ENCABEZADO -->
+                        <TextBlock Text="PARKING - FLOW"
+                                   FontSize="20"
+                                   FontWeight="Black"
+                                   FontFamily="Raleway, Segoe UI, sans-serif"
+                                   Foreground="#000000"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,10"/>
 
                         <!-- CÓDIGO DE BARRAS CODE 128 EN LA PARTE SUPERIOR (PLACA) -->
                         <Image Source="{Binding BarcodeImage}"
@@ -121,13 +122,22 @@
                                RenderOptions.BitmapScalingMode="NearestNeighbor"
                                HorizontalAlignment="Center"
                                Margin="0,6,0,2"/>
-                        <TextBlock Text="CONSULTE SU ESTADO EN LÍNEA" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                        <TextBlock Text="PARKING - FLOW" FontSize="13" FontWeight="Bold" FontFamily="Raleway, Segoe UI, sans-serif" Foreground="#000000" HorizontalAlignment="Center" Margin="0,16,0,12"/>
+                        <TextBlock Text="CONSULTE SU ESTADO EN LÍNEA" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,8"/>
 
                         <!-- SECCIÓN EXCLUSIVA PARA LA SALIDA (Si ya salió) -->
                         <StackPanel Visibility="{Binding Ticket.ExitTime, Converter={StaticResource NullToVis}}">
                             <TextBlock Text="****************************************" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4"/>
                             
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2" Visibility="{Binding Ticket.InvoiceNumber, Converter={StaticResource NullToVis}}">
+                                <TextBlock Text="DOC. EQUIVALENTE: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding Ticket.InvoiceNumber}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" FontWeight="Black"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2" Visibility="{Binding Ticket.ResolutionName, Converter={StaticResource NullToVis}}">
+                                <TextBlock Text="RESOLUCIÓN: " FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.ResolutionName}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" FontWeight="Bold"/>
+                            </StackPanel>
+
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
                                 <TextBlock Text="SALIDA: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 <TextBlock Text="{Binding Ticket.ExitTime, StringFormat='{}{0:yyyy/MM/dd HH:mm:ss}'}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>

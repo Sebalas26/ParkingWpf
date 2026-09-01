@@ -31,6 +31,10 @@ public class ParkingTicket
     public Guid? OperatorExitId { get; set; }
     public string OperatorName { get; set; } = "Operador General";
     public bool IsSynchronized { get; set; } = true;
+    public Guid? ResolutionId { get; set; }
+    public string? ResolutionName { get; set; }
+    public string? InvoiceNumber { get; set; }
+    public bool IsElectronicInvoice { get; set; } = false;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public DateTime EntryTime => EntryTimeUtc.ToLocalTime();

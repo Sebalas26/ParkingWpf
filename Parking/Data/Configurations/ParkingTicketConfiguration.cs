@@ -26,8 +26,11 @@ public class ParkingTicketConfiguration : IEntityTypeConfiguration<ParkingTicket
         builder.Property(t => t.NetAmount).HasPrecision(18, 2);
         builder.Property(t => t.AmountPaid).HasPrecision(18, 2);
         builder.Property(t => t.ChangeGiven).HasPrecision(18, 2);
+        builder.Property(t => t.ResolutionName).HasMaxLength(150);
+        builder.Property(t => t.InvoiceNumber).HasMaxLength(50);
 
         builder.HasIndex(t => new { t.PlateNumber, t.Status });
         builder.HasIndex(t => t.EntryTimeUtc);
+        builder.HasIndex(t => t.ResolutionId);
     }
 }

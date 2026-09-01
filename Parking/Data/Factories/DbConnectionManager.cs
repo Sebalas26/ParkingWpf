@@ -175,6 +175,10 @@ public class DbConnectionManager : IDbConnectionManager
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"TotalCashWithdrawals\" TEXT DEFAULT '0';"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"PaymentMethodId\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"ExitNotes\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"ResolutionId\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"ResolutionName\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"InvoiceNumber\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"IsElectronicInvoice\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleIncidents\" ADD COLUMN \"IsGlobal\" INTEGER DEFAULT 0;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"GracePeriodMinutes\" = 0;"); } catch { }
         }

@@ -17,6 +17,110 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-09-01 14:53:00] - [UI/UX] [WPF] - Estilo de Fondo Rojo Claro para Botón Cancelar Selección en Modal de Cobro
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Quisiera que esteboton tuviese un boton de backgroun como un rojo claro"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Estilo Suave de Peligro / Cancelación**:
+     - En `CheckOutDialog.xaml`, se actualizó el botón de *"Cancelar Selección"* con fondo rojo claro (`Background="{DynamicResource BrushDangerBg}"` - `#FEE2E2`), texto en contraste rojo oscuro (`Foreground="{DynamicResource BrushDangerText}"` - `#991B1B`), borde suave `#FCA5A5` y efecto *hover* interactivo `#FECACA`.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build` (**0 Errores**).
+  - Aplicación reiniciada y operativa.
+
+### [2026-09-01 12:43:00] - [UI/UX] [WPF] - Cambio de Fondo de Tarjetas de Vehículos Activos a #F0F0F0
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"dejame estos componentes donde se ven los vehiculos activos en un backgrpund no blanco , si noo este color = #F0F0F0"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Fondo de Tarjetas de Vehículos Activos**:
+     - En `CheckOutView.xaml`, se actualizó el `Background` base de las tarjetas de vehículos activos en patio y su setter de estilo a `#F0F0F0` (con efecto hover adaptado a `#E4E4E4`).
+     - Se actualizó el badge superior de conteo de vehículos en patio a `#F0F0F0`.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckOutView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build` (**0 Errores**).
+  - Aplicación reiniciada y operativa en segundo plano.
+
+### [2026-09-01 12:23:00] - [UI/UX] [WPF] - Unificación en Fila Única con Desplegables (ComboBox) de Medio de Pago y Resolución (Prefijo Corto)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayudame ahora con que estos dos componentes seleccionables me los dejes en una lista que se desplgue, donde los 2 queden alineados en una sola fila, a la izquierda el medio de pago y a la derecha la resolucion (pero no dejes todo el nombre completo si no solo la pref. que es mas corto), deja por defecto en medio de pago (efectivo) y en resolucion a FVM"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Alineación en Fila Única de 2 Columnas**:
+     - En `CheckOutDialog.xaml`, se consolidaron los selectores de medio de pago y resolución en un `Grid` horizontal de dos columnas con estilo `ModernComboBox`.
+     - **Columna Izquierda**: `MÉTODO DE PAGO *` con desplegable enlazado a `AvailablePaymentMethods` y `SelectedPaymentMethodEntity`.
+     - **Columna Derecha**: `RESOLUCIÓN / DOC *` con desplegable enlazado a `AvailableResolutions` y `SelectedResolution`.
+  2. **Visualización de Prefijo Compacto**:
+     - En el `ItemTemplate` del desplegable de resolución, se renderiza únicamente el prefijo en negrita/black (`Prefix`) junto con el indicador de próximo consecutivo `(#CurrentNumber)` en texto secundario, suprimiendo la descripción larga del tipo de documento.
+  3. **Valores por Defecto Automáticos**:
+     - En `CheckOutViewModel.cs`, se configuró la selección predeterminada de `Efectivo` para el medio de pago y `FVM` (búsqueda por prefijo/código) para la resolución tanto en la carga inicial (`LoadResolutionsAsync`, `LoadPaymentMethodsAsync`) como al seleccionar cada tiquete (`OnSelectedTicketChanged`).
+     - Se añadió `OnSelectedPaymentMethodEntityChanged` para recalcular el cambio/monto entregado automáticamente al cambiar de medio de pago desde el desplegable.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build` (**0 Errores**).
+  - Aplicación reiniciada y operativa en segundo plano.
+
+### [2026-09-01 12:05:00] - [UI/UX] [PRINT] [WPF] - Reemplazo de Logo Superior por Texto 'PARKING - FLOW' y Eliminación de Duplicado en Pie de Tiquete
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayudame con cambiar la impresion de entrada para que en vez del logo, me ponga la palara PARKING - FLOW y eliminalo del ultimo campo de la impresion"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Encabezado Institucional Tipográfico**:
+     - En `ReceiptPreviewDialog.xaml`, se reemplazó la imagen `/Resources/logo.jpeg` por el texto tipográfico `PARKING - FLOW` en fuente Raleway (`FontWeight="Black"`, tamaño 20) centrado con margen inferior limpio.
+  2. **Eliminación de Texto Duplicado al Pie**:
+     - Se eliminó el bloque `<TextBlock Text="PARKING - FLOW" .../>` que se encontraba al final del tiquete bajo el QR de consulta, evitando redundancia visual en el comprobante impreso.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build` (**0 Errores**).
+  - Aplicación reiniciada y operativa.
+
+### [2026-09-01 11:51:00] - [FEAT] [UI/UX] [DB] [WPF & API] - Reubicación de Selección de Resolución DIAN a Pantalla de Liquidación (2da Pantalla) y Persistencia Integral
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"ayudame a organizar esto, pues no quiero que se vea alli, ya que al darle salida a un vehiculo debe guardarse con que resolucion se elegira, valida en api y en bd si ese dato queda registrado, si no? crealo para que al darle salida (2da pantalla) se guarde con resolucion"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Limpieza Visual en Cabecera de Patio**:
+     - Se removió el selector de resolución del encabezado de *"VEHÍCULOS ACTIVOS ADENTRO"* en `CheckOutView.xaml`, dejando la vista despejada y enfocada en los vehículos en patio.
+  2. **Reubicación e Integración en 2da Pantalla (Modal de Cobro)**:
+     - En `CheckOutDialog.xaml`, se incorporó una sección moderna e interactiva de *"TIPO DE DOCUMENTO / RESOLUCIÓN \*"* con selector por `RadioButton`, visualización del prefijo, tipo de documento y badge con el número de consecutivo próximo (`CurrentNumber`).
+  3. **Generación y Consumo Atómico de Consecutivos Fiscales**:
+     - En `IBillingResolutionService.cs` y `BillingResolutionService.cs`, se implementó `ConsumeNextInvoiceNumberAsync(resolutionId)` para formatear el número de factura/documento equivalente (ej: `POS-0012`) e incrementar `CurrentNumber` en SQLite.
+  4. **Persistencia en Entidad y Base de Datos Local**:
+     - En `ParkingTicket.cs` y `ParkingTicketConfiguration.cs`, se agregaron las propiedades `ResolutionId`, `ResolutionName`, `InvoiceNumber` e `IsElectronicInvoice`.
+     - En `DbConnectionManager.cs`, se añadieron sentencias automáticas de migración `ALTER TABLE` para bases de datos SQLite locales.
+  5. **Contratos de Sincronización y Salida**:
+     - Se actualizaron `CheckOutApiRequest` en `TicketApiModels.cs`, `IParkingTicketService.cs`, `EfParkingTicketService.cs` y `SyncEngineService.EnqueueOfflineCheckOutAsync` para persistir y transmitir `ResolutionId`, `ResolutionName` y `FiscalInvoiceNumber`.
+  6. **Impresión de Recibos Térmicos**:
+     - En `ReceiptPreviewDialog.xaml`, se incluyeron las etiquetas dinámicas de `DOC. EQUIVALENTE` y `RESOLUCIÓN` en el recibo de salida.
+- **📦 Componentes Modificados**:
+  - `Parking/Entities/ParkingTicket.cs`
+  - `Parking/Data/Configurations/ParkingTicketConfiguration.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Services/Contracts/IBillingResolutionService.cs`
+  - `Parking/Services/Implementations/BillingResolutionService.cs`
+  - `Parking/Models/ApiModels/TicketApiModels.cs`
+  - `Parking/Services/Contracts/IParkingTicketService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutView.xaml`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build` (**0 Errores**, 0 Advertencias).
+  - Aplicación ejecutada y sincronizada.
+
 ### [2026-08-31 17:38:00] - [BUGFIX] [INTEGRITY] [WPF] - Validación Estricta de Placa Única Activa y Control de Duplicidad en Ingreso
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

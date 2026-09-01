@@ -34,6 +34,9 @@ public class CheckOutApiRequest
     public decimal? PurchaseAmount { get; set; }
     public decimal DiscountAmount { get; set; }
     public string? ExitNotes { get; set; }
+    public Guid? ResolutionId { get; set; }
+    public string? ResolutionName { get; set; }
+    public string? FiscalInvoiceNumber { get; set; }
     public DateTime ExitTimeUtc { get; set; } = DateTime.UtcNow;
 }
 

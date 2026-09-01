@@ -139,7 +139,6 @@
                 <!-- Encabezado de la Sección de Activos -->
                 <Grid Grid.Row="0" Margin="0,0,0,16">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
@@ -154,56 +153,8 @@
                                    VerticalAlignment="Center"/>
                     </StackPanel>
 
-                    <!-- Centro-Izquierda: Selector/Indicador de Resolución DIAN de la Sede -->
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="24,0,16,0">
-                        <Border Background="#F8FAFC"
-                                BorderBrush="{DynamicResource BrushBorderMedium}"
-                                BorderThickness="1"
-                                CornerRadius="10"
-                                Padding="10,4"
-                                VerticalAlignment="Center"
-                                Visibility="{Binding HasResolutions, Converter={StaticResource BoolToVis}}">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Path Data="{StaticResource IconDocument}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Resolución:" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                                <ComboBox ItemsSource="{Binding AvailableResolutions}"
-                                          SelectedItem="{Binding SelectedResolution}"
-                                          BorderThickness="0"
-                                          Background="Transparent"
-                                          FontSize="12"
-                                          FontWeight="Bold"
-                                          Foreground="{DynamicResource BrushPrimary}"
-                                          VerticalAlignment="Center"
-                                          MinWidth="220">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding DocumentType}" FontWeight="Bold"/>
-                                                <TextBlock Text="{Binding Prefix, StringFormat='{} - Pref. {0}'}" Foreground="{DynamicResource BrushTextMuted}" Margin="4,0,0,0"/>
-                                                <TextBlock Text="{Binding CurrentNumber, StringFormat='{} (#{0})'}" Foreground="{DynamicResource BrushTextSecondary}" Margin="4,0,0,0"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Mensaje si no hay resoluciones configuradas -->
-                        <Border Background="#FEF3C7"
-                                BorderBrush="#FDE68A"
-                                BorderThickness="1"
-                                CornerRadius="10"
-                                Padding="8,4"
-                                VerticalAlignment="Center"
-                                Visibility="{Binding HasResolutions, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="⚠️ Sin Resolución DIAN Activa" FontSize="11" FontWeight="Bold" Foreground="#B45309" VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-
                     <!-- Derecha: Badge de Vehículos en Patio -->
-                    <Border Grid.Column="2" Background="#ffffffff" BorderBrush="#398d78ff" BorderThickness="1" CornerRadius="12" Padding="12,4" VerticalAlignment="Center">
+                    <Border Grid.Column="1" Background="#F0F0F0" BorderBrush="#398d78ff" BorderThickness="1" CornerRadius="12" Padding="12,4" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Ellipse Width="8" Height="8" Fill="{DynamicResource BrushPrimary}" Margin="0,0,6,0" VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding ActiveVehicles.Count, StringFormat='{}{0} en Patio'}"
@@ -227,7 +178,7 @@
                             <DataTemplate>
                                 <Border HorizontalAlignment="Stretch"
                                         VerticalAlignment="Top"
-                                        Background="{DynamicResource BrushInputBackground}"
+                                        Background="#F0F0F0"
                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
                                         BorderThickness="1.5"
                                         CornerRadius="14"
@@ -241,10 +192,10 @@
                                     </Border.InputBindings>
                                     <Border.Style>
                                         <Style TargetType="Border">
-                                            <Setter Property="Background" Value="{DynamicResource BrushInputBackground}"/>
+                                            <Setter Property="Background" Value="#F0F0F0"/>
                                             <Style.Triggers>
                                                 <Trigger Property="IsMouseOver" Value="True">
-                                                    <Setter Property="Background" Value="#F1F5F9"/>
+                                                    <Setter Property="Background" Value="#E4E4E4"/>
                                                     <Setter Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
                                                 </Trigger>
                                             </Style.Triggers>

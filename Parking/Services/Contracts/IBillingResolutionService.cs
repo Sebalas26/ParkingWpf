@@ -10,4 +10,5 @@ public interface IBillingResolutionService
     Task<IReadOnlyList<BillingResolution>> GetAllResolutionsAsync();
     Task<IReadOnlyList<BillingResolution>> GetActiveResolutionsByBranchAsync(int? branchId);
     Task<BillingResolution?> GetResolutionByIdAsync(Guid resolutionId);
+    Task<string?> ConsumeNextInvoiceNumberAsync(Guid resolutionId);
 }

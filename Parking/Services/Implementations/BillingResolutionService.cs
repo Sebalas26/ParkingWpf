@@ -47,4 +47,28 @@ public class BillingResolutionService : IBillingResolutionService
         using var db = _connectionManager.CreateDbContext();
         return await db.BillingResolutions.FirstOrDefaultAsync(r => r.ResolutionId == resolutionId);
     }
+
+    public async Task<string?> ConsumeNextInvoiceNumberAsync(Guid resolutionId)
+    {
+        try
+        {
+            using var db = _connectionManager.CreateDbContext();
+            var resolution = await db.BillingResolutions.FirstOrDefaultAsync(r => r.ResolutionId == resolutionId);
+            if (resolution == null) return null;
+
+            var current = resolution.CurrentNumber > 0 ? resolution.CurrentNumber : resolution.FromNumber;
+            var formattedInvoiceNumber = !string.IsNullOrWhiteSpace(resolution.Prefix)
+                ? $"{resolution.Prefix.Trim()}-{current}"
+                : $"{current}";
+
+            resolution.CurrentNumber = current + 1;
+            await db.SaveChangesAsync();
+
+            return formattedInvoiceNumber;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }

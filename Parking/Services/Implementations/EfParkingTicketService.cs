@@ -180,7 +180,10 @@ public class EfParkingTicketService : IParkingTicketService
         decimal discountAmount,
         int? paymentMethodId = null,
         string? exitNotes = null,
-        DateTime? customExitTimeUtc = null)
+        DateTime? customExitTimeUtc = null,
+        Guid? resolutionId = null,
+        string? resolutionName = null,
+        string? fiscalInvoiceNumber = null)
     {
         using var db = _connectionManager.CreateDbContext();
         var ticket = await db.ParkingTickets.FindAsync(ticketId);
@@ -203,6 +206,10 @@ public class EfParkingTicketService : IParkingTicketService
         ticket.PaymentMethod = paymentMethod;
         ticket.PaymentMethodId = paymentMethodId;
         ticket.ExitNotes = exitNotes;
+        ticket.ResolutionId = resolutionId;
+        ticket.ResolutionName = resolutionName;
+        ticket.InvoiceNumber = fiscalInvoiceNumber;
+        ticket.IsElectronicInvoice = !string.IsNullOrWhiteSpace(fiscalInvoiceNumber);
         ticket.Status = TicketStatus.Completed;
         ticket.IsSynchronized = false;
 
@@ -221,6 +228,11 @@ public class EfParkingTicketService : IParkingTicketService
                     InvoiceNumber = invoiceNumber,
                     PurchaseAmount = purchaseAmount,
                     DiscountAmount = discountAmount,
+                    ExitNotes = exitNotes,
+                    PaymentMethodId = paymentMethodId,
+                    ResolutionId = resolutionId,
+                    ResolutionName = resolutionName,
+                    FiscalInvoiceNumber = fiscalInvoiceNumber,
                     ExitTimeUtc = exitTime
                 });
 
