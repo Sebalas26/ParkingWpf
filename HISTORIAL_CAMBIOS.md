@@ -17,6 +17,29 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-08-31 21:50:00] - [FEAT] [SYNC] [MULTI-BRANCH] [WPF] - Sincronización Automática al Cambiar de Sede y Validación Dinámica de Turno Operativo
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayudame que cuando hago cambio de sede en mi Wpf me haga la sincronizacion automatica"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Conversión de Comando Asíncrono (`MainShellViewModel.cs`)**:
+     - Se convirtió `SwitchBranch` a `SwitchBranchAsync` bajo `[RelayCommand]` (`SwitchBranchCommand`).
+     - Al seleccionar una nueva sede en `BranchSelectionDialog`, se evalúa si difiere de la sede activa actual.
+     - Se invoca `_sessionService.SetActiveBranch(dialog.SelectedBranch)`.
+  2. **Sincronización Automática con Servidor Central**:
+     - Se dispara inmediatamente `ForceSyncAsync()` el cual abre el modal interactivo de sincronización (`ShowSyncProgressModalAsync`), descargando tarifas, convenios, métodos de pago, cupos, tiquetes activos y turnos correspondientes a la nueva sede.
+     - Al completarse la sincronización, `SyncEngine` dispara `DataSynchronized`, refrescando los datos en cascada en todos los ViewModels de la aplicación.
+  3. **Validación Dinámica de Turno y Re-inicialización de Vista Activa**:
+     - Se consulta el estado del turno en la nueva sede (`_shiftService.GetActiveShiftAsync()`).
+     - Si no hay turno abierto o está a nombre de otro operador y el usuario no es admin, se notifica y se redirige automáticamente a `ShiftClosureViewModel` para apertura/relevo.
+     - Si la vista actual es operativa, se invoca `ActiveView.InitializeAsync()` para reflejar los datos de la nueva sede.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
 ### [2026-08-31 17:38:00] - [BUGFIX] [INTEGRITY] [WPF] - Validación Estricta de Placa Única Activa y Control de Duplicidad en Ingreso
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
