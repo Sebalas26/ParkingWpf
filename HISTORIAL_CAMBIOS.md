@@ -17,6 +17,99 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-08-31 23:08:00] - [FEAT] [RATES] [MULTI-BRANCH] [WPF] - Preservación Integral de Todos los Tipos de Vehículos Parametrizados por Sede Activa
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Pues ya me muestra el otro tipo de vehiculo , pero sigue faltandome los demas y que los muestre por sede logeada"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Eliminación de Sobreescritura por Enum (`EfPricingCalculatorService.cs`)**:
+     - Se reemplazó el almacenamiento indexado por `ConcurrentDictionary<VehicleType, VehicleRate>` por una lista viva `List<VehicleRate> _activeBranchRates` que preserva el 100% de los registros parametrizados en la base de datos sin colisiones entre categorías.
+  2. **Filtrado Estricto por Sede Logueada**:
+     - `ReloadRatesAsync()` carga prioritariamente todas las tarifas asignadas a `r.BranchId == currentBranchId.Value`, ordenadas por nombre, y recurre a tarifas globales (`r.BranchId == null`) únicamente si la sede no tiene tarifas propias.
+  3. **Ampliación Léxica de Tipos de Vehículos (`VehicleTypeHelper.cs`)**:
+     - Cobertura completa para variantes comerciales como *motocarro, patineta, cuatrimoto, monopatín, bus, buseta, volqueta, remolque, camioneta, furgón, microbús, etc.*
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking/Core/Helpers/VehicleTypeHelper.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
+### [2026-08-31 23:00:00] - [FIX] [API] [SYNC] [RATES] [WPF] - Soporte Multinombre de Tarifas en Deserialización JSON y Reconciliación Integral por Sede
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Revisa desde el pwa, ya que desde el pwa veo y asigne mas tipos de vehiculo , pero en el wpf solo recibo moto, revisa que retorna la api y ajuste donde se encuentre el error"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Tolerancia y Deserialización Resiliente (`BootstrapSyncResponse.cs`)**:
+     - Se refactorizó `ApiVehicleRateSyncDto` con mapeo de campos alternativos (`id`, `rateId`, `branch_id`, `sedeId`, `valorHora`, `hourlyRate`, `hour_rate`, `valorMinuto`, `minuteRate`, `maximoDia`, `fullDayRate`, etc.).
+     - Soporte para identificadores numéricos o cadenas mediante generación de `Guid` determinístico (`GetRateId()`), eliminando fallos en la deserialización de `bootstrap.Rates`.
+  2. **Reconciliación y Upsert en SQLite (`SyncEngineService.cs`)**:
+     - Se actualizó el paso 5 de sincronización para buscar registros existentes tanto por `RateId` como por la clave lógica `(BranchId, VehicleType)`, evitando eliminaciones o sobreescrituras accidentales de categorías concurrentes (Carro, Moto, Bicicleta, etc.).
+  3. **Consulta y Priorización por Sede (`EfPricingCalculatorService.cs`)**:
+     - `ReloadRatesAsync()` ahora consulta las tarifas de la sede activa y globales (`r.BranchId == currentBranchId.Value || r.BranchId == null`), agrupando por `VehicleType` y priorizando la tarifa específica de la sede sobre la global.
+- **📦 Componentes Modificados**:
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
+### [2026-08-31 22:48:00] - [FEAT] [UI/UX] [MVVM] [WPF] - Implementación de Selector ComboBox de Tipos de Vehículo por Sede con Empty State y Reactividad en Tiempo Real
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Actúa como un desarrollador experto en C# y WPF utilizando el patrón de diseño MVVM... aplicalo... agrégale estas 3 consideraciones: 1. Manejo de Estados Vacíos (Empty State)... 2. Verificación del Conversor... 3. Escucha de eventos de cambio de Sede..."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Selector ComboBox Moderno (`CheckInView.xaml`)**:
+     - Se integró el `ComboBox` con estilo `ModernComboBox`, enlazado bidireccionalmente a `SelectedRate` y a la colección filtrada por sede `AvailableRates`.
+     - `ItemTemplate` enriquecido con ícono vectorial (`VehicleTypeToIconConverter`), nombre legible de la categoría y píldora con tarifa por hora (`$X / hora`).
+  2. **Manejo de Estado Vacío (Empty State)**:
+     - El `ComboBox` se deshabilita automáticamente (`IsEnabled="{Binding HasConfiguredRates}"`) cuando no existen tarifas para la sede activa.
+     - Se renderiza un banner informativo y de advertencia institucional guiando al usuario si la sede no cuenta con parametrización.
+  3. **Reactividad al Cambio de Sede en Tiempo Real (`CheckInViewModel.cs`)**:
+     - Inyección de `ISessionService` y suscripción al evento `_sessionService.ActiveBranchChanged` para recargar y sincronizar inmediatamente las tarifas y selección activa sin recargar la vista.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking/Styles/Controls.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
+### [2026-08-31 22:31:00] - [FEAT] [UI/UX] [RATES] [SYNC] [WPF] - Carga Completa y Ajuste Visual de Categorías de Vehículos por Sede
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ajustame este componente, donde vea el nombre del tipo ed vehiculo, ademas validame que me carguen todos los tipos de vehiculo configurados para esa sede"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Helper Centralizado de Tipos de Vehículo (`VehicleTypeHelper.cs`)**:
+     - Se implementó un parser resiliente multilingüe que mapea sinónimos en español e inglés (`"moto"`, `"carro"`, `"motocicleta"`, `"camioneta"`, `"suv"`, `"bicicleta"`, `"camión"`, etc.) e infiere el tipo a partir de `DisplayName` o `PlateNumber` en caso de discrepancias.
+  2. **Resolución de Colisión de Tarifas en Sincronización y Caché**:
+     - En `BootstrapSyncResponse.cs`, todos los métodos `GetVehicleType()` delegan a `VehicleTypeHelper.Parse()`, eliminando el error donde los tipos en español caían en `VehicleType.Car` (0) y sobrescribían las demás tarifas en `_ratesCache`.
+     - En `EfPricingCalculatorService.cs`, se vinculó `_sessionService.ActiveBranchChanged` para recargar tarifas dinámicamente al cambiar de sede, filtrando por la sede activa (`BranchId == currentBranchId || BranchId == null`).
+  3. **Íconos y Convertidores (`Icons.xaml`, `VehicleTypeToIconConverter.cs`, `VehicleTypeToStringConverter.cs`)**:
+     - Se añadió la geometría vectorial `IconBicycle`.
+     - Se extendieron los convertidores para soportar `Bicycle`, `Suv`, `Van`, `HeavyTruck`, `Motorcycle` y `Car` con fallbacks seguros.
+  4. **Rediseño del Componente en XAML (`CheckInView.xaml` y `CheckInViewModel.cs`)**:
+     - Se mejoraron las tarjetas de categoría (`CategoryOptionRadioButton`): íconos vectoriales ampliados a 22x22 con contenedores de 44x44, tipografía destacada a 15pt bold para el nombre de la categoría, tarifa legible `$X / hora`, badge de selección activa y distribución responsiva en cuadrícula de 2 columnas.
+     - `DbConnectionManager.cs`: Normalización automática de datos existentes en SQLite.
+- **📦 Componentes Modificados**:
+  - `Parking/Core/Helpers/VehicleTypeHelper.cs` (Nuevo)
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Styles/Icons.xaml`
+  - `Parking/Core/Converters/VehicleTypeToIconConverter.cs`
+  - `Parking/Core/Converters/VehicleTypeToStringConverter.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
 ### [2026-08-31 22:15:00] - [UI/UX] [DESIGN] [WPF] - Estandarización Global de Fondo Oscuro Translúcido (Backdrop Overlay) en Diálogos y Modales
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

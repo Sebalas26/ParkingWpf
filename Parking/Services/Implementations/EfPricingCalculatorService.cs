@@ -15,6 +15,8 @@ public class EfPricingCalculatorService : IPricingCalculatorService
 {
     private readonly IDbConnectionManager _connectionManager;
     private readonly ISessionService _sessionService;
+    private readonly object _lock = new();
+    private readonly List<VehicleRate> _activeBranchRates = new();
     private readonly ConcurrentDictionary<VehicleType, VehicleRate> _ratesCache = new();
 
     public EfPricingCalculatorService(
@@ -28,46 +30,83 @@ public class EfPricingCalculatorService : IPricingCalculatorService
         {
             await ReloadRatesAsync();
         };
+        _sessionService.ActiveBranchChanged += async _ =>
+        {
+            await ReloadRatesAsync();
+        };
     }
 
     public async Task ReloadRatesAsync()
     {
         using var db = _connectionManager.CreateDbContext();
         var currentBranchId = _sessionService.CurrentBranch?.Id;
-        var query = db.VehicleRates.Where(r => r.IsActive);
+
+        List<VehicleRate> rates;
         if (currentBranchId.HasValue)
         {
-            query = query.Where(r => r.BranchId == currentBranchId.Value);
+            // 1. Cargar tarifas asignadas a la sede activa
+            rates = await db.VehicleRates
+                .Where(r => r.IsActive && r.BranchId == currentBranchId.Value)
+                .OrderBy(r => r.DisplayName)
+                .ToListAsync();
+
+            // 2. Si la sede activa no tiene tarifas propias parametrizadas, fallback a globales
+            if (rates.Count == 0)
+            {
+                rates = await db.VehicleRates
+                    .Where(r => r.IsActive && r.BranchId == null)
+                    .OrderBy(r => r.DisplayName)
+                    .ToListAsync();
+            }
         }
-        var rates = await query.ToListAsync();
-        _ratesCache.Clear();
-        foreach (var rate in rates)
+        else
         {
-            _ratesCache[rate.VehicleType] = rate;
+            rates = await db.VehicleRates
+                .Where(r => r.IsActive)
+                .OrderBy(r => r.DisplayName)
+                .ToListAsync();
+        }
+
+        lock (_lock)
+        {
+            _activeBranchRates.Clear();
+            _activeBranchRates.AddRange(rates);
+
+            _ratesCache.Clear();
+            foreach (var rate in rates)
+            {
+                _ratesCache[rate.VehicleType] = rate;
+            }
         }
     }
 
     public async Task<IReadOnlyList<VehicleRate>> GetAllRatesAsync()
     {
-        if (_ratesCache.IsEmpty)
-        {
-            await ReloadRatesAsync();
-        }
+        await ReloadRatesAsync();
 
-        return _ratesCache.Values
-            .Where(r => r.IsActive)
-            .OrderBy(r => r.VehicleType)
-            .ToList();
+        lock (_lock)
+        {
+            return _activeBranchRates.ToList();
+        }
     }
 
     public VehicleRate? GetRate(VehicleType vehicleType)
     {
+        lock (_lock)
+        {
+            var match = _activeBranchRates.FirstOrDefault(r => r.VehicleType == vehicleType);
+            if (match != null) return match;
+        }
+
         if (_ratesCache.TryGetValue(vehicleType, out var rate))
         {
             return rate;
         }
 
-        return null;
+        lock (_lock)
+        {
+            return _activeBranchRates.FirstOrDefault();
+        }
     }
 
     public decimal CalculateFee(VehicleType vehicleType, DateTime entryTime, DateTime exitTime)
