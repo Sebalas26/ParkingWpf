@@ -20,7 +20,48 @@ public partial class CashWithdrawalDialog : Window
         _authService = authService;
         _shiftService = shiftService;
 
-        Loaded += (s, e) => AmountTextBox.Focus();
+        Loaded += CashWithdrawalDialog_Loaded;
+    }
+
+    private void CashWithdrawalDialog_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (Owner != null)
+        {
+            if (Owner.WindowState == WindowState.Maximized)
+            {
+                this.WindowState = WindowState.Maximized;
+            }
+            else
+            {
+                this.WindowState = WindowState.Normal;
+                this.Left = Owner.Left;
+                this.Top = Owner.Top;
+                this.Width = Owner.ActualWidth;
+                this.Height = Owner.ActualHeight;
+            }
+        }
+        else if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
+        {
+            var main = Application.Current.MainWindow;
+            if (main.WindowState == WindowState.Maximized)
+            {
+                this.WindowState = WindowState.Maximized;
+            }
+            else
+            {
+                this.WindowState = WindowState.Normal;
+                this.Left = main.Left;
+                this.Top = main.Top;
+                this.Width = main.ActualWidth;
+                this.Height = main.ActualHeight;
+            }
+        }
+        else
+        {
+            this.WindowState = WindowState.Maximized;
+        }
+
+        AmountTextBox.Focus();
     }
 
     public static async Task<bool> ShowDialogAsync(Window? owner, IAuthService authService, IShiftService shiftService)

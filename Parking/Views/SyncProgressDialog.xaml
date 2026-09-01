@@ -5,25 +5,28 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Sincronización con API Central"
-        Width="520"
-        SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None"
         AllowsTransparency="True"
-        Background="Transparent"
+        Background="#B3000000"
         ShowInTaskbar="False"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Display"
         TextOptions.TextRenderingMode="ClearType">
 
-    <Border Margin="16"
-            Background="{DynamicResource BrushSurfaceBackground}"
-            BorderBrush="{DynamicResource BrushBorderMedium}"
-            BorderThickness="1"
-            CornerRadius="16"
-            Padding="24"
-            SnapsToDevicePixels="True">
+    <Grid Background="Transparent">
+        <Border Width="520"
+                MaxHeight="620"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="24"
+                Background="{DynamicResource BrushSurfaceBackground}"
+                BorderBrush="{DynamicResource BrushBorderMedium}"
+                BorderThickness="1"
+                CornerRadius="16"
+                Padding="24"
+                SnapsToDevicePixels="True">
         <Border.Effect>
             <DropShadowEffect BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.18" Color="#0B3C49"/>
         </Border.Effect>
@@ -187,4 +190,5 @@
             </Grid>
         </Grid>
     </Border>
+    </Grid>
 </Window>

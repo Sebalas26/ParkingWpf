@@ -17,6 +17,47 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-08-31 22:15:00] - [UI/UX] [DESIGN] [WPF] - Estandarización Global de Fondo Oscuro Translúcido (Backdrop Overlay) en Diálogos y Modales
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Mi wpf tiene varias alertas de este estilo , quiero que cuando kas muestre, la pantalla de detras me la dejes oscura, revisa toda mi wpf y ajustalo para todos"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Estandarización de XAML (`Background="#B3000000"` y Centrado Absoluto)**:
+     - Se eliminaron los anchos fijos y `SizeToContent` de la etiqueta raíz `<Window>` en todos los diálogos y alertas.
+     - Se configuró `Background="#B3000000"` (overlay negro al 70% de opacidad) en todas las ventanas modales.
+     - Se estructuró el contenido dentro de un `<Grid Background="Transparent">` y `<Border>` centrado horizontal y verticalmente (`HorizontalAlignment="Center" VerticalAlignment="Center"`), manteniendo las dimensiones compactas y legibles de cada tarjeta.
+  2. **Sincronización Dinámica con Ventana Padre (`Owner` / `MainWindow`)**:
+     - En el evento `Loaded` de cada ventana modal, se evalúa el estado del `Owner` o `MainWindow`: si la ventana principal está maximizada, el modal se maximiza automáticamente para cubrir el 100% de la pantalla sin cortes ni bordes libres; si está en modo normal, hereda dinámicamente `Left`, `Top`, `Width` y `Height`.
+  3. **Vistas y Diálogos Actualizados**:
+     - `BranchSelectionDialog`: Selector de sede de trabajo en Login y Shell.
+     - `ModernMessageDialog`: Diálogo global de alertas del sistema (Información, Éxito, Advertencia, Error) y confirmaciones.
+     - `CashWithdrawalDialog`: Formulario modal de egreso y retiro parcial de efectivo.
+     - `ShiftHandoverAuthDialog`: Ventana de autenticación y relevo de turno.
+     - `SyncProgressDialog`: Barra de progreso y pasos de sincronización.
+     - `SyncRequiredDialog`: Alerta interactiva de actualización obligatoria de SignalR.
+     - `ReceiptPreviewDialog`: Vista previa de tiquetes térmicos.
+     - `CheckOutDialog`: Modal de cobro y liquidación de vehículos.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/BranchSelectionDialog.xaml`
+  - `Parking/Views/BranchSelectionDialog.xaml.cs`
+  - `Parking/Views/ModernMessageDialog.xaml`
+  - `Parking/Views/ModernMessageDialog.xaml.cs`
+  - `Parking/Views/CashWithdrawalDialog.xaml`
+  - `Parking/Views/CashWithdrawalDialog.xaml.cs`
+  - `Parking/Views/ShiftHandoverAuthDialog.xaml`
+  - `Parking/Views/ShiftHandoverAuthDialog.xaml.cs`
+  - `Parking/Views/SyncProgressDialog.xaml`
+  - `Parking/Views/SyncProgressDialog.xaml.cs`
+  - `Parking/Views/SyncRequiredDialog.xaml`
+  - `Parking/Views/SyncRequiredDialog.xaml.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking/Views/ReceiptPreviewDialog.xaml.cs`
+  - `Parking/Views/CheckOutDialog.xaml.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
 ### [2026-08-31 21:50:00] - [FEAT] [SYNC] [MULTI-BRANCH] [WPF] - Sincronización Automática al Cambiar de Sede y Validación Dinámica de Turno Operativo
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

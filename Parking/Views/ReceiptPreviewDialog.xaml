@@ -6,13 +6,11 @@
         xmlns:conv="clr-namespace:Parking.Core.Converters"
         mc:Ignorable="d"
         Title="Vista Previa del Tiquete"
-        MaxHeight="650"
-        Width="490"
-        SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None"
         AllowsTransparency="True"
-        Background="Transparent"
+        Background="#B3000000"
+        ShowInTaskbar="False"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Display"
@@ -25,12 +23,17 @@
         <conv:NullToVisibilityConverter x:Key="NullToVis"/>
     </Window.Resources>
 
-    <Border Background="{DynamicResource BrushAppBackground}"
-            BorderBrush="{DynamicResource BrushBorderMedium}"
-            BorderThickness="1"
-            CornerRadius="16"
-            Padding="20"
-            MaxHeight="640">
+    <Grid Background="Transparent">
+        <Border Width="490"
+                MaxHeight="660"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="24"
+                Background="{DynamicResource BrushAppBackground}"
+                BorderBrush="{DynamicResource BrushBorderMedium}"
+                BorderThickness="1"
+                CornerRadius="16"
+                Padding="20">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -183,4 +186,5 @@
             </Grid>
         </Grid>
     </Border>
+    </Grid>
 </Window>
