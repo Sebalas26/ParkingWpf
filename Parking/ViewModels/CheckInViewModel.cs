@@ -361,11 +361,8 @@ public partial class CheckInViewModel : ViewModelBase
             BlockedReason = $"VEHÍCULO BLOQUEADO: {BlockedIncidentType} - {BlockedDescription}";
 
             await _dialogService.ShowAlertAsync(
-                "⛔ Ingreso Restringido por Novedad / Lista Negra",
-                $"La placa '{normalizedPlate}' presenta un BLOQUEO ACTIVO en el sistema.\n\n" +
-                $"• Tipo de Novedad: {BlockedIncidentType}\n" +
-                $"• Motivo / Detalle: {BlockedDescription}\n\n" +
-                "⚠️ Este vehículo tiene prohibido el ingreso. Para permitir su acceso, un administrador debe resolver la novedad desde la plataforma web (PWA).",
+                "Vehículo restringido",
+                $"La placa '{normalizedPlate}' presenta un bloqueo activo en el sistema.\n\nContáctese con su administrador.",
                 DialogNotificationType.Error);
             return;
         }
@@ -406,13 +403,13 @@ public partial class CheckInViewModel : ViewModelBase
 
             await _dialogService.ShowReceiptPreviewAsync(ticket);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("BLOQUEO") || ex.Message.Contains("LISTA NEGRA") || ex.Message.Contains("novedad", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (ex.Message.Contains("BLOQUEO") || ex.Message.Contains("LISTA NEGRA") || ex.Message.Contains("novedad", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("restringido", StringComparison.OrdinalIgnoreCase))
         {
             IsPlateBlocked = true;
             BlockedReason = ex.Message;
             await _dialogService.ShowAlertAsync(
-                "⛔ Ingreso Restringido por Novedad / Lista Negra",
-                $"{ex.Message}\n\n⚠️ Para autorizar el ingreso, un administrador debe resolver la novedad desde la plataforma web (PWA).",
+                "Vehículo restringido",
+                $"La placa '{normalizedPlate}' presenta un bloqueo activo en el sistema.\n\nContáctese con su administrador.",
                 DialogNotificationType.Error);
         }
         catch (Exception ex)

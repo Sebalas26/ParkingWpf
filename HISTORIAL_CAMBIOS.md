@@ -15,6 +15,66 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-02 11:45:00] - [UI/UX] [CHECKIN] [WPF] - Limpieza Minimalista del Texto del Diálogo de Vehículo Restringido
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"bien, peroe eliminale novedd y motivo"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Simplificación Minimalista del Mensaje (`CheckInViewModel.cs`)**:
+     - Se eliminaron las viñetas de *Tipo de Novedad* y *Motivo / Detalle*.
+     - El mensaje del diálogo modal presenta ahora una estructura directa y concisa:
+       `"La placa '{normalizedPlate}' presenta un bloqueo activo en el sistema.\n\nContáctese con su administrador."`
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 4 Advertencias leves de nulabilidad**.
+  - `dotnet run`: Terminal WPF en ejecución interactiva en pantalla.
+
+### [2026-09-02 11:35:00] - [UI/UX] [CHECKIN] [WPF] - Simplificación y Resumen de Alerta Modal de Vehículo Restringido
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"bien ahora si bloqueo, sin embargo quisiera que no me muestres este componente de bloqueo y solo dejame el dialog que me muestre en la segunda imaggen ,y en esa segunda imagen dejame mas resumido la advertencia, eliminame lo amarillo, el texto dejalo Vehiculo restringido, adicional deja al final un texto que diga \"Contactese con su administrador\""*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Eliminación de Banner Inferior en Ingreso (`CheckInView.xaml`)**:
+     - Se eliminó el `Border` rojo ubicado bajo el campo de digitación de placa, dejando la interfaz limpia durante la digitación.
+  2. **Estilización y Redacción Concisa del Diálogo Modal (`CheckInViewModel.cs` & `ModernMessageDialog.xaml`)**:
+     - Título del diálogo actualizado a **"Vehículo restringido"**.
+     - Se ocultó `CategoryTextBlock` para suprimir la etiqueta `"Error en Operación"`.
+     - El contenido del mensaje se formateó de manera directa y concisa:
+       - Placa y estado de bloqueo.
+       - Tipo de novedad y motivo descriptivo.
+       - Mensaje de cierre: *"Contáctese con su administrador."*
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking/Views/ModernMessageDialog.xaml`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 4 Advertencias leves de nulabilidad**.
+  - `dotnet run`: Terminal WPF en ejecución activa en pantalla.
+
+### [2026-09-02 11:20:00] - [FIX] [SECURITY] [CHECKIN] [API & WPF] - Bloqueo Preventivo Obligatorio para Toda Placa con Novedad Activa en `VehicleIncidents`
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Noto que me esta permitiendo ingresar la placa apesar de que la placa se encuentra en la tabla de vehicleincidents"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Flexibilización de Detección de Novedades Activas (`VehicleIncidentRepository.cs` & `VehicleIncidentService.cs`)**:
+     - Se corrigió la condición que exigía exclusivamente `IsBlocked == true` para catalogar un vehículo como bloqueado.
+     - Ahora, cualquier registro en `VehicleIncidents` cuyo estado no sea resuelto (`Status != "Resuelta" && Status != "Resolved" && Status != "Inactiva" && Status != "Cerrada"`) es considerado automáticamente como **novedad activa que restringe el ingreso** (`IsBlocked = true`).
+     - Se robusteció la comparación de placas normalizando espacios y guiones en las consultas.
+  2. **Consulta Híbrida Local y Online en Terminal WPF (`EfParkingTicketService.cs`)**:
+     - `GetActiveBlockAsync`: Ahora evalúa todos los registros activos en SQLite local sin filtrar estrictamente por `IsBlocked == true` y, ante consultas online, interpreta tanto `apiCheck.IsBlocked` como `apiCheck.HasIncidents` como causales de bloqueo inmediato.
+- **📦 Componentes Modificados**:
+  - `ParkingApi/ParkingApi.Infrastructure/Data/Repositories/Incidents/VehicleIncidentRepository.cs`
+  - `ParkingApi/ParkingApi.Core/Services/Incidents/VehicleIncidentService.cs`
+  - `ParkingWpf/Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `ParkingWpf/HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build` en `ParkingApi`: **0 Errores**.
+  - `dotnet build` en `ParkingWpf`: **0 Errores**.
+  - `dotnet run`: Terminal WPF en ejecución interactiva en segundo plano.
+
 ### [2026-09-02 10:45:00] - [FEAT] [SECURITY] [CHECKIN] [WPF] - Bloqueo Estricto y Validación Híbrida en Tiempo Real para Vehículos en Lista Negra / Novedades
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

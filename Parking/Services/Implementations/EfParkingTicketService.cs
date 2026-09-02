@@ -402,21 +402,42 @@ public class EfParkingTicketService : IParkingTicketService
     {
         if (string.IsNullOrWhiteSpace(plateNumber)) return null;
 
-        var normalized = plateNumber.Trim().ToUpperInvariant();
+        var rawUpper = plateNumber.Trim().ToUpperInvariant();
+        var normalized = plateNumber.Replace(" ", "").Replace("-", "").Trim().ToUpperInvariant();
         using var db = _connectionManager.CreateDbContext();
         var currentBranchId = _sessionService.CurrentBranch?.Id;
 
         try
         {
             // 1. Consultar en SQLite local
-            var localIncident = await db.VehicleIncidents
+            var localCandidates = await db.VehicleIncidents
                 .AsNoTracking()
                 .Include(i => i.IncidentBranches)
-                .FirstOrDefaultAsync(i =>
-                    i.PlateNumber == normalized &&
-                    i.IsBlocked &&
-                    i.Status == "Activa" &&
-                    (i.IsGlobal || (i.BranchId == null && !i.IncidentBranches.Any()) || !currentBranchId.HasValue || i.BranchId == currentBranchId.Value || i.IncidentBranches.Any(ib => ib.BranchId == currentBranchId.Value)));
+                .ToListAsync();
+
+            var localIncident = localCandidates.FirstOrDefault(i =>
+            {
+                var candPlate = (i.PlateNumber ?? "").Replace(" ", "").Replace("-", "").Trim().ToUpperInvariant();
+                var candRaw = (i.PlateNumber ?? "").Trim().ToUpperInvariant();
+                bool matchesPlate = candPlate == normalized || candRaw == rawUpper;
+                if (!matchesPlate) return false;
+
+                var status = (i.Status ?? "Activa").Trim();
+                bool isResolved = status.Equals("Resuelta", StringComparison.OrdinalIgnoreCase) ||
+                                  status.Equals("Resolved", StringComparison.OrdinalIgnoreCase) ||
+                                  status.Equals("Inactiva", StringComparison.OrdinalIgnoreCase) ||
+                                  status.Equals("Cerrada", StringComparison.OrdinalIgnoreCase);
+
+                if (isResolved) return false;
+
+                bool branchApplies = i.IsGlobal || 
+                                     (i.BranchId == null && (i.IncidentBranches == null || !i.IncidentBranches.Any())) || 
+                                     !currentBranchId.HasValue || 
+                                     i.BranchId == currentBranchId.Value || 
+                                     (i.IncidentBranches != null && i.IncidentBranches.Any(ib => ib.BranchId == currentBranchId.Value));
+
+                return branchApplies;
+            });
 
             if (localIncident != null)
             {
@@ -427,25 +448,25 @@ public class EfParkingTicketService : IParkingTicketService
             if (_syncEngine.IsOnline)
             {
                 var apiCheck = await _apiClient.CheckPlateAsync(normalized, currentBranchId);
-                if (apiCheck != null && apiCheck.IsBlocked)
+                if (apiCheck != null && (apiCheck.IsBlocked || apiCheck.HasIncidents))
                 {
                     var incidentEntity = new VehicleIncident
                     {
                         IncidentId = apiCheck.IncidentId ?? Guid.NewGuid(),
                         BranchId = currentBranchId,
-                        PlateNumber = normalized,
-                        IncidentType = !string.IsNullOrWhiteSpace(apiCheck.IncidentType) ? apiCheck.IncidentType : "Lista Negra",
-                        Description = !string.IsNullOrWhiteSpace(apiCheck.Description) ? apiCheck.Description : (apiCheck.Reason ?? "Vehículo con restricción de ingreso."),
+                        PlateNumber = rawUpper,
+                        IncidentType = !string.IsNullOrWhiteSpace(apiCheck.IncidentType) ? apiCheck.IncidentType : "Novedad / Lista Negra",
+                        Description = !string.IsNullOrWhiteSpace(apiCheck.Description) ? apiCheck.Description : (!string.IsNullOrWhiteSpace(apiCheck.Reason) ? apiCheck.Reason : "Vehículo con novedad activa en el sistema."),
                         IsBlocked = true,
                         IsGlobal = false,
                         Status = "Activa",
-                        ReportedBy = !string.IsNullOrWhiteSpace(apiCheck.ReportedBy) ? apiCheck.ReportedBy : "Sistema PWA",
+                        ReportedBy = !string.IsNullOrWhiteSpace(apiCheck.ReportedBy) ? apiCheck.ReportedBy : "Sistema Central / PWA",
                         CreatedAtUtc = apiCheck.ReportedAtUtc ?? DateTime.UtcNow
                     };
 
                     try
                     {
-                        var exists = await db.VehicleIncidents.AnyAsync(x => x.IncidentId == incidentEntity.IncidentId || (x.PlateNumber == normalized && x.IsBlocked && x.Status == "Activa"));
+                        var exists = await db.VehicleIncidents.AnyAsync(x => x.IncidentId == incidentEntity.IncidentId || x.PlateNumber == rawUpper);
                         if (!exists)
                         {
                             db.VehicleIncidents.Add(incidentEntity);

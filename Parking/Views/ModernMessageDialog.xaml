@@ -92,7 +92,8 @@
                                FontSize="11"
                                FontWeight="SemiBold"
                                Foreground="{DynamicResource BrushTextMuted}"
-                               Margin="0,2,0,0"/>
+                               Margin="0,2,0,0"
+                               Visibility="Collapsed"/>
                 </StackPanel>
             </Grid>
 
