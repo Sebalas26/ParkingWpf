@@ -15,6 +15,63 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-02 12:28:00] - [UI/UX] [PRINTING] [WPF] - Código QR Pequeño en Tiquete de Entrada (Check-In)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"En la impresion de entrada, agregale en la parte inferior un QR que me lleve a este link https://www.parking-flow.com/ dejalo pequeño no tan grande"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Incorporación de Código QR en Tiquete de Entrada (`ReceiptPreviewDialog.xaml`)**:
+     - Se añadió un elemento `Image` discreto (`Width="70" Height="70"`) en la parte inferior del tiquete de ingreso enlazado a `ConsultationQrCodeImage` con el subtítulo centrado `"www.parking-flow.com"`.
+  2. **Configuración de Enlace Web (`ReceiptPreviewViewModel.cs`)**:
+     - Se confirmó que el código QR para tiquetes de entrada se genera codificando la URL `https://www.parking-flow.com/`.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 4 Advertencias leves de nulabilidad**.
+  - `dotnet run`: Terminal WPF en ejecución interactiva en pantalla.
+
+### [2026-09-02 12:10:00] - [UI/UX] [PRINTING] [WPF] - Homologación de Plantilla de Recibo POS Estándar
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"ayudame que la impresion cuando sea POS , sea casi similar a esta, pero eliminale temas relacionados a la factura electronica"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Homologación de Cuadrícula y Diseño POS (`ReceiptPreviewDialog.xaml`)**:
+     - Se rediseñó la plantilla de salida POS estándar (`IsStandardExitReceipt`) adoptando la misma cuadrícula estructurada:
+       - **Encabezado institucional centrado**: Sede, NIT, Dirección, Teléfono y línea sólida divisoria.
+       - **Encabezado del documento**: `RECIBO DE CAJA / POS:`, Consecutivo, Fecha, Hora, Cliente, NIT, Dirección.
+       - **Placa centrada y destacada**: `PLACA:   USB123`.
+       - **Tiempos y liquidación**: Entrada, Salida, Tiempo de permanencia, Base gravable, IVA 19% y Total destacado.
+       - **Bloque de cierre (2 Columnas)**: Código QR de validación a la izquierda y cantidad de ítems + nombre del operador a la derecha.
+       - **Forma de pago**: Visualización de método de pago utilizado.
+  2. **Exclusión Total de Parámetros de Factura Electrónica en Modo POS**:
+     - Se eliminaron las referencias a `FACTURA DE VENTA ELECTRÓNICA`, CUFE, resoluciones DIAN, rangos autorizados y datos de proveedores tecnológicos en recibos POS estándar.
+  3. **Ajuste en ViewModel (`ReceiptPreviewViewModel.cs`)**:
+     - Generación de código QR de consulta/validación específico para recibos POS y formateo coherente de consecutivos `POS- XXXXXXXX`.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 4 Advertencias leves de nulabilidad**.
+  - `dotnet run`: Terminal WPF en ejecución interactiva en pantalla.
+
+### [2026-09-02 11:52:00] - [UX] [CHECKIN] [WPF] - Limpieza Automática del Campo de Placa tras Descartar Alerta de Bloqueo
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Bien, pero quiero que cuando salga la alerta de novedad y me muestre dialog, al darle en la x o entendido el componente donde se ingresa la placa de ingreso se borre , me la deje vacia"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Limpieza Inmediata del Formulario (`CheckInViewModel.cs`)**:
+     - Se invocó `ClearInputs()` inmediatamente después de cerrar el diálogo de alerta `_dialogService.ShowAlertAsync`, tanto en la validación preventiva de ingreso como en la captura de excepciones de negocio.
+     - Esto garantiza que al presionar "Entendido" o cerrar con "X", el cuadro de texto de la placa se limpie automáticamente y quede vacío para una nueva operación.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 4 Advertencias leves de nulabilidad**.
+  - `dotnet run`: Terminal WPF en ejecución interactiva en pantalla.
+
 ### [2026-09-02 11:45:00] - [UI/UX] [CHECKIN] [WPF] - Limpieza Minimalista del Texto del Diálogo de Vehículo Restringido
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

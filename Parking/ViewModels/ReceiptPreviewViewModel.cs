@@ -313,18 +313,18 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 ? ticket.OperatorName.ToUpperInvariant()
                 : (_sessionService.CurrentUser?.FullName?.ToUpperInvariant() ?? "MERLIN");
 
-            // 5. Factura Electrónica y QR
+            // 5. Datos de Factura vs POS Estándar
+            CustomerName = "CONSUMIDOR FINAL";
+            CustomerDocument = "CC 222222222";
+            CustomerNit = "22222222";
+            CustomerAddress = "CR 38 19 55 BRR CAMOA";
+
             if (IsFvmInvoice)
             {
-                CustomerName = "CONSUMIDOR FINAL";
-                CustomerDocument = "CC 222222222";
-                CustomerNit = "22222222";
-                CustomerAddress = "CR 38 19 55 BRR CAMOA";
-
                 InvoicePrefix = !string.IsNullOrWhiteSpace(resolution?.Prefix) ? resolution.Prefix : "FVM";
                 var currentNum = resolution != null ? resolution.CurrentNumber.ToString() : (!string.IsNullOrWhiteSpace(ticket.InvoiceNumber) ? ticket.InvoiceNumber : ticket.TicketNumber);
                 InvoiceNumberStr = currentNum.PadLeft(8, '0');
-                InvoiceNumberText = $"{InvoicePrefix}-{InvoiceNumberStr}";
+                InvoiceNumberText = $"{InvoicePrefix}- {InvoiceNumberStr}";
 
                 InvoiceDateStr = exitTime.ToString("dd/MM/yy");
                 InvoiceTimeStr = exitTime.ToString("HH:mm:ss");
@@ -345,8 +345,21 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             }
             else
             {
+                InvoicePrefix = !string.IsNullOrWhiteSpace(resolution?.Prefix) ? resolution.Prefix : "POS";
+                var currentNum = resolution != null ? resolution.CurrentNumber.ToString() : (!string.IsNullOrWhiteSpace(ticket.InvoiceNumber) ? ticket.InvoiceNumber : ticket.TicketNumber);
+                InvoiceNumberStr = currentNum.PadLeft(8, '0');
+                InvoiceNumberText = $"{InvoicePrefix}- {InvoiceNumberStr}";
+
+                InvoiceDateStr = exitTime.ToString("dd/MM/yy");
+                InvoiceTimeStr = exitTime.ToString("HH:mm:ss");
+
+                Cufe = string.Empty;
+                DianResolutionText = string.Empty;
+                DianRangeText = string.Empty;
                 ElectronicInvoiceQrImage = null;
-                ConsultationQrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(PublicConsultationUrl, 8);
+
+                var qrContent = $"Recibo: {InvoiceNumberText}\nPlaca: {ticket.PlateNumber}\nEntrada: {EntryDateStr} {EntryTimeStr}\nSalida: {ExitDateStr} {ExitTimeStr}\nTotal: {totalPaid:C0}\nAtendido: {AttendedBy}";
+                ConsultationQrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(qrContent, 6);
             }
 
             BarcodeImage = null;
@@ -356,6 +369,9 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             // Tiquete de Entrada
             IsFvmInvoice = false;
             IsStandardExitReceipt = false;
+            InvoiceNumberText = ticket.TicketNumber;
+            InvoiceDateStr = (ticket.EntryTime != default ? ticket.EntryTime : DateTime.Now).ToString("dd/MM/yy");
+            InvoiceTimeStr = (ticket.EntryTime != default ? ticket.EntryTime : DateTime.Now).ToString("HH:mm:ss");
             BarcodeImage = Services.Implementations.BarcodeGeneratorService.GenerateCode128(ticket.PlateNumber);
             ConsultationQrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(PublicConsultationUrl, 8);
             ElectronicInvoiceQrImage = null;

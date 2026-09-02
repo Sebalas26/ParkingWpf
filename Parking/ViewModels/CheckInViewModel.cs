@@ -364,6 +364,8 @@ public partial class CheckInViewModel : ViewModelBase
                 "Vehículo restringido",
                 $"La placa '{normalizedPlate}' presenta un bloqueo activo en el sistema.\n\nContáctese con su administrador.",
                 DialogNotificationType.Error);
+
+            ClearInputs();
             return;
         }
 
@@ -411,6 +413,8 @@ public partial class CheckInViewModel : ViewModelBase
                 "Vehículo restringido",
                 $"La placa '{normalizedPlate}' presenta un bloqueo activo en el sistema.\n\nContáctese con su administrador.",
                 DialogNotificationType.Error);
+
+            ClearInputs();
         }
         catch (Exception ex)
         {
