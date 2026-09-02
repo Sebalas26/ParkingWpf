@@ -17,6 +17,93 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-09-01 23:45:00] - [FIX] [CHECKIN] [SQLITE] [DB] - Corrección de DbUpdateException y Migración de Columnas en ParkingTickets
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Revisa porque no me esta dejando enrar una pla de un vehiculo"* (con captura mostrando "Error al registrar ingreso: An error occurred while saving the entity changes. See the inner exception for details.")
+- **🤖 Resumen Técnico para la IA**:
+  1. **Migración Dinámica de Columnas en SQLite (`DbConnectionManager.cs`, `EfParkingTicketService.cs`)**:
+     - Al incorporar la persistencia obligatoria de `BranchId` en tiquetes, bases de datos locales ya creadas carecían de la columna física `BranchId` (así como de `OperatorEntryId`, `OperatorExitId`, `BayNumber` y `CreatedAtUtc`), provocando un error en tiempo de inserción en SQLite: `no such column: BranchId`.
+     - Se introdujeron instrucciones `ALTER TABLE` tolerantes a fallos en `DbConnectionManager.InitializeDatabaseAsync` y de forma preventiva en `RegisterEntryAsync`.
+  2. **Consecutivo de Tiquete Anti-Colisión (`EfParkingTicketService.cs`)**:
+     - Se reemplazó el cálculo de fecha dependiente de LINQ por un rango estricto (`EntryTimeUtc >= todayStart && EntryTimeUtc < todayEnd`) y un ciclo de verificación `while (await db.ParkingTickets.AnyAsync(t => t.TicketNumber == ticketNumber))` para evitar cualquier violación de unicidad con el índice `TicketNumber`.
+     - Al recibir respuesta de API, se verifica que no colisione con otro tiquete local antes de asignar `TicketNumber`.
+  3. **Diagnóstico Detallado en UI (`CheckInViewModel.cs`)**:
+     - Se ajustó el bloque `catch (Exception ex)` para extraer la causa raíz real mediante `ex.GetBaseException().Message`.
+- **📦 Componentes Modificados**:
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Aplicación WPF iniciada y operativa.
+
+### [2026-09-01 23:22:00] - [FIX] [CHECKOUT] [BRANCH] [DB] - Asignación y Persistencia Estricta de Sede Activa en Salida de Vehículos
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Valida porque al darle salida a mi vehiculo no me queda el id de la sede o parqueadero en el cual estoy logeado en la base de datos"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Asignación Local en SQLite (`EfParkingTicketService.cs`)**:
+     - En `ProcessExitAsync`, se agregó la asignación explícita `ticket.BranchId = currentBranchId.Value;` utilizando la sede activa en sesión (`_sessionService.CurrentBranch?.Id`).
+     - Esto garantiza que tanto si el tiquete se originó sin sede como si fue sincronizado con valor nulo, al liquidarse en caja quede guardado en SQLite con el `BranchId` de la sede logueada antes de `db.SaveChangesAsync()`.
+  2. **Envío de `BranchId` y Parámetros en API (`EfParkingTicketService.cs`, `SyncEngineService.cs`)**:
+     - En la invocación a `_apiClient.CheckOutAsync(new CheckOutApiRequest { ... })`, se añadió el envío de `BranchId = ticket.BranchId ?? currentBranchId`, además de los importes brutos, netos, vuelto, id de medio de pago y notas de salida.
+     - En `SyncEngineService.EnqueueOfflineCheckOutAsync` se agregaron los mismos campos a la cola de sincronización diferida.
+  3. **Alias Universales JSON (`TicketApiModels.cs`, `BootstrapSyncResponse.cs`)**:
+     - Se dotó a `CheckOutApiRequest` y `CheckInApiRequest` de propiedades con alias `[JsonPropertyName("branch_id")]`, `[JsonPropertyName("sedeId")]` y `[JsonPropertyName("sede_id")]` para garantizar total compatibilidad con backends REST que utilicen snake_case o camelCase.
+     - En `ApiParkingTicketSyncDto` se agregaron los mismos setters alternativos para preservar la sede en sincronizaciones entrantes.
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Models/ApiModels/TicketApiModels.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
+### [2026-09-01 23:10:00] - [FEAT] [PRINTING] [DIAN] [FVM] [WPF] - Diseño Térmico de Factura de Venta Electrónica (FVM) para Salida de Vehículos
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"basasda en la impresion de salida del vehiculo, quisiera que tuviese uun diseño similar a esta imagen que anexe, este ejemplo aplica para cuando eligen resolucionn FVM"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Propagación de Resolución de Facturación (`IDialogService.cs`, `DialogService.cs`, `CheckOutViewModel.cs`)**:
+     - Se actualizó el contrato `ShowReceiptPreviewAsync(ParkingTicket ticket, BillingResolution? resolution = null)` para propagar la resolución activa seleccionada en la pantalla de cobro.
+  2. **Lógica Fiscal y Generación FVM (`ReceiptPreviewViewModel.cs`)**:
+     - Detección automática del modo FVM (`IsFvmInvoice`) basado en el prefijo o tipo de documento de la resolución seleccionada.
+     - Cálculo de desglose fiscal: `BaseGravable` (`Total / 1.19`) e `IVA 19%` (`Total - BaseGravable`).
+     - Generación determinística de CUFE (Código Único de Factura Electrónica en SHA-384) y código QR oficial con metadata fiscal DIAN.
+     - Formateo de tiempos: Hora y fecha de entrada, salida y duración en minutos.
+  3. **Plantilla Visual Térmica Monospace Fiel a Referencia (`ReceiptPreviewDialog.xaml`)**:
+     - Implementación de la maqueta térmica con encabezado centrado, bloque de factura con prefijo/número (`FACTURA DE VENTA: ELECTRONICA`), cliente y NIT, placa centrada en negrita, entrada/salida/tiempo, desglose de base gravable e IVA 19% con línea discontinua, total destacado, bloque de QR y operador a 2 columnas (`Cant Items: 1`, `Atendido por: ...`), forma de pago, CUFE y pie legal de resolución DIAN y asimilación a letra de cambio (Art. 774 C.Co.).
+     - Alternancia limpia con el tiquete estándar cuando no se usa resolución FVM.
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Contracts/IDialogService.cs`
+  - `Parking/Services/Implementations/DialogService.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
+### [2026-09-01 22:34:00] - [FIX] [MVVM] [WPF] - Protección Contra Recursión Infinita (Stack Overflow) en Selección de Tarifa y Vehículo
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"ejecuta wpf"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Control de Reentrancia en Selección Bidireccional (`CheckInViewModel.cs`)**:
+     - Se introdujo el guardia de sincronización `_isSyncingSelection` en `OnSelectedRateChanged` y `OnSelectedVehicleTypeChanged`.
+     - Esto previene el ciclo recursivo infinito entre la actualización de la tarifa seleccionada y el tipo de vehículo en el `ComboBox`, eliminando por completo la excepción de desbordamiento de pila (*Stack overflow*).
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
 ### [2026-08-31 23:08:00] - [FEAT] [RATES] [MULTI-BRANCH] [WPF] - Preservación Integral de Todos los Tipos de Vehículos Parametrizados por Sede Activa
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

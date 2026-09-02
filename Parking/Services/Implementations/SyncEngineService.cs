@@ -1120,7 +1120,12 @@ public class SyncEngineService : ISyncEngineService
                 TicketId = ticket.TicketId,
                 BranchId = ticket.BranchId,
                 PaymentMethod = ticket.PaymentMethod ?? PaymentMethod.Cash,
+                PaymentMethodId = ticket.PaymentMethodId,
                 AmountPaid = ticket.AmountPaid,
+                ChangeGiven = ticket.ChangeGiven,
+                GrossAmount = ticket.GrossAmount,
+                NetAmount = ticket.NetAmount,
+                ExitNotes = ticket.ExitNotes,
                 ExitTimeUtc = ticket.ExitTimeUtc ?? DateTime.UtcNow
             }),
             CreatedAtUtc = DateTime.UtcNow,
