@@ -117,6 +117,12 @@ public partial class CheckOutViewModel : ViewModelBase
     [ObservableProperty]
     private bool _hasResolutions;
 
+    [ObservableProperty]
+    private bool _showPaymentMethodWarning;
+
+    [ObservableProperty]
+    private bool _showResolutionWarning;
+
     private readonly DispatcherTimer _agreementPopupTimer;
 
     public ObservableCollection<ParkingTicket> ActiveVehicles { get; } = new();
@@ -193,14 +199,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 AvailableResolutions.Add(r);
             }
             HasResolutions = AvailableResolutions.Count > 0;
-            if (SelectedResolution == null || !AvailableResolutions.Any(r => r.ResolutionId == SelectedResolution.ResolutionId))
-            {
-                SelectedResolution = AvailableResolutions.FirstOrDefault(r => (r.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                                            || (r.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                                            || (r.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false))
-                                     ?? AvailableResolutions.FirstOrDefault(r => r.DocumentType.Contains("POS", StringComparison.OrdinalIgnoreCase))
-                                     ?? AvailableResolutions.FirstOrDefault();
-            }
+            SelectedResolution = null;
         }
         catch { }
     }
@@ -219,20 +218,24 @@ public partial class CheckOutViewModel : ViewModelBase
             }
 
             HasPaymentMethods = AvailablePaymentMethods.Count > 0;
-
-            SelectedPaymentMethodEntity = AvailablePaymentMethods.FirstOrDefault(p => p.Name.Equals("Efectivo", StringComparison.OrdinalIgnoreCase)) ?? AvailablePaymentMethods.FirstOrDefault();
-            if (SelectedPaymentMethodEntity != null)
-            {
-                SelectedPaymentMethod = SelectedPaymentMethodEntity.ToEnum();
-            }
+            SelectedPaymentMethodEntity = null;
         }
         catch { }
+    }
+
+    partial void OnSelectedResolutionChanged(BillingResolution? value)
+    {
+        if (value != null)
+        {
+            ShowResolutionWarning = false;
+        }
     }
 
     partial void OnSelectedPaymentMethodEntityChanged(PaymentMethodEntity? value)
     {
         if (value != null)
         {
+            ShowPaymentMethodWarning = false;
             SelectedPaymentMethod = value.ToEnum();
             if (!value.RequiresCashTender)
             {
@@ -243,7 +246,84 @@ public partial class CheckOutViewModel : ViewModelBase
             {
                 CalculateChange();
             }
+
+            // Si es tarjeta de crédito/débito o similar, auto-seleccionar resolución FVM
+            if (IsCardOrElectronicPayment(value.Name))
+            {
+                AutoSelectFvmResolution();
+            }
         }
+    }
+
+    private void AutoSelectFvmResolution()
+    {
+        if (AvailableResolutions.Count == 0) return;
+
+        var fvmRes = AvailableResolutions.FirstOrDefault(r => (r.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                            || (r.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                            || (r.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false));
+        if (fvmRes != null)
+        {
+            SelectedResolution = fvmRes;
+        }
+    }
+
+    private static bool IsCardOrElectronicPayment(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+
+        // Normalizar texto: minúsculas, sin tildes, sin puntuaciones extrañas
+        var normalized = text.ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);
+        var sb = new System.Text.StringBuilder();
+        foreach (var c in normalized)
+        {
+            var unicodeCategory = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+            if (unicodeCategory != System.Globalization.UnicodeCategory.NonSpacingMark)
+            {
+                if (char.IsLetterOrDigit(c) || char.IsWhiteSpace(c))
+                {
+                    sb.Append(c);
+                }
+                else
+                {
+                    sb.Append(' ');
+                }
+            }
+        }
+
+        var clean = sb.ToString();
+        var words = clean.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+        // Palabras clave directas y variaciones ortográficas / abreviaturas comunes
+        string[] cardKeywords = {
+            "tarjeta", "tarj", "tar", "tc", "td",
+            "credito", "credit", "crdto", "cred", "cre",
+            "debito", "debit", "devito", "deb",
+            "datafono", "dataf", "pos", "terminal",
+            "visa", "mastercard", "master", "amex", "american", "diners", "maestro", "discover",
+            "redeban", "credibanco", "bold", "sumup"
+        };
+
+        foreach (var word in words)
+        {
+            foreach (var kw in cardKeywords)
+            {
+                if (word == kw || (word.Length >= 3 && (word.StartsWith(kw) || kw.StartsWith(word))))
+                {
+                    return true;
+                }
+            }
+        }
+
+        foreach (var kw in cardKeywords)
+        {
+            if (clean.Contains(kw))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     [RelayCommand]
@@ -258,17 +338,6 @@ public partial class CheckOutViewModel : ViewModelBase
     {
         if (method == null) return;
         SelectedPaymentMethodEntity = method;
-        SelectedPaymentMethod = method.ToEnum();
-
-        if (!method.RequiresCashTender)
-        {
-            AmountTendered = CalculatedFee;
-            ChangeDue = 0m;
-        }
-        else
-        {
-            CalculateChange();
-        }
     }
 
     private async Task LoadActiveVehiclesAsync()
@@ -557,25 +626,10 @@ public partial class CheckOutViewModel : ViewModelBase
             RecalculateLiveFee();
             AmountTendered = CalculatedFee;
 
-            if (AvailablePaymentMethods.Count > 0 && (SelectedPaymentMethodEntity == null || !SelectedPaymentMethodEntity.Name.Equals("Efectivo", StringComparison.OrdinalIgnoreCase)))
-            {
-                SelectedPaymentMethodEntity = AvailablePaymentMethods.FirstOrDefault(p => p.Name.Equals("Efectivo", StringComparison.OrdinalIgnoreCase)) ?? AvailablePaymentMethods.FirstOrDefault();
-            }
-
-            if (AvailableResolutions.Count > 0)
-            {
-                var fvmRes = AvailableResolutions.FirstOrDefault(r => (r.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                                    || (r.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                                    || (r.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false));
-                if (fvmRes != null)
-                {
-                    SelectedResolution = fvmRes;
-                }
-                else if (SelectedResolution == null)
-                {
-                    SelectedResolution = AvailableResolutions.FirstOrDefault();
-                }
-            }
+            SelectedPaymentMethodEntity = null;
+            SelectedResolution = null;
+            ShowPaymentMethodWarning = false;
+            ShowResolutionWarning = false;
 
             var dialogResult = await _dialogService.ShowCheckOutDialogAsync(this);
             if (SelectedTicket != null && !dialogResult)
@@ -807,16 +861,48 @@ public partial class CheckOutViewModel : ViewModelBase
             }
         }
 
-        if (!IsMonthlyTicket && (!HasPaymentMethods || SelectedPaymentMethodEntity == null))
+        if (!IsMonthlyTicket)
         {
-            HasFeedback = true;
-            IsSuccessFeedback = false;
-            FeedbackMessage = "No se puede liquidar el cobro ni dar salida porque no existen medios de pago habilitados para esta sede.";
-            await _dialogService.ShowAlertAsync(
-                "Sin Medios de Pago en Sede",
-                "No es posible procesar el cobro ni dar salida al vehículo porque la sede no cuenta con ningún medio de pago registrado o habilitado en la base de datos.",
-                DialogNotificationType.Warning);
-            return;
+            if (!HasPaymentMethods)
+            {
+                HasFeedback = true;
+                IsSuccessFeedback = false;
+                FeedbackMessage = "No se puede liquidar el cobro ni dar salida porque no existen medios de pago habilitados para esta sede.";
+                await _dialogService.ShowAlertAsync(
+                    "Sin Medios de Pago en Sede",
+                    "No es posible procesar el cobro ni dar salida al vehículo porque la sede no cuenta con ningún medio de pago registrado o habilitado en la base de datos.",
+                    DialogNotificationType.Warning);
+                return;
+            }
+
+            bool hasValidationError = false;
+            if (SelectedPaymentMethodEntity == null)
+            {
+                ShowPaymentMethodWarning = true;
+                hasValidationError = true;
+            }
+            else
+            {
+                ShowPaymentMethodWarning = false;
+            }
+
+            if (SelectedResolution == null)
+            {
+                ShowResolutionWarning = true;
+                hasValidationError = true;
+            }
+            else
+            {
+                ShowResolutionWarning = false;
+            }
+
+            if (hasValidationError)
+            {
+                HasFeedback = true;
+                IsSuccessFeedback = false;
+                FeedbackMessage = "Por favor seleccione el método de pago y la resolución requeridos.";
+                return;
+            }
         }
 
         var methodEnum = SelectedPaymentMethodEntity?.ToEnum() ?? PaymentMethod.Cash;

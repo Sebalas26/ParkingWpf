@@ -77,86 +77,221 @@
                                    HorizontalAlignment="Center"
                                    Margin="0,0,0,10"/>
 
-                        <!-- CÓDIGO DE BARRAS CODE 128 EN LA PARTE SUPERIOR (PLACA) -->
+                        <!-- CÓDIGO DE BARRAS CODE 128 (SÓLO EN ENTRADA) -->
                         <Image Source="{Binding BarcodeImage}"
                                Width="280" Height="85"
                                Stretch="Uniform"
                                RenderOptions.BitmapScalingMode="NearestNeighbor"
                                HorizontalAlignment="Center"
-                               Margin="0,0,0,12"/>
+                               Margin="0,0,0,12"
+                               Visibility="{Binding IsEntryTicket, Converter={StaticResource BoolToVis}}"/>
 
                         <!-- ENCABEZADO DE EMPRESA / SEDE DINÁMICA -->
                         <TextBlock Text="{Binding BranchName}" FontSize="16" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
                         <TextBlock Text="{Binding BranchNit}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
-                        <TextBlock Text="{Binding BranchAddress}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding BranchAddress}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,0,0,6"/>
 
-                        <TextBlock Text="****************************************" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4"/>
+                        <!-- ============================================== -->
+                        <!-- 1. CASO ENTRADA DE VEHÍCULO                    -->
+                        <!-- ============================================== -->
+                        <StackPanel Visibility="{Binding IsEntryTicket, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Text="****************************************" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4"/>
 
-                        <!-- INFORMACION DEL TIQUETE -->
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
-                            <TextBlock Text="TIQUETE No: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                            <TextBlock Text="{Binding Ticket.TicketNumber}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" FontWeight="Bold"/>
-                        </StackPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
+                                <TextBlock Text="TIQUETE No: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.TicketNumber}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" FontWeight="Bold"/>
+                            </StackPanel>
 
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
-                            <TextBlock Text="FECHA: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                            <TextBlock Text="{Binding Ticket.EntryTime, StringFormat='{}{0:yyyy/MM/dd HH:mm:ss}'}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                        </StackPanel>
-                        
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,8">
-                            <TextBlock Text="VEHICULO: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                            <TextBlock Text="{Binding Ticket.VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="14" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                        </StackPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
+                                <TextBlock Text="FECHA: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.EntryTime, StringFormat='{}{0:yyyy/MM/dd HH:mm:ss}'}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+                            
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,8">
+                                <TextBlock Text="VEHICULO: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="14" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
 
-                        <!-- INVERTED PLATE TEXT (Fondo negro, letras blancas) -->
-                        <Border Background="#000000" HorizontalAlignment="Center" Padding="16,4" Margin="0,4,0,8">
-                            <TextBlock Text="{Binding Ticket.PlateNumber}" FontSize="28" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#FFFFFF"/>
-                        </Border>
+                            <!-- INVERTED PLATE TEXT (Fondo negro, letras blancas) -->
+                            <Border Background="#000000" HorizontalAlignment="Center" Padding="16,4" Margin="0,4,0,8">
+                                <TextBlock Text="{Binding Ticket.PlateNumber}" FontSize="28" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#FFFFFF"/>
+                            </Border>
 
-                        <TextBlock Text="****************************************" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4"/>
-                        
-                        <!-- TEXTO DE TARIFA DEL VEHÍCULO -->
-                        <TextBlock Text="{Binding FormattedRateText}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2"/>
-
-                        <!-- QR DE CONSULTA EN LÍNEA -->
-                        <Image Source="{Binding ConsultationQrCodeImage}"
-                               Width="110" Height="110"
-                               Stretch="Uniform"
-                               RenderOptions.BitmapScalingMode="NearestNeighbor"
-                               HorizontalAlignment="Center"
-                               Margin="0,6,0,2"/>
-                        <TextBlock Text="CONSULTE SU ESTADO EN LÍNEA" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,8"/>
-
-                        <!-- SECCIÓN EXCLUSIVA PARA LA SALIDA (Si ya salió) -->
-                        <StackPanel Visibility="{Binding Ticket.ExitTime, Converter={StaticResource NullToVis}}">
                             <TextBlock Text="****************************************" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4"/>
                             
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2" Visibility="{Binding Ticket.InvoiceNumber, Converter={StaticResource NullToVis}}">
-                                <TextBlock Text="DOC. EQUIVALENTE: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" FontWeight="Bold"/>
-                                <TextBlock Text="{Binding Ticket.InvoiceNumber}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" FontWeight="Black"/>
+                            <!-- TEXTO DE TARIFA DEL VEHÍCULO -->
+                            <TextBlock Text="{Binding FormattedRateText}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2"/>
+
+                            <!-- QR DE CONSULTA EN LÍNEA -->
+                            <Image Source="{Binding ConsultationQrCodeImage}"
+                                   Width="110" Height="110"
+                                   Stretch="Uniform"
+                                   RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,6,0,2"/>
+                            <TextBlock Text="CONSULTE SU ESTADO EN LÍNEA" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,8"/>
+                        </StackPanel>
+
+                        <!-- ============================================== -->
+                        <!-- 2. CASO SALIDA TIPO 1: RESOLUCIÓN FVM          -->
+                        <!-- ============================================== -->
+                        <StackPanel Visibility="{Binding IsFvmInvoice, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Center">
+                            <!-- 2 filas de separación -->
+                            <Border Height="22"/>
+
+                            <!-- TIQUETE No -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="TIQUETE No: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.TicketNumber}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" FontWeight="Bold"/>
                             </StackPanel>
 
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2" Visibility="{Binding Ticket.ResolutionName, Converter={StaticResource NullToVis}}">
-                                <TextBlock Text="RESOLUCIÓN: " FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                <TextBlock Text="{Binding Ticket.ResolutionName}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" FontWeight="Bold"/>
+                            <!-- ENTRADA -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="ENTRADA: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.EntryTime, StringFormat='{}{0:yyyy/MM/dd HH:mm:ss}'}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                             </StackPanel>
 
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
-                                <TextBlock Text="SALIDA: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                <TextBlock Text="{Binding Ticket.ExitTime, StringFormat='{}{0:yyyy/MM/dd HH:mm:ss}'}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            <!-- SALIDA -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="SALIDA: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.ExitTime, StringFormat='{}{0:yyyy/MM/dd HH:mm:ss}'}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                             </StackPanel>
-                            
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
-                                <TextBlock Text="DURACION: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                <TextBlock Text="{Binding Ticket.FormattedDuration}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+
+                            <!-- VEHICULO -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="VEHICULO: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                             </StackPanel>
-                            
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
-                                <TextBlock Text="TOTAL: " FontSize="18" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                <TextBlock Text="{Binding Ticket.TotalAmount, Converter={StaticResource CurrencyConv}}" FontSize="18" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+
+                            <!-- PLACA (debajo de vehiculo) -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="PLACA: " FontSize="15" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.PlateNumber}" FontSize="15" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- TARIFA -->
+                            <TextBlock Text="{Binding FormattedRateText}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Left" Margin="0,2"/>
+
+                            <!-- MEDIO DE PAGO ELEGIDO -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="MEDIO DE PAGO: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding PaymentMethodDisplayName}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- CONVENIO (SI ELIGIÓ) -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2" Visibility="{Binding HasAgreement, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="CONVENIO: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding AgreementDisplayName}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- VALOR QUE PAGÓ -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="VALOR PAGADO: " FontSize="15" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding FormattedTotalPaid}" FontSize="15" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- % DE IVA -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="% IVA: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding IvaPercentageText}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- 2 filas de separación -->
+                            <Border Height="22"/>
+
+                            <!-- DATOS FACTURA ELECTRÓNICA -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="CLIENTE: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding CustomerName}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="{Binding CustomerDocument}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="FACTURA DE VENTA: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding InvoiceNumberText}" FontSize="13" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- 2 filas de separación -->
+                            <Border Height="14"/>
+
+                            <!-- QR DE FACTURA ELECTRÓNICA AL FINAL DE ETIQUETA -->
+                            <Image Source="{Binding ElectronicInvoiceQrImage}"
+                                   Width="115" Height="115"
+                                   Stretch="Uniform"
+                                   RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,4,0,2"/>
+                            <TextBlock Text="FACTURA ELECTRÓNICA DE VENTA" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,4"/>
+                        </StackPanel>
+
+                        <!-- ============================================== -->
+                        <!-- 3. CASO SALIDA TIPO 2: ESTÁNDAR / NO FVM       -->
+                        <!-- ============================================== -->
+                        <StackPanel Visibility="{Binding IsStandardExitReceipt, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Center">
+                            <!-- 2 filas de separación -->
+                            <Border Height="22"/>
+
+                            <!-- TIQUETE No -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="TIQUETE No: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.TicketNumber}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" FontWeight="Bold"/>
+                            </StackPanel>
+
+                            <!-- ENTRADA -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="ENTRADA: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.EntryTime, StringFormat='{}{0:yyyy/MM/dd HH:mm:ss}'}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- SALIDA -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="SALIDA: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.ExitTime, StringFormat='{}{0:yyyy/MM/dd HH:mm:ss}'}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- VEHICULO -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="VEHICULO: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- PLACA (debajo de vehiculo) -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="PLACA: " FontSize="15" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.PlateNumber}" FontSize="15" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- TARIFA -->
+                            <TextBlock Text="{Binding FormattedRateText}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Left" Margin="0,2"/>
+
+                            <!-- MEDIO DE PAGO ELEGIDO -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="MEDIO DE PAGO: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding PaymentMethodDisplayName}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- CONVENIO (SI ELIGIÓ) -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2" Visibility="{Binding HasAgreement, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="CONVENIO: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding AgreementDisplayName}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- VALOR QUE PAGÓ -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="VALOR PAGADO: " FontSize="15" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding FormattedTotalPaid}" FontSize="15" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- % DE IVA -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Margin="0,2">
+                                <TextBlock Text="% IVA: " FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding IvaPercentageText}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                             </StackPanel>
                         </StackPanel>
-                        
+
                     </StackPanel>
                 </ScrollViewer>
             </Border>
