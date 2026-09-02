@@ -181,6 +181,10 @@ public class DbConnectionManager : IDbConnectionManager
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"IsElectronicInvoice\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleIncidents\" ADD COLUMN \"IsGlobal\" INTEGER DEFAULT 0;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"GracePeriodMinutes\" = 0;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"VehicleType\" = 1 WHERE LOWER(\"DisplayName\") LIKE '%moto%';"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"VehicleType\" = 4 WHERE LOWER(\"DisplayName\") LIKE '%bici%' OR LOWER(\"DisplayName\") LIKE '%bike%';"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"VehicleType\" = 2 WHERE LOWER(\"DisplayName\") LIKE '%camion%' OR LOWER(\"DisplayName\") LIKE '%pesado%';"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"VehicleType\" = 5 WHERE LOWER(\"DisplayName\") LIKE '%suv%' OR LOWER(\"DisplayName\") LIKE '%camioneta%';"); } catch { }
         }
         catch { }
 

@@ -21,6 +21,7 @@ public partial class CheckInViewModel : ViewModelBase
     private readonly IAuthService _authService;
     private readonly IDialogService _dialogService;
     private readonly IShiftService _shiftService;
+    private readonly ISessionService _sessionService;
     private readonly DispatcherTimer _feedbackTimer;
 
     [ObservableProperty]
@@ -29,6 +30,9 @@ public partial class CheckInViewModel : ViewModelBase
 
     [ObservableProperty]
     private VehicleType _selectedVehicleType = VehicleType.Car;
+
+    [ObservableProperty]
+    private VehicleRate? _selectedRate;
 
     [ObservableProperty]
     private string? _phoneNumber;
@@ -88,7 +92,8 @@ public partial class CheckInViewModel : ViewModelBase
         IAuthService authService,
         IDialogService dialogService,
         IShiftService shiftService,
-        ISyncEngineService syncEngine)
+        ISyncEngineService syncEngine,
+        ISessionService sessionService)
     {
         _ticketService = ticketService;
         _pricingCalculator = pricingCalculator;
@@ -96,8 +101,14 @@ public partial class CheckInViewModel : ViewModelBase
         _authService = authService;
         _dialogService = dialogService;
         _shiftService = shiftService;
+        _sessionService = sessionService;
 
         syncEngine.DataSynchronized += async () =>
+        {
+            await InitializeAsync();
+        };
+
+        _sessionService.ActiveBranchChanged += async _ =>
         {
             await InitializeAsync();
         };
@@ -116,15 +127,19 @@ public partial class CheckInViewModel : ViewModelBase
 
     public override async Task InitializeAsync()
     {
+        await _pricingCalculator.ReloadRatesAsync();
         AvailableRates = await _pricingCalculator.GetAllRatesAsync();
         HasConfiguredRates = AvailableRates.Count > 0;
         if (HasConfiguredRates)
         {
-            SelectedVehicleType = AvailableRates[0].VehicleType;
-            UpdateCurrentRate();
+            var match = AvailableRates.FirstOrDefault(r => r.VehicleType == SelectedVehicleType) ?? AvailableRates[0];
+            SelectedRate = match;
+            SelectedVehicleType = match.VehicleType;
+            CurrentRate = match;
         }
         else
         {
+            SelectedRate = null;
             CurrentRate = null;
         }
         await RefreshRecentEntriesAndOccupancyAsync();
@@ -207,14 +222,31 @@ public partial class CheckInViewModel : ViewModelBase
         }
     }
 
+    partial void OnSelectedRateChanged(VehicleRate? value)
+    {
+        if (value != null)
+        {
+            SelectedVehicleType = value.VehicleType;
+            CurrentRate = value;
+        }
+        else
+        {
+            UpdateCurrentRate();
+        }
+    }
+
     partial void OnSelectedVehicleTypeChanged(VehicleType value)
     {
+        if (SelectedRate?.VehicleType != value)
+        {
+            SelectedRate = AvailableRates.FirstOrDefault(r => r.VehicleType == value);
+        }
         UpdateCurrentRate();
     }
 
     private void UpdateCurrentRate()
     {
-        CurrentRate = _pricingCalculator.GetRate(SelectedVehicleType);
+        CurrentRate = SelectedRate ?? _pricingCalculator.GetRate(SelectedVehicleType);
     }
 
     [RelayCommand]

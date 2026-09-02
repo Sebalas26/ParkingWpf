@@ -301,7 +301,7 @@ public partial class MainShellViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SwitchBranch()
+    private async Task SwitchBranchAsync()
     {
         var branches = _sessionService.UserBranches;
         if (branches.Count <= 1) return;
@@ -314,9 +314,51 @@ public partial class MainShellViewModel : ViewModelBase
         var result = dialog.ShowDialog();
         if (result == true && dialog.SelectedBranch != null)
         {
+            if (_sessionService.CurrentBranch?.Id == dialog.SelectedBranch.Id) return;
+
+            // 1. Establecer la nueva sede activa en la sesión
             _sessionService.SetActiveBranch(dialog.SelectedBranch);
-            _ = RefreshOccupancyAsync();
-            _ = _dialogService.ShowAlertAsync("Sede Actualizada", $"Sede activa cambiada a '{dialog.SelectedBranch.Name}'", DialogNotificationType.Information);
+
+            // 2. Disparar sincronización automática y visual con el servidor central
+            await ForceSyncAsync();
+
+            // 3. Validar estado del turno en la nueva sede
+            var activeShift = await _shiftService.GetActiveShiftAsync();
+            if (activeShift == null)
+            {
+                NavigateToShiftClosure();
+                _ = _dialogService.ShowAlertAsync(
+                    "Apertura de Turno Requerida",
+                    $"Sede cambiada a '{dialog.SelectedBranch.Name}'.\n\nNo hay un turno operativo abierto en esta sede. Debe ingresar la base inicial de caja y abrir el turno antes de operar.",
+                    DialogNotificationType.Warning);
+            }
+            else
+            {
+                var isCurrentShiftOwner = CurrentUser != null && (
+                    string.Equals(activeShift.OperatorName, CurrentUser.FullName, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(activeShift.OperatorName, CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
+
+                var isAdmin = CurrentUser != null && CurrentUser.IsAdmin;
+
+                if (!isCurrentShiftOwner && !isAdmin)
+                {
+                    NavigateToShiftClosure();
+                    _ = _dialogService.ShowAlertAsync(
+                        "Turno Activo a Nombre de Otro Operador",
+                        $"Sede cambiada a '{dialog.SelectedBranch.Name}'.\n\nExiste un turno operativo abierto a nombre de '{activeShift.OperatorName}'.\n" +
+                        $"Para operar la terminal con su usuario ('{CurrentUser?.FullName}'), debe solicitar la Entrega / Relevo de Turno o el Cierre de Caja anterior.",
+                        DialogNotificationType.Warning);
+                }
+                else
+                {
+                    // Si el usuario ya está en una vista operativa, reinicializarla para cargar datos de la nueva sede
+                    if (ActiveView != null)
+                    {
+                        _ = ActiveView.InitializeAsync();
+                    }
+                    _ = _dialogService.ShowAlertAsync("Sede Actualizada", $"Sede activa cambiada a '{dialog.SelectedBranch.Name}' y datos sincronizados correctamente.", DialogNotificationType.Success);
+                }
+            }
         }
     }
 

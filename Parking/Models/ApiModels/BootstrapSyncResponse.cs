@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Parking.Core.Enums;
+using Parking.Core.Helpers;
 
 namespace Parking.Models.ApiModels;
 
@@ -101,56 +102,145 @@ public class ApiPaymentMethodSyncDto
 public class ApiVehicleRateSyncDto
 {
     [JsonPropertyName("rateId")]
-    public Guid RateId { get; set; } = Guid.NewGuid();
+    public object? RawRateId { get; set; }
+
+    [JsonPropertyName("id")]
+    public object? RawId { get; set; }
 
     [JsonPropertyName("branchId")]
     public int? BranchId { get; set; }
 
+    [JsonPropertyName("branch_id")]
+    public int? BranchIdSnake { get; set; }
+
+    [JsonPropertyName("sedeId")]
+    public int? SedeId { get; set; }
+
     [JsonPropertyName("vehicleType")]
     public object? VehicleType { get; set; }
 
+    [JsonPropertyName("vehicle_type")]
+    public object? VehicleTypeSnake { get; set; }
+
+    [JsonPropertyName("type")]
+    public object? Type { get; set; }
+
+    [JsonPropertyName("category")]
+    public object? Category { get; set; }
+
     [JsonPropertyName("displayName")]
-    public string DisplayName { get; set; } = string.Empty;
+    public string? DisplayName { get; set; }
+
+    [JsonPropertyName("display_name")]
+    public string? DisplayNameSnake { get; set; }
+
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
+    [JsonPropertyName("nombre")]
+    public string? Nombre { get; set; }
 
     [JsonPropertyName("minuteRate")]
-    public decimal MinuteRate { get; set; }
+    public decimal? MinuteRate { get; set; }
+
+    [JsonPropertyName("minute_rate")]
+    public decimal? MinuteRateSnake { get; set; }
+
+    [JsonPropertyName("valorMinuto")]
+    public decimal? ValorMinuto { get; set; }
 
     [JsonPropertyName("hourRate")]
-    public decimal HourRate { get; set; }
+    public decimal? HourRate { get; set; }
+
+    [JsonPropertyName("hour_rate")]
+    public decimal? HourRateSnake { get; set; }
+
+    [JsonPropertyName("hourlyRate")]
+    public decimal? HourlyRate { get; set; }
+
+    [JsonPropertyName("valorHora")]
+    public decimal? ValorHora { get; set; }
 
     [JsonPropertyName("fullDayRate")]
-    public decimal FullDayRate { get; set; }
+    public decimal? FullDayRate { get; set; }
+
+    [JsonPropertyName("full_day_rate")]
+    public decimal? FullDayRateSnake { get; set; }
+
+    [JsonPropertyName("maximoDia")]
+    public decimal? MaximoDia { get; set; }
+
+    [JsonPropertyName("dailyRate")]
+    public decimal? DailyRate { get; set; }
 
     [JsonPropertyName("gracePeriodMinutes")]
-    public int GracePeriodMinutes { get; set; } = 15;
+    public int? GracePeriodMinutes { get; set; }
+
+    [JsonPropertyName("grace_period_minutes")]
+    public int? GracePeriodMinutesSnake { get; set; }
+
+    [JsonPropertyName("gracia")]
+    public int? Gracia { get; set; }
 
     [JsonPropertyName("iconKey")]
     public string? IconKey { get; set; }
 
+    [JsonPropertyName("icon_key")]
+    public string? IconKeySnake { get; set; }
+
+    [JsonPropertyName("icon")]
+    public string? Icon { get; set; }
+
     [JsonPropertyName("isActive")]
-    public bool IsActive { get; set; } = true;
+    public bool? IsActive { get; set; }
+
+    [JsonPropertyName("is_active")]
+    public bool? IsActiveSnake { get; set; }
+
+    [JsonPropertyName("state")]
+    public bool? State { get; set; }
 
     [JsonPropertyName("updatedAtUtc")]
     public DateTime? UpdatedAtUtc { get; set; }
 
+    public Guid GetRateId()
+    {
+        var raw = RawRateId ?? RawId;
+        if (raw is JsonElement elem)
+        {
+            if (elem.ValueKind == JsonValueKind.String && Guid.TryParse(elem.GetString(), out var g)) return g;
+            if (elem.ValueKind == JsonValueKind.Number) return CreateDeterministicGuid(elem.GetInt64());
+        }
+        if (raw is Guid guidVal && guidVal != Guid.Empty) return guidVal;
+        if (raw is string strVal && Guid.TryParse(strVal, out var parsedGuid)) return parsedGuid;
+        if (raw is int intVal) return CreateDeterministicGuid(intVal);
+        if (raw is long longVal) return CreateDeterministicGuid(longVal);
+
+        var bId = GetBranchId() ?? 0;
+        var vType = (int)GetVehicleType();
+        return CreateDeterministicGuid((bId * 1000L) + vType);
+    }
+
+    private static Guid CreateDeterministicGuid(long id)
+    {
+        byte[] bytes = new byte[16];
+        BitConverter.GetBytes(id).CopyTo(bytes, 0);
+        return new Guid(bytes);
+    }
+
+    public int? GetBranchId() => BranchId ?? BranchIdSnake ?? SedeId;
+    public string GetDisplayName() => DisplayName ?? DisplayNameSnake ?? Name ?? Nombre ?? GetVehicleType().ToString();
+    public decimal GetHourRate() => HourRate ?? HourRateSnake ?? HourlyRate ?? ValorHora ?? 0m;
+    public decimal GetMinuteRate() => MinuteRate ?? MinuteRateSnake ?? ValorMinuto ?? 0m;
+    public decimal GetFullDayRate() => FullDayRate ?? FullDayRateSnake ?? MaximoDia ?? DailyRate ?? 0m;
+    public int GetGracePeriodMinutes() => GracePeriodMinutes ?? GracePeriodMinutesSnake ?? Gracia ?? 15;
+    public string GetIconKey() => IconKey ?? IconKeySnake ?? Icon ?? "IconCar";
+    public bool GetEffectiveActive() => State ?? IsActive ?? IsActiveSnake ?? true;
+
     public VehicleType GetVehicleType()
     {
-        if (VehicleType is JsonElement elem)
-        {
-            if (elem.ValueKind == JsonValueKind.Number && Enum.IsDefined(typeof(VehicleType), elem.GetInt32()))
-                return (VehicleType)elem.GetInt32();
-            if (elem.ValueKind == JsonValueKind.String && Enum.TryParse<VehicleType>(elem.GetString(), true, out var vt))
-                return vt;
-        }
-        else if (VehicleType is string s && Enum.TryParse<VehicleType>(s, true, out var vt))
-        {
-            return vt;
-        }
-        else if (VehicleType is int i && Enum.IsDefined(typeof(VehicleType), i))
-        {
-            return (VehicleType)i;
-        }
-        return Parking.Core.Enums.VehicleType.Car;
+        var raw = VehicleType ?? VehicleTypeSnake ?? Type ?? Category;
+        return VehicleTypeHelper.Parse(raw, GetDisplayName());
     }
 }
 
@@ -394,25 +484,7 @@ public class ApiMonthlySubscriptionSyncDto
     [JsonPropertyName("createdAtUtc")]
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
-    public VehicleType GetVehicleType()
-    {
-        if (VehicleType is JsonElement elem)
-        {
-            if (elem.ValueKind == JsonValueKind.Number && Enum.IsDefined(typeof(VehicleType), elem.GetInt32()))
-                return (VehicleType)elem.GetInt32();
-            if (elem.ValueKind == JsonValueKind.String && Enum.TryParse<VehicleType>(elem.GetString(), true, out var vt))
-                return vt;
-        }
-        else if (VehicleType is string s && Enum.TryParse<VehicleType>(s, true, out var vt))
-        {
-            return vt;
-        }
-        else if (VehicleType is int i && Enum.IsDefined(typeof(VehicleType), i))
-        {
-            return (VehicleType)i;
-        }
-        return Parking.Core.Enums.VehicleType.Car;
-    }
+    public VehicleType GetVehicleType() => VehicleTypeHelper.Parse(VehicleType, PlateNumber);
 
     public PaymentMethod GetPaymentMethod()
     {
@@ -514,25 +586,7 @@ public class ApiParkingTicketSyncDto
     [JsonPropertyName("createdAtUtc")]
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
-    public VehicleType GetVehicleType()
-    {
-        if (VehicleType is JsonElement elem)
-        {
-            if (elem.ValueKind == JsonValueKind.Number && Enum.IsDefined(typeof(VehicleType), elem.GetInt32()))
-                return (VehicleType)elem.GetInt32();
-            if (elem.ValueKind == JsonValueKind.String && Enum.TryParse<VehicleType>(elem.GetString(), true, out var vt))
-                return vt;
-        }
-        else if (VehicleType is string s && Enum.TryParse<VehicleType>(s, true, out var vt))
-        {
-            return vt;
-        }
-        else if (VehicleType is int i && Enum.IsDefined(typeof(VehicleType), i))
-        {
-            return (VehicleType)i;
-        }
-        return Parking.Core.Enums.VehicleType.Car;
-    }
+    public VehicleType GetVehicleType() => VehicleTypeHelper.Parse(VehicleType, PlateNumber);
 
     public TicketStatus GetTicketStatus()
     {

@@ -14,19 +14,17 @@ public class VehicleTypeToIconConverter : IValueConverter
         var app = Application.Current;
         if (app == null) return Geometry.Empty;
 
-        if (value is VehicleType vType)
-        {
-            return vType switch
-            {
-                VehicleType.Motorcycle => app.TryFindResource("IconMotorcycle") as Geometry ?? (Geometry)app.Resources["IconCar"],
-                VehicleType.Suv => app.TryFindResource("IconSuv") as Geometry ?? (Geometry)app.Resources["IconCar"],
-                VehicleType.Van => app.TryFindResource("IconVan") as Geometry ?? (Geometry)app.Resources["IconCar"],
-                VehicleType.HeavyTruck => app.TryFindResource("IconTruck") as Geometry ?? (Geometry)app.Resources["IconCar"],
-                _ => app.TryFindResource("IconCar") as Geometry ?? Geometry.Empty
-            };
-        }
+        var vType = value is VehicleType vt ? vt : Parking.Core.Helpers.VehicleTypeHelper.Parse(value);
 
-        return app.TryFindResource("IconCar") as Geometry ?? Geometry.Empty;
+        return vType switch
+        {
+            VehicleType.Motorcycle => app.TryFindResource("IconMotorcycle") as Geometry ?? (Geometry)app.Resources["IconCar"],
+            VehicleType.Bicycle => app.TryFindResource("IconBicycle") as Geometry ?? (Geometry)app.Resources["IconCar"],
+            VehicleType.Suv => app.TryFindResource("IconSuv") as Geometry ?? (Geometry)app.Resources["IconCar"],
+            VehicleType.Van => app.TryFindResource("IconVan") as Geometry ?? (Geometry)app.Resources["IconCar"],
+            VehicleType.HeavyTruck => app.TryFindResource("IconTruck") as Geometry ?? (Geometry)app.Resources["IconCar"],
+            _ => app.TryFindResource("IconCar") as Geometry ?? Geometry.Empty
+        };
     }
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)

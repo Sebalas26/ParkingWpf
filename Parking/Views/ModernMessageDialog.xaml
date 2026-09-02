@@ -5,12 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Notificación"
-        Width="440"
-        SizeToContent="Height"
         WindowStartupLocation="CenterOwner"
         WindowStyle="None"
         AllowsTransparency="True"
-        Background="Transparent"
+        Background="#B3000000"
         ShowInTaskbar="False"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
@@ -18,13 +16,18 @@
         TextOptions.TextRenderingMode="ClearType"
         KeyDown="Window_KeyDown">
 
-    <Border Margin="16"
-            Background="{DynamicResource BrushSurfaceBackground}"
-            BorderBrush="{DynamicResource BrushBorderMedium}"
-            BorderThickness="1"
-            CornerRadius="16"
-            Padding="24"
-            SnapsToDevicePixels="True">
+    <Grid Background="Transparent">
+        <Border Width="440"
+                MaxHeight="600"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="24"
+                Background="{DynamicResource BrushSurfaceBackground}"
+                BorderBrush="{DynamicResource BrushBorderMedium}"
+                BorderThickness="1"
+                CornerRadius="16"
+                Padding="24"
+                SnapsToDevicePixels="True">
         <Border.Effect>
             <DropShadowEffect BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.18" Color="#0B3C49"/>
         </Border.Effect>
@@ -133,4 +136,5 @@
             </StackPanel>
         </Grid>
     </Border>
+    </Grid>
 </Window>

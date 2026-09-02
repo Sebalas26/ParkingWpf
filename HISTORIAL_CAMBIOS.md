@@ -17,6 +17,83 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-09-01 17:47:00] - [UI/UX] [PRINT] [WPF] - Centrado de Bloque de Datos de Salida con Alineación Interna a la Izquierda
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Pero que esto quede mas hacia a la derecha, centrado pero sin perder la alineacion a la izquierda"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Centrado del Contenedor de Datos con Alineación Izquierda Interna**:
+     - En `ReceiptPreviewDialog.xaml`, se actualizó el contenedor `StackPanel` principal de salida (`IsFvmInvoice` y `IsStandardExitReceipt`) a `HorizontalAlignment="Center"`.
+     - De este modo, la columna de datos se posiciona simétricamente en el centro del papel térmico, mientras que cada renglón mantiene su alineación estricta a la izquierda (`HorizontalAlignment="Left"`), logrando una columna alineada con margen visual equilibrado.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build` (**0 Errores**).
+  - Aplicación reiniciada y operativa.
+
+### [2026-09-01 17:35:00] - [UI/UX] [PRINT] [WPF] - Justificación y Alineación a la Izquierda de Datos en Recibos de Salida
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"bien, pero quisiera que estos datosen las impresiones de salida me los justifiques a la izquierda, pero sobre la linea amarilla"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Alineación a la Izquierda de Campos Informativos y Fiscales**:
+     - En `ReceiptPreviewDialog.xaml`, se actualizaron los contenedores `StackPanel` y elementos de datos de los comprobantes de salida (`IsFvmInvoice` y `IsStandardExitReceipt`) estableciendo `HorizontalAlignment="Left"` y margen lateral simétrico (`Margin="20,0,20,0"`).
+     - Se alinean a la izquierda: `TIQUETE No`, `ENTRADA`, `SALIDA`, `VEHICULO`, `PLACA`, `TARIFA`, `MEDIO DE PAGO`, `CONVENIO`, `VALOR PAGADO`, `% IVA`, `CLIENTE`, `CC` y `FACTURA DE VENTA`.
+     - El encabezado institucional superior y el QR DIAN inferior se mantienen centrados para equilibrio visual.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build` (**0 Errores**).
+  - Aplicación reiniciada y operativa.
+
+### [2026-09-01 17:20:00] - [FEAT] [UI/UX] [PRINT] [WPF] - Implementación de 2 Formatos de Impresión de Salida (FVM Factura Electrónica con QR DIAN vs Salida Estándar sin QR)
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"quisiera que me generes 2 itipos de impresion del vehiculo de salida\n\nA esas 2 eliminales las lineas de saparadores que son ******** y dejalas con 2 filas de separamiento\n\n1- Cuando se elija en resolucion FVM (factura electronica) quiero que elimines el codigo de barras, la fecha pon la hora de entrada y salida (pero en filas diferentes), dejame debajo de vehiculo este ejemplo: Placa : y la placa) , luego debajo dejame el valor de la tarifa, Medio de pago elegido, convenio (si eligio), valor que pago, % de iva, luego ponle 2 filas de separamiento y ahi pon como si fuera factura electronica (cliente  - consumidor final  CC 222222222, numero de factura de venta) y reemplaza el QR que tiene por una de factura electronica, esa debe de estar al final de etiqueta\n\n2- Lo mismo de la primera no debe poner el caso de factura electronica y ni QR"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Supresión de Separadores de Asteriscos y Espaciado de 2 Filas en Salidas**:
+     - Se eliminaron las líneas de asteriscos (`****************************************`) para ambos tipos de comprobante de salida, implementando un espaciado vertical estandarizado de dos filas de separación (`Border Height="22"`).
+  2. **Eliminación Condicional de Código de Barras**:
+     - El código de barras Code 128 superior ahora solo se renderiza en tiquetes de ingreso (`IsEntryTicket == true`), omitiéndose en todas las salidas.
+  3. **Tipo 1: Salida con Resolución FVM (Factura Electrónica)**:
+     - Fechas de `ENTRADA` y `SALIDA` estructuradas en filas independientes.
+     - Indicador `PLACA: [PLACA]` en texto claro y legible debajo del tipo de vehículo.
+     - Detalle de `TARIFA`, `MEDIO DE PAGO` (resuelto dinámicamente desde `PaymentMethods` o enum), `CONVENIO` (visible si aplicó descuento), `VALOR PAGADO` y `% IVA: 19%`.
+     - 2 filas de separación seguidas del bloque fiscal: `CLIENTE: CONSUMIDOR FINAL`, `CC: 222222222`, `FACTURA DE VENTA: [FVM-XXXX]`.
+     - QR de Factura Electrónica DIAN generado dinámicamente con CUFE mock y parámetros fiscales al final de la etiqueta con la leyenda `FACTURA ELECTRÓNICA DE VENTA`.
+  4. **Tipo 2: Salida Estándar (No FVM / Sin Factura Electrónica)**:
+     - Mismo cuerpo estructurado de salida sin asteriscos ni código de barras superior.
+     - Excluye el bloque fiscal de factura electrónica.
+     - Excluye cualquier código QR.
+  5. **Mantenimiento del Tiquete de Entrada**:
+     - Permanece con su diseño de ingreso: código de barras, fecha, placa invertida y QR de consulta en línea.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build` (**0 Errores**, **0 Advertencias**).
+  - Aplicación WPF reiniciada en modo daemon y operativa.
+
+### [2026-09-01 15:24:00] - [FEAT] [UI/UX] [WPF] - Detección Heurística / Fuzzy de Tarjetas (Crédito/Débito) y Asignación Automática de Resolución FVM
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Me podrias hacer que cuando elija tarjeta de credito o debito, la resolucion elija FVM, pero la logica debe ser que el detecte palabras como debito, credito, tarjeta , porque? porque los medios de pagos los puede crear el cliente y el se puede equivocar y no siempre escribira tarjeta de credito o debito, puede escribirlos con mala ortografia o debito o credito solos o tar. credito, son varios escenarios pero quiero que puedas identifcar la mayoria de casos"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Algoritmo de Normalización y Detección Heurística (`IsCardOrElectronicPayment`)**:
+     - En `CheckOutViewModel.cs`, se implementó el método `IsCardOrElectronicPayment` que descompone y normaliza diacríticos (sin tildes, minúsculas, eliminación de signos especiales).
+     - Evalúa tokens y prefijos para cubrir variaciones ortográficas, errores tipográficos y abreviaciones comunes: `tarjeta`, `tarj`, `tar`, `tc`, `td`, `credito`, `credit`, `crdto`, `cred`, `cre`, `debito`, `debit`, `devito`, `deb`, `datafono`, `pos`, `terminal`, `visa`, `mastercard`, `amex`, `diners`, `maestro`, `redeban`, `credibanco`, `bold`, etc.
+  2. **Auto-selección Reactiva de Resolución FVM (`AutoSelectFvmResolution`)**:
+     - En `OnSelectedPaymentMethodEntityChanged`, al detectar que el medio de pago seleccionado coincide con cualquiera de los patrones de tarjeta, se invoca automáticamente `AutoSelectFvmResolution()`, conmutando la resolución a `FVM` sin requerir intervención manual del cajero.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build` (**0 Errores**).
+  - Aplicación reiniciada y operativa.
+
 ### [2026-09-01 14:53:00] - [UI/UX] [WPF] - Estilo de Fondo Rojo Claro para Botón Cancelar Selección en Modal de Cobro
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
@@ -120,6 +197,164 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **✅ Verificación y Compilación**:
   - Compilación `dotnet build` (**0 Errores**, 0 Advertencias).
   - Aplicación ejecutada y sincronizada.
+=======
+### [2026-08-31 23:08:00] - [FEAT] [RATES] [MULTI-BRANCH] [WPF] - Preservación Integral de Todos los Tipos de Vehículos Parametrizados por Sede Activa
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Pues ya me muestra el otro tipo de vehiculo , pero sigue faltandome los demas y que los muestre por sede logeada"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Eliminación de Sobreescritura por Enum (`EfPricingCalculatorService.cs`)**:
+     - Se reemplazó el almacenamiento indexado por `ConcurrentDictionary<VehicleType, VehicleRate>` por una lista viva `List<VehicleRate> _activeBranchRates` que preserva el 100% de los registros parametrizados en la base de datos sin colisiones entre categorías.
+  2. **Filtrado Estricto por Sede Logueada**:
+     - `ReloadRatesAsync()` carga prioritariamente todas las tarifas asignadas a `r.BranchId == currentBranchId.Value`, ordenadas por nombre, y recurre a tarifas globales (`r.BranchId == null`) únicamente si la sede no tiene tarifas propias.
+  3. **Ampliación Léxica de Tipos de Vehículos (`VehicleTypeHelper.cs`)**:
+     - Cobertura completa para variantes comerciales como *motocarro, patineta, cuatrimoto, monopatín, bus, buseta, volqueta, remolque, camioneta, furgón, microbús, etc.*
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking/Core/Helpers/VehicleTypeHelper.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
+### [2026-08-31 23:00:00] - [FIX] [API] [SYNC] [RATES] [WPF] - Soporte Multinombre de Tarifas en Deserialización JSON y Reconciliación Integral por Sede
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Revisa desde el pwa, ya que desde el pwa veo y asigne mas tipos de vehiculo , pero en el wpf solo recibo moto, revisa que retorna la api y ajuste donde se encuentre el error"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Tolerancia y Deserialización Resiliente (`BootstrapSyncResponse.cs`)**:
+     - Se refactorizó `ApiVehicleRateSyncDto` con mapeo de campos alternativos (`id`, `rateId`, `branch_id`, `sedeId`, `valorHora`, `hourlyRate`, `hour_rate`, `valorMinuto`, `minuteRate`, `maximoDia`, `fullDayRate`, etc.).
+     - Soporte para identificadores numéricos o cadenas mediante generación de `Guid` determinístico (`GetRateId()`), eliminando fallos en la deserialización de `bootstrap.Rates`.
+  2. **Reconciliación y Upsert en SQLite (`SyncEngineService.cs`)**:
+     - Se actualizó el paso 5 de sincronización para buscar registros existentes tanto por `RateId` como por la clave lógica `(BranchId, VehicleType)`, evitando eliminaciones o sobreescrituras accidentales de categorías concurrentes (Carro, Moto, Bicicleta, etc.).
+  3. **Consulta y Priorización por Sede (`EfPricingCalculatorService.cs`)**:
+     - `ReloadRatesAsync()` ahora consulta las tarifas de la sede activa y globales (`r.BranchId == currentBranchId.Value || r.BranchId == null`), agrupando por `VehicleType` y priorizando la tarifa específica de la sede sobre la global.
+- **📦 Componentes Modificados**:
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
+### [2026-08-31 22:48:00] - [FEAT] [UI/UX] [MVVM] [WPF] - Implementación de Selector ComboBox de Tipos de Vehículo por Sede con Empty State y Reactividad en Tiempo Real
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Actúa como un desarrollador experto en C# y WPF utilizando el patrón de diseño MVVM... aplicalo... agrégale estas 3 consideraciones: 1. Manejo de Estados Vacíos (Empty State)... 2. Verificación del Conversor... 3. Escucha de eventos de cambio de Sede..."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Selector ComboBox Moderno (`CheckInView.xaml`)**:
+     - Se integró el `ComboBox` con estilo `ModernComboBox`, enlazado bidireccionalmente a `SelectedRate` y a la colección filtrada por sede `AvailableRates`.
+     - `ItemTemplate` enriquecido con ícono vectorial (`VehicleTypeToIconConverter`), nombre legible de la categoría y píldora con tarifa por hora (`$X / hora`).
+  2. **Manejo de Estado Vacío (Empty State)**:
+     - El `ComboBox` se deshabilita automáticamente (`IsEnabled="{Binding HasConfiguredRates}"`) cuando no existen tarifas para la sede activa.
+     - Se renderiza un banner informativo y de advertencia institucional guiando al usuario si la sede no cuenta con parametrización.
+  3. **Reactividad al Cambio de Sede en Tiempo Real (`CheckInViewModel.cs`)**:
+     - Inyección de `ISessionService` y suscripción al evento `_sessionService.ActiveBranchChanged` para recargar y sincronizar inmediatamente las tarifas y selección activa sin recargar la vista.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking/Styles/Controls.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
+### [2026-08-31 22:31:00] - [FEAT] [UI/UX] [RATES] [SYNC] [WPF] - Carga Completa y Ajuste Visual de Categorías de Vehículos por Sede
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ajustame este componente, donde vea el nombre del tipo ed vehiculo, ademas validame que me carguen todos los tipos de vehiculo configurados para esa sede"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Helper Centralizado de Tipos de Vehículo (`VehicleTypeHelper.cs`)**:
+     - Se implementó un parser resiliente multilingüe que mapea sinónimos en español e inglés (`"moto"`, `"carro"`, `"motocicleta"`, `"camioneta"`, `"suv"`, `"bicicleta"`, `"camión"`, etc.) e infiere el tipo a partir de `DisplayName` o `PlateNumber` en caso de discrepancias.
+  2. **Resolución de Colisión de Tarifas en Sincronización y Caché**:
+     - En `BootstrapSyncResponse.cs`, todos los métodos `GetVehicleType()` delegan a `VehicleTypeHelper.Parse()`, eliminando el error donde los tipos en español caían en `VehicleType.Car` (0) y sobrescribían las demás tarifas en `_ratesCache`.
+     - En `EfPricingCalculatorService.cs`, se vinculó `_sessionService.ActiveBranchChanged` para recargar tarifas dinámicamente al cambiar de sede, filtrando por la sede activa (`BranchId == currentBranchId || BranchId == null`).
+  3. **Íconos y Convertidores (`Icons.xaml`, `VehicleTypeToIconConverter.cs`, `VehicleTypeToStringConverter.cs`)**:
+     - Se añadió la geometría vectorial `IconBicycle`.
+     - Se extendieron los convertidores para soportar `Bicycle`, `Suv`, `Van`, `HeavyTruck`, `Motorcycle` y `Car` con fallbacks seguros.
+  4. **Rediseño del Componente en XAML (`CheckInView.xaml` y `CheckInViewModel.cs`)**:
+     - Se mejoraron las tarjetas de categoría (`CategoryOptionRadioButton`): íconos vectoriales ampliados a 22x22 con contenedores de 44x44, tipografía destacada a 15pt bold para el nombre de la categoría, tarifa legible `$X / hora`, badge de selección activa y distribución responsiva en cuadrícula de 2 columnas.
+     - `DbConnectionManager.cs`: Normalización automática de datos existentes en SQLite.
+- **📦 Componentes Modificados**:
+  - `Parking/Core/Helpers/VehicleTypeHelper.cs` (Nuevo)
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Styles/Icons.xaml`
+  - `Parking/Core/Converters/VehicleTypeToIconConverter.cs`
+  - `Parking/Core/Converters/VehicleTypeToStringConverter.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
+### [2026-08-31 22:15:00] - [UI/UX] [DESIGN] [WPF] - Estandarización Global de Fondo Oscuro Translúcido (Backdrop Overlay) en Diálogos y Modales
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Mi wpf tiene varias alertas de este estilo , quiero que cuando kas muestre, la pantalla de detras me la dejes oscura, revisa toda mi wpf y ajustalo para todos"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Estandarización de XAML (`Background="#B3000000"` y Centrado Absoluto)**:
+     - Se eliminaron los anchos fijos y `SizeToContent` de la etiqueta raíz `<Window>` en todos los diálogos y alertas.
+     - Se configuró `Background="#B3000000"` (overlay negro al 70% de opacidad) en todas las ventanas modales.
+     - Se estructuró el contenido dentro de un `<Grid Background="Transparent">` y `<Border>` centrado horizontal y verticalmente (`HorizontalAlignment="Center" VerticalAlignment="Center"`), manteniendo las dimensiones compactas y legibles de cada tarjeta.
+  2. **Sincronización Dinámica con Ventana Padre (`Owner` / `MainWindow`)**:
+     - En el evento `Loaded` de cada ventana modal, se evalúa el estado del `Owner` o `MainWindow`: si la ventana principal está maximizada, el modal se maximiza automáticamente para cubrir el 100% de la pantalla sin cortes ni bordes libres; si está en modo normal, hereda dinámicamente `Left`, `Top`, `Width` y `Height`.
+  3. **Vistas y Diálogos Actualizados**:
+     - `BranchSelectionDialog`: Selector de sede de trabajo en Login y Shell.
+     - `ModernMessageDialog`: Diálogo global de alertas del sistema (Información, Éxito, Advertencia, Error) y confirmaciones.
+     - `CashWithdrawalDialog`: Formulario modal de egreso y retiro parcial de efectivo.
+     - `ShiftHandoverAuthDialog`: Ventana de autenticación y relevo de turno.
+     - `SyncProgressDialog`: Barra de progreso y pasos de sincronización.
+     - `SyncRequiredDialog`: Alerta interactiva de actualización obligatoria de SignalR.
+     - `ReceiptPreviewDialog`: Vista previa de tiquetes térmicos.
+     - `CheckOutDialog`: Modal de cobro y liquidación de vehículos.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/BranchSelectionDialog.xaml`
+  - `Parking/Views/BranchSelectionDialog.xaml.cs`
+  - `Parking/Views/ModernMessageDialog.xaml`
+  - `Parking/Views/ModernMessageDialog.xaml.cs`
+  - `Parking/Views/CashWithdrawalDialog.xaml`
+  - `Parking/Views/CashWithdrawalDialog.xaml.cs`
+  - `Parking/Views/ShiftHandoverAuthDialog.xaml`
+  - `Parking/Views/ShiftHandoverAuthDialog.xaml.cs`
+  - `Parking/Views/SyncProgressDialog.xaml`
+  - `Parking/Views/SyncProgressDialog.xaml.cs`
+  - `Parking/Views/SyncRequiredDialog.xaml`
+  - `Parking/Views/SyncRequiredDialog.xaml.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking/Views/ReceiptPreviewDialog.xaml.cs`
+  - `Parking/Views/CheckOutDialog.xaml.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
+### [2026-08-31 21:50:00] - [FEAT] [SYNC] [MULTI-BRANCH] [WPF] - Sincronización Automática al Cambiar de Sede y Validación Dinámica de Turno Operativo
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayudame que cuando hago cambio de sede en mi Wpf me haga la sincronizacion automatica"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Conversión de Comando Asíncrono (`MainShellViewModel.cs`)**:
+     - Se convirtió `SwitchBranch` a `SwitchBranchAsync` bajo `[RelayCommand]` (`SwitchBranchCommand`).
+     - Al seleccionar una nueva sede en `BranchSelectionDialog`, se evalúa si difiere de la sede activa actual.
+     - Se invoca `_sessionService.SetActiveBranch(dialog.SelectedBranch)`.
+  2. **Sincronización Automática con Servidor Central**:
+     - Se dispara inmediatamente `ForceSyncAsync()` el cual abre el modal interactivo de sincronización (`ShowSyncProgressModalAsync`), descargando tarifas, convenios, métodos de pago, cupos, tiquetes activos y turnos correspondientes a la nueva sede.
+     - Al completarse la sincronización, `SyncEngine` dispara `DataSynchronized`, refrescando los datos en cascada en todos los ViewModels de la aplicación.
+  3. **Validación Dinámica de Turno y Re-inicialización de Vista Activa**:
+     - Se consulta el estado del turno en la nueva sede (`_shiftService.GetActiveShiftAsync()`).
+     - Si no hay turno abierto o está a nombre de otro operador y el usuario no es admin, se notifica y se redirige automáticamente a `ShiftClosureViewModel` para apertura/relevo.
+     - Si la vista actual es operativa, se invoca `ActiveView.InitializeAsync()` para reflejar los datos de la nueva sede.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet run`: Terminal WPF en ejecución.
+>>>>>>> dec9abebb249833f08c6ee6001f810e2bd23104f
 
 ### [2026-08-31 17:38:00] - [BUGFIX] [INTEGRITY] [WPF] - Validación Estricta de Placa Única Activa y Control de Duplicidad en Ingreso
 - **Autor**: Antigravity AI Assistant & Software Architect

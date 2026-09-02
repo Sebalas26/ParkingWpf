@@ -453,13 +453,14 @@ public class SyncEngineService : ISyncEngineService
         int ratesCount = 0;
         if (bootstrap.Rates != null)
         {
-            var incomingRateIds = bootstrap.Rates.Select(r => r.RateId).ToHashSet();
+            var incomingRateIds = bootstrap.Rates.Select(r => r.GetRateId()).ToHashSet();
+            var incomingVehicleTypes = bootstrap.Rates.Select(r => r.GetVehicleType()).ToHashSet();
             var localRates = await db.VehicleRates.ToListAsync(ct);
 
             // 1. Eliminar tarifas obsoletas que ya no existan en el backend
             var ratesToDelete = currentBranchId.HasValue
-                ? localRates.Where(r => r.BranchId == currentBranchId.Value && !incomingRateIds.Contains(r.RateId)).ToList()
-                : localRates.Where(r => !incomingRateIds.Contains(r.RateId)).ToList();
+                ? localRates.Where(r => r.BranchId == currentBranchId.Value && !incomingRateIds.Contains(r.RateId) && !incomingVehicleTypes.Contains(r.VehicleType)).ToList()
+                : localRates.Where(r => !incomingRateIds.Contains(r.RateId) && !incomingVehicleTypes.Contains(r.VehicleType)).ToList();
 
             if (ratesToDelete.Count > 0)
             {
@@ -468,40 +469,50 @@ public class SyncEngineService : ISyncEngineService
                 localRates = await db.VehicleRates.ToListAsync(ct);
             }
 
-            // 2. Upsert por clave primaria RateId
+            // 2. Upsert por RateId o combinación (BranchId + VehicleType)
             foreach (var rate in bootstrap.Rates)
             {
+                var rateId = rate.GetRateId();
                 var vehicleType = rate.GetVehicleType();
-                var targetBranchId = rate.BranchId ?? currentBranchId;
-                var existing = localRates.FirstOrDefault(r => r.RateId == rate.RateId);
+                var targetBranchId = rate.GetBranchId() ?? currentBranchId;
+                var displayName = rate.GetDisplayName();
+                var hourRate = rate.GetHourRate();
+                var minuteRate = rate.GetMinuteRate();
+                var fullDayRate = rate.GetFullDayRate();
+                var grace = rate.GetGracePeriodMinutes();
+                var iconKey = rate.GetIconKey();
+                var isActive = rate.GetEffectiveActive();
+
+                var existing = localRates.FirstOrDefault(r => r.RateId == rateId)
+                            ?? localRates.FirstOrDefault(r => r.BranchId == targetBranchId && r.VehicleType == vehicleType);
 
                 if (existing != null)
                 {
                     existing.BranchId = targetBranchId;
                     existing.VehicleType = vehicleType;
-                    existing.DisplayName = rate.DisplayName;
-                    existing.HourRate = rate.HourRate;
-                    existing.MinuteRate = rate.MinuteRate;
-                    existing.FullDayRate = rate.FullDayRate;
-                    existing.GracePeriodMinutes = rate.GracePeriodMinutes;
-                    existing.IconKey = string.IsNullOrWhiteSpace(rate.IconKey) ? "IconCar" : rate.IconKey;
-                    existing.IsActive = rate.IsActive;
+                    existing.DisplayName = displayName;
+                    existing.HourRate = hourRate;
+                    existing.MinuteRate = minuteRate;
+                    existing.FullDayRate = fullDayRate;
+                    existing.GracePeriodMinutes = grace;
+                    existing.IconKey = string.IsNullOrWhiteSpace(iconKey) ? "IconCar" : iconKey;
+                    existing.IsActive = isActive;
                     existing.UpdatedAtUtc = rate.UpdatedAtUtc ?? DateTime.UtcNow;
                 }
                 else
                 {
                     db.VehicleRates.Add(new VehicleRate
                     {
-                        RateId = rate.RateId,
+                        RateId = rateId,
                         BranchId = targetBranchId,
                         VehicleType = vehicleType,
-                        DisplayName = rate.DisplayName,
-                        MinuteRate = rate.MinuteRate,
-                        HourRate = rate.HourRate,
-                        FullDayRate = rate.FullDayRate,
-                        GracePeriodMinutes = rate.GracePeriodMinutes,
-                        IconKey = string.IsNullOrWhiteSpace(rate.IconKey) ? "IconCar" : rate.IconKey,
-                        IsActive = rate.IsActive,
+                        DisplayName = displayName,
+                        MinuteRate = minuteRate,
+                        HourRate = hourRate,
+                        FullDayRate = fullDayRate,
+                        GracePeriodMinutes = grace,
+                        IconKey = string.IsNullOrWhiteSpace(iconKey) ? "IconCar" : iconKey,
+                        IsActive = isActive,
                         UpdatedAtUtc = rate.UpdatedAtUtc ?? DateTime.UtcNow
                     });
                 }
