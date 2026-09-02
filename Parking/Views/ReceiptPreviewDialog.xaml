@@ -67,6 +67,7 @@
                     Margin="0,0,0,12"
                     MaxHeight="480">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+<<<<<<< HEAD
                     <StackPanel HorizontalAlignment="Stretch" Margin="0,0">
                         <!-- TÍTULO DE MARCA ENCABEZADO -->
                         <TextBlock Text="PARKING - FLOW"
@@ -117,6 +118,59 @@
                                 <TextBlock Text="{Binding Ticket.PlateNumber}" FontSize="28" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#FFFFFF"/>
                             </Border>
 
+=======
+                    <Grid HorizontalAlignment="Stretch" Margin="0,0">
+                        
+                        <!-- ============================================================= -->
+                        <!-- A. PLANTILLA ESTÁNDAR DE TIQUETE DE PARQUEADERO              -->
+                        <!-- ============================================================= -->
+                        <StackPanel Visibility="{Binding IsFvmInvoice, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                                    HorizontalAlignment="Stretch" Margin="0,0">
+                            <!-- LOGO (igual al del Login) -->
+                            <Image Source="/Resources/logo.jpeg"
+                                   Height="50"
+                                   Stretch="Uniform"
+                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,10"/>
+
+                            <!-- CÓDIGO DE BARRAS CODE 128 EN LA PARTE SUPERIOR (PLACA) -->
+                            <Image Source="{Binding BarcodeImage}"
+                                   Width="280" Height="85"
+                                   Stretch="Uniform"
+                                   RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,12"/>
+
+                            <!-- ENCABEZADO DE EMPRESA / SEDE DINÁMICA -->
+                            <TextBlock Text="{Binding BranchName}" FontSize="16" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding BranchNit}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding BranchAddress}" FontSize="13" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+
+                            <TextBlock Text="****************************************" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4"/>
+
+                            <!-- INFORMACION DEL TIQUETE -->
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
+                                <TextBlock Text="TIQUETE No: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.TicketNumber}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" FontWeight="Bold"/>
+                            </StackPanel>
+
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
+                                <TextBlock Text="FECHA: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.EntryTime, StringFormat='{}{0:yyyy/MM/dd HH:mm:ss}'}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+                            
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2,0,8">
+                                <TextBlock Text="VEHICULO: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Text="{Binding Ticket.VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="14" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </StackPanel>
+
+                            <!-- INVERTED PLATE TEXT (Fondo negro, letras blancas) -->
+                            <Border Background="#000000" HorizontalAlignment="Center" Padding="16,4" Margin="0,4,0,8">
+                                <TextBlock Text="{Binding Ticket.PlateNumber}" FontSize="28" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#FFFFFF"/>
+                            </Border>
+
+>>>>>>> a05cfd5b7e87f30ad40fa04104315519d929bd9c
                             <TextBlock Text="****************************************" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4"/>
                             
                             <!-- TEXTO DE TARIFA DEL VEHÍCULO -->
@@ -129,6 +183,7 @@
                                    RenderOptions.BitmapScalingMode="NearestNeighbor"
                                    HorizontalAlignment="Center"
                                    Margin="0,6,0,2"/>
+<<<<<<< HEAD
                             <TextBlock Text="CONSULTE SU ESTADO EN LÍNEA" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,8"/>
                         </StackPanel>
 
@@ -293,6 +348,238 @@
                         </StackPanel>
 
                     </StackPanel>
+=======
+                            <TextBlock Text="CONSULTE SU ESTADO EN LÍNEA" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                            <TextBlock Text="PARKING - FLOW" FontSize="13" FontWeight="Bold" FontFamily="Raleway, Segoe UI, sans-serif" Foreground="#000000" HorizontalAlignment="Center" Margin="0,16,0,12"/>
+
+                            <!-- SECCIÓN EXCLUSIVA PARA LA SALIDA (Si ya salió) -->
+                            <StackPanel Visibility="{Binding Ticket.ExitTime, Converter={StaticResource NullToVis}}">
+                                <TextBlock Text="****************************************" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4"/>
+                                
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
+                                    <TextBlock Text="SALIDA: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Text="{Binding Ticket.ExitTime, StringFormat='{}{0:yyyy/MM/dd HH:mm:ss}'}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </StackPanel>
+                                
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,2">
+                                    <TextBlock Text="DURACION: " FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Text="{Binding Ticket.FormattedDuration}" FontSize="14" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </StackPanel>
+                                
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
+                                    <TextBlock Text="TOTAL: " FontSize="18" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Text="{Binding Ticket.TotalAmount, Converter={StaticResource CurrencyConv}}" FontSize="18" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- ============================================================= -->
+                        <!-- B. PLANTILLA FACTURA DE VENTA ELECTRÓNICA (RESOLUCIÓN FVM)    -->
+                        <!-- ============================================================= -->
+                        <StackPanel Visibility="{Binding IsFvmInvoice, Converter={StaticResource BoolToVis}}"
+                                    HorizontalAlignment="Stretch" Margin="0,0">
+                            
+                            <!-- 1. Encabezado de Empresa / Sede -->
+                            <TextBlock Text="{Binding BranchName}" FontSize="15" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding BranchNit}" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                            <TextBlock Text="{Binding BranchAddress}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                            <TextBlock Text="{Binding BranchPhone}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,6"/>
+
+                            <!-- Línea divisoria continua -->
+                            <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="6,0,6,8"/>
+
+                            <!-- 2. Factura de Venta Electrónica y Consecutivo -->
+                            <Grid Margin="0,0,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="FACTURA DE VENTA:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Text="ELECTRONICA" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding InvoicePrefix, StringFormat='{}{0}-'}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,8,0"/>
+                                    <TextBlock Text="{Binding InvoiceNumberStr}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- Fecha y Hora -->
+                            <Grid Margin="0,2,0,4">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="FECHA:   " FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Grid.Column="1" Text="{Binding InvoiceDateStr}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Grid.Column="2" Text="{Binding InvoiceTimeStr}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </Grid>
+
+                            <!-- Cliente, NIT, Dir -->
+                            <Grid Margin="0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="65"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="CLIENTE:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Grid.Column="1" Text="{Binding CustomerName}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </Grid>
+
+                            <Grid Margin="0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="65"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="NIT:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Grid.Column="1" Text="{Binding CustomerNit}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </Grid>
+
+                            <Grid Margin="0,1,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="65"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="DIR:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Grid.Column="1" Text="{Binding CustomerAddress}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </Grid>
+
+                            <!-- 3. Bloque Central de la Placa -->
+                            <TextBlock Text="{Binding Ticket.PlateNumber, StringFormat='{}PLACA:  {0}'}"
+                                       FontSize="16"
+                                       FontWeight="Black"
+                                       FontFamily="{StaticResource FontFamilyMonospace}"
+                                       Foreground="#000000"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,4,0,8"/>
+
+                            <!-- Entrada, Salida, Tiempo -->
+                            <Grid Margin="0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="ENTRADA:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Grid.Column="1" Text="{Binding EntryTimeStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="10,0,0,0"/>
+                                <TextBlock Grid.Column="2" Text="{Binding EntryDateStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </Grid>
+
+                            <Grid Margin="0,1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="SALIDA: " FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Grid.Column="1" Text="{Binding ExitTimeStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="10,0,0,0"/>
+                                <TextBlock Grid.Column="2" Text="{Binding ExitDateStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </Grid>
+
+                            <Grid Margin="0,1,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="TIEMPO: " FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Grid.Column="1" Text="{Binding DurationMinutesStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Right" Margin="0,0,10,0"/>
+                            </Grid>
+
+                            <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
+
+                            <!-- 4. Liquidación Fiscal (Base Gravable, IVA 19%, TOTAL) -->
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="BASE GRAVABLE:" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Grid.Column="1" Text="{Binding BaseGravableStr}" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </Grid>
+
+                            <Grid Margin="0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="  IVA 19%" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Iva19Str}" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </Grid>
+
+                            <!-- Línea discontinua a la derecha -->
+                            <TextBlock Text="-----------------------" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Right" Margin="0,1"/>
+
+                            <Grid Margin="0,2,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="TOTAL:" FontSize="14" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                <TextBlock Grid.Column="1" Text="{Binding TotalStr}" FontSize="14" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                            </Grid>
+
+                            <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
+
+                            <!-- 5. QR Code y Bloque Atendido Por (2 Columnas) -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <Image Grid.Column="0"
+                                       Source="{Binding ConsultationQrCodeImage}"
+                                       Width="110" Height="110"
+                                       Stretch="Uniform"
+                                       RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Center"/>
+
+                                <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Text="Cant Items: 1" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,10"/>
+                                    <TextBlock Text="Atendido por:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Text="{Binding AttendedBy}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,4"/>
+
+                            <!-- 6. Forma de Pago -->
+                            <TextBlock Text="{Binding PaymentMethodName, StringFormat='{}FORMA DE PAGO: {0}'}"
+                                       FontSize="11"
+                                       FontFamily="{StaticResource FontFamilyMonospace}"
+                                       Foreground="#000000"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,2"/>
+
+                            <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,4,0,4"/>
+
+                            <!-- 7. CUFE -->
+                            <TextBlock Text="{Binding Cufe, StringFormat='{}CUFE: {0}'}"
+                                       FontSize="8"
+                                       FontFamily="{StaticResource FontFamilyMonospace}"
+                                       Foreground="#000000"
+                                       TextWrapping="Wrap"
+                                       Margin="0,2,0,8"/>
+
+                            <!-- 8. Pie Legal y Resolución DIAN -->
+                            <TextBlock Text="IVA REGIMEN COMUN" FontSize="9" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                            <TextBlock Text="NO SOMOS GRANDES CONTRIBUYENTES" FontSize="9" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                            <TextBlock Text="{Binding DianResolutionText}" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                            <TextBlock Text="{Binding DianRangeText}" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                            <TextBlock Text="ESTA FACTURA DE VENTA SE ASIMILA EN TODOS" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                            <TextBlock Text="SUS EFECTOS LEGALES A LA LETRA DE CAMBIO ART. 774 CC" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                            <TextBlock Text="Factura electrónica o por computador generada por" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            <TextBlock Text="Mersoft S.A.S NIT 901.190.597-7" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                            <TextBlock Text="Software MERLIN" FontSize="9" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                            <TextBlock Text="www.merlin.com.co" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                            <TextBlock Text="Proveedor tecnológico The factory HKA Colombia SAS" FontSize="8" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                            <TextBlock Text="NIT 900390126-6" FontSize="8" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,8"/>
+
+                        </StackPanel>
+
+                    </Grid>
+>>>>>>> a05cfd5b7e87f30ad40fa04104315519d929bd9c
                 </ScrollViewer>
             </Border>
 

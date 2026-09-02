@@ -520,6 +520,15 @@ public class ApiParkingTicketSyncDto
     [JsonPropertyName("branchId")]
     public int? BranchId { get; set; }
 
+    [JsonPropertyName("branch_id")]
+    public int? BranchIdSnake { set => BranchId ??= value; }
+
+    [JsonPropertyName("sedeId")]
+    public int? SedeId { set => BranchId ??= value; }
+
+    [JsonPropertyName("sede_id")]
+    public int? SedeIdSnake { set => BranchId ??= value; }
+
     [JsonPropertyName("ticketNumber")]
     public string TicketNumber { get; set; } = string.Empty;
 

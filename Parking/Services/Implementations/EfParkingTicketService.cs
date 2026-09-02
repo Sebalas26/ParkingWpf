@@ -97,8 +97,24 @@ public class EfParkingTicketService : IParkingTicketService
             throw new InvalidOperationException($"El vehículo con placa '{normalizedPlate}' tiene un BLOQUEO ACTIVO ({blockedIncident.IncidentType}): {blockedIncident.Description}");
         }
 
-        var todayCount = await db.ParkingTickets.CountAsync(t => t.EntryTimeUtc.Date == DateTime.UtcNow.Date) + 1;
-        var ticketNumber = $"PKF-{DateTime.Now:yyyyMMdd}-{todayCount:D3}";
+        // Asegurar columnas requeridas en SQLite antes de insertar
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"OperatorEntryId\" TEXT NULL;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"OperatorExitId\" TEXT NULL;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"BayNumber\" TEXT NULL;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"CreatedAtUtc\" TEXT DEFAULT '';"); } catch { }
+
+        var todayStart = DateTime.UtcNow.Date;
+        var todayEnd = todayStart.AddDays(1);
+        var baseCount = await db.ParkingTickets.CountAsync(t => t.EntryTimeUtc >= todayStart && t.EntryTimeUtc < todayEnd);
+        var seq = baseCount + 1;
+        var ticketNumber = $"PKF-{DateTime.Now:yyyyMMdd}-{seq:D3}";
+        while (await db.ParkingTickets.AnyAsync(t => t.TicketNumber == ticketNumber))
+        {
+            seq++;
+            ticketNumber = $"PKF-{DateTime.Now:yyyyMMdd}-{seq:D3}";
+        }
+
         var rate = _pricingCalculator.GetRate(vehicleType);
         var hourlyRate = customHourlyRate ?? (rate?.HourRate ?? 0m);
 
@@ -135,9 +151,13 @@ public class EfParkingTicketService : IParkingTicketService
                     OperatorName = ticket.OperatorName
                 });
 
-                if (apiResponse != null)
+                if (apiResponse != null && !string.IsNullOrWhiteSpace(apiResponse.TicketNumber))
                 {
-                    ticket.TicketNumber = apiResponse.TicketNumber;
+                    var existsDifferent = await db.ParkingTickets.AnyAsync(t => t.TicketNumber == apiResponse.TicketNumber && t.TicketId != ticket.TicketId);
+                    if (!existsDifferent)
+                    {
+                        ticket.TicketNumber = apiResponse.TicketNumber;
+                    }
                     ticket.IsSynchronized = true;
                 }
                 else
@@ -196,6 +216,13 @@ public class EfParkingTicketService : IParkingTicketService
         var gross = _pricingCalculator.CalculateFee(ticket.VehicleType, ticket.EntryTimeUtc, exitTime);
         var net = Math.Max(0m, gross - discountAmount);
 
+        // Garantizar que el ID de la sede activa quede asignado al tiquete
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
+        if (currentBranchId.HasValue)
+        {
+            ticket.BranchId = currentBranchId.Value;
+        }
+
         ticket.ExitTimeUtc = exitTime;
         ticket.TotalDurationMinutes = (int)Math.Max(0, (exitTime - ticket.EntryTimeUtc).TotalMinutes);
         ticket.GrossAmount = gross;
@@ -221,18 +248,26 @@ public class EfParkingTicketService : IParkingTicketService
                 var apiResponse = await _apiClient.CheckOutAsync(new CheckOutApiRequest
                 {
                     TicketId = ticket.TicketId,
+                    BranchId = ticket.BranchId ?? currentBranchId,
                     PaymentMethod = paymentMethod,
+                    PaymentMethodId = paymentMethodId,
                     AmountPaid = amountPaid,
+                    ChangeGiven = ticket.ChangeGiven,
+                    GrossAmount = gross,
+                    NetAmount = net,
                     StoreId = storeId,
                     AgreementId = agreementId,
                     InvoiceNumber = invoiceNumber,
                     PurchaseAmount = purchaseAmount,
                     DiscountAmount = discountAmount,
                     ExitNotes = exitNotes,
+<<<<<<< HEAD
                     PaymentMethodId = paymentMethodId,
                     ResolutionId = resolutionId,
                     ResolutionName = resolutionName,
                     FiscalInvoiceNumber = fiscalInvoiceNumber,
+=======
+>>>>>>> a05cfd5b7e87f30ad40fa04104315519d929bd9c
                     ExitTimeUtc = exitTime
                 });
 

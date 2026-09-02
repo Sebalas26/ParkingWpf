@@ -6,7 +6,7 @@ namespace Parking.Services.Contracts;
 
 public interface IDialogService
 {
-    Task ShowReceiptPreviewAsync(ParkingTicket ticket);
+    Task ShowReceiptPreviewAsync(ParkingTicket ticket, BillingResolution? resolution = null);
     Task ShowAlertAsync(string title, string message, DialogNotificationType type = DialogNotificationType.Information);
     Task<bool> ShowConfirmationAsync(string title, string message, DialogNotificationType type = DialogNotificationType.Question, string confirmText = "Confirmar", string cancelText = "Cancelar");
     Task<bool> ShowSyncProgressModalAsync(ISyncEngineService syncEngine);

@@ -23,6 +23,7 @@ public partial class CheckInViewModel : ViewModelBase
     private readonly IShiftService _shiftService;
     private readonly ISessionService _sessionService;
     private readonly DispatcherTimer _feedbackTimer;
+    private bool _isSyncingSelection;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RegisterAndPrintCommand))]
@@ -224,24 +225,42 @@ public partial class CheckInViewModel : ViewModelBase
 
     partial void OnSelectedRateChanged(VehicleRate? value)
     {
-        if (value != null)
+        if (_isSyncingSelection) return;
+        _isSyncingSelection = true;
+        try
         {
-            SelectedVehicleType = value.VehicleType;
-            CurrentRate = value;
+            if (value != null)
+            {
+                SelectedVehicleType = value.VehicleType;
+                CurrentRate = value;
+            }
+            else
+            {
+                UpdateCurrentRate();
+            }
         }
-        else
+        finally
         {
-            UpdateCurrentRate();
+            _isSyncingSelection = false;
         }
     }
 
     partial void OnSelectedVehicleTypeChanged(VehicleType value)
     {
-        if (SelectedRate?.VehicleType != value)
+        if (_isSyncingSelection) return;
+        _isSyncingSelection = true;
+        try
         {
-            SelectedRate = AvailableRates.FirstOrDefault(r => r.VehicleType == value);
+            if (SelectedRate?.VehicleType != value)
+            {
+                SelectedRate = AvailableRates.FirstOrDefault(r => r.VehicleType == value);
+            }
+            UpdateCurrentRate();
         }
-        UpdateCurrentRate();
+        finally
+        {
+            _isSyncingSelection = false;
+        }
     }
 
     private void UpdateCurrentRate()
@@ -390,7 +409,8 @@ public partial class CheckInViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            ShowFeedback($"Error al registrar ingreso: {ex.Message}", false);
+            var detailedMsg = ex.GetBaseException().Message;
+            ShowFeedback($"Error al registrar ingreso: {detailedMsg}", false);
         }
         finally
         {

@@ -968,7 +968,7 @@ public partial class CheckOutViewModel : ViewModelBase
                     ? $"Salida registrada para vehículo con mensualidad {clearedPlate}. Cupo liberado exitosamente (Sin cobro horario)."
                     : $"Pago procesado para {clearedPlate}. Total Neto: ${totalPaid:F2}. Cambio: ${change:F2}. Cupo liberado exitosamente.";
 
-                await _dialogService.ShowReceiptPreviewAsync(completedTicket);
+                await _dialogService.ShowReceiptPreviewAsync(completedTicket, SelectedResolution);
             }
         }
         catch (Exception ex)

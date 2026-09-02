@@ -19,13 +19,13 @@ public class DialogService : IDialogService
         _serviceProvider = serviceProvider;
     }
 
-    public Task ShowReceiptPreviewAsync(ParkingTicket ticket)
+    public Task ShowReceiptPreviewAsync(ParkingTicket ticket, BillingResolution? resolution = null)
     {
         return Application.Current.Dispatcher.InvokeAsync(() =>
         {
             var dialog = new ReceiptPreviewDialog();
             var viewModel = _serviceProvider.GetRequiredService<ReceiptPreviewViewModel>();
-            viewModel.LoadTicket(ticket);
+            viewModel.LoadTicket(ticket, resolution);
 
             void OnRequestClose()
             {
