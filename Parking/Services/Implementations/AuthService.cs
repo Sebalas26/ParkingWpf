@@ -62,6 +62,8 @@ public class AuthService : IAuthService
                     RoleName = roleName,
                     IsAdmin = isAdmin,
                     IsSuperAdmin = isSuperAdmin,
+                    CompanyId = apiLogin.CompanyId,
+                    CompanyName = apiLogin.CompanyName,
                     SessionToken = apiLogin.Token ?? Guid.NewGuid().ToString(),
                     LoginTime = DateTime.Now
                 };
@@ -70,11 +72,20 @@ public class AuthService : IAuthService
                 var permissions = apiLogin.Permissions ?? new List<string>();
                 _permissionService.LoadPermissions(permissions, isAdmin);
 
+                var branches = apiLogin.Branches ?? new List<BranchModel>();
+                foreach (var b in branches)
+                {
+                    if (!b.CompanyId.HasValue && apiLogin.CompanyId.HasValue)
+                    {
+                        b.CompanyId = apiLogin.CompanyId;
+                    }
+                }
+
                 return new LoginResultModel
                 {
                     Success = true,
                     User = userModel,
-                    Branches = apiLogin.Branches ?? new List<BranchModel>()
+                    Branches = branches
                 };
             }
             else if (apiLogin != null && !string.IsNullOrWhiteSpace(apiLogin.ErrorMessage))
@@ -145,6 +156,7 @@ public class AuthService : IAuthService
         var branchesList = localBranches.Select(b => new BranchModel
         {
             Id = b.Id,
+            CompanyId = b.CompanyId,
             Code = b.Code,
             Name = b.Name,
             Address = b.Address,
@@ -154,6 +166,8 @@ public class AuthService : IAuthService
             Notes = b.Notes,
             IsActive = b.IsActive
         }).ToList();
+
+        localUserModel.CompanyId = branchesList.FirstOrDefault(b => b.CompanyId.HasValue)?.CompanyId;
 
         var localPermissions = isLocalAdmin
             ? new List<string>()

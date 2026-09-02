@@ -7,6 +7,7 @@ public class VehicleIncident
 {
     public Guid IncidentId { get; set; } = Guid.NewGuid();
     public int? BranchId { get; set; }
+    public int? CompanyId { get; set; }
     public string PlateNumber { get; set; } = string.Empty;
     public string IncidentType { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;

@@ -38,11 +38,23 @@ public class EfShiftService : IShiftService
 
     public async Task<WorkShift> OpenShiftAsync(decimal baseAmount, string? notes = null)
     {
+        var branchId = _sessionService.CurrentBranch?.Id ?? _sessionService.CurrentBranchId;
+        if (!branchId.HasValue || branchId.Value <= 0)
+        {
+            throw new InvalidOperationException("Debe seleccionar una sede activa antes de abrir el turno de caja.");
+        }
+
+        var companyId = _sessionService.CurrentCompanyId;
+        if (!companyId.HasValue || companyId.Value <= 0)
+        {
+            throw new InvalidOperationException("La sesión no cuenta con una empresa (CompanyId) asignada.");
+        }
+
         var operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
-        var branchId = CurrentBranchId;
         var request = new OpenShiftApiRequest
         {
-            BranchId = branchId,
+            BranchId = branchId.Value,
+            CompanyId = companyId.Value,
             BaseAmount = baseAmount,
             Notes = notes
         };
@@ -58,7 +70,8 @@ public class EfShiftService : IShiftService
         shift ??= new WorkShift
         {
             ShiftId = Guid.NewGuid(),
-            BranchId = branchId,
+            BranchId = branchId.Value,
+            CompanyId = companyId.Value,
             UserId = _authService.CurrentUser?.ServerUserId ?? 1,
             OperatorName = operatorName,
             StartTimeUtc = DateTime.UtcNow,
@@ -71,7 +84,12 @@ public class EfShiftService : IShiftService
 
         if (!shift.BranchId.HasValue)
         {
-            shift.BranchId = branchId;
+            shift.BranchId = branchId.Value;
+        }
+
+        if (!shift.CompanyId.HasValue)
+        {
+            shift.CompanyId = companyId.Value;
         }
 
         using var db = _connectionManager.CreateDbContext();
@@ -82,7 +100,8 @@ public class EfShiftService : IShiftService
         }
         else
         {
-            existing.BranchId = branchId;
+            existing.BranchId = branchId.Value;
+            existing.CompanyId = companyId.Value;
             existing.Status = 0;
             existing.BaseAmount = baseAmount;
             existing.Notes = notes;

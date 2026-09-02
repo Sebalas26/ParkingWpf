@@ -15,6 +15,43 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-02 15:35:00] - [ARCHITECTURE / MULTI-TENANT / INTEGRITY] [WPF] - Persistencia e Integridad Obligatoria de CompanyId y BranchId en Operaciones Transaccionales
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Se necesita que cuando se haga el ingreso de un vehiculo en el wpf siempre se guarde el id de la compañia mas bien necesito una revisión completa exaustiva que revise todas esas inserciones en la tablas transacionales que tienen la columna Company Id y la BranchId por que eso datos son vitales para todo el funcionamiento... si esa info no llega no deberia insertar... tanto en la pwa como en el wpf... haz el plan"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Propagación de CompanyId en Entidades y SQLite (`DbConnectionManager.cs`, `ParkingTicket.cs`, `WorkShift.cs`, `MonthlySubscription.cs`, `VehicleIncident.cs`, `Branch.cs`)**:
+     - Se añadió la propiedad `CompanyId` en todas las entidades transaccionales del cliente WPF.
+     - Se incorporaron sentencias de migración resiliente `ALTER TABLE "..." ADD COLUMN "CompanyId" INTEGER NULL;` en SQLite.
+  2. **Resolución en Sesión y Modelos (`AuthService.cs`, `SessionService.cs`, `ISessionService.cs`, `BranchModel.cs`, `UserSessionModel.cs`)**:
+     - Se mapea `CompanyId` y `CompanyName` devuelto por el API al autenticarse y se expone `ISessionService.CurrentCompanyId`.
+  3. **Validación Estricta e Inserción (`EfParkingTicketService.cs`, `EfShiftService.cs`, `EfMonthlySubscriptionService.cs`)**:
+     - Se impuso validación estricta de `branchId > 0` y `companyId > 0` antes de emitir tiquetes, abrir turno de caja o registrar mensualidades.
+  4. **Corrección Crítica en Cola de Sincronización Offline (`SyncEngineService.cs`)**:
+     - Se agregó `CompanyId = ticket.CompanyId` a la serialización de `CheckInApiRequest` y `CheckOutApiRequest` en `EnqueueOfflineCheckInAsync` y `EnqueueOfflineCheckOutAsync`, eliminando la causa raíz por la cual los tiquetes offline sincronizados llegaban con `CompanyId` nulo al API.
+- **📦 Componentes Modificados**:
+  - `Parking/Entities/ParkingTicket.cs`
+  - `Parking/Entities/WorkShift.cs`
+  - `Parking/Entities/MonthlySubscription.cs`
+  - `Parking/Entities/VehicleIncident.cs`
+  - `Parking/Entities/Branch.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Models/UserSessionModel.cs`
+  - `Parking/Models/ApiModels/TicketApiModels.cs`
+  - `Parking/Models/ApiModels/ShiftApiModels.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Services/Contracts/ISessionService.cs`
+  - `Parking/Services/Implementations/SessionService.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/Services/Implementations/EfMonthlySubscriptionService.cs`
+- **✅ Verificación y Compilación**:
+  - `dotnet build` ejecutado exitosamente (**0 Errores**).
+
+---
+
 ### [2026-09-02 12:28:00] - [UI/UX] [PRINTING] [WPF] - Código QR Pequeño en Tiquete de Entrada (Check-In)
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

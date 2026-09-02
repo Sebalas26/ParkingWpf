@@ -16,6 +16,7 @@ public class SessionService : ISessionService
     public UserSessionModel? CurrentUser { get; private set; }
     public BranchModel? CurrentBranch { get; private set; }
     public int? CurrentBranchId => CurrentBranch?.Id;
+    public int? CurrentCompanyId => CurrentUser?.CompanyId ?? CurrentBranch?.CompanyId;
     public IReadOnlyList<BranchModel> UserBranches => _userBranches.AsReadOnly();
     public bool HasMultipleBranches => _userBranches.Count > 1;
     public bool IsAuthenticated => CurrentUser != null;

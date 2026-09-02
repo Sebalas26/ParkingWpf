@@ -1072,6 +1072,7 @@ public class SyncEngineService : ISyncEngineService
             {
                 TicketId = ticket.TicketId,
                 BranchId = ticket.BranchId,
+                CompanyId = ticket.CompanyId,
                 TicketNumber = ticket.TicketNumber,
                 PlateNumber = ticket.PlateNumber,
                 VehicleType = ticket.VehicleType,
@@ -1119,6 +1120,7 @@ public class SyncEngineService : ISyncEngineService
             {
                 TicketId = ticket.TicketId,
                 BranchId = ticket.BranchId,
+                CompanyId = ticket.CompanyId,
                 PaymentMethod = ticket.PaymentMethod ?? PaymentMethod.Cash,
                 PaymentMethodId = ticket.PaymentMethodId,
                 AmountPaid = ticket.AmountPaid,

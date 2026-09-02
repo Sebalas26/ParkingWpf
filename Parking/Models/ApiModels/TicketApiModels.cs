@@ -15,6 +15,12 @@ public class CheckInApiRequest
     [JsonPropertyName("branch_id")]
     public int? BranchIdSnake { get => BranchId; set => BranchId ??= value; }
 
+    [JsonPropertyName("companyId")]
+    public int? CompanyId { get; set; }
+
+    [JsonPropertyName("company_id")]
+    public int? CompanyIdSnake { get => CompanyId; set => CompanyId ??= value; }
+
     [JsonPropertyName("sedeId")]
     public int? SedeId { get => BranchId; set => BranchId ??= value; }
 
@@ -59,6 +65,12 @@ public class CheckOutApiRequest
 
     [JsonPropertyName("branch_id")]
     public int? BranchIdSnake { get => BranchId; set => BranchId ??= value; }
+
+    [JsonPropertyName("companyId")]
+    public int? CompanyId { get; set; }
+
+    [JsonPropertyName("company_id")]
+    public int? CompanyIdSnake { get => CompanyId; set => CompanyId ??= value; }
 
     [JsonPropertyName("sedeId")]
     public int? SedeId { get => BranchId; set => BranchId ??= value; }

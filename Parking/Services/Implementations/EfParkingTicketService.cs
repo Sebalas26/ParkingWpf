@@ -64,6 +64,18 @@ public class EfParkingTicketService : IParkingTicketService
 
     public async Task<ParkingTicket> RegisterEntryAsync(string plateNumber, VehicleType vehicleType, string? phoneNumber, string? notes, string operatorName, decimal? customHourlyRate = null)
     {
+        var branchId = _sessionService.CurrentBranch?.Id ?? _sessionService.CurrentBranchId;
+        if (!branchId.HasValue || branchId.Value <= 0)
+        {
+            throw new InvalidOperationException("Debe seleccionar una sede activa antes de registrar el ingreso vehicular.");
+        }
+
+        var companyId = _sessionService.CurrentCompanyId;
+        if (!companyId.HasValue || companyId.Value <= 0)
+        {
+            throw new InvalidOperationException("La sesión no cuenta con una empresa (CompanyId) asignada.");
+        }
+
         var normalizedPlate = plateNumber.Trim().ToUpperInvariant();
         using var db = _connectionManager.CreateDbContext();
 
@@ -85,6 +97,7 @@ public class EfParkingTicketService : IParkingTicketService
         }
 
         // Asegurar columnas requeridas en SQLite antes de insertar
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"OperatorEntryId\" TEXT NULL;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"OperatorExitId\" TEXT NULL;"); } catch { }
@@ -108,7 +121,8 @@ public class EfParkingTicketService : IParkingTicketService
         var ticket = new ParkingTicket
         {
             TicketId = Guid.NewGuid(),
-            BranchId = _sessionService.CurrentBranch?.Id,
+            BranchId = branchId.Value,
+            CompanyId = companyId.Value,
             TicketNumber = ticketNumber,
             PlateNumber = normalizedPlate,
             VehicleType = vehicleType,
@@ -130,6 +144,7 @@ public class EfParkingTicketService : IParkingTicketService
                 {
                     TicketId = ticket.TicketId,
                     BranchId = ticket.BranchId,
+                    CompanyId = ticket.CompanyId,
                     PlateNumber = ticket.PlateNumber,
                     VehicleType = ticket.VehicleType,
                     CustomerPhone = ticket.CustomerPhone,
@@ -203,11 +218,17 @@ public class EfParkingTicketService : IParkingTicketService
         var gross = _pricingCalculator.CalculateFee(ticket.VehicleType, ticket.EntryTimeUtc, exitTime);
         var net = Math.Max(0m, gross - discountAmount);
 
-        // Garantizar que el ID de la sede activa quede asignado al tiquete
-        var currentBranchId = _sessionService.CurrentBranch?.Id;
-        if (currentBranchId.HasValue)
+        // Garantizar que el ID de la sede y empresa activa queden asignados al tiquete
+        var currentBranchId = _sessionService.CurrentBranch?.Id ?? _sessionService.CurrentBranchId;
+        if (currentBranchId.HasValue && (!ticket.BranchId.HasValue || ticket.BranchId.Value <= 0))
         {
             ticket.BranchId = currentBranchId.Value;
+        }
+
+        var currentCompanyId = _sessionService.CurrentCompanyId;
+        if (currentCompanyId.HasValue && (!ticket.CompanyId.HasValue || ticket.CompanyId.Value <= 0))
+        {
+            ticket.CompanyId = currentCompanyId.Value;
         }
 
         ticket.ExitTimeUtc = exitTime;
@@ -236,6 +257,7 @@ public class EfParkingTicketService : IParkingTicketService
                 {
                     TicketId = ticket.TicketId,
                     BranchId = ticket.BranchId ?? currentBranchId,
+                    CompanyId = ticket.CompanyId ?? currentCompanyId,
                     PaymentMethod = paymentMethod,
                     PaymentMethodId = paymentMethodId,
                     AmountPaid = amountPaid,

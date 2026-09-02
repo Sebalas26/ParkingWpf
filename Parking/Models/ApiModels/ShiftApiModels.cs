@@ -5,6 +5,7 @@ namespace Parking.Models.ApiModels;
 public class OpenShiftApiRequest
 {
     public int? BranchId { get; set; }
+    public int? CompanyId { get; set; }
     public decimal BaseAmount { get; set; } = 0m;
     public string? Notes { get; set; }
 }

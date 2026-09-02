@@ -13,12 +13,14 @@ namespace Parking.Services.Implementations;
 public class EfMonthlySubscriptionService : IMonthlySubscriptionService
 {
     private readonly IDbConnectionManager _connectionManager;
+    private readonly ISessionService _sessionService;
 
     public event EventHandler? SubscriptionsChanged;
 
-    public EfMonthlySubscriptionService(IDbConnectionManager connectionManager)
+    public EfMonthlySubscriptionService(IDbConnectionManager connectionManager, ISessionService sessionService)
     {
         _connectionManager = connectionManager;
+        _sessionService = sessionService;
     }
 
     public async Task<IReadOnlyList<MonthlySubscription>> GetAllSubscriptionsAsync()
@@ -57,11 +59,28 @@ public class EfMonthlySubscriptionService : IMonthlySubscriptionService
 
     public async Task<MonthlySubscription> CreateSubscriptionAsync(MonthlySubscription subscription)
     {
+        var branchId = subscription.BranchId ?? _sessionService.CurrentBranch?.Id ?? _sessionService.CurrentBranchId;
+        if (!branchId.HasValue || branchId.Value <= 0)
+        {
+            throw new InvalidOperationException("Debe seleccionar una sede activa antes de registrar la mensualidad.");
+        }
+
+        var companyId = subscription.CompanyId ?? _sessionService.CurrentCompanyId;
+        if (!companyId.HasValue || companyId.Value <= 0)
+        {
+            throw new InvalidOperationException("La sesión no cuenta con una empresa (CompanyId) asignada.");
+        }
+
+        subscription.BranchId = branchId.Value;
+        subscription.CompanyId = companyId.Value;
         subscription.PlateNumber = (subscription.PlateNumber ?? string.Empty).Trim().ToUpperInvariant();
         subscription.CreatedAtUtc = DateTime.UtcNow;
         subscription.IsActive = true;
 
         using var db = _connectionManager.CreateDbContext();
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"MonthlySubscriptions\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
+        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"MonthlySubscriptions\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }
+
         db.MonthlySubscriptions.Add(subscription);
         await db.SaveChangesAsync();
 

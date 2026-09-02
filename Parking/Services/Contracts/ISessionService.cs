@@ -12,6 +12,7 @@ public interface ISessionService
     UserSessionModel? CurrentUser { get; }
     BranchModel? CurrentBranch { get; }
     int? CurrentBranchId { get; }
+    int? CurrentCompanyId { get; }
     IReadOnlyList<BranchModel> UserBranches { get; }
     bool HasMultipleBranches { get; }
     bool IsAuthenticated { get; }

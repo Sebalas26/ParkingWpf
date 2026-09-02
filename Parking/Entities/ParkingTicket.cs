@@ -8,6 +8,7 @@ public class ParkingTicket
 {
     public Guid TicketId { get; set; } = Guid.NewGuid();
     public int? BranchId { get; set; }
+    public int? CompanyId { get; set; }
     public string TicketNumber { get; set; } = string.Empty;
     public string PlateNumber { get; set; } = string.Empty;
     public VehicleType VehicleType { get; set; }

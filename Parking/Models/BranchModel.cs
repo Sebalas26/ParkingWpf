@@ -8,6 +8,9 @@ public class BranchModel
     [JsonPropertyName("id")]
     public int Id { get; set; }
 
+    [JsonPropertyName("companyId")]
+    public int? CompanyId { get; set; }
+
     [JsonPropertyName("code")]
     public string Code { get; set; } = string.Empty;
 

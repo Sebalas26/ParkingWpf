@@ -16,6 +16,8 @@ public class UserSessionModel
     public DateTime LoginTime { get; set; } = DateTime.Now;
     public bool IsAdmin { get; set; }
     public bool IsSuperAdmin { get; set; }
+    public int? CompanyId { get; set; }
+    public string? CompanyName { get; set; }
 
     public HashSet<string> GrantedPermissions { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
