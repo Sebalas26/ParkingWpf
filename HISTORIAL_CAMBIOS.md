@@ -17,6 +17,33 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ## 📋 Registro Cronológico de Cambios
 
+### [2026-09-02 08:53:00] - [FIX] [MERGE] [BUILD] [WPF] - Resolución de Conflictos de Git Residuales y Lanzamiento de Terminal Desktop
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"ejecuta wpf"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Resolución de Conflictos de Combinación (Git Merge)**:
+     - Se resolvieron marcadores residuales (`<<<<<<< HEAD`, `=======`, `>>>>>>>`) en 6 archivos generados por un merge commit previo.
+     - `DbConnectionManager.cs`: Consolidación completa de migraciones DDL de SQLite para tickets (`ResolutionId`, `ResolutionName`, `InvoiceNumber`, `IsElectronicInvoice`, `OperatorEntryId`, `OperatorExitId`, `BayNumber`, `CreatedAtUtc`).
+     - `TicketApiModels.cs`: Soporte de propiedades de facturación fiscal en `ProcessExitApiRequest`.
+     - `SyncEngineService.cs` y `EfParkingTicketService.cs`: Preservación de campos de discriminación de cobro y resolución fiscal en la cola offline y checkout online.
+     - `ReceiptPreviewViewModel.cs` y `ReceiptPreviewDialog.xaml`: Unificación de diseño térmico y soporte para factura electrónica de venta (FVM) con cálculo de CUFE y QR fiscal.
+  2. **Verificación y Ejecución**:
+     - Compilación limpia con `dotnet build` (**0 Errores**).
+     - Lanzamiento del proceso de escritorio de WPF en segundo plano.
+- **📦 Componentes Modificados**:
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Models/ApiModels/TicketApiModels.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 4 Advertencias leves de nulabilidad**.
+  - `dotnet run`: Proceso WPF en ejecución activa (`RUNNING`).
+
+
 ### [2026-08-31 23:08:00] - [FEAT] [RATES] [MULTI-BRANCH] [WPF] - Preservación Integral de Todos los Tipos de Vehículos Parametrizados por Sede Activa
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

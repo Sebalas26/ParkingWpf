@@ -1122,7 +1122,7 @@ public class SyncEngineService : ISyncEngineService
                 PaymentMethod = ticket.PaymentMethod ?? PaymentMethod.Cash,
                 PaymentMethodId = ticket.PaymentMethodId,
                 AmountPaid = ticket.AmountPaid,
-<<<<<<< HEAD
+                ChangeGiven = ticket.ChangeGiven,
                 GrossAmount = ticket.GrossAmount,
                 NetAmount = ticket.NetAmount,
                 DiscountAmount = ticket.DiscountAmount,
@@ -1130,12 +1130,6 @@ public class SyncEngineService : ISyncEngineService
                 ResolutionId = ticket.ResolutionId,
                 ResolutionName = ticket.ResolutionName,
                 FiscalInvoiceNumber = ticket.InvoiceNumber,
-=======
-                ChangeGiven = ticket.ChangeGiven,
-                GrossAmount = ticket.GrossAmount,
-                NetAmount = ticket.NetAmount,
-                ExitNotes = ticket.ExitNotes,
->>>>>>> a05cfd5b7e87f30ad40fa04104315519d929bd9c
                 ExitTimeUtc = ticket.ExitTimeUtc ?? DateTime.UtcNow
             }),
             CreatedAtUtc = DateTime.UtcNow,

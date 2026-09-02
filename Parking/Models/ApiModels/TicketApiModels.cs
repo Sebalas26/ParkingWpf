@@ -104,14 +104,16 @@ public class CheckOutApiRequest
 
     [JsonPropertyName("exitNotes")]
     public string? ExitNotes { get; set; }
-<<<<<<< HEAD
+    [JsonPropertyName("resolutionId")]
     public Guid? ResolutionId { get; set; }
+
+    [JsonPropertyName("resolutionName")]
     public string? ResolutionName { get; set; }
+
+    [JsonPropertyName("fiscalInvoiceNumber")]
     public string? FiscalInvoiceNumber { get; set; }
-=======
 
     [JsonPropertyName("exitTimeUtc")]
->>>>>>> a05cfd5b7e87f30ad40fa04104315519d929bd9c
     public DateTime ExitTimeUtc { get; set; } = DateTime.UtcNow;
 }
 

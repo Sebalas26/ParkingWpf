@@ -52,6 +52,9 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private string _branchAddress = "CALLE 26 #57-83";
 
     [ObservableProperty]
+    private string _branchPhone = "Tel. 318 181818 - 301 301301301";
+
+    [ObservableProperty]
     private string _formattedRateText = string.Empty;
 
     [ObservableProperty]
@@ -76,22 +79,13 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private string _customerDocument = "CC 222222222";
 
     [ObservableProperty]
+    private string _customerNit = "22222222";
+
+    [ObservableProperty]
+    private string _customerAddress = "CR 38 19 55 BRR CAMOA";
+
+    [ObservableProperty]
     private string _invoiceNumberText = string.Empty;
-
-    [ObservableProperty]
-    private System.Windows.Media.ImageSource? _electronicInvoiceQrImage;
-
-    [ObservableProperty]
-    private System.Windows.Media.ImageSource? _consultationQrCodeImage;
-
-    [ObservableProperty]
-    private BillingResolution? _resolution;
-
-    [ObservableProperty]
-    private bool _isFvmInvoice;
-
-    [ObservableProperty]
-    private string _branchPhone = "Tel. 318 181818 - 301 301301301";
 
     [ObservableProperty]
     private string _invoicePrefix = "FVM";
@@ -104,15 +98,6 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _invoiceTimeStr = string.Empty;
-
-    [ObservableProperty]
-    private string _customerName = "CONSUMIDOR FINAL";
-
-    [ObservableProperty]
-    private string _customerNit = "22222222";
-
-    [ObservableProperty]
-    private string _customerAddress = "CR 38 19 55 BRR CAMOA";
 
     [ObservableProperty]
     private string _entryTimeStr = string.Empty;
@@ -153,6 +138,15 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     [ObservableProperty]
     private string _dianRangeText = string.Empty;
 
+    [ObservableProperty]
+    private System.Windows.Media.ImageSource? _electronicInvoiceQrImage;
+
+    [ObservableProperty]
+    private System.Windows.Media.ImageSource? _consultationQrCodeImage;
+
+    [ObservableProperty]
+    private BillingResolution? _resolution;
+
     public string PublicConsultationUrl => "https://www.parking-flow.com/mockup-consulta";
 
     public event Action? RequestClose;
@@ -183,8 +177,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
         FormattedRateText = $"TARIFA: {ticket.HourlyRate:C0} / HORA";
 
-<<<<<<< HEAD
-        IsExitReceipt = ticket.Status == TicketStatus.Completed || ticket.ExitTimeUtc.HasValue;
+        IsExitReceipt = ticket.Status == TicketStatus.Completed || ticket.ExitTimeUtc.HasValue || ticket.ExitTime.HasValue;
         IsEntryTicket = !IsExitReceipt;
 
         if (IsExitReceipt)
@@ -192,7 +185,16 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             // 1. Detectar si la resolución es FVM (Factura Electrónica)
             bool isFvm = false;
 
-            if (!string.IsNullOrWhiteSpace(ticket.ResolutionName) &&
+            if (resolution != null && (
+                (resolution.Prefix?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (resolution.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (resolution.DocumentType?.Contains("Factura Electr", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (resolution.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                string.Equals(resolution.Prefix, "A1PQ", StringComparison.OrdinalIgnoreCase)))
+            {
+                isFvm = true;
+            }
+            else if (!string.IsNullOrWhiteSpace(ticket.ResolutionName) &&
                 (ticket.ResolutionName.Contains("FVM", StringComparison.OrdinalIgnoreCase) ||
                  ticket.ResolutionName.Contains("Factura Electr", StringComparison.OrdinalIgnoreCase)))
             {
@@ -208,13 +210,14 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 try
                 {
                     using var db = _connectionManager.CreateDbContext();
-                    var resolution = db.BillingResolutions.FirstOrDefault(r => r.ResolutionId == ticket.ResolutionId.Value);
-                    if (resolution != null)
+                    var dbRes = db.BillingResolutions.FirstOrDefault(r => r.ResolutionId == ticket.ResolutionId.Value);
+                    if (dbRes != null)
                     {
-                        isFvm = (resolution.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                                (resolution.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                                (resolution.DocumentType?.Contains("Factura Electr", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                                (resolution.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false);
+                        isFvm = (dbRes.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                (dbRes.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                (dbRes.DocumentType?.Contains("Factura Electr", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                (dbRes.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                string.Equals(dbRes.Prefix, "A1PQ", StringComparison.OrdinalIgnoreCase);
                     }
                 }
                 catch { }
@@ -250,6 +253,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 };
             }
             PaymentMethodDisplayName = paymentName;
+            PaymentMethodName = paymentName.ToUpperInvariant();
 
             // 3. Resolver Convenio si aplica
             HasAgreement = false;
@@ -282,30 +286,70 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             }
 
             // 4. Valor que pagó y % IVA
-            var totalPaid = ticket.NetAmount > 0 ? ticket.NetAmount : (ticket.AmountPaid > 0 ? ticket.AmountPaid : ticket.GrossAmount);
+            var totalPaid = ticket.NetAmount > 0 ? ticket.NetAmount : (ticket.AmountPaid > 0 ? ticket.AmountPaid : (ticket.TotalAmount > 0 ? ticket.TotalAmount : ticket.GrossAmount));
             FormattedTotalPaid = $"{totalPaid:C0}";
             IvaPercentageText = "19%";
+
+            var exitTime = ticket.ExitTime ?? (ticket.ExitTimeUtc.HasValue ? ticket.ExitTimeUtc.Value.ToLocalTime() : DateTime.Now);
+            var entryTime = ticket.EntryTime != default ? ticket.EntryTime : (ticket.CreatedAtUtc != default ? ticket.CreatedAtUtc.ToLocalTime() : DateTime.Now);
+
+            ExitTimeStr = exitTime.ToString("HH:mm:ss");
+            ExitDateStr = exitTime.ToString("dd/MM/yy");
+            EntryTimeStr = entryTime.ToString("HH:mm:ss");
+            EntryDateStr = entryTime.ToString("dd/MM/yy");
+
+            var duration = exitTime - entryTime;
+            var totalMins = Math.Max(1, (long)Math.Round(duration.TotalMinutes));
+            DurationMinutesStr = totalMins.ToString();
+
+            var baseGrav = Math.Round(totalPaid / 1.19m, 0);
+            var iva = totalPaid - baseGrav;
+
+            BaseGravableStr = $"{baseGrav:N0}";
+            Iva19Str = $"{iva:N0}";
+            TotalStr = $"{totalPaid:N0}";
+
+            AttendedBy = !string.IsNullOrWhiteSpace(ticket.OperatorName)
+                ? ticket.OperatorName.ToUpperInvariant()
+                : (_sessionService.CurrentUser?.FullName?.ToUpperInvariant() ?? "MERLIN");
 
             // 5. Factura Electrónica y QR
             if (IsFvmInvoice)
             {
                 CustomerName = "CONSUMIDOR FINAL";
                 CustomerDocument = "CC 222222222";
-                InvoiceNumberText = !string.IsNullOrWhiteSpace(ticket.InvoiceNumber) ? ticket.InvoiceNumber : "FVM-0001";
+                CustomerNit = "22222222";
+                CustomerAddress = "CR 38 19 55 BRR CAMOA";
 
-                var cufeMock = Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N");
-                var nitClean = BranchNit.Replace("NIT:", "", StringComparison.OrdinalIgnoreCase).Trim();
-                var exitDateFormatted = ticket.ExitTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                var qrContent = $"NumFac:{InvoiceNumberText}\nFecFac:{exitDateFormatted}\nNitFac:{nitClean}\nDocAdq:222222222\nValFac:{totalPaid:F2}\nValIva:{(totalPaid - (totalPaid / 1.19m)):F2}\nCUFE:{cufeMock}";
-                ElectronicInvoiceQrImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(qrContent, 8);
+                InvoicePrefix = !string.IsNullOrWhiteSpace(resolution?.Prefix) ? resolution.Prefix : "FVM";
+                var currentNum = resolution != null ? resolution.CurrentNumber.ToString() : (!string.IsNullOrWhiteSpace(ticket.InvoiceNumber) ? ticket.InvoiceNumber : ticket.TicketNumber);
+                InvoiceNumberStr = currentNum.PadLeft(8, '0');
+                InvoiceNumberText = $"{InvoicePrefix}-{InvoiceNumberStr}";
+
+                InvoiceDateStr = exitTime.ToString("dd/MM/yy");
+                InvoiceTimeStr = exitTime.ToString("HH:mm:ss");
+
+                Cufe = GenerateCufe($"{InvoicePrefix}{InvoiceNumberStr}", exitTime, totalPaid, BranchNit);
+
+                var resNum = !string.IsNullOrWhiteSpace(resolution?.ResolutionNumber) ? resolution.ResolutionNumber : "18764000000";
+                var validFromStr = resolution != null ? resolution.ValidFrom.ToString("yyyy/MM/dd") : "2024/06/18";
+                DianResolutionText = $"RES DIAN Nº {resNum} DE {validFromStr} Vig. 24 meses";
+
+                var fromNum = resolution?.FromNumber > 0 ? resolution.FromNumber : 1;
+                var toNum = resolution?.ToNumber > 0 ? resolution.ToNumber : 5000000;
+                DianRangeText = $"Autorización del {InvoicePrefix}-{fromNum} hasta {InvoicePrefix}-{toNum}";
+
+                var qrContent = $"NumFac: {InvoicePrefix}-{InvoiceNumberStr}\nFecFac: {InvoiceDateStr} {InvoiceTimeStr}\nNitFac: {BranchNit}\nDocAdq: {CustomerNit}\nValFac: {totalPaid:F2}\nValIva: {iva:F2}\nCUFE: {Cufe}";
+                ConsultationQrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(qrContent, 6);
+                ElectronicInvoiceQrImage = ConsultationQrCodeImage;
             }
             else
             {
                 ElectronicInvoiceQrImage = null;
+                ConsultationQrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(PublicConsultationUrl, 8);
             }
 
             BarcodeImage = null;
-            ConsultationQrCodeImage = null;
         }
         else
         {
@@ -314,90 +358,17 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             IsStandardExitReceipt = false;
             BarcodeImage = Services.Implementations.BarcodeGeneratorService.GenerateCode128(ticket.PlateNumber);
             ConsultationQrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(PublicConsultationUrl, 8);
-        }
-=======
-        // Determinar si aplica diseño Factura de Venta Electrónica (FVM)
-        // Aplica si se especificó resolución FVM o si el prefijo/documentType contiene "FVM"
-        IsFvmInvoice = ticket.ExitTime.HasValue && (
-            resolution != null && (
-                resolution.Prefix.Contains("FVM", StringComparison.OrdinalIgnoreCase) ||
-                resolution.DocumentType.Contains("FVM", StringComparison.OrdinalIgnoreCase) ||
-                resolution.Name.Contains("FVM", StringComparison.OrdinalIgnoreCase)
-            ) ||
-            string.Equals(resolution?.Prefix, "A1PQ", StringComparison.OrdinalIgnoreCase)
-        );
-
-        if (IsFvmInvoice)
-        {
-            var exitTime = ticket.ExitTime ?? DateTime.Now;
-            var entryTime = ticket.EntryTime;
-
-            InvoicePrefix = !string.IsNullOrWhiteSpace(resolution?.Prefix) ? resolution.Prefix : "FVM";
-            var currentNum = resolution != null ? resolution.CurrentNumber.ToString() : ticket.TicketNumber;
-            InvoiceNumberStr = currentNum.PadLeft(8, '0');
-
-            InvoiceDateStr = exitTime.ToString("dd/MM/yy");
-            InvoiceTimeStr = exitTime.ToString("HH:mm:ss");
-
-            EntryTimeStr = entryTime.ToString("HH:mm:ss");
-            EntryDateStr = entryTime.ToString("dd/MM/yy");
-
-            ExitTimeStr = exitTime.ToString("HH:mm:ss");
-            ExitDateStr = exitTime.ToString("dd/MM/yy");
-
-            var duration = exitTime - entryTime;
-            var totalMins = Math.Max(1, (long)Math.Round(duration.TotalMinutes));
-            DurationMinutesStr = totalMins.ToString();
-
-            // Liquidación Fiscal (IVA 19% incluido)
-            var total = ticket.NetAmount > 0 ? ticket.NetAmount : (ticket.TotalAmount > 0 ? ticket.TotalAmount : 5280m);
-
-            var baseGrav = Math.Round(total / 1.19m, 0);
-            var iva = total - baseGrav;
-
-            BaseGravableStr = $"{baseGrav:N0}";
-            Iva19Str = $"{iva:N0}";
-            TotalStr = $"{total:N0}";
-
-            AttendedBy = !string.IsNullOrWhiteSpace(ticket.OperatorName) 
-                ? ticket.OperatorName.ToUpperInvariant() 
-                : (_sessionService.CurrentUser?.FullName?.ToUpperInvariant() ?? "MERLIN");
-
-            PaymentMethodName = ticket.PaymentMethod switch
-            {
-                Core.Enums.PaymentMethod.DigitalTransfer => "TRANSFERENCIA",
-                Core.Enums.PaymentMethod.CreditCard => "TARJETA CREDITO",
-                Core.Enums.PaymentMethod.DebitCard => "TARJETA DEBITO",
-                _ => "CONTADO"
-            };
-
-            Cufe = GenerateCufe($"{InvoicePrefix}{InvoiceNumberStr}", exitTime, total, BranchNit);
-
-            var resNum = !string.IsNullOrWhiteSpace(resolution?.ResolutionNumber) ? resolution.ResolutionNumber : "18764000000";
-            var validFromStr = resolution != null ? resolution.ValidFrom.ToString("yyyy/MM/dd") : "2024/06/18";
-            DianResolutionText = $"RES DIAN Nº {resNum} DE {validFromStr} Vig. 24 meses";
-
-            var fromNum = resolution?.FromNumber > 0 ? resolution.FromNumber : 1;
-            var toNum = resolution?.ToNumber > 0 ? resolution.ToNumber : 5000000;
-            DianRangeText = $"Autorización del {InvoicePrefix}-{fromNum} hasta {InvoicePrefix}-{toNum}";
-
-            // Generar QR para la factura electrónica con datos del CUFE
-            var qrContent = $"NumFac: {InvoicePrefix}-{InvoiceNumberStr}\nFecFac: {InvoiceDateStr} {InvoiceTimeStr}\nNitFac: {BranchNit}\nDocAdq: {CustomerNit}\nValFac: {total:F2}\nValIva: {iva:F2}\nCUFE: {Cufe}";
-            ConsultationQrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(qrContent, 6);
-        }
-        else
-        {
-            ConsultationQrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode("https://www.parking-flow.com/mockup-consulta", 8);
+            ElectronicInvoiceQrImage = null;
         }
     }
 
     private static string GenerateCufe(string numFac, DateTime fechaFac, decimal valFac, string nitEmisor)
     {
-        var rawData = $"{numFac}{fechaFac:yyyyMMddHHmmss}{valFac:F2}010.00040.0003{valFac:F2}{nitEmisor}22222222";
+        var cleanNit = nitEmisor.Replace("NIT:", "", StringComparison.OrdinalIgnoreCase).Replace("NIT.", "", StringComparison.OrdinalIgnoreCase).Trim();
+        var rawData = $"{numFac}{fechaFac:yyyyMMddHHmmss}{valFac:F2}010.00040.0003{valFac:F2}{cleanNit}22222222";
         using var sha = System.Security.Cryptography.SHA384.Create();
         var hashBytes = sha.ComputeHash(System.Text.Encoding.UTF8.GetBytes(rawData));
         return Convert.ToHexString(hashBytes).ToLowerInvariant();
->>>>>>> a05cfd5b7e87f30ad40fa04104315519d929bd9c
     }
 
     [RelayCommand]
@@ -411,7 +382,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         IsPrinting = true;
         try
         {
-            if (Ticket.Status == Core.Enums.TicketStatus.Completed || Ticket.ExitTimeUtc.HasValue)
+            if (Ticket.Status == Core.Enums.TicketStatus.Completed || Ticket.ExitTimeUtc.HasValue || Ticket.ExitTime.HasValue)
             {
                 PrintSuccess = await _printerService.PrintExitReceiptAsync(Ticket);
             }

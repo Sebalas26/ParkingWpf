@@ -260,14 +260,9 @@ public class EfParkingTicketService : IParkingTicketService
                     InvoiceNumber = invoiceNumber,
                     PurchaseAmount = purchaseAmount,
                     DiscountAmount = discountAmount,
-                    ExitNotes = exitNotes,
-<<<<<<< HEAD
-                    PaymentMethodId = paymentMethodId,
                     ResolutionId = resolutionId,
                     ResolutionName = resolutionName,
                     FiscalInvoiceNumber = fiscalInvoiceNumber,
-=======
->>>>>>> a05cfd5b7e87f30ad40fa04104315519d929bd9c
                     ExitTimeUtc = exitTime
                 });
 
