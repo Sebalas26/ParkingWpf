@@ -77,24 +77,11 @@ public class EfParkingTicketService : IParkingTicketService
             throw new InvalidOperationException($"El vehículo con placa '{normalizedPlate}' ya se encuentra registrado y activo adentro.");
         }
 
-        var currentBranchId = _sessionService.CurrentBranch?.Id;
-        VehicleIncident? blockedIncident = null;
-        try
-        {
-            blockedIncident = await db.VehicleIncidents
-                .AsNoTracking()
-                .Include(i => i.IncidentBranches)
-                .FirstOrDefaultAsync(i =>
-                    i.PlateNumber == normalizedPlate &&
-                    i.IsBlocked &&
-                    i.Status == "Activa" &&
-                    (i.IsGlobal || (i.BranchId == null && !i.IncidentBranches.Any()) || !currentBranchId.HasValue || i.BranchId == currentBranchId.Value || i.IncidentBranches.Any(ib => ib.BranchId == currentBranchId.Value)));
-        }
-        catch { }
-
+        // 1. Validar bloqueo activo por lista negra / novedad (consulta híbrida SQLite + API en tiempo real)
+        var blockedIncident = await GetActiveBlockAsync(normalizedPlate);
         if (blockedIncident != null)
         {
-            throw new InvalidOperationException($"El vehículo con placa '{normalizedPlate}' tiene un BLOQUEO ACTIVO ({blockedIncident.IncidentType}): {blockedIncident.Description}");
+            throw new InvalidOperationException($"VEHÍCULO BLOQUEADO: La placa '{normalizedPlate}' tiene un bloqueo activo registrado por novedad: '{blockedIncident.IncidentType}' ({blockedIncident.Description}). No está permitido su ingreso.");
         }
 
         // Asegurar columnas requeridas en SQLite antes de insertar
@@ -421,7 +408,8 @@ public class EfParkingTicketService : IParkingTicketService
 
         try
         {
-            return await db.VehicleIncidents
+            // 1. Consultar en SQLite local
+            var localIncident = await db.VehicleIncidents
                 .AsNoTracking()
                 .Include(i => i.IncidentBranches)
                 .FirstOrDefaultAsync(i =>
@@ -429,6 +417,48 @@ public class EfParkingTicketService : IParkingTicketService
                     i.IsBlocked &&
                     i.Status == "Activa" &&
                     (i.IsGlobal || (i.BranchId == null && !i.IncidentBranches.Any()) || !currentBranchId.HasValue || i.BranchId == currentBranchId.Value || i.IncidentBranches.Any(ib => ib.BranchId == currentBranchId.Value)));
+
+            if (localIncident != null)
+            {
+                return localIncident;
+            }
+
+            // 2. Si está en línea, consultar en tiempo real al API central para novedades recién creadas en PWA
+            if (_syncEngine.IsOnline)
+            {
+                var apiCheck = await _apiClient.CheckPlateAsync(normalized, currentBranchId);
+                if (apiCheck != null && apiCheck.IsBlocked)
+                {
+                    var incidentEntity = new VehicleIncident
+                    {
+                        IncidentId = apiCheck.IncidentId ?? Guid.NewGuid(),
+                        BranchId = currentBranchId,
+                        PlateNumber = normalized,
+                        IncidentType = !string.IsNullOrWhiteSpace(apiCheck.IncidentType) ? apiCheck.IncidentType : "Lista Negra",
+                        Description = !string.IsNullOrWhiteSpace(apiCheck.Description) ? apiCheck.Description : (apiCheck.Reason ?? "Vehículo con restricción de ingreso."),
+                        IsBlocked = true,
+                        IsGlobal = false,
+                        Status = "Activa",
+                        ReportedBy = !string.IsNullOrWhiteSpace(apiCheck.ReportedBy) ? apiCheck.ReportedBy : "Sistema PWA",
+                        CreatedAtUtc = apiCheck.ReportedAtUtc ?? DateTime.UtcNow
+                    };
+
+                    try
+                    {
+                        var exists = await db.VehicleIncidents.AnyAsync(x => x.IncidentId == incidentEntity.IncidentId || (x.PlateNumber == normalized && x.IsBlocked && x.Status == "Activa"));
+                        if (!exists)
+                        {
+                            db.VehicleIncidents.Add(incidentEntity);
+                            await db.SaveChangesAsync();
+                        }
+                    }
+                    catch { }
+
+                    return incidentEntity;
+                }
+            }
+
+            return null;
         }
         catch
         {

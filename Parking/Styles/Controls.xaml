@@ -100,11 +100,11 @@
 
     <Style x:Key="PlateInputTextBox" TargetType="TextBox">
         <Setter Property="FontFamily" Value="{StaticResource FontFamilyMonospace}"/>
-        <Setter Property="FontSize" Value="60"/>
+        <Setter Property="FontSize" Value="90"/>
         <Setter Property="FontWeight" Value="Black"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Height" Value="108"/>
+        <Setter Property="Height" Value="160"/>
         <Setter Property="Padding" Value="16,4"/>
         <Setter Property="CharacterCasing" Value="Upper"/>
         <Setter Property="Background" Value="{DynamicResource BrushSurfaceBackground}"/>
@@ -149,11 +149,11 @@
 
     <Style x:Key="CheckoutSearchTextBox" TargetType="TextBox">
         <Setter Property="FontFamily" Value="{StaticResource FontFamilyMonospace}"/>
-        <Setter Property="FontSize" Value="48"/>
+        <Setter Property="FontSize" Value="90"/>
         <Setter Property="FontWeight" Value="Black"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Height" Value="100"/>
+        <Setter Property="Height" Value="160"/>
         <Setter Property="Padding" Value="16,6"/>
         <Setter Property="CharacterCasing" Value="Upper"/>
         <Setter Property="Background" Value="{DynamicResource BrushSurfaceBackground}"/>

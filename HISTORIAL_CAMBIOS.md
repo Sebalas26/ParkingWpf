@@ -15,7 +15,69 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
-## 📋 Registro Cronológico de Cambios
+### [2026-09-02 10:45:00] - [FEAT] [SECURITY] [CHECKIN] [WPF] - Bloqueo Estricto y Validación Híbrida en Tiempo Real para Vehículos en Lista Negra / Novedades
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayudame a que mi wpf no me permita ingresar vehiculos de la lista negra , desde el wpa se guardan placa con novedad, valida la bd y las apis para que sepas a donde validar"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Validación Híbrida en Tiempo Real (`EfParkingTicketService.cs`)**:
+     - Se actualizó `GetActiveBlockAsync(plateNumber)` para realizar una verificación de dos niveles:
+       - **Nivel 1 (SQLite Local)**: Consulta inmediata de la tabla `VehicleIncidents` (filtrada por `IsBlocked = 1`, `Status = 'Activa'` y sede activa o global).
+       - **Nivel 2 (API Central Online)**: Si no se encuentra en SQLite y el cliente está en línea, consulta en tiempo real al endpoint `GET /api/VehicleIncidents/check-plate/{plate}`. Si el API responde que la placa tiene un bloqueo activo (creado recientemente desde la PWA), automáticamente persiste el registro en SQLite local para garantizar disponibilidad offline y retorna la novedad activa.
+  2. **Bloqueo Preventivo en Emisión de Tiquetes (`EfParkingTicketService.cs` & `CheckInViewModel.cs`)**:
+     - `RegisterEntryAsync`: Ahora ejecuta la validación contra `GetActiveBlockAsync` **antes** de generar números de tiquete o insertar el registro en base de datos. Si está bloqueada, lanza `InvalidOperationException` y aborta la transacción.
+     - `CheckInViewModel.cs`: Al ingresar la placa y al pulsar el botón/Enter de registro, valida `GetActiveBlockAsync`. Si la placa está bloqueada, activa el banner rojo visual de lista negra y muestra un diálogo modal de error impidiendo el registro.
+  3. **Sincronización Reactiva en Segundo Plano (`MainShellViewModel.cs`)**:
+     - Se añadió manejo para la notificación SignalR `IncidentsChanged` para sincronizar las novedades en segundo plano sin interrumpir al operador con modales bloqueantes.
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 4 Advertencias leves de nulabilidad**.
+  - `dotnet run`: Terminal WPF en ejecución interactiva en segundo plano.
+
+### [2026-09-02 09:34:00] - [UI/UX] [CHECKOUT] [WPF] - Eliminación de Franja de Feedback en Liquidación y Salida
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"eliminame esto"* (referenciando la franja de confirmación de pago en Salida y Cobro)
+- **🤖 Resumen Técnico para la IA**:
+  1. **Simplificación y Estabilidad Visual (`CheckOutView.xaml`)**:
+     - Se eliminó el `Border` de feedback asociado a `HasFeedback` en la tarjeta superior.
+     - Se reestructuró la cuadrícula a 2 filas limpias, asegurando que el cuadro de búsqueda panorámico permanezca en una posición fija e inmediata sin saltos de interfaz tras liquidar un cobro.
+  2. **Verificación y Ejecución**:
+     - Compilación limpia con `dotnet build` (**0 Errores**).
+     - Proceso WPF reiniciado y activo en pantalla (`RUNNING`, PID: 31504).
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckOutView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 4 Advertencias leves de nulabilidad**.
+  - `dotnet run`: Terminal WPF en ejecución.
+
+
+
+### [2026-09-02 09:12:00] - [UI/UX] [CHECKOUT] [WPF] - Homologación de Tamaño y Tipografía de Caja de Placa en Salida y Cobro
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"qquisiera que me dejaras la caja de texto de ingreso de placa de salida al mismo tamaño que el de entrada"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Homologación de Dimensiones y Tipografía (`Controls.xaml` & `CheckOutView.xaml`)**:
+     - Se actualizó el estilo `CheckoutSearchTextBox` y el control `SearchTextBox` a `Height="160"` y `FontSize="90"` para igualar exactamente las proporciones de `PlateInputTextBox` en `CheckInView`.
+     - Se ajustó el botón de acción **"Buscar"** adyacente a `Height="160"`, incrementando las dimensiones de su icono a 28x28 y la tipografía a 18pt bold para garantizar una alineación visual armónica.
+  2. **Verificación y Ejecución**:
+     - Compilación limpia con `dotnet build` (**0 Errores**).
+     - Proceso WPF reiniciado y activo en pantalla con las nuevas dimensiones aplicadas.
+- **📦 Componentes Modificados**:
+  - `Parking/Styles/Controls.xaml`
+  - `Parking/Views/CheckOutView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: **0 Errores, 4 Advertencias leves de nulabilidad**.
+  - `dotnet run`: Terminal WPF en ejecución (`RUNNING`, PID: 5688).
+
+
 
 ### [2026-09-02 08:53:00] - [FIX] [MERGE] [BUILD] [WPF] - Resolución de Conflictos de Git Residuales y Lanzamiento de Terminal Desktop
 - **Autor**: Antigravity AI Assistant & Software Architect

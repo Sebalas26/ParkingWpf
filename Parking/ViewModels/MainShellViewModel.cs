@@ -219,6 +219,18 @@ public partial class MainShellViewModel : ViewModelBase
             return;
         }
 
+        // 2. Manejo reactivo de cambios en Novedades y Lista Negra en tiempo real
+        if (notification.EventType == "IncidentsChanged")
+        {
+            try
+            {
+                await _syncEngine.PerformFullSyncAsync();
+                SyncStatusText = $"Novedades sincronizadas ({DateTime.Now:HH:mm})";
+            }
+            catch { }
+            return;
+        }
+
         if (_isSyncPromptOpen) return;
 
         // Validar si aplica a la sede activa o es global

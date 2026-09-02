@@ -352,14 +352,20 @@ public partial class CheckInViewModel : ViewModelBase
 
         var normalizedPlate = PlateNumber.Trim().ToUpperInvariant();
 
-        if (IsPlateBlocked)
+        var activeBlock = await _ticketService.GetActiveBlockAsync(normalizedPlate);
+        if (activeBlock != null || IsPlateBlocked)
         {
+            IsPlateBlocked = true;
+            BlockedIncidentType = activeBlock?.IncidentType ?? BlockedIncidentType ?? "Lista Negra";
+            BlockedDescription = activeBlock?.Description ?? BlockedDescription ?? "Vehículo con novedad administrativa.";
+            BlockedReason = $"VEHÍCULO BLOQUEADO: {BlockedIncidentType} - {BlockedDescription}";
+
             await _dialogService.ShowAlertAsync(
-                "⛔ Ingreso Restringido por Novedad",
-                $"La placa '{normalizedPlate}' presenta un BLOQUEO ACTIVO / LISTA NEGRA en el sistema.\n\n" +
-                $"• Tipo de Novedad: {BlockedIncidentType ?? "Restricción de Ingreso"}\n" +
-                $"• Motivo / Detalle: {BlockedDescription ?? "Vehículo con novedad administrativa."}\n\n" +
-                "⚠️ Este vehículo no tiene autorización para ingresar. Para permitir su acceso, un administrador debe resolver la novedad desde la plataforma web (PWA).",
+                "⛔ Ingreso Restringido por Novedad / Lista Negra",
+                $"La placa '{normalizedPlate}' presenta un BLOQUEO ACTIVO en el sistema.\n\n" +
+                $"• Tipo de Novedad: {BlockedIncidentType}\n" +
+                $"• Motivo / Detalle: {BlockedDescription}\n\n" +
+                "⚠️ Este vehículo tiene prohibido el ingreso. Para permitir su acceso, un administrador debe resolver la novedad desde la plataforma web (PWA).",
                 DialogNotificationType.Error);
             return;
         }
@@ -400,10 +406,12 @@ public partial class CheckInViewModel : ViewModelBase
 
             await _dialogService.ShowReceiptPreviewAsync(ticket);
         }
-        catch (InvalidOperationException ex) when (ex.Message.Contains("BLOQUEO ACTIVO") || ex.Message.Contains("LISTA NEGRA") || ex.Message.Contains("novedad", StringComparison.OrdinalIgnoreCase))
+        catch (InvalidOperationException ex) when (ex.Message.Contains("BLOQUEO") || ex.Message.Contains("LISTA NEGRA") || ex.Message.Contains("novedad", StringComparison.OrdinalIgnoreCase))
         {
+            IsPlateBlocked = true;
+            BlockedReason = ex.Message;
             await _dialogService.ShowAlertAsync(
-                "⛔ Ingreso Restringido por Novedad",
+                "⛔ Ingreso Restringido por Novedad / Lista Negra",
                 $"{ex.Message}\n\n⚠️ Para autorizar el ingreso, un administrador debe resolver la novedad desde la plataforma web (PWA).",
                 DialogNotificationType.Error);
         }

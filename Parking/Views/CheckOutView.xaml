@@ -35,7 +35,6 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
                 <!-- 1. Título y Descripción -->
@@ -64,41 +63,8 @@
                     </Border>
                 </Grid>
 
-                <!-- 2. Alerta de Feedback -->
-                <Border Grid.Row="1"
-                        Visibility="{Binding HasFeedback, Converter={StaticResource BoolToVis}}"
-                        CornerRadius="10"
-                        Padding="14,10"
-                        Margin="0,0,0,14">
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Setter Property="Background" Value="{DynamicResource BrushSuccessBg}"/>
-                            <Setter Property="BorderBrush" Value="{DynamicResource BrushSuccess}"/>
-                            <Setter Property="BorderThickness" Value="1"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding IsSuccessFeedback}" Value="False">
-                                    <Setter Property="Background" Value="{DynamicResource BrushWarningBg}"/>
-                                    <Setter Property="BorderBrush" Value="{DynamicResource BrushWarning}"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Border.Style>
-                    <TextBlock Text="{Binding FeedbackMessage}" FontSize="14" FontWeight="Bold" TextWrapping="Wrap">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="Foreground" Value="{DynamicResource BrushSuccessText}"/>
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsSuccessFeedback}" Value="False">
-                                        <Setter Property="Foreground" Value="{DynamicResource BrushWarningText}"/>
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
-                </Border>
-
-                <!-- 3. Caja de Búsqueda de Placa / Escaneo -->
-                <Grid Grid.Row="2">
+                <!-- 2. Caja de Búsqueda de Placa / Escaneo -->
+                <Grid Grid.Row="1">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -107,17 +73,19 @@
                              Grid.Column="0"
                              Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource CheckoutSearchTextBox}"
+                             Height="160"
+                             FontSize="90"
                              Margin="0,0,16,0"/>
                     <Button Grid.Column="1"
                             Command="{Binding SearchTicketCommand}"
                             Style="{StaticResource ModernButton}"
                             MinWidth="210"
-                            Height="100"
+                            Height="160"
                             Padding="24,0"
                             ToolTip="Buscar tiquete o placa (Enter)">
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Path Data="{StaticResource IconSearch}" Fill="{DynamicResource BrushTextWhite}" Width="22" Height="22" Stretch="Uniform" Margin="0,0,10,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="Buscar" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
+                            <Path Data="{StaticResource IconSearch}" Fill="{DynamicResource BrushTextWhite}" Width="28" Height="28" Stretch="Uniform" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="Buscar" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
                         </StackPanel>
                     </Button>
                 </Grid>
