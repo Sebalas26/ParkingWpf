@@ -189,22 +189,29 @@ public partial class MainShellViewModel : ViewModelBase
 
     private async Task HandleRealtimeNotificationAsync(Models.ApiModels.ConfigNotificationDto notification)
     {
-        // 0. Manejo reactivo de terminación forzada por inicio de sesión concurrente (estrictamente para el mismo usuario)
+        // 0. Manejo reactivo de terminación forzada por concurrencia o cambio de política de empresa
         if (notification.EventType == "UserSessionTerminated")
         {
             var currentUser = _sessionService.CurrentUser;
-            if (currentUser != null && notification.UserId.HasValue && currentUser.ServerUserId == notification.UserId.Value)
+            if (currentUser != null)
             {
-                // Si la notificación trae un SessionToken específico, sólo desconectar esta terminal si coincide con la de esta sesión
-                if (!string.IsNullOrWhiteSpace(notification.SessionToken) &&
-                    !string.IsNullOrWhiteSpace(currentUser.SessionToken) &&
-                    !string.Equals(notification.SessionToken, currentUser.SessionToken, StringComparison.OrdinalIgnoreCase))
-                {
-                    // La sesión terminada fue otra sesión del usuario en otra estación/terminal, no esta
-                    return;
-                }
+                bool matchesToken = !string.IsNullOrWhiteSpace(notification.SessionToken) &&
+                                    !string.IsNullOrWhiteSpace(currentUser.SessionToken) &&
+                                    string.Equals(notification.SessionToken, currentUser.SessionToken, StringComparison.OrdinalIgnoreCase);
 
-                await HandleConcurrentSessionTerminatedAsync(notification.Message);
+                bool matchesUser = notification.UserId.HasValue && currentUser.ServerUserId == notification.UserId.Value;
+
+                bool matchesCompany = !notification.UserId.HasValue &&
+                                      string.IsNullOrWhiteSpace(notification.SessionToken) &&
+                                      notification.CompanyId.HasValue &&
+                                      currentUser.CompanyId.HasValue &&
+                                      currentUser.CompanyId.Value == notification.CompanyId.Value &&
+                                      !currentUser.IsSuperAdmin;
+
+                if (matchesToken || (matchesUser && string.IsNullOrWhiteSpace(notification.SessionToken)) || matchesCompany)
+                {
+                    await HandleConcurrentSessionTerminatedAsync(notification.Message);
+                }
             }
             return;
         }

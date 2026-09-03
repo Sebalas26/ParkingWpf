@@ -70,7 +70,7 @@ public class AuthService : IAuthService
                     MaxOpenShiftsPerUser = apiLogin.MaxOpenShiftsPerUser > 1 ? apiLogin.MaxOpenShiftsPerUser : 1,
                     RequireOpenShiftToOperate = apiLogin.RequireOpenShiftToOperate,
                     RequireInitialCashAmount = apiLogin.RequireInitialCashAmount,
-                    SessionToken = apiLogin.Token ?? Guid.NewGuid().ToString(),
+                    SessionToken = ExtractJtiFromJwt(apiLogin.Token),
                     LoginTime = DateTime.Now
                 };
                 
@@ -308,5 +308,32 @@ public class AuthService : IAuthService
             _permissionService.Clear();
             UserSessionChanged?.Invoke(null);
         }
+    }
+
+    private static string ExtractJtiFromJwt(string? token)
+    {
+        if (string.IsNullOrWhiteSpace(token)) return Guid.NewGuid().ToString();
+        try
+        {
+            var parts = token.Split('.');
+            if (parts.Length < 2) return token;
+            var payload = parts[1];
+            payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=')
+                             .Replace('-', '+')
+                             .Replace('_', '/');
+            var jsonBytes = Convert.FromBase64String(payload);
+            var json = System.Text.Encoding.UTF8.GetString(jsonBytes);
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("jti", out var jtiProp))
+            {
+                var jti = jtiProp.GetString();
+                if (!string.IsNullOrEmpty(jti)) return jti;
+            }
+        }
+        catch
+        {
+            // Fallback
+        }
+        return Guid.NewGuid().ToString();
     }
 }

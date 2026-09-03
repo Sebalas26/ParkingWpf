@@ -15,6 +15,30 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-03 17:15:00] - [SECURITY / REALTIME / REFACTOR] [WPF] - Extracción de JTI en AuthService y Cierre Forzado Reactivo por Token y Compañía en MainShellViewModel
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Tenemos un error, estamos probando las nuevas parametrizaciones, sucede y acontese que creamos una empresa con la opción de que multiple sesiones le colocamos 2 bien accedimos a una tercera y bien super bien cerraba como la ultima que iniciaba bien y así en secuencia pero entramos a editar la empresa y le quitamos la opción de multisesion me acuerdo que te habia dicho que deberia cerrar todas las sesiones de los dispositivos que de la empresa que estuvieran iniciados si me explico pues con el fin de la nueva parametrización si me epxlico ? eso no sucedio. analiza eso . esto en version web sale así en movil si sale como deberia pues como no hay anda cargado no deberia mockup nada eso es plenamente dinamico y de acuerod a lo que se cree sucede lo mismo con la siguiente imagen eso tambien esta en movil y en web y eso ya se habia solucionado no entiendo en que parte del codigo esta eso qumado eso no deberia ser quemado ni nada si me explico."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Extracción y Almacenamiento de JTI en `AuthService` (`AuthService.cs`)**:
+     - Se implementó el método auxiliar `ExtractJtiFromJwt(string? token)` que parsea el payload Base64Url del JWT usando `System.Text.Json.JsonDocument` y extrae el identificador GUID `jti`.
+     - `CurrentUser.SessionToken` ahora almacena fielmente el `jti` en lugar del JWT completo, permitiendo concordancia exacta con las notificaciones SignalR emitidas por el backend.
+  2. **Actualización de Contratos y Listener SignalR (`ConfigNotificationDto.cs`, `MainShellViewModel.cs`)**:
+     - Se incorporó `CompanyId` a `ConfigNotificationDto`.
+     - En `HandleRealtimeNotificationAsync`, al recibir `UserSessionTerminated`, se evalúa:
+       - Si coincide el `SessionToken` específico (`matchesToken`).
+       - Si el evento es masivo para la empresa (`matchesCompany`).
+     - Al coincidir cualquiera de las dos condiciones, se invoca de inmediato `HandleConcurrentSessionTerminatedAsync`, cerrando la sesión de la terminal y regresando a la pantalla de login con el mensaje explicativo.
+- **📦 Componentes Modificados**:
+  - `Parking/Models/ApiModels/ConfigNotificationDto.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build` (**Compilación exitosa - 0 Errores**).
+
+---
+
 ### [2026-09-03 16:20:00] - [FEATURE / ARCHITECTURE / INTEGRATION] [WPF & API] - Soporte Integral de Esquemas de Cobro por Sede (Minuto, Hora, Plena, Nocturna), Operación Libre sin Caja, Sesiones Concurrentes Selectivas y Validación de Base Inicial Obligatoria
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
