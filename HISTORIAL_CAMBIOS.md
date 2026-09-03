@@ -15,6 +15,32 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-03 10:50:00] - [FEATURE / SECURITY / UI] [WPF] - Restricción de Login Sin Permisos, Validación Visual en Salida, Confirmación de Impresión de Factura y Entrega de Turno Multi-Sede
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"📱 1. PWA - Interfaz de Usuario (UI) y Diseño Móvil ... ⚙️ 2. PWA - Lógica de Negocio y Funcionalidad ... 🗄️ 3. Backend, Base de Datos y API ... 🖥️ 4. Aplicación de Escritorio (WPF): Login sin Permisos, Validación Salida con bordes rojos, Confirmación Impresión Factura, Entregar Caja usuarios asociados..."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Control de Acceso Estricto en Login (`LoginViewModel.cs`)**:
+     - Se inyectó `IPermissionService`. Se implementó validación posterior a la autenticación: si el usuario no es Administrador y no tiene ningún permiso asignado en la matriz relacional (`_permissionService.GrantedPermissions.Count == 0`), se cierra la sesión, se aborta la navegación y se despliega `ModernMessageDialog.ShowAlert` con el mensaje informativo de "Acceso Denegado".
+  2. **Validación Visual de Salida con Bordes Rojos (`CheckOutDialog.xaml`, `CheckOutViewModel.cs`)**:
+     - Se envolvieron los `ComboBox` de Medio de Pago y Resolución en elementos `Border` con `BorderThickness="1.5"` y `DataTrigger` enlazados a `ShowPaymentMethodWarning` y `ShowResolutionWarning`. Si alguno falta al intentar liquidar, se activa un borde rojo `#EF4444` y se bloquea la salida hasta que el usuario lo seleccione. Al seleccionarlo, se desactiva la advertencia y el borde se normaliza inmediatamente.
+  3. **Confirmación Interactiva de Impresión de Factura (`CheckOutViewModel.cs`)**:
+     - En `ConfirmExitAsync`, tras liquidar el cobro y liberar el cupo, se lanza `_dialogService.ShowConfirmationAsync` preguntando: "¿Desea imprimir la factura / tiquete de salida?". Si el usuario confirma "Sí, Imprimir", se abre `ShowReceiptPreviewAsync`. Si elige "No Imprimir", se omite la vista previa y el proceso concluye de forma limpia e inmediata.
+  4. **Entrega de Turno con Operadores de la Sede Activa (`ShiftClosureViewModel.cs`)**:
+     - En `LoadAvailableUsersAsync`, se procesa la lista devuelta por `_apiClient.GetBranchUsersAsync(currentBranch.Id)`. Si hay operadores devueltos por el API central que aún no estaban sincronizados en el SQLite local, se añaden a `branchUsers` en memoria, garantizando que el selector `AvailableUsers` siempre muestre a los operadores asignados a la sede activa (excluyendo únicamente al usuario de la sesión en curso).
+  5. **Consecutivo de Tiquetes por Empresa (`EfParkingTicketService.cs`)**:
+     - Se actualizó el conteo de secuencia diaria y formato del tiquete a `PKF-C{companyId}-{yyyyMMdd}-{seq:D3}` filtrando estrictamente por `CompanyId == companyId.Value`.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/LoginViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+- **✅ Verificación y Compilación**:
+  - Compilación exitosa de la solución WPF con `dotnet build`: **0 Errores**.
+
+---
+
 ### [2026-09-02 15:35:00] - [ARCHITECTURE / MULTI-TENANT / INTEGRITY] [WPF] - Persistencia e Integridad Obligatoria de CompanyId y BranchId en Operaciones Transaccionales
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

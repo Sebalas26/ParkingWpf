@@ -345,19 +345,31 @@
                                     </Border>
                                 </Grid>
 
-                                <ComboBox ItemsSource="{Binding AvailablePaymentMethods}"
-                                          SelectedItem="{Binding SelectedPaymentMethodEntity}"
-                                          Style="{StaticResource ModernComboBox}"
-                                          Height="44">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <Path Data="{StaticResource IconCash}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
+                                <Border BorderThickness="1.5" CornerRadius="8">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="BorderBrush" Value="Transparent"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ShowPaymentMethodWarning}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="#EF4444"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <ComboBox ItemsSource="{Binding AvailablePaymentMethods}"
+                                              SelectedItem="{Binding SelectedPaymentMethodEntity}"
+                                              Style="{StaticResource ModernComboBox}"
+                                              Height="44">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Path Data="{StaticResource IconCash}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </Border>
                             </StackPanel>
 
                             <!-- Columna Derecha: Resolución / Tipo de Documento -->
@@ -380,19 +392,31 @@
                                     </Border>
                                 </Grid>
 
-                                <ComboBox ItemsSource="{Binding AvailableResolutions}"
-                                          SelectedItem="{Binding SelectedResolution}"
-                                          Style="{StaticResource ModernComboBox}"
-                                          Height="44">
-                                    <ComboBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <Path Data="{StaticResource IconDocument}" Fill="{DynamicResource BrushPrimary}" Width="13" Height="13" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="{Binding Prefix}" FontWeight="Black" FontSize="13" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </ComboBox.ItemTemplate>
-                                </ComboBox>
+                                <Border BorderThickness="1.5" CornerRadius="8">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="BorderBrush" Value="Transparent"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ShowResolutionWarning}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="#EF4444"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <ComboBox ItemsSource="{Binding AvailableResolutions}"
+                                              SelectedItem="{Binding SelectedResolution}"
+                                              Style="{StaticResource ModernComboBox}"
+                                              Height="44">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Path Data="{StaticResource IconDocument}" Fill="{DynamicResource BrushPrimary}" Width="13" Height="13" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Prefix}" FontWeight="Black" FontSize="13" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </Border>
                             </StackPanel>
                         </Grid>
 

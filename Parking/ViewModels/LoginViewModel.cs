@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using Parking.Models;
 using Parking.Services.Contracts;
 using Parking.Views;
+using Parking.Core.Enums;
 
 namespace Parking.ViewModels;
 
@@ -17,6 +18,7 @@ public partial class LoginViewModel : ViewModelBase
     private readonly ISessionService _sessionService;
     private readonly IApiClientService _apiClient;
     private readonly ISyncEngineService _syncEngine;
+    private readonly IPermissionService _permissionService;
 
     [ObservableProperty]
     private string _username = string.Empty;
@@ -51,12 +53,14 @@ public partial class LoginViewModel : ViewModelBase
         IAuthService authService,
         ISessionService sessionService,
         IApiClientService apiClient,
-        ISyncEngineService syncEngine)
+        ISyncEngineService syncEngine,
+        IPermissionService permissionService)
     {
         _authService = authService;
         _sessionService = sessionService;
         _apiClient = apiClient;
         _syncEngine = syncEngine;
+        _permissionService = permissionService;
 
         _ = CheckInitialConnectionAsync();
     }
@@ -100,6 +104,20 @@ public partial class LoginViewModel : ViewModelBase
             {
                 HasError = true;
                 ErrorMessage = authResult.ErrorMessage ?? "Usuario o contraseña incorrectos. Por favor verifique sus datos.";
+                return;
+            }
+
+            if (!_permissionService.IsAdmin && _permissionService.GrantedPermissions.Count == 0)
+            {
+                await _authService.LogoutAsync();
+                ModernMessageDialog.ShowAlert(
+                    Application.Current?.MainWindow,
+                    "Acceso Denegado",
+                    "Su usuario no tiene permisos configurados para operar en la aplicación de escritorio POS.\n\nPor favor contacte al administrador del sistema para que le asigne facultades operativas a su rol.",
+                    DialogNotificationType.Warning,
+                    "Entendido");
+                HasError = true;
+                ErrorMessage = "Acceso denegado: Su usuario no cuenta con permisos operativos asignados.";
                 return;
             }
 

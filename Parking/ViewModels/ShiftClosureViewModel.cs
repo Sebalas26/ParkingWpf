@@ -571,6 +571,24 @@ public partial class ShiftClosureViewModel : ViewModelBase
                             .Where(u => u.IsActive && (usernames.Contains(u.Username.ToLower()) || (u.Email != null && usernames.Contains(u.Email.ToLower()))))
                             .OrderBy(u => u.FullName)
                             .ToListAsync();
+
+                        // Si hay usuarios asignados a la sede en el API que aún no están en la BD local SQLite, agregarlos a la lista
+                        var existingUsernames = branchUsers.Select(u => u.Username.ToLower()).ToHashSet();
+                        foreach (var apiUser in apiUsers)
+                        {
+                            if (!existingUsernames.Contains(apiUser.Username.ToLower()))
+                            {
+                                branchUsers.Add(new User
+                                {
+                                    UserId = Guid.NewGuid(),
+                                    Username = apiUser.Username,
+                                    FullName = !string.IsNullOrWhiteSpace(apiUser.FullName) ? apiUser.FullName : apiUser.Username,
+                                    Email = apiUser.Email,
+                                    IsActive = true,
+                                    Role = new Role { Name = "Operador" }
+                                });
+                            }
+                        }
                     }
                 }
                 catch { }
@@ -587,10 +605,10 @@ public partial class ShiftClosureViewModel : ViewModelBase
             }
 
             AvailableUsers.Clear();
-            foreach (var u in branchUsers)
+            foreach (var u in branchUsers.OrderBy(u => u.FullName))
             {
                 // Excluir estrictamente al usuario actual en sesión
-                if (u.UserId == currentUserId || (currentUsername != null && u.Username.ToLower() == currentUsername))
+                if (u.UserId == currentUserId || (currentUsername != null && u.Username.Equals(currentUsername, StringComparison.OrdinalIgnoreCase)))
                 {
                     continue;
                 }

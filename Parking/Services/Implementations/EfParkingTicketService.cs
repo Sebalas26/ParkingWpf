@@ -106,13 +106,13 @@ public class EfParkingTicketService : IParkingTicketService
 
         var todayStart = DateTime.UtcNow.Date;
         var todayEnd = todayStart.AddDays(1);
-        var baseCount = await db.ParkingTickets.CountAsync(t => t.EntryTimeUtc >= todayStart && t.EntryTimeUtc < todayEnd);
+        var baseCount = await db.ParkingTickets.CountAsync(t => t.CompanyId == companyId.Value && t.EntryTimeUtc >= todayStart && t.EntryTimeUtc < todayEnd);
         var seq = baseCount + 1;
-        var ticketNumber = $"PKF-{DateTime.Now:yyyyMMdd}-{seq:D3}";
+        var ticketNumber = $"PKF-C{companyId.Value}-{DateTime.Now:yyyyMMdd}-{seq:D3}";
         while (await db.ParkingTickets.AnyAsync(t => t.TicketNumber == ticketNumber))
         {
             seq++;
-            ticketNumber = $"PKF-{DateTime.Now:yyyyMMdd}-{seq:D3}";
+            ticketNumber = $"PKF-C{companyId.Value}-{DateTime.Now:yyyyMMdd}-{seq:D3}";
         }
 
         var rate = _pricingCalculator.GetRate(vehicleType);

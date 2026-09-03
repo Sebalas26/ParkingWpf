@@ -968,7 +968,17 @@ public partial class CheckOutViewModel : ViewModelBase
                     ? $"Salida registrada para vehículo con mensualidad {clearedPlate}. Cupo liberado exitosamente (Sin cobro horario)."
                     : $"Pago procesado para {clearedPlate}. Total Neto: ${totalPaid:F2}. Cambio: ${change:F2}. Cupo liberado exitosamente.";
 
-                await _dialogService.ShowReceiptPreviewAsync(completedTicket, SelectedResolution);
+                var shouldPrint = await _dialogService.ShowConfirmationAsync(
+                    "Impresión de Factura",
+                    "¿Desea imprimir la factura / tiquete de salida?",
+                    DialogNotificationType.Question,
+                    "Sí, Imprimir",
+                    "No Imprimir");
+
+                if (shouldPrint)
+                {
+                    await _dialogService.ShowReceiptPreviewAsync(completedTicket, SelectedResolution);
+                }
             }
         }
         catch (Exception ex)
