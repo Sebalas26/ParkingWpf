@@ -228,6 +228,15 @@ public partial class ShiftClosureViewModel : ViewModelBase
             return;
         }
 
+        if (_sessionService.CurrentUser?.RequireInitialCashAmount == true && NewShiftBaseAmount <= 0)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Monto Base Requerido",
+                "Para esta empresa es obligatorio ingresar un monto base inicial mayor a cero antes de abrir la caja.",
+                DialogNotificationType.Warning);
+            return;
+        }
+
         HasFeedback = false;
         IsBusy = true;
         BusyMessage = "Abriendo nuevo turno operativo y registrando base de caja...";

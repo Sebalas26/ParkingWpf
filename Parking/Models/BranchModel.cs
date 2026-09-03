@@ -38,6 +38,18 @@ public class BranchModel
     [JsonPropertyName("isDefault")]
     public bool IsDefault { get; set; }
 
+    [JsonPropertyName("allowChargeByMinute")]
+    public bool AllowChargeByMinute { get; set; } = true;
+
+    [JsonPropertyName("allowChargeByHour")]
+    public bool AllowChargeByHour { get; set; } = true;
+
+    [JsonPropertyName("allowChargeByDay")]
+    public bool AllowChargeByDay { get; set; } = true;
+
+    [JsonPropertyName("allowChargeByNight")]
+    public bool AllowChargeByNight { get; set; }
+
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
 }

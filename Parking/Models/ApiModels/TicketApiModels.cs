@@ -149,6 +149,12 @@ public class LoginApiResponse
     public bool IsSuperAdmin { get; set; }
     public int? CompanyId { get; set; }
     public string? CompanyName { get; set; }
+    public bool AllowMultipleSessions { get; set; }
+    public int MaxActiveSessionsPerUser { get; set; } = 1;
+    public bool AllowMultipleOpenShifts { get; set; }
+    public int MaxOpenShiftsPerUser { get; set; } = 1;
+    public bool RequireOpenShiftToOperate { get; set; } = true;
+    public bool RequireInitialCashAmount { get; set; }
     public List<BranchModel> Branches { get; set; } = new();
     public List<string> Permissions { get; set; } = new();
 }

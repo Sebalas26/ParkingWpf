@@ -9,6 +9,7 @@ public class WorkShift
     public int? CompanyId { get; set; }
     public int UserId { get; set; }
     public string OperatorName { get; set; } = string.Empty;
+    public string CashRegisterName { get; set; } = "Caja Principal";
     public DateTime StartTimeUtc { get; set; } = DateTime.UtcNow;
     public DateTime? EndTimeUtc { get; set; }
     public decimal BaseAmount { get; set; }

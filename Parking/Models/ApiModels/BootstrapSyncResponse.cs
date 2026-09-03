@@ -36,6 +36,18 @@ public class ApiBranchSyncDto
     [JsonPropertyName("logoBase64")]
     public string? LogoBase64 { get; set; }
 
+    [JsonPropertyName("allowChargeByMinute")]
+    public bool AllowChargeByMinute { get; set; } = true;
+
+    [JsonPropertyName("allowChargeByHour")]
+    public bool AllowChargeByHour { get; set; } = true;
+
+    [JsonPropertyName("allowChargeByDay")]
+    public bool AllowChargeByDay { get; set; } = true;
+
+    [JsonPropertyName("allowChargeByNight")]
+    public bool AllowChargeByNight { get; set; }
+
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
 
@@ -173,6 +185,15 @@ public class ApiVehicleRateSyncDto
     [JsonPropertyName("dailyRate")]
     public decimal? DailyRate { get; set; }
 
+    [JsonPropertyName("nightRate")]
+    public decimal? NightRate { get; set; }
+
+    [JsonPropertyName("night_rate")]
+    public decimal? NightRateSnake { get; set; }
+
+    [JsonPropertyName("valorNoche")]
+    public decimal? ValorNoche { get; set; }
+
     [JsonPropertyName("gracePeriodMinutes")]
     public int? GracePeriodMinutes { get; set; }
 
@@ -233,6 +254,7 @@ public class ApiVehicleRateSyncDto
     public decimal GetHourRate() => HourRate ?? HourRateSnake ?? HourlyRate ?? ValorHora ?? 0m;
     public decimal GetMinuteRate() => MinuteRate ?? MinuteRateSnake ?? ValorMinuto ?? 0m;
     public decimal GetFullDayRate() => FullDayRate ?? FullDayRateSnake ?? MaximoDia ?? DailyRate ?? 0m;
+    public decimal GetNightRate() => NightRate ?? NightRateSnake ?? ValorNoche ?? 0m;
     public int GetGracePeriodMinutes() => GracePeriodMinutes ?? GracePeriodMinutesSnake ?? Gracia ?? 15;
     public string GetIconKey() => IconKey ?? IconKeySnake ?? Icon ?? "IconCar";
     public bool GetEffectiveActive() => State ?? IsActive ?? IsActiveSnake ?? true;

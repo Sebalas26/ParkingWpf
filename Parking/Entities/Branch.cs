@@ -14,6 +14,10 @@ public class Branch
     public int TotalCapacity { get; set; } = 100;
     public string? Notes { get; set; }
     public string? LogoBase64 { get; set; }
+    public bool AllowChargeByMinute { get; set; } = true;
+    public bool AllowChargeByHour { get; set; } = true;
+    public bool AllowChargeByDay { get; set; } = true;
+    public bool AllowChargeByNight { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

@@ -17,6 +17,7 @@ public class VehicleRateConfiguration : IEntityTypeConfiguration<VehicleRate>
         builder.Property(r => r.MinuteRate).HasPrecision(18, 2);
         builder.Property(r => r.HourRate).HasPrecision(18, 2);
         builder.Property(r => r.FullDayRate).HasPrecision(18, 2);
+        builder.Property(r => r.NightRate).HasPrecision(18, 2);
 
         builder.HasIndex(r => new { r.BranchId, r.VehicleType });
     }

@@ -64,6 +64,12 @@ public class AuthService : IAuthService
                     IsSuperAdmin = isSuperAdmin,
                     CompanyId = apiLogin.CompanyId,
                     CompanyName = apiLogin.CompanyName,
+                    AllowMultipleSessions = apiLogin.AllowMultipleSessions,
+                    MaxActiveSessionsPerUser = apiLogin.MaxActiveSessionsPerUser > 1 ? apiLogin.MaxActiveSessionsPerUser : 1,
+                    AllowMultipleOpenShifts = apiLogin.AllowMultipleOpenShifts,
+                    MaxOpenShiftsPerUser = apiLogin.MaxOpenShiftsPerUser > 1 ? apiLogin.MaxOpenShiftsPerUser : 1,
+                    RequireOpenShiftToOperate = apiLogin.RequireOpenShiftToOperate,
+                    RequireInitialCashAmount = apiLogin.RequireInitialCashAmount,
                     SessionToken = apiLogin.Token ?? Guid.NewGuid().ToString(),
                     LoginTime = DateTime.Now
                 };

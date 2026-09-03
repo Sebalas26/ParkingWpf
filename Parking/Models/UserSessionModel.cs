@@ -18,6 +18,12 @@ public class UserSessionModel
     public bool IsSuperAdmin { get; set; }
     public int? CompanyId { get; set; }
     public string? CompanyName { get; set; }
+    public bool AllowMultipleSessions { get; set; }
+    public int MaxActiveSessionsPerUser { get; set; } = 1;
+    public bool AllowMultipleOpenShifts { get; set; }
+    public int MaxOpenShiftsPerUser { get; set; } = 1;
+    public bool RequireOpenShiftToOperate { get; set; } = true;
+    public bool RequireInitialCashAmount { get; set; }
 
     public HashSet<string> GrantedPermissions { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 

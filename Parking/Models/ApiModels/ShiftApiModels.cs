@@ -6,6 +6,7 @@ public class OpenShiftApiRequest
 {
     public int? BranchId { get; set; }
     public int? CompanyId { get; set; }
+    public string? CashRegisterName { get; set; }
     public decimal BaseAmount { get; set; } = 0m;
     public string? Notes { get; set; }
 }

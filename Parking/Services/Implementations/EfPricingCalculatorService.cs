@@ -124,14 +124,31 @@ public class EfPricingCalculatorService : IPricingCalculatorService
         }
 
         var totalMinutes = duration.TotalMinutes;
+        var branch = _sessionService.CurrentBranch;
 
-        // Si tiene tarifa por minuto configurada (> 0), liquidar por minutos exactos
-        if (rate.MinuteRate > 0)
+        bool allowMinute = branch == null || branch.AllowChargeByMinute;
+        bool allowHour = branch == null || branch.AllowChargeByHour;
+        bool allowDay = branch == null || branch.AllowChargeByDay;
+        bool allowNight = branch != null && branch.AllowChargeByNight;
+
+        // Caso Nocturno: si la sede permite cobro nocturno, la tarifa tiene NightRate > 0 y la estancia abarca horario nocturno
+        if (allowNight && rate.NightRate > 0)
+        {
+            bool isNightEntry = entryTime.Hour >= 18 || entryTime.Hour < 6;
+            bool isNightExit = exitTime.Hour >= 18 || exitTime.Hour < 6;
+            if (isNightEntry && isNightExit && totalMinutes >= 360)
+            {
+                return rate.NightRate;
+            }
+        }
+
+        // Si tiene tarifa por minuto configurada (> 0) y la sede permite cobro por minuto
+        if (allowMinute && rate.MinuteRate > 0)
         {
             var billableMinutes = (decimal)Math.Max(1, Math.Ceiling(totalMinutes));
 
-            // Si excede 24 horas (1440 min) y tiene tarifa de día completo
-            if (rate.FullDayRate > 0 && totalMinutes >= 1440)
+            // Si excede 24 horas (1440 min) y tiene tarifa de día completo y la sede permite día
+            if (allowDay && rate.FullDayRate > 0 && totalMinutes >= 1440)
             {
                 var days = (int)(totalMinutes / 1440);
                 var remainingMinutes = (decimal)Math.Ceiling(totalMinutes % 1440);
@@ -140,18 +157,30 @@ public class EfPricingCalculatorService : IPricingCalculatorService
             }
 
             var fee = billableMinutes * rate.MinuteRate;
-            if (rate.FullDayRate > 0 && fee > rate.FullDayRate)
+            if (allowDay && rate.FullDayRate > 0 && fee > rate.FullDayRate)
             {
                 return rate.FullDayRate;
             }
             return fee;
         }
-        else
+        else if (allowHour && rate.HourRate > 0)
         {
             // Cobro por horas redondeadas
             var billableHours = (int)Math.Max(1, Math.Ceiling(Math.Max(0.01, totalMinutes) / 60.0));
-            return billableHours * rate.HourRate;
+            var fee = billableHours * rate.HourRate;
+            if (allowDay && rate.FullDayRate > 0 && fee > rate.FullDayRate)
+            {
+                return rate.FullDayRate;
+            }
+            return fee;
         }
+        else if (allowDay && rate.FullDayRate > 0)
+        {
+            var days = (int)Math.Max(1, Math.Ceiling(totalMinutes / 1440.0));
+            return days * rate.FullDayRate;
+        }
+
+        return 0m;
     }
 
     public async Task UpdateRateAsync(VehicleType vehicleType, decimal hourRate, decimal minuteRate, decimal fullDayRate, int gracePeriodMinutes)

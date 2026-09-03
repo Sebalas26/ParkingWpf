@@ -15,6 +15,49 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-03 16:20:00] - [FEATURE / ARCHITECTURE / INTEGRATION] [WPF & API] - Soporte Integral de Esquemas de Cobro por Sede (Minuto, Hora, Plena, Nocturna), Operación Libre sin Caja, Sesiones Concurrentes Selectivas y Validación de Base Inicial Obligatoria
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"el orden es el siguiente: le muestra la primera configuracion que es si es multisesion si dice si le pregunta cuantas, despues le aparece la opcion requiere abrir caja entonces si dice [si] le aparece la 3 opcion que es un usuario puede abrir multiples cajas si dice que si pues le pregunta en un input cuantas si me explico despues aparece la 4 opcion la 3 y 4 son dependientes de la 2 si me explico entonces la 4 opcion es requiere un monto inicial en cada caja si o no eso obligaria si marca si en que cuando se creen sedes se le pida el parametro de monto base inicial si dicen no entonces esa compañia no manejaria eso... otra cosa que se debe tener encuenta es que al momento de crear la sede las cosas van a cambiar por que tambien se quiere parametrizar lo siguiente que es que le pregunte como una lista de check bien bakanos bien pro de que le diga que tipos de cobros va a tener en la sede, que son Por Minuto, Por Hora, Plena, nocturna, con eso cuando se cree en el maestro el tipo de vehiculo despues se vaya parametrizar la sede pues el sistema con ese dinamismo sabe que le debe paremetrizar a ese vehiculo de acuerdo a lo que selecciono en la sede si me explico ?... y hay algo supremamente importante que no hemos analziado y toca revisar por que el tema de roles y permisos cambiaria desde que se cree la compañia si una compañia se crea en que no necsita abrir cajas entonces para que le vamos a mostrar al administrador los modulos de cajas o que pueda asignar esos permisos de cajas si me explico debe ser todo muy coherente con lo que se esta parametrizando... veo que no se ha modificado wpf y estos cambios le pegan demasiado al wpf por las validaciones que tiene si lo has revisado y tener encuenta las cosas enserio ?"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Integración de Directivas de Empresa en WPF (`TicketApiModels.cs`, `UserSessionModel.cs`, `AuthService.cs`)**:
+     - Se enriqueció `LoginApiResponse` y `UserSessionModel` con las directivas corporativas: `AllowMultipleSessions`, `MaxActiveSessionsPerUser`, `AllowMultipleOpenShifts`, `MaxOpenShiftsPerUser`, `RequireOpenShiftToOperate`, `RequireInitialCashAmount`.
+     - `AuthService.LoginAsync` mapea y propaga fielmente estas directivas al inicio de sesión.
+  2. **Operación en Terminal Libre sin Caja Obligatoria (`MainShellViewModel.cs`, `MainShellWindow.xaml`)**:
+     - Se implementó la propiedad reactiva `CanOperateTerminal => HasActiveShift || (CurrentUser != null && !CurrentUser.RequireOpenShiftToOperate)`.
+     - En `MainShellWindow.xaml`, se migró el `DataTrigger` del menú de operaciones de patio a `CanOperateTerminal`, permitiendo que operarios autorizados entren a CheckIn, CheckOut y Monitoreo sin requerir apertura previa de turno si la empresa tiene `RequireOpenShiftToOperate == false`.
+     - En `ValidateShiftAccess`, se agregó bypass directo si `!CurrentUser.RequireOpenShiftToOperate`.
+  3. **Desconexión Selectiva por Token en Sesiones Concurrentes (`MainShellViewModel.cs`)**:
+     - En `HandleRealtimeNotificationAsync`, al recibir `UserSessionTerminated`, se valida si `notification.SessionToken` coincide con `currentUser.SessionToken`. Si no coincide, significa que se cerró otra sesión secundaria del usuario en otra máquina o pestaña y la terminal actual continúa operando normalmente sin expulsión errónea.
+  4. **Esquemas de Cobro por Sede y Tarifa Nocturna (`BranchModel.cs`, `Branch.cs`, `VehicleRate.cs`, `VehicleRateConfiguration.cs`, `BootstrapSyncResponse.cs`, `SyncEngineService.cs`)**:
+     - Se agregaron las banderas `AllowChargeByMinute`, `AllowChargeByHour`, `AllowChargeByDay`, `AllowChargeByNight` en modelos y entidades de sede.
+     - Se añadió `NightRate` en `VehicleRate` con precisión decimal EF Core (18, 2) y mapeo en sincronización de tarifas.
+     - En `EfPricingCalculatorService.cs`, el cálculo de cobro valida los esquemas permitidos en `_sessionService.CurrentBranch` y aplica la tarifa nocturna (`NightRate`) si la sede lo autoriza y la estancia cubre horario nocturno (>= 6h en franja nocturna).
+  5. **Validación Estricta de Monto Inicial en Caja (`ShiftClosureViewModel.cs`)**:
+     - Si `RequireInitialCashAmount == true`, `OpenShiftAsync` exige un monto inicial mayor a cero antes de abrir la caja, desplegando alerta interactiva de "Monto Base Requerido".
+  6. **Soporte de Identificador de Caja (`WorkShift.cs`, `ShiftApiModels.cs`)**:
+     - Se añadió `CashRegisterName` a `WorkShift` y `OpenShiftApiRequest`.
+- **📦 Componentes Modificados**:
+  - `Parking/Models/ApiModels/TicketApiModels.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Models/ApiModels/ShiftApiModels.cs`
+  - `Parking/Models/UserSessionModel.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Entities/Branch.cs`
+  - `Parking/Entities/VehicleRate.cs`
+  - `Parking/Entities/WorkShift.cs`
+  - `Parking/Data/Configurations/VehicleRateConfiguration.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+- **✅ Verificación y Compilación**:
+  - Compilación de la solución WPF con `dotnet build`: **Compilación Correcta, 0 Advertencias, 0 Errores**.
+
+---
+
 ### [2026-09-03 10:50:00] - [FEATURE / SECURITY / UI] [WPF] - Restricción de Login Sin Permisos, Validación Visual en Salida, Confirmación de Impresión de Factura y Entrega de Turno Multi-Sede
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

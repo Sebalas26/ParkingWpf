@@ -479,6 +479,7 @@ public class SyncEngineService : ISyncEngineService
                 var hourRate = rate.GetHourRate();
                 var minuteRate = rate.GetMinuteRate();
                 var fullDayRate = rate.GetFullDayRate();
+                var nightRate = rate.GetNightRate();
                 var grace = rate.GetGracePeriodMinutes();
                 var iconKey = rate.GetIconKey();
                 var isActive = rate.GetEffectiveActive();
@@ -494,6 +495,7 @@ public class SyncEngineService : ISyncEngineService
                     existing.HourRate = hourRate;
                     existing.MinuteRate = minuteRate;
                     existing.FullDayRate = fullDayRate;
+                    existing.NightRate = nightRate;
                     existing.GracePeriodMinutes = grace;
                     existing.IconKey = string.IsNullOrWhiteSpace(iconKey) ? "IconCar" : iconKey;
                     existing.IsActive = isActive;
@@ -510,6 +512,7 @@ public class SyncEngineService : ISyncEngineService
                         MinuteRate = minuteRate,
                         HourRate = hourRate,
                         FullDayRate = fullDayRate,
+                        NightRate = nightRate,
                         GracePeriodMinutes = grace,
                         IconKey = string.IsNullOrWhiteSpace(iconKey) ? "IconCar" : iconKey,
                         IsActive = isActive,

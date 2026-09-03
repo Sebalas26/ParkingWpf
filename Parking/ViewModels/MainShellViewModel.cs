@@ -62,7 +62,10 @@ public partial class MainShellViewModel : ViewModelBase
     private bool _isSyncing;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanOperateTerminal))]
     private bool _hasActiveShift;
+
+    public bool CanOperateTerminal => HasActiveShift || (CurrentUser != null && !CurrentUser.RequireOpenShiftToOperate);
 
     public event Action? LogoutRequested;
 
@@ -192,6 +195,15 @@ public partial class MainShellViewModel : ViewModelBase
             var currentUser = _sessionService.CurrentUser;
             if (currentUser != null && notification.UserId.HasValue && currentUser.ServerUserId == notification.UserId.Value)
             {
+                // Si la notificación trae un SessionToken específico, sólo desconectar esta terminal si coincide con la de esta sesión
+                if (!string.IsNullOrWhiteSpace(notification.SessionToken) &&
+                    !string.IsNullOrWhiteSpace(currentUser.SessionToken) &&
+                    !string.Equals(notification.SessionToken, currentUser.SessionToken, StringComparison.OrdinalIgnoreCase))
+                {
+                    // La sesión terminada fue otra sesión del usuario en otra estación/terminal, no esta
+                    return;
+                }
+
                 await HandleConcurrentSessionTerminatedAsync(notification.Message);
             }
             return;
@@ -416,6 +428,13 @@ public partial class MainShellViewModel : ViewModelBase
     private bool ValidateShiftAccess(out string? errorMessage)
     {
         errorMessage = null;
+
+        // Si la empresa no requiere abrir turno de caja para operar, permitir acceso directo a la terminal
+        if (CurrentUser != null && !CurrentUser.RequireOpenShiftToOperate)
+        {
+            return true;
+        }
+
         if (!_shiftService.HasActiveShift)
         {
             errorMessage = "Debes abrir un turno operativo e indicar la base inicial de caja antes de registrar movimientos.";

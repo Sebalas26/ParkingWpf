@@ -224,7 +224,7 @@
                                 <Setter Property="Opacity" Value="1"/>
                                 <Setter Property="IsEnabled" Value="True"/>
                                 <Style.Triggers>
-                                    <DataTrigger Binding="{Binding HasActiveShift}" Value="False">
+                                    <DataTrigger Binding="{Binding CanOperateTerminal}" Value="False">
                                         <Setter Property="Opacity" Value="0.3"/>
                                         <Setter Property="IsEnabled" Value="False"/>
                                     </DataTrigger>
