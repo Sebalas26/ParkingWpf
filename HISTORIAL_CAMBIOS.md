@@ -15,6 +15,26 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-04 17:25:00] - [FIX / MULTI-BRANCH / SIGNALR] [WPF] - Descarte de Eventos Globales de Tarifas y Purga de Registros Huérfanos en Sincronización Local
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"tenemos un error grave por que en la empresa se esta creando los tipos de vehiculos pero no se les asocio a la sede el tipo de vehiculo el sistema de una vez detecto los cambios creo que por lo del signal pero eso deberia ir asociado es por sede si me explico no cuando se cree el tipo de vehjciulo esta mal el hub cuando se dispara por que se deberia disparar cuando se le asocie a la sede si me explico, por que es por sede las parametrizaciones analiza eso"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Filtro Defensivo en `MainShellViewModel.cs`**:
+     - En `HandleRealtimeNotificationAsync`: Se añadió validación estricta para eventos de tipo `"RatesChanged"`. Si el mensaje no especifica `BranchId`, se descarta de forma silenciosa e inmediata, impidiendo que la creación de tipos en el catálogo general de empresa abra la ventana modal `SyncRequiredDialog` en las terminales de las sedes.
+  2. **Refuerzo en Purga Local de `SyncEngineService.cs`**:
+     - En la fase de eliminación de tarifas obsoletas (`ratesToDelete`), se incluyó cualquier tarifa en SQLite con `BranchId == null` o huérfana que no pertenezca a la lista oficial de tarifas entregada por la API para la sede activa. Esto purga de forma automática registros residuales de prueba (ej: *"Moto $0.00"*).
+     - En el ciclo de inserción/actualización de tarifas locales, se omiten explícitamente plantillas de catálogo general sin sede asignada que tengan tarifas en `$0.00`.
+
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx` → **0 Errores, 4 Advertencias (previas CS8601 en temporal)**
+
 ### [2026-09-04 16:55:00] - [FIX / SECURITY / RBAC] [WPF] - Soporte Completo para RequireOpenShiftToOperate, Desacople de Acciones wpf.*, Asignación GrantedPermissions y Navegación Dinámica
 
 - **Autor**: Antigravity AI Assistant & Software Architect

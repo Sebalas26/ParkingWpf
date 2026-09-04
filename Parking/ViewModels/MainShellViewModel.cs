@@ -260,6 +260,12 @@ public partial class MainShellViewModel : ViewModelBase
             return;
         }
 
+        // Si es un evento de tarifas y no trae BranchId asignado, es una definición de catálogo de empresa y no afecta la sede activa
+        if (notification.EventType == "RatesChanged" && !notification.BranchId.HasValue)
+        {
+            return;
+        }
+
         try
         {
             _isSyncPromptOpen = true;

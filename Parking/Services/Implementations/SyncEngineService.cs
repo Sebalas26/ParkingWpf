@@ -505,7 +505,7 @@ public class SyncEngineService : ISyncEngineService
 
             // 1. Eliminar tarifas obsoletas que ya no existan en el backend
             var ratesToDelete = currentBranchId.HasValue
-                ? localRates.Where(r => r.BranchId == currentBranchId.Value && !incomingRateIds.Contains(r.RateId) && !incomingVehicleTypes.Contains(r.VehicleType)).ToList()
+                ? localRates.Where(r => (r.BranchId == currentBranchId.Value || r.BranchId == null) && !incomingRateIds.Contains(r.RateId) && !incomingVehicleTypes.Contains(r.VehicleType)).ToList()
                 : localRates.Where(r => !incomingRateIds.Contains(r.RateId) && !incomingVehicleTypes.Contains(r.VehicleType)).ToList();
 
             if (ratesToDelete.Count > 0)
@@ -521,6 +521,13 @@ public class SyncEngineService : ISyncEngineService
                 var rateId = rate.GetRateId();
                 var vehicleType = rate.GetVehicleType();
                 var targetBranchId = rate.GetBranchId() ?? currentBranchId;
+
+                // Omitir registros de plantilla general sin sede que tengan tarifa 0 (catálogo no asignado a la sede)
+                if (!rate.GetBranchId().HasValue && rate.GetHourRate() == 0 && rate.GetMinuteRate() == 0)
+                {
+                    continue;
+                }
+
                 var displayName = rate.GetDisplayName();
                 var hourRate = rate.GetHourRate();
                 var minuteRate = rate.GetMinuteRate();
