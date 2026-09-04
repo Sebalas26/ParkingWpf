@@ -24,6 +24,9 @@ public class UserSessionModel
     public int MaxOpenShiftsPerUser { get; set; } = 1;
     public bool RequireOpenShiftToOperate { get; set; } = true;
     public bool RequireInitialCashAmount { get; set; }
+    public bool HasDesktopAccess { get; set; } = true;
+    public bool HasWebAccess { get; set; } = true;
+    public int MaxUsers { get; set; }
 
     public HashSet<string> GrantedPermissions { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 

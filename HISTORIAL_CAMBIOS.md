@@ -15,6 +15,24 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-03 21:35:00] - [FEAT / SECURITY / SAAS] [WPF] - Restricción de Acceso a Estación de Garita por Suscripción y Cuotas de Plataforma
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Pero si se va a crear los planes y en los planes se va a definir las cosas que se van a tener entonces si selecciono en la creación de empresa un plan ya se tendriá claro cuantas sedes, si va con el wpf y que modulos lleva el plan, otra cosa es que cuando este creando la empresa y le de plan personalizado hay si se desbloquea las opciones y deja modificar las sedes, y seleccionar los modulos que lleva, otra cosa es que no me hablaste de la cantidad de usuarios que puede tener una empresa eso tambien va en el plan, otra cosa es que las plataformas pueden ser (solo web, solo wpf, web y wpf) eso tambien deberia ser configurable en el plan y en el plan personalizado. y en base a eso se deberia restringir el acceso a la plataforma si no lo tiene. Moneda COP, catalogo de planes desde cero."*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Contratos DTO de Login y Sesión (`TicketApiModels.cs`, `LoginResultModel.cs`, `UserSessionModel.cs`)**:
+     - Se incorporaron las propiedades `HasDesktopAccess`, `HasWebAccess` y `MaxUsers` en `LoginApiResponse`, `LoginResultModel` y `UserSessionModel`.
+  2. **Mapeo en `AuthService` (`AuthService.cs`)**:
+     - Al autenticar online con el API central, se leen los valores devueltos en la respuesta y se inyectan en `CurrentUser` y `LoginResultModel`.
+  3. **Validación Preventiva en `LoginViewModel` (`LoginViewModel.cs`)**:
+     - Si el usuario no es Super Admin y su empresa no cuenta con habilitación de garita (`HasDesktopAccess == false`), se cierra la sesión de inmediato y se despliega un diálogo moderno (`ModernMessageDialog.ShowAlert`) informando que su suscripción es modalidad Solo Web PWA y que debe ascender a Garita o Híbrido para operar la terminal de escritorio.
+  4. **Verificación y Compilación**:
+     - `dotnet build`: **0 Errores**.
+
+---
+
 ### [2026-09-03 17:15:00] - [SECURITY / REALTIME / REFACTOR] [WPF] - Extracción de JTI en AuthService y Cierre Forzado Reactivo por Token y Compañía en MainShellViewModel
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:

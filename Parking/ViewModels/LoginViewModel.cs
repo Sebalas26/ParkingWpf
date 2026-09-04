@@ -107,6 +107,20 @@ public partial class LoginViewModel : ViewModelBase
                 return;
             }
 
+            if (!authResult.User.IsSuperAdmin && !authResult.HasDesktopAccess)
+            {
+                await _authService.LogoutAsync();
+                ModernMessageDialog.ShowAlert(
+                    Application.Current?.MainWindow,
+                    "Plan Sin Acceso de Garita (Solo PWA)",
+                    "El plan contratado para su empresa no incluye acceso a la estación de garita de escritorio (WPF).\n\nPara habilitar la operación en terminales de garita física, amplíe su plan de suscripción a Garita o Híbrido desde la administración web.",
+                    DialogNotificationType.Warning,
+                    "Entendido");
+                HasError = true;
+                ErrorMessage = "Acceso denegado: El plan de su empresa no incluye acceso a la estación de escritorio.";
+                return;
+            }
+
             if (!_permissionService.IsAdmin && _permissionService.GrantedPermissions.Count == 0)
             {
                 await _authService.LogoutAsync();

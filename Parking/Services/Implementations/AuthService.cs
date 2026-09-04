@@ -70,6 +70,9 @@ public class AuthService : IAuthService
                     MaxOpenShiftsPerUser = apiLogin.MaxOpenShiftsPerUser > 1 ? apiLogin.MaxOpenShiftsPerUser : 1,
                     RequireOpenShiftToOperate = apiLogin.RequireOpenShiftToOperate,
                     RequireInitialCashAmount = apiLogin.RequireInitialCashAmount,
+                    HasDesktopAccess = apiLogin.HasDesktopAccess,
+                    HasWebAccess = apiLogin.HasWebAccess,
+                    MaxUsers = apiLogin.MaxUsers,
                     SessionToken = ExtractJtiFromJwt(apiLogin.Token),
                     LoginTime = DateTime.Now
                 };
@@ -91,7 +94,9 @@ public class AuthService : IAuthService
                 {
                     Success = true,
                     User = userModel,
-                    Branches = branches
+                    Branches = branches,
+                    HasDesktopAccess = apiLogin.HasDesktopAccess,
+                    HasWebAccess = apiLogin.HasWebAccess
                 };
             }
             else if (apiLogin != null && !string.IsNullOrWhiteSpace(apiLogin.ErrorMessage))
