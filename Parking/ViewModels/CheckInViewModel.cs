@@ -336,10 +336,10 @@ public partial class CheckInViewModel : ViewModelBase
 
         if (!HasConfiguredRates)
         {
-            ShowFeedback("No existen tarifas vehiculares configuradas en el sistema. Configure las tarifas antes de continuar.", false);
+            ShowFeedback("No existen tarifas vehiculares configuradas para esta sede en el sistema. Configure las tarifas antes de continuar.", false);
             await _dialogService.ShowAlertAsync(
                 "Configuración de Tarifas Requerida",
-                "No existen tarifas vehiculares configuradas ni activas en el sistema. Por favor, crea y sincroniza las tarifas vehiculares antes de emitir tiquetes de ingreso.",
+                "No existen tarifas vehiculares configuradas ni activas para la sede activa en el sistema. Por favor, crea y sincroniza las tarifas vehiculares de la sede antes de emitir tiquetes de ingreso.",
                 DialogNotificationType.Warning);
             return;
         }

@@ -15,6 +15,43 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-04 15:45:00] - [FEAT / FIX / SEDES] [WPF] - Validaciones Preventivas Multi-Sede (Check-In y Check-Out), Convenios en Salida, Tarifas Progresivas y Fix Sincronización
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"# Plan de Arquitectura e Implementación: Validaciones Multi-Sede, Convenios en Salida, Tarifas Progresivas, Resoluciones y Sincronización WPF..."*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Validación Preventiva en Check-In (`CheckInViewModel.cs`, `EfPricingCalculatorService.cs`)**:
+     - En `EfPricingCalculatorService.ReloadRatesAsync`: Para una sede activa (`currentBranchId.HasValue`), se eliminó el fallback silencioso a tarifas globales (`BranchId == null`), obligando a que la sede cuente con tarifas vehiculares explícitamente asignadas.
+     - En `CheckInViewModel.cs`: Se valida `HasConfiguredRates`. Si la sede activa no tiene tarifas configuradas, se bloquea la emisión de tiquetes y se despliega alerta de advertencia clara.
+  2. **Validación Preventiva en Check-Out (`CheckOutViewModel.cs`)**:
+     - En `LoadPaymentMethodsAsync`: Se cargan únicamente los medios de pago asociados a la sede activa cruzando `db.BranchPaymentMethods` (`BranchId == currentBranchId && bpm.IsActive`) con `db.PaymentMethods`. Si la lista queda vacía, `HasPaymentMethods = false`.
+     - En `OnSelectedTicketChanged`: Si `!HasPaymentMethods`, se despliega alerta preventiva y se cancela la apertura del diálogo de liquidación.
+     - En el constructor: Se agregó suscripción reactiva a `_sessionService.ActiveBranchChanged += async _ => await InitializeAsync();` para mantener sincronizada la sede activa.
+  3. **Convenios Comerciales y Descuentos en Salida (`CheckOutViewModel.cs`, `CheckOutDialog.xaml`)**:
+     - En `OnSelectedTicketChanged` y `LoadStoresAsync`: Se asegura la población y refresco de `BranchAgreements` para que la galería interactiva dibuje los botones de convenios.
+     - En `RecalculateLiveFee`: Se incorporó soporte para bonificación de horas gratis (`MaxHoursApplicable`), liquidando el valor bonificado con `_pricingCalculator.CalculateFee`.
+     - En `ProcessPaymentAsync`: Se resolvió de manera automática `SelectedStore` e `InvoiceNumber` por defecto para evitar bloqueos en convenios de sede.
+  4. **Tarifas Progresivas Puras (`EfPricingCalculatorService.cs`)**:
+     - Periodo de gracia ($M \le \text{grace} \implies 0$).
+     - Cobro progresivo por minutos hasta topar con la hora por cada tramo de 60 min ($H \times \text{hora} + \min(\text{hora}, rem \times \text{minuto})$).
+     - Estancias multidía (>= 1440 min) con liquidación de días completos y tope de tarifa plena diaria.
+     - Tarifa nocturna para estancias en ventana nocturna.
+  5. **Corrección en Motor de Sincronización (`SyncEngineService.cs`)**:
+     - Se corrigieron los errores de compilación CS1061 y CS0117 reemplazando `ValidUntilUtc` por `ValidFrom` y `ValidTo` coincidentes con el contrato de `BillingResolution` y `ApiBillingResolutionSyncDto`.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/SyncEngineService.cs` (Corrección de propiedades de fechas en resoluciones)
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs` (Aislamiento de tarifas por sede y cálculo progresivo)
+  - `Parking/ViewModels/CheckInViewModel.cs` (Validación preventiva y alerta de tarifas por sede)
+  - `Parking/ViewModels/CheckOutViewModel.cs` (Validación preventiva de medios de pago, sincronización de sede, galería de convenios y horas gratis)
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: Compilación exitosa (**0 Errores, 4 Advertencias CS8601 previas**).
+
+---
+
 ### [2026-09-04 09:20:00] - [FIX / CAJA / SEDES] [WPF] - Vinculación de Monto Base Inicial Configurado por Sede en Apertura de Turno
 
 - **Autor**: Antigravity AI Assistant & Software Architect

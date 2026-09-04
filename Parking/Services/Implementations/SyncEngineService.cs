@@ -441,6 +441,42 @@ public class SyncEngineService : ISyncEngineService
         result.SyncedPaymentMethodsCount = paymentMethodsCount;
         await Task.Delay(100, ct);
 
+        // 5.1 Sincronizar Medios de Pago por Sede
+        if (bootstrap.BranchPaymentMethods != null)
+        {
+            var incomingBpmIds = bootstrap.BranchPaymentMethods.Select(bpm => bpm.Id).ToHashSet();
+            var localBpms = await db.BranchPaymentMethods.ToListAsync(ct);
+            var bpmsToDelete = localBpms.Where(b => !incomingBpmIds.Contains(b.Id)).ToList();
+            if (bpmsToDelete.Count > 0)
+            {
+                db.BranchPaymentMethods.RemoveRange(bpmsToDelete);
+            }
+
+            foreach (var bpm in bootstrap.BranchPaymentMethods)
+            {
+                var existing = localBpms.FirstOrDefault(b => b.Id == bpm.Id);
+                if (existing != null)
+                {
+                    existing.BranchId = bpm.BranchId;
+                    existing.PaymentMethodId = bpm.PaymentMethodId;
+                    existing.RequiresCashTender = bpm.RequiresCashTender;
+                    existing.IsActive = bpm.IsActive;
+                }
+                else
+                {
+                    db.BranchPaymentMethods.Add(new BranchPaymentMethodEntity
+                    {
+                        Id = bpm.Id,
+                        BranchId = bpm.BranchId,
+                        PaymentMethodId = bpm.PaymentMethodId,
+                        RequiresCashTender = bpm.RequiresCashTender,
+                        IsActive = bpm.IsActive
+                    });
+                }
+            }
+            await db.SaveChangesAsync(ct);
+        }
+
         // 6. Paso 5: Sincronizar Tarifas y Reglas (78%)
         progress.Report(new SyncProgressReport
         {
@@ -999,6 +1035,60 @@ public class SyncEngineService : ISyncEngineService
             ticketsCount++;
         }
         result.SyncedTicketsCount = ticketsCount;
+
+        // 10. Sincronizar Resoluciones de Facturación DIAN
+        if (bootstrap.Resolutions != null)
+        {
+            var incomingResIds = bootstrap.Resolutions.Select(r => r.ResolutionId).ToHashSet();
+            var localResolutions = await db.BillingResolutions.ToListAsync(ct);
+            var resToDelete = localResolutions.Where(r => !incomingResIds.Contains(r.ResolutionId)).ToList();
+            if (resToDelete.Count > 0)
+            {
+                db.BillingResolutions.RemoveRange(resToDelete);
+            }
+
+            foreach (var r in bootstrap.Resolutions)
+            {
+                var existing = localResolutions.FirstOrDefault(lr => lr.ResolutionId == r.ResolutionId);
+                if (existing != null)
+                {
+                    existing.BranchId = r.BranchId;
+                    existing.CompanyId = r.CompanyId;
+                    existing.Name = r.Name;
+                    existing.DocumentType = r.DocumentType;
+                    existing.Prefix = r.Prefix;
+                    existing.ResolutionNumber = r.ResolutionNumber;
+                    existing.FromNumber = r.FromNumber;
+                    existing.ToNumber = r.ToNumber;
+                    existing.CurrentNumber = r.CurrentNumber;
+                    existing.ValidFrom = r.ValidFrom;
+                    existing.ValidTo = r.ValidTo;
+                    existing.IsActive = r.IsActive;
+                    existing.TechnicalKey = r.TechnicalKey;
+                }
+                else
+                {
+                    db.BillingResolutions.Add(new BillingResolution
+                    {
+                        ResolutionId = r.ResolutionId,
+                        BranchId = r.BranchId,
+                        CompanyId = r.CompanyId,
+                        Name = r.Name,
+                        DocumentType = r.DocumentType,
+                        Prefix = r.Prefix,
+                        ResolutionNumber = r.ResolutionNumber,
+                        FromNumber = r.FromNumber,
+                        ToNumber = r.ToNumber,
+                        CurrentNumber = r.CurrentNumber,
+                        ValidFrom = r.ValidFrom,
+                        ValidTo = r.ValidTo,
+                        IsActive = r.IsActive,
+                        TechnicalKey = r.TechnicalKey,
+                        CreatedAtUtc = DateTime.UtcNow
+                    });
+                }
+            }
+        }
 
         await db.SaveChangesAsync(ct);
         _lastSyncTime = DateTime.UtcNow;

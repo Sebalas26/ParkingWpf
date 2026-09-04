@@ -111,6 +111,24 @@ public class ApiPaymentMethodSyncDto
     public bool GetEffectiveActive() => State ?? IsActive;
 }
 
+public class ApiBranchPaymentMethodSyncDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("branchId")]
+    public int BranchId { get; set; }
+
+    [JsonPropertyName("paymentMethodId")]
+    public int PaymentMethodId { get; set; }
+
+    [JsonPropertyName("requiresCashTender")]
+    public bool RequiresCashTender { get; set; }
+
+    [JsonPropertyName("isActive")]
+    public bool IsActive { get; set; } = true;
+}
+
 public class ApiVehicleRateSyncDto
 {
     [JsonPropertyName("rateId")]
@@ -763,6 +781,9 @@ public class BootstrapSyncResponse
 
     [JsonPropertyName("paymentMethods")]
     public List<ApiPaymentMethodSyncDto> PaymentMethods { get; set; } = new();
+
+    [JsonPropertyName("branchPaymentMethods")]
+    public List<ApiBranchPaymentMethodSyncDto> BranchPaymentMethods { get; set; } = new();
 
     [JsonPropertyName("rates")]
     public List<ApiVehicleRateSyncDto> Rates { get; set; } = new();

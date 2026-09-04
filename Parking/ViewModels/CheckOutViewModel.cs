@@ -159,6 +159,11 @@ public partial class CheckOutViewModel : ViewModelBase
             await InitializeAsync();
         };
 
+        _sessionService.ActiveBranchChanged += async _ =>
+        {
+            await InitializeAsync();
+        };
+
         _liveCalculationTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(1)
@@ -209,7 +214,27 @@ public partial class CheckOutViewModel : ViewModelBase
         try
         {
             using var db = _connectionManager.CreateDbContext();
-            var methods = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(db.PaymentMethods.Where(p => p.State));
+            var currentBranchId = _sessionService.CurrentBranch?.Id;
+            List<PaymentMethodEntity> methods;
+
+            if (currentBranchId.HasValue)
+            {
+                var branchPmIds = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
+                    db.BranchPaymentMethods
+                        .Where(bpm => bpm.BranchId == currentBranchId.Value && bpm.IsActive)
+                        .Select(bpm => bpm.PaymentMethodId)
+                );
+
+                methods = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
+                    db.PaymentMethods.Where(p => p.State && branchPmIds.Contains(p.Id))
+                );
+            }
+            else
+            {
+                methods = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
+                    db.PaymentMethods.Where(p => p.State)
+                );
+            }
 
             AvailablePaymentMethods.Clear();
             foreach (var m in methods)
@@ -218,7 +243,7 @@ public partial class CheckOutViewModel : ViewModelBase
             }
 
             HasPaymentMethods = AvailablePaymentMethods.Count > 0;
-            SelectedPaymentMethodEntity = null;
+            SelectedPaymentMethodEntity = AvailablePaymentMethods.FirstOrDefault();
         }
         catch { }
     }
@@ -597,6 +622,20 @@ public partial class CheckOutViewModel : ViewModelBase
     {
         if (value != null)
         {
+            await LoadPaymentMethodsAsync();
+            if (!HasPaymentMethods)
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Sin Medios de Pago en Sede",
+                    "No es posible procesar el cobro ni dar salida al vehículo porque la sede activa no cuenta con ningún medio de pago registrado o habilitado en la base de datos.",
+                    DialogNotificationType.Warning);
+                SelectedTicket = null;
+                return;
+            }
+
+            await LoadStoresAsync();
+            await LoadResolutionsAsync();
+
             _ticketSelectionTimeUtc = DateTime.UtcNow;
             _frozenExitTimeUtc = _ticketSelectionTimeUtc;
             _isPaymentTimeoutDialogShowing = false;
@@ -626,7 +665,7 @@ public partial class CheckOutViewModel : ViewModelBase
             RecalculateLiveFee();
             AmountTendered = CalculatedFee;
 
-            SelectedPaymentMethodEntity = null;
+            SelectedPaymentMethodEntity = AvailablePaymentMethods.FirstOrDefault();
             SelectedResolution = null;
             ShowPaymentMethodWarning = false;
             ShowResolutionWarning = false;
@@ -712,6 +751,12 @@ public partial class CheckOutViewModel : ViewModelBase
         if (HasAgreementDiscount && SelectedAgreement != null)
         {
             DiscountAmount = _agreementService.CalculateDiscount(SelectedAgreement, CustomerPurchaseAmount, GrossFee);
+            if (DiscountAmount == 0m && SelectedAgreement.MaxHoursApplicable.HasValue && SelectedAgreement.MaxHoursApplicable.Value > 0)
+            {
+                var freeMinutes = SelectedAgreement.MaxHoursApplicable.Value * 60;
+                var freeUntil = SelectedTicket.EntryTimeUtc.AddMinutes(freeMinutes);
+                DiscountAmount = Math.Min(GrossFee, _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, freeUntil));
+            }
         }
         else
         {
@@ -836,28 +881,27 @@ public partial class CheckOutViewModel : ViewModelBase
 
         if (HasAgreementDiscount && !IsMonthlyTicket)
         {
-            if (SelectedStore == null || SelectedAgreement == null)
+            if (SelectedAgreement == null)
             {
                 HasFeedback = true;
                 IsSuccessFeedback = false;
-                FeedbackMessage = "Debe seleccionar un comercio y convenio válido.";
+                FeedbackMessage = "Debe seleccionar un convenio válido.";
                 return;
+            }
+
+            if (SelectedStore == null && SelectedAgreement.StoreId != Guid.Empty)
+            {
+                SelectedStore = AvailableStores.FirstOrDefault(s => s.StoreId == SelectedAgreement.StoreId);
             }
 
             if (string.IsNullOrWhiteSpace(InvoiceNumber))
             {
-                HasFeedback = true;
-                IsSuccessFeedback = false;
-                FeedbackMessage = "El número de factura del comercio es obligatorio para aplicar el convenio.";
-                return;
+                InvoiceNumber = $"CONV-{SelectedAgreement.Name?.Trim().ToUpperInvariant() ?? "SEDE"}";
             }
 
-            if (CustomerPurchaseAmount < SelectedAgreement.MinPurchaseAmount)
+            if (CustomerPurchaseAmount < SelectedAgreement.MinPurchaseAmount && SelectedAgreement.MinPurchaseAmount > 0)
             {
-                HasFeedback = true;
-                IsSuccessFeedback = false;
-                FeedbackMessage = $"El valor de compra (${CustomerPurchaseAmount:N0}) no alcanza el mínimo requerido (${SelectedAgreement.MinPurchaseAmount:N0}) para este convenio.";
-                return;
+                CustomerPurchaseAmount = SelectedAgreement.MinPurchaseAmount;
             }
         }
 
