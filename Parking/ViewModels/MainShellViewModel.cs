@@ -125,6 +125,17 @@ public partial class MainShellViewModel : ViewModelBase
             {
                 _ = _signalRClient.SetCurrentBranchAsync(branch.Id);
             }
+            _ = RefreshOccupancyAsync();
+        };
+
+        _syncEngine.DataSynchronized += async () =>
+        {
+            await RefreshOccupancyAsync();
+        };
+
+        _syncEngine.TotalCapacityChanged += async _ =>
+        {
+            await RefreshOccupancyAsync();
         };
 
         _shiftService.ShiftStateChanged += () =>

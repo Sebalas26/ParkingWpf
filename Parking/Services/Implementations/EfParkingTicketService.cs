@@ -390,14 +390,23 @@ public class EfParkingTicketService : IParkingTicketService
             t.Status == TicketStatus.Active &&
             (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value));
 
-        var capacity = _sessionService.CurrentBranch?.TotalCapacity ?? 0;
-        if (capacity <= 0 && currentBranchId.HasValue)
+        int capacity = 0;
+        if (currentBranchId.HasValue)
         {
             var branch = await db.Branches.FirstOrDefaultAsync(b => b.Id == currentBranchId.Value);
             if (branch != null && branch.TotalCapacity > 0)
             {
                 capacity = branch.TotalCapacity;
+                if (_sessionService.CurrentBranch != null && _sessionService.CurrentBranch.Id == currentBranchId.Value && _sessionService.CurrentBranch.TotalCapacity != capacity)
+                {
+                    _sessionService.CurrentBranch.TotalCapacity = capacity;
+                }
             }
+        }
+
+        if (capacity <= 0)
+        {
+            capacity = _sessionService.CurrentBranch?.TotalCapacity ?? 0;
         }
 
         if (capacity <= 0)
@@ -417,6 +426,10 @@ public class EfParkingTicketService : IParkingTicketService
         if (newCapacity > 0)
         {
             _totalCapacity = newCapacity;
+            if (_sessionService.CurrentBranch != null && _sessionService.CurrentBranch.TotalCapacity != newCapacity)
+            {
+                _sessionService.CurrentBranch.TotalCapacity = newCapacity;
+            }
         }
     }
 

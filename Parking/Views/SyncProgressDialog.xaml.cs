@@ -89,6 +89,7 @@ public partial class SyncProgressDialog : Window
             SyncSuccessful = report.Success;
 
             // Mostrar resumen estadístico
+            CapacityCountText.Text = report.TotalCapacity > 0 ? report.TotalCapacity.ToString("N0") : "-";
             TicketsCountText.Text = report.SyncedTicketsCount.ToString("N0");
             RatesCountText.Text = report.SyncedRatesCount.ToString("N0");
             AgreementsCountText.Text = report.SyncedAgreementsCount.ToString("N0");

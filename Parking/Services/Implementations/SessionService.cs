@@ -46,6 +46,15 @@ public class SessionService : ISessionService
         ActiveBranchChanged?.Invoke(CurrentBranch);
     }
 
+    public void UpdateCurrentBranch(Action<BranchModel> updateAction)
+    {
+        if (CurrentBranch != null)
+        {
+            updateAction(CurrentBranch);
+            ActiveBranchChanged?.Invoke(CurrentBranch);
+        }
+    }
+
     public void Clear()
     {
         CurrentUser = null;

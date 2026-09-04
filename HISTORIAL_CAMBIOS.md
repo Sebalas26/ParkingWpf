@@ -15,6 +15,40 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-04 17:38:00] - [FIX / UI / OCCUPANCY] [WPF] - Reactividad en Caliente de Cupos de Sede y Métricas Visuales en Diálogo de Sincronización
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"desde la pwa le modifique el cupo de la sede si llego que tenia alguna actualizacion pero no fue reactivo por que sali y volvi a ingresar, y bay si trajo la informacion real entonces falta algo por que si sincroniza pero en la sincronización solo esta mostrando esto deberia ser mas diciente osea mostrar cupos, creo que falta siii no se que mas valida eso."*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Actualización Reactiva de Sede en Memoria (`SessionService.cs`, `ISessionService.cs`)**:
+     - Se creó el método `UpdateCurrentBranch(Action<BranchModel> updateAction)` que muta las propiedades de la sede activa en memoria y notifica a los suscriptores mediante `ActiveBranchChanged?.Invoke(CurrentBranch)`.
+  2. **Priorización de Datos Frescos en `EfParkingTicketService.cs`**:
+     - En `GetOccupancyStatsAsync()`, ahora se consulta prioritariamente la capacidad fresca de SQLite (`db.Branches`) para la sede activa en vez de depender del valor estático cargado al iniciar sesión. Si difiere, se sincroniza en memoria con `_sessionService.CurrentBranch`.
+     - En `UpdateTotalCapacity(int newCapacity)`, también se mantiene sincronizado `_sessionService.CurrentBranch.TotalCapacity`.
+  3. **Propagación en Caliente en `SyncEngineService.cs`**:
+     - Al procesar el bootstrap (`bootstrap.TotalCapacity > 0`) o actualizar el registro de sedes en SQLite, se actualiza en caliente `_sessionService.CurrentBranch` (`TotalCapacity`, `Name`, `Address`, etc.).
+     - Se extendió `SyncResultReport` con `TotalCapacity` y `BranchName`, emitiendo `TotalCapacityChanged` y componiendo un mensaje descriptivo con el nombre de la sede y el nuevo total de cupos.
+  4. **Suscripción Reactiva en `MainShellViewModel.cs`**:
+     - Se añadieron escuchadores a `_syncEngine.DataSynchronized`, `_syncEngine.TotalCapacityChanged` y `_sessionService.ActiveBranchChanged` para invocar inmediatamente `RefreshOccupancyAsync()`. Los cupos disponibles en el encabezado y en `CheckInView` cambian de inmediato sin requerir cerrar sesión.
+  5. **Tarjeta y Métricas de Capacidad en `SyncProgressDialog.xaml`**:
+     - Se añadió la tarjeta KPI **`CUPOS SEDE`** (5 columnas) mostrando el número de cupos configurados (ej: `45`) y se reflejó el nombre de la sede y los cupos en el banner informativo inferior.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Contracts/ISessionService.cs`
+  - `Parking/Services/Implementations/SessionService.cs`
+  - `Parking/Services/Contracts/ISyncEngineService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Views/SyncProgressDialog.xaml`
+  - `Parking/Views/SyncProgressDialog.xaml.cs`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx` → **0 Errores, 4 Advertencias**
+  - `dotnet test ParkingApi.slnx` → **345 Superadas, 0 Fallos**
+
 ### [2026-09-04 17:25:00] - [FIX / MULTI-BRANCH / SIGNALR] [WPF] - Descarte de Eventos Globales de Tarifas y Purga de Registros Huérfanos en Sincronización Local
 
 - **Autor**: Antigravity AI Assistant & Software Architect

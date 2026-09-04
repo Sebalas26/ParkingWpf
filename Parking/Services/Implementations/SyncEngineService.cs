@@ -146,6 +146,10 @@ public class SyncEngineService : ISyncEngineService
         if (bootstrap.TotalCapacity > 0)
         {
             ServerConfiguredCapacity = bootstrap.TotalCapacity;
+            if (_sessionService.CurrentBranch != null && _sessionService.CurrentBranch.TotalCapacity != bootstrap.TotalCapacity)
+            {
+                _sessionService.UpdateCurrentBranch(b => b.TotalCapacity = bootstrap.TotalCapacity);
+            }
             TotalCapacityChanged?.Invoke(bootstrap.TotalCapacity);
         }
 
@@ -408,6 +412,17 @@ public class SyncEngineService : ISyncEngineService
                         CreatedAtUtc = br.CreatedAtUtc
                     });
                 }
+                if (_sessionService.CurrentBranch != null && _sessionService.CurrentBranch.Id == br.Id)
+                {
+                    _sessionService.UpdateCurrentBranch(b =>
+                    {
+                        b.TotalCapacity = br.TotalCapacity;
+                        b.Name = br.Name;
+                        b.Address = br.Address;
+                        b.Phone = br.Phone;
+                        b.City = br.City;
+                    });
+                }
             }
             await db.SaveChangesAsync(ct);
         }
@@ -616,7 +631,7 @@ public class SyncEngineService : ISyncEngineService
                 if (existing != null)
                 {
                     existing.Name = store.Name;
-                    existing.TaxId = store.TaxId;
+                    existing.TaxId = store.TaxId ?? string.Empty;
                     existing.PhoneNumber = store.PhoneNumber;
                     existing.IsActive = store.IsActive;
                 }
@@ -626,7 +641,7 @@ public class SyncEngineService : ISyncEngineService
                     {
                         StoreId = store.StoreId,
                         Name = store.Name,
-                        TaxId = store.TaxId,
+                        TaxId = store.TaxId ?? string.Empty,
                         PhoneNumber = store.PhoneNumber,
                         IsActive = store.IsActive,
                         CreatedAtUtc = DateTime.UtcNow
@@ -1111,7 +1126,16 @@ public class SyncEngineService : ISyncEngineService
         _lastSyncTime = DateTime.UtcNow;
         _isOnline = true;
         result.Success = true;
-        result.Message = $"Sincronización total exitosa: {usersCount} usuarios, {paymentMethodsCount} medios de pago, {ratesCount} tarifas, {agCount} convenios, {subsCount} mensualidades, {shiftsCount} turnos y {ticketsCount} tiquetes actualizados.";
+
+        var activeBranch = bootstrap.Branches?.FirstOrDefault(b => b.Id == currentBranchId)
+                        ?? bootstrap.Branches?.FirstOrDefault();
+        int effectiveCapacity = activeBranch?.TotalCapacity ?? (bootstrap.TotalCapacity > 0 ? bootstrap.TotalCapacity : ServerConfiguredCapacity);
+        string branchName = activeBranch?.Name ?? _sessionService.CurrentBranch?.Name ?? "Sede Activa";
+
+        result.TotalCapacity = effectiveCapacity;
+        result.BranchName = branchName;
+        result.Message = $"Sincronización total exitosa en '{branchName}' ({effectiveCapacity} cupos configurados): {usersCount} usuarios, {paymentMethodsCount} medios de pago, {ratesCount} tarifas, {agCount} convenios, {subsCount} mensualidades, {shiftsCount} turnos y {ticketsCount} tiquetes actualizados.";
+        TotalCapacityChanged?.Invoke(effectiveCapacity);
 
         // Notificar a todos los módulos y viewmodels para actualización reactiva en memoria
         DataSynchronized?.Invoke();

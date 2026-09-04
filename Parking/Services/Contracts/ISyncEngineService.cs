@@ -26,6 +26,8 @@ public class SyncResultReport
     public int SyncedSubscriptionsCount { get; set; }
     public int SyncedTicketsCount { get; set; }
     public int DispatchedOfflineItemsCount { get; set; }
+    public int TotalCapacity { get; set; }
+    public string BranchName { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
 }
 
