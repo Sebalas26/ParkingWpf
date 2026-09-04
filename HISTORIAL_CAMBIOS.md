@@ -15,6 +15,39 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-04 18:15:00] - [FIX / VALIDATION / BILLING / UI] [WPF] - Validación de Cupo Máximo en Ingreso, Nombre Dinámico de Categorías y Cálculo Progresivo por Minutos
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"tenemos un error se modifico el cupo de la sede para el parqueadero y dejo superar el limite se coloco 3 y dejo meter 4 entonces eso es algo de validacion grave,
+  > se tiene un error grave que es que las resoluciones queda de una vez activas en la pwa en la modal de parametrizacion así no funciona eso deberia estas como los demas modulos de la parametrización ejemplo el de convenios medios de pago si me hago entender e igual acá en el wpf por que sucede que cuando en el amestro de la empresa se crea una reesolucion o un medio de pago esta de uan sincronizando no deberia el wpf deberia sincronizar información maestra solo cuando se le asocie en la paramertrización si me explico. 
+  > y esta algo quemado que todo dice automovil / sedan recuerda que nada quemado nada es nada nada nada ... m,ira acá eso no deberia estar así y valor acomulado esta mal no esta calculando el valor real por los minutos entonces necesito que hagas mejor las cosas y sean mas precisas"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Control Estricto de Aforo y Cupo Máximo en CheckIn (`CheckInViewModel.cs`, `EfParkingTicketService.cs`)**:
+     - Tanto en la capa ViewModel (`CheckInViewModel.RegisterEntryAsync`) como en la capa de persistencia local SQLite (`EfParkingTicketService.RegisterEntryAsync`), se implementó la validación preventiva `occupancy.TotalCapacity > 0 && occupancy.OccupiedSpots >= occupancy.TotalCapacity`.
+     - Si la sede alcanza o sobrepasa el cupo configurado, se bloquea el registro del vehículo, se dispara un diálogo de alerta modal y se informa en el banner de retroalimentación: `"Capacidad máxima alcanzada para esta sede ({OccupiedSpots}/{TotalCapacity}). No es posible registrar más ingresos."`, arrojando `InvalidOperationException` para blindar la base de datos.
+  2. **Eliminación Total de Nombres de Categoría Quemados (`VehicleTypeToStringConverter.cs`, `EfPricingCalculatorService.cs`)**:
+     - Se añadió un delegado estático de resolución dinámica de nombres: `public static Func<VehicleType, string?>? CustomNameResolver { get; set; }` en `VehicleTypeToStringConverter.cs`.
+     - `EfPricingCalculatorService.cs` registra el delegado para consultar la parametrización viva de tarifas de la sede (`GetRate(vt)?.DisplayName`), resolviendo el nombre exacto configurado por el usuario (ej: *"Carro"*, *"Moto"*, *"Bici"*, *"Camión"*) en todas las vistas de la aplicación WPF (tickets recientes, detalle de cobro, historial del turno), erradicando el texto estático *"Automóvil / Sedán"*.
+  3. **Cálculo Preciso y Progresivo de Valor Acumulado en Vivo (`ParkingTicket.cs`, `EfPricingCalculatorService.cs`, `CheckOutViewModel.cs`)**:
+     - `ParkingTicket.CurrentEstimatedAmount` ahora delega el cálculo mediante `public static Func<ParkingTicket, decimal>? EstimatedFeeCalculator { get; set; }`.
+     - `EfPricingCalculatorService` calcula la tarifa real aplicando el cobro progresivo por horas y minutos exactos redondeados hacia arriba (`Math.Ceiling(remMinutes) * MinuteRate`) en vez de redondear a bloques fijos de horas completas ($5,000.00 fijos).
+     - En `CheckOutViewModel.cs` se eliminó el fallback forzado de 15 minutos de gracia cuando el usuario ha configurado 0 minutos de gracia (`rateInfo?.GracePeriodMinutes ?? 0`).
+
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Core/Converters/VehicleTypeToStringConverter.cs`
+  - `Parking/Entities/ParkingTicket.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build Parking/Parking.csproj -t:CoreCompile` → **0 Errores, 0 Advertencias**.
+
+---
+
 ### [2026-09-04 17:38:00] - [FIX / UI / OCCUPANCY] [WPF] - Reactividad en Caliente de Cupos de Sede y Métricas Visuales en Diálogo de Sincronización
 
 - **Autor**: Antigravity AI Assistant & Software Architect

@@ -96,6 +96,13 @@ public class EfParkingTicketService : IParkingTicketService
             throw new InvalidOperationException($"VEHÍCULO BLOQUEADO: La placa '{normalizedPlate}' tiene un bloqueo activo registrado por novedad: '{blockedIncident.IncidentType}' ({blockedIncident.Description}). No está permitido su ingreso.");
         }
 
+        // 2. Validar cupo disponible en la sede activa
+        var occupancy = await GetOccupancyStatsAsync();
+        if (occupancy.TotalCapacity > 0 && occupancy.OccupiedSpots >= occupancy.TotalCapacity)
+        {
+            throw new InvalidOperationException($"Capacidad máxima de la sede alcanzada ({occupancy.TotalCapacity} cupos). No hay cupos disponibles para registrar nuevos ingresos.");
+        }
+
         // Asegurar columnas requeridas en SQLite antes de insertar
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
         try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }

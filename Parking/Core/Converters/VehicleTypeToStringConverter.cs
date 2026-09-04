@@ -7,19 +7,28 @@ namespace Parking.Core.Converters;
 
 public class VehicleTypeToStringConverter : IValueConverter
 {
+    public static Func<VehicleType, string?>? CustomNameResolver { get; set; }
+
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value == null) return string.Empty;
 
         var type = value is VehicleType vt ? vt : Parking.Core.Helpers.VehicleTypeHelper.Parse(value);
+
+        var customName = CustomNameResolver?.Invoke(type);
+        if (!string.IsNullOrWhiteSpace(customName))
+        {
+            return customName;
+        }
+
         return type switch
         {
             VehicleType.Motorcycle => "Motocicleta",
-            VehicleType.Car => "Automóvil / Sedán",
-            VehicleType.Suv => "Camioneta / SUV",
-            VehicleType.Van => "Furgón / Minibús",
+            VehicleType.Car => "Automóvil",
+            VehicleType.Suv => "Camioneta",
+            VehicleType.Van => "Furgón",
             VehicleType.Bicycle => "Bicicleta",
-            VehicleType.HeavyTruck => "Vehículo Pesado / Camión",
+            VehicleType.HeavyTruck => "Vehículo Pesado",
             _ => value.ToString() ?? string.Empty
         };
     }

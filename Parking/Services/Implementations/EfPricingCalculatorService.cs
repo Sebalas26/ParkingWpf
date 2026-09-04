@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Parking.Core.Converters;
 using Parking.Core.Enums;
 using Parking.Data.Factories;
 using Parking.Entities;
@@ -26,6 +27,11 @@ public class EfPricingCalculatorService : IPricingCalculatorService
     {
         _connectionManager = connectionManager;
         _sessionService = sessionService;
+
+        // Registro de resolución dinámica de nombres de categorías e importe estimado
+        VehicleTypeToStringConverter.CustomNameResolver = vt => GetRate(vt)?.DisplayName;
+        ParkingTicket.EstimatedFeeCalculator = ticket => CalculateFee(ticket.VehicleType, ticket.EntryTimeUtc, DateTime.UtcNow);
+
         syncEngine.DataSynchronized += async () =>
         {
             await ReloadRatesAsync();
@@ -177,7 +183,8 @@ public class EfPricingCalculatorService : IPricingCalculatorService
             // Cobro progresivo: horas completas + minutos restantes con tope de la hora
             var hours = (int)(totalMinutes / 60);
             var remMinutes = (decimal)(totalMinutes % 60);
-            fee = (hours * rate.HourRate) + Math.Min(rate.HourRate, remMinutes * rate.MinuteRate);
+            var billableRemMinutes = (decimal)Math.Ceiling(remMinutes);
+            fee = (hours * rate.HourRate) + Math.Min(rate.HourRate, billableRemMinutes * rate.MinuteRate);
         }
         else if (allowMinute && rate.MinuteRate > 0)
         {

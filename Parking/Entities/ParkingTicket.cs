@@ -61,6 +61,8 @@ public class ParkingTicket
         }
     }
 
+    public static Func<ParkingTicket, decimal>? EstimatedFeeCalculator { get; set; }
+
     public decimal CurrentEstimatedAmount
     {
         get
@@ -69,6 +71,12 @@ public class ParkingTicket
             {
                 return NetAmount;
             }
+
+            if (EstimatedFeeCalculator != null)
+            {
+                return EstimatedFeeCalculator(this);
+            }
+
             var totalMinutes = Math.Max(0.01, ElapsedDuration.TotalMinutes);
             var billableHours = (int)Math.Max(1, Math.Ceiling(totalMinutes / 60.0));
             var rate = HourlyRate > 0 ? HourlyRate : 2000m;

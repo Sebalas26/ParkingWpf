@@ -379,6 +379,18 @@ public partial class CheckInViewModel : ViewModelBase
             return;
         }
 
+        // Validar cupo disponible en la sede activa antes de emitir tiquete
+        var occupancy = await _ticketService.GetOccupancyStatsAsync();
+        if (occupancy.TotalCapacity > 0 && occupancy.OccupiedSpots >= occupancy.TotalCapacity)
+        {
+            ShowFeedback($"Capacidad máxima de la sede alcanzada ({occupancy.TotalCapacity} cupos). No hay cupos disponibles.", false);
+            await _dialogService.ShowAlertAsync(
+                "Cupos Agotados",
+                $"La sede ha alcanzado su capacidad máxima permitida ({occupancy.TotalCapacity} cupos).\nNo es posible ingresar más vehículos hasta que se libere un espacio en el parqueadero.",
+                DialogNotificationType.Warning);
+            return;
+        }
+
         IsBusy = true;
         BusyMessage = "Registrando ingreso de vehículo y emitiendo tiquete...";
 

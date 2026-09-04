@@ -641,7 +641,7 @@ public partial class CheckOutViewModel : ViewModelBase
             _isPaymentTimeoutDialogShowing = false;
 
             var rateInfo = _pricingCalculator.GetRate(value.VehicleType);
-            _currentGracePeriodSeconds = (rateInfo != null && rateInfo.GracePeriodMinutes > 0 ? rateInfo.GracePeriodMinutes : 15) * 60;
+            _currentGracePeriodSeconds = (rateInfo?.GracePeriodMinutes ?? 0) * 60;
             MinuteRate = rateInfo != null && rateInfo.MinuteRate > 0
                 ? rateInfo.MinuteRate
                 : (rateInfo != null && rateInfo.HourRate > 0 ? Math.Round(rateInfo.HourRate / 60m, 2) : 0m);
