@@ -79,6 +79,7 @@ public class AuthService : IAuthService
                 
                 CurrentUser = userModel;
                 var permissions = apiLogin.Permissions ?? new List<string>();
+                userModel.GrantedPermissions = new HashSet<string>(permissions, StringComparer.OrdinalIgnoreCase);
                 _permissionService.LoadPermissions(permissions, isAdmin);
 
                 var branches = apiLogin.Branches ?? new List<BranchModel>();
@@ -204,6 +205,7 @@ public class AuthService : IAuthService
             };
         }
 
+        localUserModel.GrantedPermissions = new HashSet<string>(localPermissions, StringComparer.OrdinalIgnoreCase);
         _permissionService.LoadPermissions(localPermissions, isLocalAdmin);
 
         return new LoginResultModel

@@ -12,17 +12,17 @@ public class PermissionService : IPermissionService
 
     private static readonly Dictionary<string, string[]> _permissionAliases = new(StringComparer.OrdinalIgnoreCase)
     {
-        { "shifts.view_current", new[] { "shift.view", "shift.open", "shifts.open", "shifts.view", "shifts.current" } },
-        { "shifts.open", new[] { "shift.open", "shifts.view_current" } },
-        { "shifts.close", new[] { "shift.close", "shift.closure" } },
-        { "shifts.blind_count", new[] { "shift.blind_count", "shifts.blind_count", "shift.cash_withdrawal" } },
-        { "shifts.view_history", new[] { "shift.history", "shifts.history" } },
-        { "shifts.reprint_closure", new[] { "shift.reprint", "shifts.reprint", "shift.export" } },
+        { "shifts.view_current", new[] { "wpf.shifts.view_current", "shift.view", "shift.open", "shifts.open", "shifts.view", "shifts.current" } },
+        { "shifts.open", new[] { "wpf.shifts.open", "shift.open", "shifts.view_current" } },
+        { "shifts.close", new[] { "wpf.shifts.close", "shift.close", "shift.closure" } },
+        { "shifts.blind_count", new[] { "wpf.shifts.blind_count", "shift.blind_count", "shifts.blind_count", "shift.cash_withdrawal" } },
+        { "shifts.view_history", new[] { "wpf.shifts.view_history", "shift.history", "shifts.history" } },
+        { "shifts.reprint_closure", new[] { "wpf.shifts.reprint_closure", "shift.reprint", "shifts.reprint", "shift.export" } },
 
-        { "monitoring.view_occupancy", new[] { "recent_entries.view", "monitoring.view", "recent_entries.view_list", "monitoring.occupancy" } },
-        { "monitoring.search_vehicles", new[] { "recent_entries.search", "monitoring.search" } },
-        { "monitoring.force_exit", new[] { "recent_entries.force_exit", "monitoring.force_exit" } },
-        { "monitoring.export", new[] { "recent_entries.export", "monitoring.export" } },
+        { "monitoring.view_occupancy", new[] { "wpf.monitoring.view_occupancy", "recent_entries.view", "monitoring.view", "recent_entries.view_list", "monitoring.occupancy" } },
+        { "monitoring.search_vehicles", new[] { "wpf.monitoring.search_vehicles", "recent_entries.search", "monitoring.search" } },
+        { "monitoring.force_exit", new[] { "wpf.monitoring.force_exit", "recent_entries.force_exit", "monitoring.force_exit" } },
+        { "monitoring.export", new[] { "wpf.monitoring.export", "recent_entries.export", "monitoring.export" } },
 
         { "analytics.view_dashboard", new[] { "analytics.view", "analytics.dashboard", "analytics.income_reports" } },
         { "analytics.income_reports", new[] { "analytics.income", "analytics.view" } },
@@ -30,17 +30,29 @@ public class PermissionService : IPermissionService
         { "analytics.audit_reports", new[] { "analytics.audit", "analytics.view" } },
         { "analytics.export", new[] { "analytics.export" } },
 
-        { "checkin.create_ticket", new[] { "checkin.create", "checkin.view" } },
-        { "checkin.view", new[] { "checkin.create_ticket", "checkin.create" } },
-        { "checkout.process_payment", new[] { "checkout.process", "checkout.view", "checkout.liquidate" } },
-        { "checkout.view", new[] { "checkout.process_payment", "checkout.process" } },
+        { "checkin.create_ticket", new[] { "wpf.checkin.create", "checkin.create", "checkin.view", "wpf.checkin.view" } },
+        { "checkin.view", new[] { "wpf.checkin.view", "wpf.checkin.create", "checkin.create_ticket", "checkin.create" } },
+        { "checkin.create", new[] { "wpf.checkin.create", "checkin.create_ticket", "checkin.view" } },
+        { "checkin.reprint", new[] { "wpf.checkin.reprint" } },
+        { "checkin.edit_plate", new[] { "wpf.checkin.edit_plate" } },
+        { "checkin.manual_barrier", new[] { "wpf.checkin.manual_barrier" } },
+
+        { "checkout.process_payment", new[] { "wpf.checkout.process_payment", "checkout.process", "checkout.view", "wpf.checkout.view", "checkout.liquidate" } },
+        { "checkout.view", new[] { "wpf.checkout.view", "wpf.checkout.process_payment", "checkout.process_payment", "checkout.process" } },
+        { "checkout.apply_discount", new[] { "wpf.checkout.apply_discount" } },
+        { "checkout.waive_fee", new[] { "wpf.checkout.waive_fee" } },
+        { "checkout.reprint_receipt", new[] { "wpf.checkout.reprint_receipt" } },
+        { "checkout.manual_barrier", new[] { "wpf.checkout.manual_barrier" } },
         
-        { "subscriptions.view_list", new[] { "subscriptions.view", "subscriptions.list" } },
-        { "subscriptions.view", new[] { "subscriptions.view_list", "subscriptions.list" } },
-        { "subscriptions.create_subscription", new[] { "subscriptions.create", "subscriptions.new" } },
+        { "subscriptions.view_list", new[] { "wpf.subscriptions.view", "subscriptions.view", "subscriptions.list" } },
+        { "subscriptions.view", new[] { "wpf.subscriptions.view", "subscriptions.view_list", "subscriptions.list" } },
+        { "subscriptions.create_subscription", new[] { "wpf.subscriptions.create", "subscriptions.create", "subscriptions.new" } },
+        { "subscriptions.create", new[] { "wpf.subscriptions.create", "subscriptions.create_subscription", "subscriptions.new" } },
         { "subscriptions.edit_subscription", new[] { "subscriptions.edit" } },
-        { "subscriptions.cancel_subscription", new[] { "subscriptions.cancel" } },
-        { "subscriptions.renew_subscription", new[] { "subscriptions.renew" } },
+        { "subscriptions.cancel_subscription", new[] { "wpf.subscriptions.cancel", "subscriptions.cancel" } },
+        { "subscriptions.cancel", new[] { "wpf.subscriptions.cancel", "subscriptions.cancel_subscription" } },
+        { "subscriptions.renew_subscription", new[] { "wpf.subscriptions.renew", "subscriptions.renew" } },
+        { "subscriptions.renew", new[] { "wpf.subscriptions.renew", "subscriptions.renew_subscription" } },
 
         { "rates.view_list", new[] { "rates.view", "rates.list" } },
         { "agreements.view_list", new[] { "agreements.view", "agreements.list" } },
@@ -66,6 +78,18 @@ public class PermissionService : IPermissionService
 
         // 1. Coincidencia exacta directa
         if (_permissions.Contains(slug)) return true;
+
+        // 1.1 Resolución automática prefijo wpf.*
+        if (slug.StartsWith("wpf.", StringComparison.OrdinalIgnoreCase))
+        {
+            var unprefixed = slug[4..];
+            if (_permissions.Contains(unprefixed)) return true;
+        }
+        else
+        {
+            var prefixed = $"wpf.{slug}";
+            if (_permissions.Contains(prefixed)) return true;
+        }
 
         // 2. Comodín global
         if (_permissions.Contains("*") || _permissions.Contains("all")) return true;

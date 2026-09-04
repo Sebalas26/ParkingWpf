@@ -35,6 +35,7 @@ public partial class MainShellViewModel : ViewModelBase
     private ViewModelBase? _activeView;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanOperateTerminal))]
     private UserSessionModel? _currentUser;
 
     [ObservableProperty]
@@ -292,35 +293,63 @@ public partial class MainShellViewModel : ViewModelBase
 
         await RefreshOccupancyAsync();
 
-        var activeShift = await _shiftService.GetActiveShiftAsync();
-        if (activeShift == null)
+        var requireShift = CurrentUser?.RequireOpenShiftToOperate ?? true;
+
+        if (!requireShift)
         {
-            NavigateToShiftClosure();
-            _ = _dialogService.ShowAlertAsync(
-                "Apertura de Turno Requerida",
-                "No hay un turno operativo abierto. Debe ingresar la base inicial de caja y abrir el turno antes de operar en la terminal.",
-                DialogNotificationType.Warning);
+            NavigateToInitialAuthorizedView();
         }
         else
         {
-            var isCurrentShiftOwner = CurrentUser != null && (
-                string.Equals(activeShift.OperatorName, CurrentUser.FullName, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(activeShift.OperatorName, CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
-
-            var isAdmin = CurrentUser != null && CurrentUser.IsAdmin;
-
-            if (!isCurrentShiftOwner && !isAdmin)
+            var activeShift = await _shiftService.GetActiveShiftAsync();
+            if (activeShift == null)
             {
-                NavigateToShiftClosure();
-                _ = _dialogService.ShowAlertAsync(
-                    "Turno Activo a Nombre de Otro Operador",
-                    $"Existe un turno operativo abierto a nombre de '{activeShift.OperatorName}'.\n\n" +
-                    $"Para operar la terminal con su usuario ('{CurrentUser?.FullName}'), debe solicitar la Entrega / Relevo de Turno o el Cierre de Caja anterior.",
-                    DialogNotificationType.Warning);
+                if (_permissionService.HasPermission("shifts.view_current"))
+                {
+                    NavigateToShiftClosure();
+                    _ = _dialogService.ShowAlertAsync(
+                        "Apertura de Turno Requerida",
+                        "No hay un turno operativo abierto. Debe ingresar la base inicial de caja y abrir el turno antes de operar en la terminal.",
+                        DialogNotificationType.Warning);
+                }
+                else
+                {
+                    NavigateToInitialAuthorizedView();
+                    _ = _dialogService.ShowAlertAsync(
+                        "Apertura de Turno Requerida",
+                        "No hay un turno operativo abierto actualmente. Un usuario con permisos de caja/turnos debe realizar la apertura antes de registrar movimientos.",
+                        DialogNotificationType.Warning);
+                }
             }
             else
             {
-                NavigateToCheckIn();
+                var isCurrentShiftOwner = CurrentUser != null && (
+                    string.Equals(activeShift.OperatorName, CurrentUser.FullName, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(activeShift.OperatorName, CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
+
+                var isAdmin = CurrentUser != null && CurrentUser.IsAdmin;
+
+                if (!isCurrentShiftOwner && !isAdmin)
+                {
+                    if (_permissionService.HasPermission("shifts.view_current"))
+                    {
+                        NavigateToShiftClosure();
+                    }
+                    else
+                    {
+                        NavigateToInitialAuthorizedView();
+                    }
+
+                    _ = _dialogService.ShowAlertAsync(
+                        "Turno Activo a Nombre de Otro Operador",
+                        $"Existe un turno operativo abierto a nombre de '{activeShift.OperatorName}'.\n\n" +
+                        $"Para operar la terminal con su usuario ('{CurrentUser?.FullName}'), debe solicitar la Entrega / Relevo de Turno o el Cierre de Caja anterior.",
+                        DialogNotificationType.Warning);
+                }
+                else
+                {
+                    NavigateToInitialAuthorizedView();
+                }
             }
         }
     }
@@ -354,40 +383,73 @@ public partial class MainShellViewModel : ViewModelBase
             await ForceSyncAsync();
 
             // 3. Validar estado del turno en la nueva sede
-            var activeShift = await _shiftService.GetActiveShiftAsync();
-            if (activeShift == null)
+            var requireShiftOnSwitch = CurrentUser?.RequireOpenShiftToOperate ?? true;
+            if (!requireShiftOnSwitch)
             {
-                NavigateToShiftClosure();
-                _ = _dialogService.ShowAlertAsync(
-                    "Apertura de Turno Requerida",
-                    $"Sede cambiada a '{dialog.SelectedBranch.Name}'.\n\nNo hay un turno operativo abierto en esta sede. Debe ingresar la base inicial de caja y abrir el turno antes de operar.",
-                    DialogNotificationType.Warning);
+                if (ActiveView != null)
+                {
+                    _ = ActiveView.InitializeAsync();
+                }
+                else
+                {
+                    NavigateToInitialAuthorizedView();
+                }
+                _ = _dialogService.ShowAlertAsync("Sede Actualizada", $"Sede activa cambiada a '{dialog.SelectedBranch.Name}' y datos sincronizados correctamente.", DialogNotificationType.Success);
             }
             else
             {
-                var isCurrentShiftOwner = CurrentUser != null && (
-                    string.Equals(activeShift.OperatorName, CurrentUser.FullName, StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(activeShift.OperatorName, CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
-
-                var isAdmin = CurrentUser != null && CurrentUser.IsAdmin;
-
-                if (!isCurrentShiftOwner && !isAdmin)
+                var activeShift = await _shiftService.GetActiveShiftAsync();
+                if (activeShift == null)
                 {
-                    NavigateToShiftClosure();
+                    if (_permissionService.HasPermission("shifts.view_current"))
+                    {
+                        NavigateToShiftClosure();
+                    }
+                    else
+                    {
+                        NavigateToInitialAuthorizedView();
+                    }
                     _ = _dialogService.ShowAlertAsync(
-                        "Turno Activo a Nombre de Otro Operador",
-                        $"Sede cambiada a '{dialog.SelectedBranch.Name}'.\n\nExiste un turno operativo abierto a nombre de '{activeShift.OperatorName}'.\n" +
-                        $"Para operar la terminal con su usuario ('{CurrentUser?.FullName}'), debe solicitar la Entrega / Relevo de Turno o el Cierre de Caja anterior.",
+                        "Apertura de Turno Requerida",
+                        $"Sede cambiada a '{dialog.SelectedBranch.Name}'.\n\nNo hay un turno operativo abierto en esta sede. Debe ingresar la base inicial de caja y abrir el turno antes de operar.",
                         DialogNotificationType.Warning);
                 }
                 else
                 {
-                    // Si el usuario ya está en una vista operativa, reinicializarla para cargar datos de la nueva sede
-                    if (ActiveView != null)
+                    var isCurrentShiftOwner = CurrentUser != null && (
+                        string.Equals(activeShift.OperatorName, CurrentUser.FullName, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(activeShift.OperatorName, CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
+
+                    var isAdmin = CurrentUser != null && CurrentUser.IsAdmin;
+
+                    if (!isCurrentShiftOwner && !isAdmin)
                     {
-                        _ = ActiveView.InitializeAsync();
+                        if (_permissionService.HasPermission("shifts.view_current"))
+                        {
+                            NavigateToShiftClosure();
+                        }
+                        else
+                        {
+                            NavigateToInitialAuthorizedView();
+                        }
+                        _ = _dialogService.ShowAlertAsync(
+                            "Turno Activo a Nombre de Otro Operador",
+                            $"Sede cambiada a '{dialog.SelectedBranch.Name}'.\n\nExiste un turno operativo abierto a nombre de '{activeShift.OperatorName}'.\n" +
+                            $"Para operar la terminal con su usuario ('{CurrentUser?.FullName}'), debe solicitar la Entrega / Relevo de Turno o el Cierre de Caja anterior.",
+                            DialogNotificationType.Warning);
                     }
-                    _ = _dialogService.ShowAlertAsync("Sede Actualizada", $"Sede activa cambiada a '{dialog.SelectedBranch.Name}' y datos sincronizados correctamente.", DialogNotificationType.Success);
+                    else
+                    {
+                        if (ActiveView != null)
+                        {
+                            _ = ActiveView.InitializeAsync();
+                        }
+                        else
+                        {
+                            NavigateToInitialAuthorizedView();
+                        }
+                        _ = _dialogService.ShowAlertAsync("Sede Actualizada", $"Sede activa cambiada a '{dialog.SelectedBranch.Name}' y datos sincronizados correctamente.", DialogNotificationType.Success);
+                    }
                 }
             }
         }
@@ -466,10 +528,38 @@ public partial class MainShellViewModel : ViewModelBase
         return true;
     }
 
+    private void NavigateToInitialAuthorizedView()
+    {
+        if (_permissionService.HasPermission("checkin.create_ticket") || _permissionService.HasPermission("checkin.view"))
+        {
+            NavigateToCheckIn();
+        }
+        else if (_permissionService.HasPermission("checkout.process_payment") || _permissionService.HasPermission("checkout.view"))
+        {
+            NavigateToCheckOut();
+        }
+        else if (_permissionService.HasPermission("monitoring.view_occupancy"))
+        {
+            NavigateToRecentEntries();
+        }
+        else if (_permissionService.HasPermission("subscriptions.view_list") || _permissionService.HasPermission("subscriptions.view"))
+        {
+            NavigateToMonthlySubscriptions();
+        }
+        else if (_permissionService.HasPermission("shifts.view_current"))
+        {
+            NavigateToShiftClosure();
+        }
+        else if (_permissionService.HasPermission("analytics.view_dashboard"))
+        {
+            NavigateToAnalytics();
+        }
+    }
+
     [RelayCommand]
     private void NavigateToCheckIn()
     {
-        if (!_permissionService.HasPermission("checkin.create_ticket"))
+        if (!_permissionService.HasPermission("checkin.create_ticket") && !_permissionService.HasPermission("checkin.view"))
         {
             _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Ingreso Vehicular.", DialogNotificationType.Warning);
             return;
@@ -477,7 +567,10 @@ public partial class MainShellViewModel : ViewModelBase
         if (!ValidateShiftAccess(out var error))
         {
             _ = _dialogService.ShowAlertAsync("Apertura de Turno Requerida", error ?? "Turno no disponible", DialogNotificationType.Warning);
-            NavigateToShiftClosure();
+            if (_permissionService.HasPermission("shifts.view_current"))
+            {
+                NavigateToShiftClosure();
+            }
             return;
         }
         _navigationService.NavigateTo<CheckInViewModel>();
@@ -486,7 +579,7 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToCheckOut()
     {
-        if (!_permissionService.HasPermission("checkout.process_payment"))
+        if (!_permissionService.HasPermission("checkout.process_payment") && !_permissionService.HasPermission("checkout.view"))
         {
             _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Salida y Cobro.", DialogNotificationType.Warning);
             return;
@@ -494,7 +587,10 @@ public partial class MainShellViewModel : ViewModelBase
         if (!ValidateShiftAccess(out var error))
         {
             _ = _dialogService.ShowAlertAsync("Apertura de Turno Requerida", error ?? "Turno no disponible", DialogNotificationType.Warning);
-            NavigateToShiftClosure();
+            if (_permissionService.HasPermission("shifts.view_current"))
+            {
+                NavigateToShiftClosure();
+            }
             return;
         }
         _navigationService.NavigateTo<CheckOutViewModel>();
@@ -503,7 +599,7 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private void NavigateToMonthlySubscriptions()
     {
-        if (!_permissionService.HasPermission("subscriptions.view_list"))
+        if (!_permissionService.HasPermission("subscriptions.view_list") && !_permissionService.HasPermission("subscriptions.view"))
         {
             _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Mensualidades.", DialogNotificationType.Warning);
             return;
@@ -511,7 +607,10 @@ public partial class MainShellViewModel : ViewModelBase
         if (!ValidateShiftAccess(out var error))
         {
             _ = _dialogService.ShowAlertAsync("Apertura de Turno Requerida", error ?? "Turno no disponible", DialogNotificationType.Warning);
-            NavigateToShiftClosure();
+            if (_permissionService.HasPermission("shifts.view_current"))
+            {
+                NavigateToShiftClosure();
+            }
             return;
         }
         _navigationService.NavigateTo<MonthlySubscriptionsViewModel>();

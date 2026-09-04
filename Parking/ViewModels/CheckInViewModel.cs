@@ -323,15 +323,19 @@ public partial class CheckInViewModel : ViewModelBase
     [RelayCommand(CanExecute = nameof(CanRegisterAndPrint))]
     private async Task RegisterAndPrintAsync()
     {
-        var activeShift = await _shiftService.GetActiveShiftAsync();
-        if (activeShift == null || activeShift.Status != 0)
+        var requireShift = _sessionService.CurrentUser?.RequireOpenShiftToOperate ?? true;
+        if (requireShift)
         {
-            ShowFeedback("No hay un turno operativo abierto. Debe abrir turno antes de ingresar vehículos.", false);
-            await _dialogService.ShowAlertAsync(
-                "Apertura de Turno Requerida",
-                "Debes abrir un turno operativo e indicar la base inicial de caja antes de registrar ingresos.",
-                DialogNotificationType.Warning);
-            return;
+            var activeShift = await _shiftService.GetActiveShiftAsync();
+            if (activeShift == null || activeShift.Status != 0)
+            {
+                ShowFeedback("No hay un turno operativo abierto. Debe abrir turno antes de ingresar vehículos.", false);
+                await _dialogService.ShowAlertAsync(
+                    "Apertura de Turno Requerida",
+                    "Debes abrir un turno operativo e indicar la base inicial de caja antes de registrar ingresos.",
+                    DialogNotificationType.Warning);
+                return;
+            }
         }
 
         if (!HasConfiguredRates)

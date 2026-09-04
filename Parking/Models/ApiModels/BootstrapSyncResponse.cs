@@ -767,6 +767,24 @@ public class BootstrapSyncResponse
     [JsonPropertyName("totalCapacity")]
     public int TotalCapacity { get; set; } = 120;
 
+    [JsonPropertyName("requireOpenShiftToOperate")]
+    public bool RequireOpenShiftToOperate { get; set; } = true;
+
+    [JsonPropertyName("requireInitialCashAmount")]
+    public bool RequireInitialCashAmount { get; set; } = true;
+
+    [JsonPropertyName("allowMultipleSessions")]
+    public bool AllowMultipleSessions { get; set; } = false;
+
+    [JsonPropertyName("maxActiveSessionsPerUser")]
+    public int MaxActiveSessionsPerUser { get; set; } = 1;
+
+    [JsonPropertyName("allowMultipleOpenShifts")]
+    public bool AllowMultipleOpenShifts { get; set; } = false;
+
+    [JsonPropertyName("maxOpenShiftsPerUser")]
+    public int MaxOpenShiftsPerUser { get; set; } = 1;
+
     [JsonPropertyName("branches")]
     public List<ApiBranchSyncDto> Branches { get; set; } = new();
 

@@ -149,6 +149,16 @@ public class SyncEngineService : ISyncEngineService
             TotalCapacityChanged?.Invoke(bootstrap.TotalCapacity);
         }
 
+        if (_sessionService.CurrentUser != null)
+        {
+            _sessionService.CurrentUser.RequireOpenShiftToOperate = bootstrap.RequireOpenShiftToOperate;
+            _sessionService.CurrentUser.RequireInitialCashAmount = bootstrap.RequireInitialCashAmount;
+            _sessionService.CurrentUser.AllowMultipleSessions = bootstrap.AllowMultipleSessions;
+            _sessionService.CurrentUser.MaxActiveSessionsPerUser = bootstrap.MaxActiveSessionsPerUser;
+            _sessionService.CurrentUser.AllowMultipleOpenShifts = bootstrap.AllowMultipleOpenShifts;
+            _sessionService.CurrentUser.MaxOpenShiftsPerUser = bootstrap.MaxOpenShiftsPerUser;
+        }
+
         using var db = _dbManager.CreateDbContext();
 
         // 4. Paso 3: Sincronizar Roles y Usuarios (60%)

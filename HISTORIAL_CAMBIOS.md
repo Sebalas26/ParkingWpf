@@ -15,6 +15,40 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-04 16:55:00] - [FIX / SECURITY / RBAC] [WPF] - Soporte Completo para RequireOpenShiftToOperate, Desacople de Acciones wpf.*, Asignación GrantedPermissions y Navegación Dinámica
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"El WPF dejo pasar del login con el usuario que me logueey eso que el usuario no tiene permisos asignados pero si los tiene completamente ya revise desde el administrador desde la pwa y tiene los permisos correspondientes... otra cosa es que me di cuenta que al editar el rol le estaba asignando permisos de solo wpf pero asignaba uno y automaticamente se asignaba a pwa ? por que si son independiente no que se le asigne a uno se le asigna al otro si me explico eso es un bug terrible... aparte medio vi que el wpf no esta parametrizado con todo lo que ya se ha hecho de parametriaación de que si no se requiere abrir caja por que así se creo la empresa no debe por que exigirlo... pero ten en cuenta que ya no se debe obligar si o si a abrir caja o turno eso depende de la empresa a la que este el usuario por que recuerda que la empresa cuadno se crea se parametriza si requiere eso de caja y turnos o no entonces si en la emrpesa esta parametrizado que no solo es ingresar y tener directo los permisos a ingresar vehiculo y salidas si me explico como funcioan igual en la pwa."*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Bypass Completo de Exigencia de Turno (`RequireOpenShiftToOperate`)**:
+     - En `BootstrapSyncResponse.cs`: Se mapearon las directivas corporativas deserializadas (`RequireOpenShiftToOperate`, `RequireInitialCashAmount`, etc.).
+     - En `SyncEngineService.cs`: Se propagaron estas directivas directamente a `_sessionService.CurrentUser` en cada sincronización.
+     - En `MainShellViewModel.cs`:
+       - Se decoró `[ObservableProperty] private UserSessionModel? _currentUser;` con `[NotifyPropertyChangedFor(nameof(CanOperateTerminal))]`, asegurando que `CanOperateTerminal` notifique y habilite los botones del menú lateral inmediatamente al iniciar sesión.
+       - En `InitializeAsync()` y `SwitchBranchAsync()`, se evaluó `RequireOpenShiftToOperate`. Si es `false`, se realiza un bypass total de la apertura de turno y se navega directamente a la primera vista operativa autorizada vía `NavigateToInitialAuthorizedView()`.
+       - Si es `true` y no hay turno abierto, solo se navega a `ShiftClosureViewModel` si el operario cuenta con permisos de turno (`shifts.view_current`), evitando la alerta de "Acceso Denegado".
+     - En `CheckInViewModel.cs`: En `RegisterAndPrintAsync()`, se validó `RequireOpenShiftToOperate`; si es `false`, se permite registrar ingresos vehiculares sin obligar a abrir turno de caja.
+  2. **Resolución de Permisos y Acciones Dedicadas (`PermissionService.cs`, `AuthService.cs`)**:
+     - En `AuthService.cs`: Se garantizó la población de `userModel.GrantedPermissions = new HashSet<string>(permissions, StringComparer.OrdinalIgnoreCase)` tanto en autenticación en línea como fuera de línea (SQLite).
+     - En `PermissionService.cs`:
+       - Se incorporó soporte bidireccional automático para el prefijo `wpf.*`: si se consulta un slug que inicia con `wpf.`, se verifica también sin prefijo, y viceversa.
+       - Se mapearon en `_permissionAliases` las 25 acciones dedicadas `wpf.*` hacia los identificadores canónicos del sistema (`checkin.create_ticket`, `checkin.view`, `checkout.process_payment`, `monitoring.view_occupancy`, `shifts.view_current`, `subscriptions.view`, etc.).
+
+- **📦 Componentes Modificados**:
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs` → Directivas corporativas en DTO de bootstrap.
+  - `Parking/Services/Implementations/SyncEngineService.cs` → Actualización de directivas en `CurrentUser`.
+  - `Parking/Services/Implementations/AuthService.cs` → Población de `GrantedPermissions` en sesión de usuario.
+  - `Parking/Services/Implementations/PermissionService.cs` → Alias y resolución automática `wpf.*`.
+  - `Parking/ViewModels/MainShellViewModel.cs` → Notificación reactiva de `CanOperateTerminal`, ruteo `NavigateToInitialAuthorizedView()` y bypass de turnos.
+  - `Parking/ViewModels/CheckInViewModel.cs` → Bypass de turno en `RegisterAndPrintAsync()`.
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **0 Errores, 4 Advertencias**
+
+---
+
 ### [2026-09-04 15:45:00] - [FEAT / FIX / SEDES] [WPF] - Validaciones Preventivas Multi-Sede (Check-In y Check-Out), Convenios en Salida, Tarifas Progresivas y Fix Sincronización
 
 - **Autor**: Antigravity AI Assistant & Software Architect
