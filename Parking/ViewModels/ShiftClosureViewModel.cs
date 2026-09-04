@@ -45,7 +45,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private bool _hasActiveShift;
 
     [ObservableProperty]
-    private decimal _newShiftBaseAmount = 50000m;
+    private decimal _newShiftBaseAmount = 0m;
 
     [ObservableProperty]
     private string? _feedbackMessage;
@@ -554,9 +554,18 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 CurrentShiftWithdrawals = new List<CashWithdrawal>();
                 LastClosedShift = await _shiftService.GetLastClosedShiftAsync();
                 HasLastClosedShift = LastClosedShift != null;
-                if (HasLastClosedShift)
+                var configuredBranchBase = _sessionService.CurrentBranch?.DefaultInitialCash ?? 0m;
+                if (configuredBranchBase > 0)
+                {
+                    NewShiftBaseAmount = configuredBranchBase;
+                }
+                else if (HasLastClosedShift)
                 {
                     NewShiftBaseAmount = LastClosedShift!.ActualCashCounted;
+                }
+                else
+                {
+                    NewShiftBaseAmount = 0m;
                 }
             }
 

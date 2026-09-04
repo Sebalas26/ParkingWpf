@@ -14,6 +14,7 @@ public class Branch
     public int TotalCapacity { get; set; } = 100;
     public string? Notes { get; set; }
     public string? LogoBase64 { get; set; }
+    public decimal DefaultInitialCash { get; set; } = 0;
     public bool AllowChargeByMinute { get; set; } = true;
     public bool AllowChargeByHour { get; set; } = true;
     public bool AllowChargeByDay { get; set; } = true;

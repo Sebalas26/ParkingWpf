@@ -15,6 +15,31 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-04 09:20:00] - [FIX / CAJA / SEDES] [WPF] - Vinculación de Monto Base Inicial Configurado por Sede en Apertura de Turno
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"cuando se intenta abrir caja no esta tomando el valor de caja inicial que se configuro en la creación de la sede esta trayendo información como quemada si me explico eso aplica tanto para el pwa como para el wpf."*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Modelo de Datos de Sede (`BranchModel.cs`, `Branch.cs`)**:
+     - Se añadió la propiedad `DefaultInitialCash` con serialización JSON `[JsonPropertyName("defaultInitialCash")] public decimal? DefaultInitialCash { get; set; }` en `BranchModel.cs` (DTO consumido del API) y `public decimal DefaultInitialCash { get; set; } = 0;` en `Branch.cs` (entidad local de SQLite/Room).
+  2. **Inicialización Dinámica en Cierre y Apertura de Turno (`ShiftClosureViewModel.cs`)**:
+     - Se eliminó el valor quemado de `50000m` asignado por defecto al campo privado `_newShiftBaseAmount`.
+     - En el constructor de `ShiftClosureViewModel`, se inicializa leyendo dinámicamente de la sede activa:
+       `NewShiftBaseAmount = _sessionService.CurrentBranch?.DefaultInitialCash ?? 0m;`.
+     - Cuando el operador inicia un nuevo turno o realiza un relevo, el formulario de apertura sugiere automáticamente el monto base configurado en la sede en lugar de los 50.000 fijos anteriores.
+
+- **📦 Componentes Modificados**:
+  - `Parking.Core/Models/BranchModel.cs` (Propiedad DefaultInitialCash con JsonPropertyName)
+  - `Parking.Domain/Entities/Branch.cs` (Propiedad DefaultInitialCash)
+  - `Parking/ViewModels/ShiftClosureViewModel.cs` (Lectura dinámica de DefaultInitialCash de la sede activa y eliminación del valor quemado de 50.000)
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build`: Compilación exitosa (**0 Errores, 0 Advertencias**).
+
+---
+
 ### [2026-09-03 21:35:00] - [FEAT / SECURITY / SAAS] [WPF] - Restricción de Acceso a Estación de Garita por Suscripción y Cuotas de Plataforma
 
 - **Autor**: Antigravity AI Assistant & Software Architect

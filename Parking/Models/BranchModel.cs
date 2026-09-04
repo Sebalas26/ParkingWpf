@@ -38,6 +38,9 @@ public class BranchModel
     [JsonPropertyName("isDefault")]
     public bool IsDefault { get; set; }
 
+    [JsonPropertyName("defaultInitialCash")]
+    public decimal? DefaultInitialCash { get; set; }
+
     [JsonPropertyName("allowChargeByMinute")]
     public bool AllowChargeByMinute { get; set; } = true;
 
