@@ -15,6 +15,32 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-05 09:58:00] - [UI/UX / SYNC] [WPF] - Incorporación del Botón de Sincronización Manual en la Barra Superior (MainShellWindow)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"En esta parte, me podrias agregar el boton de sincronizar"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Botón de Sincronización Manual (`MainShellWindow.xaml`)**:
+     - Se incorporó un botón de acción rápida al lado derecho de la píldora de conectividad y estado (`SyncStatusText`) en el encabezado superior del workspace principal.
+     - **Enlace de Comando**: Enlazado a `ForceSyncCommand` en `MainShellViewModel.cs`, el cual invoca el modal de progreso interactivo de sincronización (`_dialogService.ShowSyncProgressModalAsync(_syncEngine)`) y actualiza el aforo y telemetría de la sede activa.
+     - **Control de Estado Concurrente**: Se enlazó a `IsEnabled="{Binding IsSyncing, Converter={StaticResource InverseBoolConv}}"`, impidiendo solicitudes simultáneas o bloqueos mientras el proceso de sincronización con el API Central esté en ejecución.
+     - **Diseño Visual y Consistencia**:
+       - Estilo oficial `SecondaryButton` de `Parking/Styles/Controls.xaml`.
+       - Geometría vectorial `{StaticResource IconSync}` en color primario (`BrushPrimary`), asegurando la integridad de recursos estipulada en `AGENTS.md`.
+       - Dimensiones de 24px de altura, padding ergonómico y texto "Sincronizar" en tipografía nítida `11px SemiBold` en armonía con el botón "Cambiar" de sede.
+       - Tooltip informativo: *"Sincronizar datos con el servidor central"*.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/MainShellWindow.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+
+---
+
 ### [2026-09-04 23:18:00] - [FEAT / PRINTER / ARCHITECTURE] [WPF] - Adaptación Integral de Impresiones y Vista Previa al Ancho de Papel de la Sede (PaperWidth 80 mm / 58 mm)
 
 - **Autor**: Antigravity AI Assistant & Software Architect

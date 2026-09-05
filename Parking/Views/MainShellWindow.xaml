@@ -414,13 +414,14 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Right: Sync Status Pill -->
+                    <!-- Right: Sync Status Pill + Botón Sincronizar -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Background="{DynamicResource BrushInputBackground}"
                                 BorderBrush="{DynamicResource BrushBorderSubtle}"
                                 BorderThickness="1"
                                 CornerRadius="12"
-                                Padding="8,3">
+                                Padding="8,3"
+                                Margin="0,0,8,0">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Ellipse Width="6" Height="6"
                                          Fill="{DynamicResource BrushSuccess}"
@@ -435,6 +436,28 @@
                                            TextTrimming="CharacterEllipsis"/>
                             </StackPanel>
                         </Border>
+
+                        <!-- Botón Sincronizar -->
+                        <Button Command="{Binding ForceSyncCommand}"
+                                IsEnabled="{Binding IsSyncing, Converter={StaticResource InverseBoolConv}}"
+                                Style="{StaticResource SecondaryButton}"
+                                Height="24"
+                                Padding="8,0"
+                                ToolTip="Sincronizar datos con el servidor central">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconSync}"
+                                      Fill="{DynamicResource BrushPrimary}"
+                                      Width="11" Height="11"
+                                      Stretch="Uniform"
+                                      Margin="0,0,5,0"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="Sincronizar"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource BrushTextSecondary}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
                     </StackPanel>
                 </Grid>
             </Border>
