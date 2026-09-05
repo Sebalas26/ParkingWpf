@@ -393,6 +393,7 @@ public class SyncEngineService : ISyncEngineService
                     existingBranch.TotalCapacity = br.TotalCapacity;
                     existingBranch.Notes = br.Notes;
                     existingBranch.LogoBase64 = br.LogoBase64;
+                    existingBranch.PaperWidth = br.PaperWidth > 0 ? br.PaperWidth : 80;
                     existingBranch.DefaultInitialCash = br.DefaultInitialCash ?? 0;
                     existingBranch.AllowChargeByMinute = br.AllowChargeByMinute;
                     existingBranch.AllowChargeByHour = br.AllowChargeByHour;
@@ -413,6 +414,7 @@ public class SyncEngineService : ISyncEngineService
                         TotalCapacity = br.TotalCapacity,
                         Notes = br.Notes,
                         LogoBase64 = br.LogoBase64,
+                        PaperWidth = br.PaperWidth > 0 ? br.PaperWidth : 80,
                         DefaultInitialCash = br.DefaultInitialCash ?? 0,
                         AllowChargeByMinute = br.AllowChargeByMinute,
                         AllowChargeByHour = br.AllowChargeByHour,
@@ -431,6 +433,7 @@ public class SyncEngineService : ISyncEngineService
                         b.Address = br.Address;
                         b.Phone = br.Phone;
                         b.City = br.City;
+                        b.PaperWidth = br.PaperWidth > 0 ? br.PaperWidth : 80;
                         b.DefaultInitialCash = br.DefaultInitialCash ?? 0;
                         b.AllowChargeByMinute = br.AllowChargeByMinute;
                         b.AllowChargeByHour = br.AllowChargeByHour;

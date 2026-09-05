@@ -76,10 +76,12 @@
                 <DataGrid Grid.Row="2"
                           ItemsSource="{Binding Entries}"
                           Style="{StaticResource ModernDataGrid}"
-                          IsReadOnly="True">
+                          IsReadOnly="True"
+                          CanUserResizeColumns="True"
+                          HorizontalScrollBarVisibility="Auto">
                     <DataGrid.Columns>
                         <!-- Placa -->
-                        <DataGridTemplateColumn Header="PLACA" Width="1.4*">
+                        <DataGridTemplateColumn Header="PLACA" Width="105" MinWidth="95">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding PlateNumber}"
@@ -93,11 +95,11 @@
                         </DataGridTemplateColumn>
 
                         <!-- Tipo de Vehículo -->
-                        <DataGridTemplateColumn Header="CATEGORÍA" Width="1.6*">
+                        <DataGridTemplateColumn Header="CATEGORÍA" Width="120" MinWidth="110">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Border Width="26" Height="26" CornerRadius="6" Background="{DynamicResource BrushPrimary}" Margin="0,0,10,0">
+                                        <Border Width="26" Height="26" CornerRadius="6" Background="{DynamicResource BrushPrimary}" Margin="0,0,8,0">
                                             <Path Data="{Binding VehicleType, Converter={StaticResource VehicleIconConv}}"
                                                   Fill="{DynamicResource BrushTextWhite}"
                                                   Width="13" Height="13"
@@ -115,14 +117,26 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
-                        <!-- Número de Tiquete -->
-                        <DataGridTextColumn Header="TIQUETE #" Binding="{Binding TicketNumber, Mode=OneWay}" Width="1.2*"/>
+                        <!-- Número de Tiquete Completo de BD -->
+                        <DataGridTemplateColumn Header="TIQUETE #" MinWidth="185" Width="1.8*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding TicketNumber}"
+                                               FontFamily="{StaticResource FontFamilyMonospace}"
+                                               FontWeight="Bold"
+                                               FontSize="13"
+                                               Foreground="{DynamicResource BrushTextPrimary}"
+                                               VerticalAlignment="Center"
+                                               ToolTip="{Binding TicketNumber}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
 
                         <!-- Hora de Ingreso -->
-                        <DataGridTextColumn Header="HORA INGRESO" Binding="{Binding EntryTime, Mode=OneWay, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" Width="1.4*"/>
+                        <DataGridTextColumn Header="HORA INGRESO" Binding="{Binding EntryTime, Mode=OneWay, StringFormat='{}{0:yyyy-MM-dd HH:mm:ss}'}" MinWidth="155" Width="1.5*"/>
 
                         <!-- Tiempo Transcurrido -->
-                        <DataGridTemplateColumn Header="TIEMPO EN PATIO" Width="1.3*">
+                        <DataGridTemplateColumn Header="TIEMPO EN PATIO" MinWidth="120" Width="1.2*">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -138,7 +152,7 @@
                         </DataGridTemplateColumn>
 
                         <!-- Valor Cobrado / Acumulado -->
-                        <DataGridTemplateColumn Header="VALOR ACUMULADO" Width="1.3*">
+                        <DataGridTemplateColumn Header="VALOR ACUMULADO" MinWidth="125" Width="1.2*">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding CurrentEstimatedAmount, Converter={StaticResource CurrencyConv}}"
@@ -151,10 +165,10 @@
                         </DataGridTemplateColumn>
 
                         <!-- Operador -->
-                        <DataGridTextColumn Header="OPERADOR EN TURNO" Binding="{Binding OperatorName, Mode=OneWay}" Width="1.3*"/>
+                        <DataGridTextColumn Header="OPERADOR EN TURNO" Binding="{Binding OperatorName, Mode=OneWay}" MinWidth="140" Width="1.3*"/>
 
                         <!-- Acción: Reimprimir -->
-                        <DataGridTemplateColumn Header="ACCIONES" Width="1.4*">
+                        <DataGridTemplateColumn Header="ACCIONES" MinWidth="150" Width="Auto">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Button Command="{Binding DataContext.ReprintTicketCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"

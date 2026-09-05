@@ -67,5 +67,21 @@ namespace Parking.Views
             // Close the dialog when "Cancelar Selección" is clicked
             this.Close();
         }
+
+        private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter || e.Key == Key.Return)
+            {
+                // Forzar actualización inmediata del binding del TextBox con foco
+                var focused = Keyboard.FocusedElement as System.Windows.Controls.TextBox;
+                focused?.GetBindingExpression(System.Windows.Controls.TextBox.TextProperty)?.UpdateSource();
+
+                if (DataContext is Parking.ViewModels.CheckOutViewModel vm && vm.ProcessPaymentCommand.CanExecute(null))
+                {
+                    _ = vm.ProcessPaymentCommand.ExecuteAsync(null);
+                    e.Handled = true;
+                }
+            }
+        }
     }
 }

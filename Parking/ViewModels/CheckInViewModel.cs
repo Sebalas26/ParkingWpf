@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using Parking.Core.Enums;
 using Parking.Core.Security;
 using Parking.Entities;
@@ -22,8 +24,18 @@ public partial class CheckInViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly IShiftService _shiftService;
     private readonly ISessionService _sessionService;
+    private readonly IPermissionService _permissionService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly DispatcherTimer _feedbackTimer;
+    private readonly DispatcherTimer _clockTimer;
+    private static readonly CultureInfo SpanishCulture = new("es-ES");
     private bool _isSyncingSelection;
+
+    [ObservableProperty]
+    private string _currentDateString = string.Empty;
+
+    [ObservableProperty]
+    private string _currentTimeString = string.Empty;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RegisterAndPrintCommand))]
@@ -94,7 +106,9 @@ public partial class CheckInViewModel : ViewModelBase
         IDialogService dialogService,
         IShiftService shiftService,
         ISyncEngineService syncEngine,
-        ISessionService sessionService)
+        ISessionService sessionService,
+        IPermissionService permissionService,
+        IServiceProvider serviceProvider)
     {
         _ticketService = ticketService;
         _pricingCalculator = pricingCalculator;
@@ -103,6 +117,16 @@ public partial class CheckInViewModel : ViewModelBase
         _dialogService = dialogService;
         _shiftService = shiftService;
         _sessionService = sessionService;
+        _permissionService = permissionService;
+        _serviceProvider = serviceProvider;
+
+        _ticketService.TicketCompleted += (s, e) =>
+        {
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(async () =>
+            {
+                await RefreshRecentEntriesAndOccupancyAsync();
+            });
+        };
 
         syncEngine.DataSynchronized += async () =>
         {
@@ -124,6 +148,14 @@ public partial class CheckInViewModel : ViewModelBase
             HasFeedback = false;
             FeedbackMessage = null;
         };
+
+        _clockTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+        _clockTimer.Tick += (s, e) => UpdateClock();
+        _clockTimer.Start();
+        UpdateClock();
     }
 
     public override async Task InitializeAsync()
@@ -465,5 +497,37 @@ public partial class CheckInViewModel : ViewModelBase
         _feedbackTimer.Stop();
         HasFeedback = false;
         FeedbackMessage = null;
+    }
+
+    private void UpdateClock()
+    {
+        var now = DateTime.Now;
+        var rawDate = now.ToString("dddd, dd 'de' MMMM 'de' yyyy", SpanishCulture);
+        CurrentDateString = char.ToUpper(rawDate[0], SpanishCulture) + rawDate[1..];
+        CurrentTimeString = now.ToString("HH:mm:ss");
+    }
+
+    [RelayCommand]
+    private async Task CheckOutVehicleAsync(ParkingTicket? ticket)
+    {
+        if (ticket == null) return;
+
+        if (!_permissionService.HasPermission("checkout.view") && !_permissionService.HasPermission("checkout.process_payment"))
+        {
+            await _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para liquidar o procesar cobros de salida.", DialogNotificationType.Warning);
+            return;
+        }
+
+        try
+        {
+            var checkoutVm = _serviceProvider.GetRequiredService<CheckOutViewModel>();
+            await checkoutVm.InitializeAsync();
+            checkoutVm.SelectedTicket = ticket;
+            await RefreshRecentEntriesAndOccupancyAsync();
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowAlertAsync("Error de Salida", $"No se pudo iniciar el cobro de salida: {ex.Message}", DialogNotificationType.Error);
+        }
     }
 }

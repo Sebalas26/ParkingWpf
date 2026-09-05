@@ -15,6 +15,233 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-04 23:18:00] - [FEAT / PRINTER / ARCHITECTURE] [WPF] - Adaptación Integral de Impresiones y Vista Previa al Ancho de Papel de la Sede (PaperWidth 80 mm / 58 mm)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Si, ajusta todas las impresiones de acurdo a ese taamaño configurado para la sede"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Persistencia y Modelado de Datos**:
+     - Se incorporó la propiedad `PaperWidth` (`int`, valor por defecto `80`) en:
+       - Entidad local SQLite: `Parking/Entities/Branch.cs`.
+       - Modelo de sesión y API: `Parking/Models/BranchModel.cs`.
+       - DTO de sincronización central: `Parking/Models/ApiModels/BootstrapSyncResponse.cs` (`ApiBranchSyncDto`).
+     - Se añadió migración resiliente en `DbConnectionManager.InitializeDatabaseAsync`:
+       `ALTER TABLE "Branches" ADD COLUMN "PaperWidth" INTEGER NOT NULL DEFAULT 80;`
+       garantizando la actualización transparente e inmediata de bases de datos SQLite locales existentes.
+     - Se actualizó `SyncEngineService.cs` para persistir `PaperWidth` al recibir datos del API Central y actualizar `_sessionService.CurrentBranch.PaperWidth` en tiempo real.
+     - Se actualizó `AuthService.cs` para mapear `PaperWidth` tanto en login Online como Offline.
+  2. **Escalado Métrico y Responsivo de la Vista Previa (`ReceiptPreviewViewModel.cs` & `ReceiptPreviewDialog.xaml`)**:
+     - En `ReceiptPreviewViewModel.cs`, se detecta dinámicamente el `PaperWidth` de la sede activa (`80` o `58`).
+     - Se implementaron propiedades reactivas de diseño:
+       - `DialogWindowWidth`: 490px para 80 mm | 390px para 58 mm.
+       - `PaperContainerWidth`: 380px para 80 mm | 280px para 58 mm (ancho fidedigno del rollo térmico).
+       - `BarcodeWidth`: 260px para 80 mm | 200px para 58 mm.
+       - `QrCodeWidth`: 110px para 80 mm | 85px para 58 mm.
+       - `MonospaceFontSize`, `MonospaceTitleFontSize`, `PlateFontSize` escalados adecuadamente.
+     - En `ReceiptPreviewDialog.xaml`:
+       - Se enlazaron las dimensiones del diálogo, del papel térmico, del código de barras y códigos QR.
+       - Se añadió en el encabezado un badge descriptivo verde (`#DCFCE7`) con el formato activo (`Formato: 80 mm` o `Formato: 58 mm`).
+  3. **Servicio de Impresora (`MockReceiptPrinterService.cs`)**:
+     - Se inyectó `ISessionService` para que los métodos de impresión reconozcan el ancho de papel configurado en la sede activa y envíen las órdenes en el layout exacto.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Entities/Branch.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking/Services/Implementations/MockReceiptPrinterService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+  - Ejecución funcional de `Parking.exe` iniciada con migración y vista previa reactiva activa.
+
+---
+
+### [2026-09-04 22:56:00] - [FEAT / UI/UX / INTEGRATION] [WPF] - Liquidación y Salida de Vehículos desde las Tarjetas de Entradas Recientes en CheckInView
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"quiero que esta pantalla tambien permita dar salida al vehiculo que le de click en la card"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Integración de Liquidación Rápida (`CheckInViewModel.cs`)**:
+     - Se inyectaron `IPermissionService` e `IServiceProvider` en `CheckInViewModel`.
+     - Se implementó el comando `CheckOutVehicleCommand(ParkingTicket ticket)`:
+       - Valida que el usuario tenga permisos operativos de liquidación (`checkout.view` o `checkout.process_payment`), mostrando un diálogo preventivo si no los posee.
+       - Resuelve `CheckOutViewModel` desde el contenedor DI, ejecuta `await checkoutVm.InitializeAsync()` y asigna `checkoutVm.SelectedTicket = ticket;`, lo cual despliega de forma modal el diálogo estándar de liquidación y cobro (`CheckOutDialog`).
+       - Al finalizar el cobro o cerrar el diálogo, actualiza la ocupación de parqueadero y la lista de entradas activas (`RefreshRecentEntriesAndOccupancyAsync()`).
+     - Se suscribió al evento `_ticketService.TicketCompleted` en el constructor para mantener sincronizada la lista de vehículos activos en patio en tiempo real ante cualquier salida procesada.
+  2. **Interactividad y Acompañamiento Visual (`CheckInView.xaml`)**:
+     - En el `DataTemplate` de `RecentEntries`:
+       - Se agregaron `Cursor="Hand"` y `ToolTip="Clic para liquidar y registrar salida de este vehículo"`.
+       - Se definió `MouseBinding Gesture="LeftClick"` vinculado a `CheckOutVehicleCommand` pasando el ticket actual como parámetro.
+       - Se añadió un `Style` con trigger `IsMouseOver="True"` que resalta el borde en `{DynamicResource BrushPrimary}` y cambia el fondo sutilmente a `#F0FDF4`.
+       - Se incorporó un indicador circular con `IconCheckOut` (`#DCFCE7` de fondo y `BrushPrimary` de relleno) en la cuarta columna de la card para comunicar al cajero la acción de salida rápida.
+
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/Views/CheckInView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+  - Ejecución funcional de `Parking.exe` iniciada para pruebas directas en terminal.
+
+---
+
+### [2026-09-04 22:48:00] - [UI/UX / GRID / LAYOUT] [WPF] - Disposición de Vehículos Activos a 3 Tarjetas por Fila en Salida y Cobro (CheckOutView)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"En esta lista, estas cards puedes verse de a 3 por fila, actualmente se ven de a 2"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Reconfiguración de Cuadrícula Uniforme (`CheckOutView.xaml`)**:
+     - En el `ItemsControl` de vehículos activos dentro del patio (`ActiveVehicles`), se actualizó la definición de `ItemsControl.ItemsPanel` cambiando `UniformGrid Columns="2"` a `UniformGrid Columns="3"`.
+     - Esto optimiza el aprovechamiento del ancho horizontal disponible en monitores de caja y POS, permitiendo visualizar un 50% más de vehículos por fila sin generar scroll vertical excesivo y manteniendo intactos todos los elementos de cada tarjeta (icono, placa de 20pt, categoría, hora de entrada, duración y botón de liquidación).
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckOutView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+
+---
+
+### [2026-09-04 22:44:00] - [UI/UX / INTERACTION / COMMANDS] [WPF] - Botón de Búsqueda Dinámico: Inactivo Gris cuando Vacío y Verde Activo con Caracteres
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Quisiera que este boton se encuentre inactivo y color gris hasta que el campo de la placa detecte almenos un caracter , ahi si se vuelve verde osea como se ven en la foot"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Comportamiento Reactivo del Comando (`CheckOutViewModel.cs`)**:
+     - Se vinculó `_searchQuery` con `[NotifyCanExecuteChangedFor(nameof(SearchTicketCommand))]`.
+     - Se añadió la regla de ejecución `[RelayCommand(CanExecute = nameof(CanSearchTicket))]` con la condición `CanSearchTicket => !string.IsNullOrWhiteSpace(SearchQuery);`.
+     - En `OnSearchQueryChanged`, se mantuvo la sanitización de caracteres en mayúsculas sin disparar búsquedas automáticas prematuras en la primera letra, permitiendo que el usuario ingrese la placa y decida buscar mediante click en el botón o mediante la tecla `Enter`.
+  2. **Triggers Visuales en XAML (`CheckOutView.xaml`)**:
+     - En el estilo `CircularSearchButton`, se integró el ícono `IconSearch` dentro del `ControlTemplate` gobernado por `IsEnabled`:
+       - **Inactivo (`IsEnabled="False"` / campo vacío)**: Fondo gris (`#CBD5E1`), ícono de la lupa gris atenuado (`#94A3B8`), sin sombra (`Effect="{x:Null}"`) y cursor de flecha estándar (`Arrow`).
+       - **Activo (`IsEnabled="True"` / al menos 1 carácter)**: Fondo verde institucional (`#00867A`), ícono blanco (`#FFFFFF`), sombra de elevación (`DropShadowEffect`) y cursor interactivo (`Hand`) con estados hover y click.
+     - Se agregaron `TextBox.InputBindings` en `SearchTextBox` para ejecutar la búsqueda también con la tecla `Enter`.
+
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+
+---
+
+### [2026-09-04 22:36:00] - [UI/UX / STYLING / GRID] [WPF] - Botón de Búsqueda Circular en Salida y Visualización Íntegra de Tiquetes de BD en Patio
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayudame ahora que para en esta pantalla el numero de ticket sea el que se encuentra en BD"*
+  > *"Quiero que este boton sea circular"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Botón Circular en Salida y Cobro / Caja (`CheckOutView.xaml`)**:
+     - Se implementó el estilo de control `CircularSearchButton` con dimensiones `150x150`, radio perfecto de `75px` (`CornerRadius="75"`), elevación con sombra suave institucional (`DropShadowEffect`, Opacidad 0.18) y transiciones de estado (`BrushPrimaryHover`, `BrushPrimaryActive`).
+     - Se mantuvo el ícono vectorial de la lupa (`IconSearch`) de `56x56` centrado en blanco y alineado verticalmente con la caja de entrada de placa/tiquete.
+  2. **Resolución de Truncamiento de Tiquetes de BD (`RecentEntriesView.xaml`)**:
+     - Se diagnosticó que los registros de la base de datos poseen el consecutivo completo (ej. `PKF-C1-20260905-010`, `PKF-C1-20260904-006`), pero la columna estaba recortando físicamente los últimos caracteres por falta de espacio (`Width="1.2*"`), provocando que todos parecieran tener el mismo sufijo `...-01` o `...-00`.
+     - Se sustituyó `DataGridTextColumn` por `DataGridTemplateColumn` con un ancho mínimo garantizado de `MinWidth="185"` y `Width="1.8*"`, tipografía monoespaciada institucional (`FontFamilyMonospace`) y `ToolTip="{Binding TicketNumber}"`.
+     - Se rebalancearon los anchos mínimos de las columnas adyacentes (`PLACA`, `CATEGORÍA`, `HORA INGRESO`, `TIEMPO EN PATIO`, `VALOR ACUMULADO`, `OPERADOR EN TURNO`, `ACCIONES`) y se habilitó `CanUserResizeColumns="True"` y `HorizontalScrollBarVisibility="Auto"` para evitar cualquier recorte en cualquier resolución.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckOutView.xaml`
+  - `Parking/Views/RecentEntriesView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+
+---
+
+### [2026-09-04 22:12:00] - [FEATURE / ACCESSIBILITY / POS] [WPF] - Ejecución de 'Cobrar y Registrar Salida' con la Tecla Enter en Modal de Liquidación (CheckOutDialog)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Quiero que esta pantalla haga la accion de cobrar y registrar salida por el boton de enter"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Soporte Nativo de Tecla Enter en Modal (`CheckOutDialog.xaml`, `CheckOutDialog.xaml.cs`)**:
+     - Se añadió `IsDefault="True"` al botón principal de cobro (`ProcessPaymentCommand`), integrándolo con la semántica predeterminada de diálogos en WPF.
+     - Se configuraron `Window.InputBindings` con `KeyBinding` explícitos para las teclas `Return` y `Enter` enlazadas a `ProcessPaymentCommand`.
+     - En `CheckOutDialog.xaml.cs`, se implementó el manejador `Window_PreviewKeyDown`:
+       - Si el foco está en un `TextBox` (como el campo de monto en efectivo recibido `AmountTendered`), se invoca de inmediato `binding.UpdateSource()` asegurando la captura del último valor ingresado.
+       - Se evalúa `vm.ProcessPaymentCommand.CanExecute(null)` y se dispara la ejecución asíncrona de `ProcessPaymentCommand.ExecuteAsync(null)`, cancelando la propagación posterior (`e.Handled = true`).
+     - Esto permite al operario liquidar y emitir salida inmediatamente con solo presionar Enter desde cualquier parte del diálogo, agilizando el flujo de caja en horas pico.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/Views/CheckOutDialog.xaml.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+
+---
+
+### [2026-09-04 21:52:00] - [UI/UX / BUTTON] [WPF] - Ajuste Visual del Botón de Búsqueda en Liquidación y Salida (CheckOut)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ajusta este boton, elimina la palabra buscar y agranda mas el ic de la lupa"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Rediseño del Botón de Búsqueda (`CheckOutView.xaml`)**:
+     - Se eliminó el texto literal *"Buscar"* (`TextBlock`) y el contenedor horizontal (`StackPanel`), despejando el área de acción.
+     - Se incrementó la escala del ícono vectorial de la lupa (`IconSearch`) de `28x28` a **`58x58`** (`Width="58" Height="58" Stretch="Uniform"`), centrado directamente dentro del botón (`HorizontalAlignment="Center" VerticalAlignment="Center"`).
+     - Se ajustó el botón a dimensiones táctiles armoniosas (`Width="160" Height="160"`), maximizando el espacio de captura para la caja de texto adyacente (`SearchTextBox`) y mejorando la ergonomía táctil en pantalla POS.
+     - Se mantuvo el comando `SearchTicketCommand` y el `ToolTip="Buscar tiquete o placa (Enter)"` para accesibilidad.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckOutView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+
+---
+
+### [2026-09-04 21:40:00] - [UI/UX / CLEANUP] [WPF] - Limpieza de Barra Superior y Reubicación Destacada de Fecha y Hora en CheckIn
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Quisiera que en esta pantalla , elimines en lo que te encerre en rojo, sin embargo la fecha y la hora quisiera que la pongas arriba de taria activa seleccionada, con una tamaño medianamente grande y letra negra"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Limpieza de Barra Superior (`MainShellWindow.xaml`)**:
+     - Se retiraron del extremo superior derecho los elementos redundantes encerrados por el usuario: botón de sincronización forzada (`IconRefresh`), badge de cupos / aforo (`Occupancy.OccupancySummary`) y la píldora compacta de fecha/hora.
+     - Se preservó el indicador de conectividad de la sede (`SyncStatusText`, "API Central Online • Sincronizado") con alineación derecha limpia y sin saturación visual.
+  2. **Reubicación de Reloj y Fecha del Sistema (`CheckInView.xaml`, `CheckInViewModel.cs`)**:
+     - En `CheckInViewModel.cs`, se añadieron propiedades observables `CurrentDateString` y `CurrentTimeString`, gobernadas por un `DispatcherTimer` con intervalo de 1 segundo utilizando la cultura en español (`es-ES`).
+     - En `CheckInView.xaml`, se insertó una tarjeta moderna dedicada (`ModernCard`) directamente sobre la tarjeta de *"Tarifa Activa Seleccionada"*.
+     - Se configuró la visualización en dos líneas con formato de alta legibilidad para terminal de caja: fecha completa en español (`FontSize="14"`, `FontWeight="Bold"`, `Foreground="Black"`) y reloj digital en tiempo real (`FontSize="26"`, `FontWeight="Black"`, `Foreground="Black"`), acompañado del ícono oficial `IconClock`.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/MainShellWindow.xaml`
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+
+---
+
 ### [2026-09-04 20:25:00] - [FIX / SQLITE / SYNC / RESILIENCE] [WPF] - Migración Resiliente de Esquema SQLite (AllowChargeByDay), Mapeo Completo de Sedes y Protección de Aforo
 
 - **Autor**: Antigravity AI Assistant & Software Architect

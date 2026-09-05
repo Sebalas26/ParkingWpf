@@ -147,6 +147,36 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     [ObservableProperty]
     private BillingResolution? _resolution;
 
+    [ObservableProperty]
+    private int _paperWidth = 80;
+
+    [ObservableProperty]
+    private string _paperWidthBadgeText = "Formato: 80 mm";
+
+    [ObservableProperty]
+    private bool _is58Mm;
+
+    [ObservableProperty]
+    private double _dialogWindowWidth = 490;
+
+    [ObservableProperty]
+    private double _paperContainerWidth = 380;
+
+    [ObservableProperty]
+    private double _barcodeWidth = 260;
+
+    [ObservableProperty]
+    private double _qrCodeWidth = 110;
+
+    [ObservableProperty]
+    private double _monospaceFontSize = 11;
+
+    [ObservableProperty]
+    private double _monospaceTitleFontSize = 15;
+
+    [ObservableProperty]
+    private double _plateFontSize = 16;
+
     public string PublicConsultationUrl => "https://www.parking-flow.com/mockup-consulta";
 
     public event Action? RequestClose;
@@ -168,6 +198,32 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         PrintSuccess = false;
 
         var currentBranch = _sessionService.CurrentBranch;
+        var width = currentBranch?.PaperWidth > 0 ? currentBranch.PaperWidth : 80;
+        PaperWidth = width;
+        Is58Mm = width <= 58;
+        PaperWidthBadgeText = $"Formato: {width} mm";
+
+        if (Is58Mm)
+        {
+            DialogWindowWidth = 390;
+            PaperContainerWidth = 280;
+            BarcodeWidth = 200;
+            QrCodeWidth = 85;
+            MonospaceFontSize = 9.5;
+            MonospaceTitleFontSize = 13;
+            PlateFontSize = 14;
+        }
+        else
+        {
+            DialogWindowWidth = 490;
+            PaperContainerWidth = 380;
+            BarcodeWidth = 260;
+            QrCodeWidth = 110;
+            MonospaceFontSize = 11;
+            MonospaceTitleFontSize = 15;
+            PlateFontSize = 16;
+        }
+
         BranchName = !string.IsNullOrWhiteSpace(currentBranch?.Name) ? currentBranch.Name.ToUpperInvariant() : "PARQUEADERO MERLIN";
         BranchAddress = !string.IsNullOrWhiteSpace(currentBranch?.Address) ? currentBranch.Address.ToUpperInvariant() : "CALLE 18 18-18";
         BranchNit = !string.IsNullOrWhiteSpace(currentBranch?.Notes) && currentBranch.Notes.StartsWith("NIT", StringComparison.OrdinalIgnoreCase)

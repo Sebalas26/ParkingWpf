@@ -34,6 +34,7 @@ public partial class CheckOutViewModel : ViewModelBase
     public event Action? RequestCloseDialog;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SearchTicketCommand))]
     private string _searchQuery = string.Empty;
 
     [ObservableProperty]
@@ -411,9 +412,7 @@ public partial class CheckOutViewModel : ViewModelBase
         if (sanitized != value)
         {
             SearchQuery = sanitized;
-            return;
         }
-        _ = SearchTicketAsync();
     }
 
     [RelayCommand]
@@ -805,7 +804,9 @@ public partial class CheckOutViewModel : ViewModelBase
         _liveCalculationTimer.Start();
     }
 
-    [RelayCommand]
+    private bool CanSearchTicket => !string.IsNullOrWhiteSpace(SearchQuery);
+
+    [RelayCommand(CanExecute = nameof(CanSearchTicket))]
     private async Task SearchTicketAsync()
     {
         HasFeedback = false;

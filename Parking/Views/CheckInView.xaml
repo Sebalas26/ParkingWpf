@@ -518,6 +518,45 @@
         <!-- ========================================================================= -->
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
+                <!-- Tarjeta de Reloj y Fecha del Sistema en Tiempo Real -->
+                <Border Style="{StaticResource ModernCard}" Padding="16,14" Margin="0,0,0,14">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Icono de Reloj -->
+                        <Border Grid.Column="0"
+                                Width="44" Height="44"
+                                CornerRadius="10"
+                                Background="#F1F5F9"
+                                Margin="0,0,14,0"
+                                VerticalAlignment="Center">
+                            <Path Data="{StaticResource IconClock}"
+                                  Fill="{DynamicResource BrushPrimary}"
+                                  Width="22" Height="22"
+                                  Stretch="Uniform"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"/>
+                        </Border>
+
+                        <!-- Fecha y Hora en Letra Negra y Tamaño Destacado -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding CurrentDateString}"
+                                       FontSize="14"
+                                       FontWeight="Bold"
+                                       Foreground="Black"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding CurrentTimeString}"
+                                       FontSize="26"
+                                       FontWeight="Black"
+                                       Foreground="Black"
+                                       Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
                 <!-- 1. Tarjeta de Tarifa Vigente Seleccionada -->
                 <Border Style="{StaticResource ModernCard}" Padding="18" Margin="0,0,0,14">
                     <StackPanel>
@@ -619,11 +658,31 @@
                         <ItemsControl ItemsSource="{Binding RecentEntries}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#F8FAFC" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="8" Padding="10,6" Margin="0,0,0,6">
+                                    <Border CornerRadius="8" Padding="10,7" Margin="0,0,0,6" Cursor="Hand"
+                                            ToolTip="Clic para liquidar y registrar salida de este vehículo">
+                                        <Border.InputBindings>
+                                            <MouseBinding Gesture="LeftClick" 
+                                                          Command="{Binding DataContext.CheckOutVehicleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" 
+                                                          CommandParameter="{Binding}" />
+                                        </Border.InputBindings>
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#F8FAFC"/>
+                                                <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderSubtle}"/>
+                                                <Setter Property="BorderThickness" Value="1"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter Property="Background" Value="#F0FDF4"/>
+                                                        <Setter Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 
@@ -636,10 +695,15 @@
                                                 <TextBlock Text="{Binding VehicleType, Converter={StaticResource VehicleTypeStrConv}}" FontSize="12" Foreground="{DynamicResource BrushTextSecondary}"/>
                                             </StackPanel>
 
-                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,8,0">
                                                 <TextBlock Text="{Binding EntryTime, StringFormat='{}{0:HH:mm:ss}'}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" HorizontalAlignment="Right"/>
                                                 <TextBlock Text="{Binding TicketNumber}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Right"/>
                                             </StackPanel>
+
+                                            <!-- Ícono indicador de salida rápida -->
+                                            <Border Grid.Column="3" Width="26" Height="26" CornerRadius="13" Background="#DCFCE7" VerticalAlignment="Center" ToolTip="Registrar Salida">
+                                                <Path Data="{StaticResource IconCheckOut}" Fill="{DynamicResource BrushPrimary}" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

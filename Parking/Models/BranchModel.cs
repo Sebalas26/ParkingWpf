@@ -35,6 +35,9 @@ public class BranchModel
     [JsonPropertyName("logoBase64")]
     public string? LogoBase64 { get; set; }
 
+    [JsonPropertyName("paperWidth")]
+    public int PaperWidth { get; set; } = 80;
+
     [JsonPropertyName("isDefault")]
     public bool IsDefault { get; set; }
 

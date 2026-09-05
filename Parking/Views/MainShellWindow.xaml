@@ -414,16 +414,13 @@
                         </Button>
                     </StackPanel>
 
-                    <!-- Right: Sync + Occupancy + Clock (compacto en línea) -->
+                    <!-- Right: Sync Status Pill -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-
-                        <!-- Sync Status Pill -->
                         <Border Background="{DynamicResource BrushInputBackground}"
                                 BorderBrush="{DynamicResource BrushBorderSubtle}"
                                 BorderThickness="1"
                                 CornerRadius="12"
-                                Padding="8,3"
-                                Margin="0,0,6,0">
+                                Padding="8,3">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Ellipse Width="6" Height="6"
                                          Fill="{DynamicResource BrushSuccess}"
@@ -434,55 +431,8 @@
                                            FontWeight="SemiBold"
                                            Foreground="{DynamicResource BrushTextSecondary}"
                                            VerticalAlignment="Center"
-                                           MaxWidth="200"
+                                           MaxWidth="260"
                                            TextTrimming="CharacterEllipsis"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Sync Button -->
-                        <Button Command="{Binding ForceSyncCommand}"
-                                IsEnabled="{Binding IsSyncing, Converter={StaticResource InverseBoolConv}}"
-                                Style="{StaticResource SecondaryButton}"
-                                Height="24"
-                                Padding="6,0"
-                                Margin="0,0,6,0"
-                                ToolTip="Sincronizar">
-                            <Path Data="{StaticResource IconRefresh}"
-                                  Fill="{DynamicResource BrushPrimary}"
-                                  Width="11" Height="11"
-                                  Stretch="Uniform"/>
-                        </Button>
-
-                        <!-- Occupancy Badge -->
-                        <Border Background="{DynamicResource BrushSurfaceLight}"
-                                BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                BorderThickness="1"
-                                CornerRadius="12"
-                                Padding="8,3"
-                                Margin="0,0,6,0">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Ellipse Width="6" Height="6" Fill="{DynamicResource BrushSuccess}" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding Occupancy.OccupancySummary}"
-                                           FontSize="11"
-                                           FontWeight="Bold"
-                                           Foreground="{DynamicResource BrushTextPrimary}"
-                                           VerticalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Clock Pill -->
-                        <Border Background="{DynamicResource BrushInputBackground}"
-                                BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                BorderThickness="1"
-                                CornerRadius="12"
-                                Padding="8,3">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Path Data="{StaticResource IconClock}" Fill="{DynamicResource BrushPrimary}" Width="10" Height="10" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="{Binding CurrentTimeString}"
-                                           FontSize="11"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource BrushTextSecondary}"
-                                           VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>

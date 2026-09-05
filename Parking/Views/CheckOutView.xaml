@@ -14,6 +14,52 @@
         <conv:VehicleTypeToIconConverter x:Key="VehicleIconConv"/>
         <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <conv:NullToVisibilityConverter x:Key="NullToVis"/>
+
+        <!-- Estilo de Botón de Búsqueda Circular Dinámico (Gris inactivo / Verde activo) -->
+        <Style x:Key="CircularSearchButton" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource BrushPrimary}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextWhite}"/>
+            <Setter Property="Width" Value="150"/>
+            <Setter Property="Height" Value="150"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderThickness="0"
+                                CornerRadius="75"
+                                SnapsToDevicePixels="True">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="14" Direction="270" ShadowDepth="3" Opacity="0.18" Color="#0B3C49"/>
+                            </Border.Effect>
+                            <Path x:Name="IconSearchPath"
+                                  Data="{StaticResource IconSearch}"
+                                  Fill="{TemplateBinding Foreground}"
+                                  Width="56" Height="56"
+                                  Stretch="Uniform"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushPrimaryHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushPrimaryActive}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#CBD5E1"/>
+                                <Setter TargetName="IconSearchPath" Property="Fill" Value="#94A3B8"/>
+                                <Setter TargetName="border" Property="Effect" Value="{x:Null}"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="20">
@@ -75,19 +121,17 @@
                              Style="{StaticResource CheckoutSearchTextBox}"
                              Height="160"
                              FontSize="90"
-                             Margin="0,0,16,0"/>
+                             Margin="0,0,16,0">
+                        <TextBox.InputBindings>
+                            <KeyBinding Key="Return" Command="{Binding SearchTicketCommand}"/>
+                            <KeyBinding Key="Enter" Command="{Binding SearchTicketCommand}"/>
+                        </TextBox.InputBindings>
+                    </TextBox>
                     <Button Grid.Column="1"
                             Command="{Binding SearchTicketCommand}"
-                            Style="{StaticResource ModernButton}"
-                            MinWidth="210"
-                            Height="160"
-                            Padding="24,0"
-                            ToolTip="Buscar tiquete o placa (Enter)">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <Path Data="{StaticResource IconSearch}" Fill="{DynamicResource BrushTextWhite}" Width="28" Height="28" Stretch="Uniform" Margin="0,0,12,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="Buscar" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Button>
+                            Style="{StaticResource CircularSearchButton}"
+                            VerticalAlignment="Center"
+                            ToolTip="Buscar tiquete o placa (Enter)"/>
                 </Grid>
             </Grid>
         </Border>
@@ -139,7 +183,7 @@
                     <ItemsControl ItemsSource="{Binding ActiveVehicles}" VerticalAlignment="Top">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <UniformGrid Columns="2" VerticalAlignment="Top"/>
+                                <UniformGrid Columns="3" VerticalAlignment="Top"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>

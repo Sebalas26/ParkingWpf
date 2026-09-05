@@ -10,7 +10,13 @@
         AllowsTransparency="True"
         Background="#B3000000"
         WindowStartupLocation="CenterOwner"
-        ShowInTaskbar="False">
+        ShowInTaskbar="False"
+        PreviewKeyDown="Window_PreviewKeyDown">
+
+    <Window.InputBindings>
+        <KeyBinding Key="Return" Command="{Binding ProcessPaymentCommand}"/>
+        <KeyBinding Key="Enter" Command="{Binding ProcessPaymentCommand}"/>
+    </Window.InputBindings>
     
     <Window.Resources>
         <conv:CurrencyConverter x:Key="CurrencyConv"/>
@@ -505,6 +511,7 @@
                         Padding="0,12,0,0"
                         Background="{DynamicResource BrushAppBackground}">
                     <Button Command="{Binding ProcessPaymentCommand}"
+                            IsDefault="True"
                             Style="{StaticResource ModernButton}"
                             Height="48"
                             FontSize="16">

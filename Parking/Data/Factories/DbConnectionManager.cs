@@ -207,6 +207,7 @@ public class DbConnectionManager : IDbConnectionManager
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleIncidents\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleIncidents\" ADD COLUMN \"IsGlobal\" INTEGER DEFAULT 0;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"PaperWidth\" INTEGER NOT NULL DEFAULT 80;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"DefaultInitialCash\" TEXT NOT NULL DEFAULT '0';"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"AllowChargeByMinute\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"AllowChargeByHour\" INTEGER NOT NULL DEFAULT 1;"); } catch { }

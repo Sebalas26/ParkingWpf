@@ -24,7 +24,7 @@
     </Window.Resources>
 
     <Grid Background="Transparent">
-        <Border Width="490"
+        <Border Width="{Binding DialogWindowWidth}"
                 MaxHeight="680"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
@@ -45,7 +45,10 @@
                 <Grid Grid.Row="0" Margin="0,0,0,12">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushPrimary}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,8,0"/>
-                        <TextBlock Text="Vista Previa de Tiquete Térmico" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <TextBlock Text="Vista Previa de Tiquete Térmico" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,0,8,0"/>
+                        <Border Background="#DCFCE7" CornerRadius="4" Padding="6,2" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding PaperWidthBadgeText}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}"/>
+                        </Border>
                     </StackPanel>
                     <Button HorizontalAlignment="Right"
                             Command="{Binding CloseCommand}"
@@ -59,11 +62,13 @@
 
                 <!-- 2. Thermal Ticket Paper Container (Estilo POS Blanco y Negro) -->
                 <Border Grid.Row="1"
+                        Width="{Binding PaperContainerWidth}"
+                        HorizontalAlignment="Center"
                         Background="#FFFFFF"
                         BorderBrush="{DynamicResource BrushBorderMedium}"
                         BorderThickness="1"
                         CornerRadius="0"
-                        Padding="16,20"
+                        Padding="14,18"
                         Margin="0,0,0,12"
                         MaxHeight="480">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -221,7 +226,7 @@
 
                                     <Image Grid.Column="0"
                                            Source="{Binding ConsultationQrCodeImage}"
-                                           Width="110" Height="110"
+                                           Width="{Binding QrCodeWidth}" Height="{Binding QrCodeWidth}"
                                            Stretch="Uniform"
                                            RenderOptions.BitmapScalingMode="NearestNeighbor"
                                            HorizontalAlignment="Left"
@@ -296,7 +301,7 @@
 
                                 <!-- Código de Barras / QR -->
                                 <Image Source="{Binding BarcodeImage}"
-                                       Width="260" Height="80"
+                                       Width="{Binding BarcodeWidth}" Height="80"
                                        Stretch="Uniform"
                                        RenderOptions.BitmapScalingMode="NearestNeighbor"
                                        HorizontalAlignment="Center"
@@ -486,7 +491,7 @@
 
                                     <Image Grid.Column="0"
                                            Source="{Binding ConsultationQrCodeImage}"
-                                           Width="110" Height="110"
+                                           Width="{Binding QrCodeWidth}" Height="{Binding QrCodeWidth}"
                                            Stretch="Uniform"
                                            RenderOptions.BitmapScalingMode="NearestNeighbor"
                                            HorizontalAlignment="Left"

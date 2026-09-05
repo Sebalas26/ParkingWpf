@@ -36,6 +36,9 @@ public class ApiBranchSyncDto
     [JsonPropertyName("logoBase64")]
     public string? LogoBase64 { get; set; }
 
+    [JsonPropertyName("paperWidth")]
+    public int PaperWidth { get; set; } = 80;
+
     [JsonPropertyName("defaultInitialCash")]
     public decimal? DefaultInitialCash { get; set; }
 
