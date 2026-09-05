@@ -393,6 +393,11 @@ public class SyncEngineService : ISyncEngineService
                     existingBranch.TotalCapacity = br.TotalCapacity;
                     existingBranch.Notes = br.Notes;
                     existingBranch.LogoBase64 = br.LogoBase64;
+                    existingBranch.DefaultInitialCash = br.DefaultInitialCash ?? 0;
+                    existingBranch.AllowChargeByMinute = br.AllowChargeByMinute;
+                    existingBranch.AllowChargeByHour = br.AllowChargeByHour;
+                    existingBranch.AllowChargeByDay = br.AllowChargeByDay;
+                    existingBranch.AllowChargeByNight = br.AllowChargeByNight;
                     existingBranch.IsActive = br.IsActive;
                 }
                 else
@@ -408,6 +413,11 @@ public class SyncEngineService : ISyncEngineService
                         TotalCapacity = br.TotalCapacity,
                         Notes = br.Notes,
                         LogoBase64 = br.LogoBase64,
+                        DefaultInitialCash = br.DefaultInitialCash ?? 0,
+                        AllowChargeByMinute = br.AllowChargeByMinute,
+                        AllowChargeByHour = br.AllowChargeByHour,
+                        AllowChargeByDay = br.AllowChargeByDay,
+                        AllowChargeByNight = br.AllowChargeByNight,
                         IsActive = br.IsActive,
                         CreatedAtUtc = br.CreatedAtUtc
                     });
@@ -421,6 +431,11 @@ public class SyncEngineService : ISyncEngineService
                         b.Address = br.Address;
                         b.Phone = br.Phone;
                         b.City = br.City;
+                        b.DefaultInitialCash = br.DefaultInitialCash ?? 0;
+                        b.AllowChargeByMinute = br.AllowChargeByMinute;
+                        b.AllowChargeByHour = br.AllowChargeByHour;
+                        b.AllowChargeByDay = br.AllowChargeByDay;
+                        b.AllowChargeByNight = br.AllowChargeByNight;
                     });
                 }
             }

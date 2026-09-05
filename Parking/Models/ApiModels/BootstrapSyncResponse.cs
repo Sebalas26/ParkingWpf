@@ -36,6 +36,9 @@ public class ApiBranchSyncDto
     [JsonPropertyName("logoBase64")]
     public string? LogoBase64 { get; set; }
 
+    [JsonPropertyName("defaultInitialCash")]
+    public decimal? DefaultInitialCash { get; set; }
+
     [JsonPropertyName("allowChargeByMinute")]
     public bool AllowChargeByMinute { get; set; } = true;
 

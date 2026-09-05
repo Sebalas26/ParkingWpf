@@ -390,25 +390,34 @@ public class EfParkingTicketService : IParkingTicketService
 
     public async Task<OccupancyStats> GetOccupancyStatsAsync()
     {
-        using var db = _connectionManager.CreateDbContext();
+        int occupied = 0;
+        int capacity = 0;
         var currentBranchId = _sessionService.CurrentBranch?.Id;
 
-        var occupied = await db.ParkingTickets.CountAsync(t =>
-            t.Status == TicketStatus.Active &&
-            (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value));
-
-        int capacity = 0;
-        if (currentBranchId.HasValue)
+        try
         {
-            var branch = await db.Branches.FirstOrDefaultAsync(b => b.Id == currentBranchId.Value);
-            if (branch != null && branch.TotalCapacity > 0)
+            using var db = _connectionManager.CreateDbContext();
+
+            occupied = await db.ParkingTickets.CountAsync(t =>
+                t.Status == TicketStatus.Active &&
+                (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value));
+
+            if (currentBranchId.HasValue)
             {
-                capacity = branch.TotalCapacity;
-                if (_sessionService.CurrentBranch != null && _sessionService.CurrentBranch.Id == currentBranchId.Value && _sessionService.CurrentBranch.TotalCapacity != capacity)
+                var branch = await db.Branches.FirstOrDefaultAsync(b => b.Id == currentBranchId.Value);
+                if (branch != null && branch.TotalCapacity > 0)
                 {
-                    _sessionService.CurrentBranch.TotalCapacity = capacity;
+                    capacity = branch.TotalCapacity;
+                    if (_sessionService.CurrentBranch != null && _sessionService.CurrentBranch.Id == currentBranchId.Value && _sessionService.CurrentBranch.TotalCapacity != capacity)
+                    {
+                        _sessionService.CurrentBranch.TotalCapacity = capacity;
+                    }
                 }
             }
+        }
+        catch
+        {
+            // Fallback resiliente si SQLite está bloqueado o actualizando esquema
         }
 
         if (capacity <= 0)

@@ -165,11 +165,27 @@ public class DbConnectionManager : IDbConnectionManager
                     ""IsActive"" INTEGER NOT NULL DEFAULT 1,
                     ""CreatedAtUtc"" TEXT NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS ""BranchPaymentMethods"" (
+                    ""Id"" INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ""BranchId"" INTEGER NOT NULL,
+                    ""PaymentMethodId"" INTEGER NOT NULL,
+                    ""RequiresCashTender"" INTEGER NOT NULL DEFAULT 0,
+                    ""IsActive"" INTEGER NOT NULL DEFAULT 1
+                );
+
+                CREATE TABLE IF NOT EXISTS ""UserBranches"" (
+                    ""UserId"" INTEGER NOT NULL,
+                    ""BranchId"" INTEGER NOT NULL,
+                    PRIMARY KEY (""UserId"", ""BranchId"")
+                );
             ");
 
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PendingSyncItems\" ADD COLUMN \"OperationType\" TEXT DEFAULT '';"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PendingSyncItems\" ADD COLUMN \"LastError\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PendingSyncItems\" ADD COLUMN \"IsProcessed\" INTEGER DEFAULT 0;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"CashRegisterName\" TEXT NOT NULL DEFAULT 'Caja Principal';"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"TotalCashWithdrawals\" TEXT NOT NULL DEFAULT '0';"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"HandoverToUserId\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"HandoverToUserName\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
@@ -191,6 +207,17 @@ public class DbConnectionManager : IDbConnectionManager
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleIncidents\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleIncidents\" ADD COLUMN \"IsGlobal\" INTEGER DEFAULT 0;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"DefaultInitialCash\" TEXT NOT NULL DEFAULT '0';"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"AllowChargeByMinute\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"AllowChargeByHour\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"AllowChargeByDay\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"AllowChargeByNight\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"NightRate\" TEXT NOT NULL DEFAULT '0';"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"FullDayRate\" TEXT NOT NULL DEFAULT '0';"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PaymentMethods\" ADD COLUMN \"RequiresCashTender\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PaymentMethods\" ADD COLUMN \"State\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PaymentMethods\" ADD COLUMN \"Icon\" TEXT NOT NULL DEFAULT 'IconCash';"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"GracePeriodMinutes\" = 0;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"VehicleType\" = 1 WHERE LOWER(\"DisplayName\") LIKE '%moto%';"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"VehicleType\" = 4 WHERE LOWER(\"DisplayName\") LIKE '%bici%' OR LOWER(\"DisplayName\") LIKE '%bike%';"); } catch { }

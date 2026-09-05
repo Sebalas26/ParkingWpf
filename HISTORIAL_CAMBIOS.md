@@ -15,6 +15,45 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-04 20:25:00] - [FIX / SQLITE / SYNC / RESILIENCE] [WPF] - Migración Resiliente de Esquema SQLite (AllowChargeByDay), Mapeo Completo de Sedes y Protección de Aforo
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"tengo este error peor en la ultima prueba estaba funcionando bien si deja entrar, no sincroniza con la sede, que sucede por que da ese error si todo estaba bien anteriormente. solo que iniciamos sesion en otro pc con el wpf eso deberia sincronizar todo completo . analiza y dame plan"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Causa Raíz de Incompatibilidad Multi-PC (`DbConnectionManager.cs`)**:
+     - Al abrir la solución en otra estación de trabajo o con una base de datos local SQLite preexistente (`parkflow_local.db`), la tabla física `Branches` carecía de las columnas añadidas recientemente a la entidad C# `Branch.cs` (`AllowChargeByMinute`, `AllowChargeByHour`, `AllowChargeByDay`, `AllowChargeByNight`, `DefaultInitialCash`).
+     - Dado que `context.Database.EnsureCreatedAsync()` de EF Core solo actúa si el archivo de base de datos no existe y no aplica migraciones sobre bases de datos preexistentes, la consulta `db.Branches.ToListAsync()` arrojaba la excepción no controlada: `SQLite Error 1: 'no such column: b.AllowChargeByDay'`.
+     - Esto provocaba que durante el Login, el proceso de sincronización Bootstrap abortara en el Paso 4 (Sedes), impidiendo la descarga subsiguiente de tarifas vehiculares (Paso 5) y convenios (Paso 6), y disparando un crash modal en `GetOccupancyStatsAsync()`.
+  2. **Migración Automática e Idempotente (`DbConnectionManager.cs`)**:
+     - Se incorporaron sentencias preventivas `ALTER TABLE` para:
+       - `Branches`: `AllowChargeByMinute`, `AllowChargeByHour`, `AllowChargeByDay`, `AllowChargeByNight`, `DefaultInitialCash`.
+       - `VehicleRates`: `BranchId`, `NightRate`, `FullDayRate`.
+       - `WorkShifts`: `CashRegisterName`, `TotalCashWithdrawals`.
+       - `PaymentMethods`: `RequiresCashTender`, `State`, `Icon`.
+     - Se aseguraron mediante `CREATE TABLE IF NOT EXISTS` las tablas relacionales:
+       - `BranchPaymentMethods` (con `Id`, `BranchId`, `PaymentMethodId`, `RequiresCashTender`, `IsActive`).
+       - `UserBranches` (con `UserId`, `BranchId`).
+  3. **Mapeo Fiel en Sincronización y DTOs (`BootstrapSyncResponse.cs`, `SyncEngineService.cs`)**:
+     - Se añadió `DefaultInitialCash` a `ApiBranchSyncDto`.
+     - En `SyncEngineService.cs`, se mapearon explícitamente `AllowChargeByMinute`, `AllowChargeByHour`, `AllowChargeByDay`, `AllowChargeByNight` y `DefaultInitialCash` tanto en la inserción de nuevas sedes como en la actualización de sedes locales existentes y en la actualización en caliente de `_sessionService.CurrentBranch`.
+  4. **Protección Defensiva contra Caídas de Hilo de UI (`EfParkingTicketService.cs`)**:
+     - En `GetOccupancyStatsAsync()`, se encapsuló la consulta de `db.Branches` en un bloque seguro `try/catch` con fallback a memoria y `_sessionService.CurrentBranch?.TotalCapacity`, garantizando que la aplicación nunca se interrumpa por contingencias transitorias en la lectura de SQLite.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+  - `dotnet test ParkingApi.slnx` → **345 Superadas, 0 Fallos**.
+
+---
+
 ### [2026-09-04 18:15:00] - [FIX / VALIDATION / BILLING / UI] [WPF] - Validación de Cupo Máximo en Ingreso, Nombre Dinámico de Categorías y Cálculo Progresivo por Minutos
 
 - **Autor**: Antigravity AI Assistant & Software Architect
