@@ -15,6 +15,38 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-06 22:11:00] - [FEAT / CHECKOUT / UX / RESOLUTION] [WPF] - Visualización de Tiquete en Cabecera y Autoselección de Resolución POS para Efectivo
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayudame que en esta pantalla del wpf me muestre enla parte superior el numero de ticket , adicional que si se elige en metodo de pago efectivo, en la resolucion me elija a POS, algo asi aplicando la misma lgica que uso para el de la tarjeta de credito y debito que elige a FVM"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Visualización de Número de Tiquete en Cabecera (`CheckOutDialog.xaml`)**:
+     - En el `StackPanel` horizontal superior del modal de liquidación, junto a la placa y categoría del vehículo, se incorporó:
+       `<TextBlock Text="{Binding SelectedTicket.TicketNumber, StringFormat='{} • Tiquete: {0}'}" FontSize="15" FontWeight="SemiBold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="{DynamicResource BrushTextSecondary}"/>`
+     - Permite al cajero identificar con total claridad y de un solo vistazo el código único del tiquete liquidado.
+  2. **Autoselección Inteligente de Resolución POS para Efectivo (`CheckOutViewModel.cs`)**:
+     - Se implementó el método privado `AutoSelectPosResolution()` que busca entre las resoluciones disponibles (`AvailableResolutions`) aquella cuyo `Prefix`, `DocumentType` o `Name` contenga *"POS"*.
+     - Se implementó `IsCashPayment(string? text)` para detección confiable de pagos en efectivo.
+     - En `OnSelectedPaymentMethodEntityChanged`, se enlazó la condición para que al seleccionar un método de pago en efectivo (`value.ToEnum() == PaymentMethod.Cash || value.RequiresCashTender || IsCashPayment(value.Name)`), se autoseleccione la resolución **POS**, replicando la lógica previa que asigna **FVM** a pagos electrónicos/tarjetas.
+  3. **Pruebas Unitarias Automatizadas (`CheckOutViewModelTests.cs`)**:
+     - Se incorporaron dos pruebas unitarias:
+       - `OnSelectedPaymentMethodEntityChanged_WhenCash_AutoSelectsPosResolution_Successfully`: Certifica la selección automática de POS al elegir efectivo.
+       - `OnSelectedPaymentMethodEntityChanged_WhenCard_AutoSelectsFvmResolution_Successfully`: Certifica la selección automática de FVM al elegir tarjeta.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+  - `dotnet test ParkingWpf.slnx` → **100% Superado (Total: 45, Superadas: 45, Fallidas: 0)**.
+
+---
+
 ### [2026-09-06 20:20:00] - [TEST / QUALITY / ARCHITECTURE] [WPF] - Suite Completa de Pruebas Unitarias (Parking.UnitTests) y Regla de Oro en AGENTS.md (100% Tests Obligatorios)
 
 - **Autor**: Antigravity AI Assistant & Software Architect

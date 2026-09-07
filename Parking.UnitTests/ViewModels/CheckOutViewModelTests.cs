@@ -198,6 +198,56 @@ public class CheckOutViewModelTests : IDisposable
         vm.ChangeDue.Should().Be(0m);
     }
 
+    [Fact]
+    public void OnSelectedPaymentMethodEntityChanged_WhenCash_AutoSelectsPosResolution_Successfully()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var fvmRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FVM", Name = "Facturación Electrónica" };
+        var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS Estándar" };
+        vm.AvailableResolutions.Add(fvmRes);
+        vm.AvailableResolutions.Add(posRes);
+
+        var cashPaymentMethod = new PaymentMethodEntity
+        {
+            Id = 1,
+            Name = "Efectivo",
+            RequiresCashTender = true
+        };
+
+        // Act
+        vm.SelectedPaymentMethodEntity = cashPaymentMethod;
+
+        // Assert
+        vm.SelectedResolution.Should().NotBeNull();
+        vm.SelectedResolution.Should().Be(posRes);
+    }
+
+    [Fact]
+    public void OnSelectedPaymentMethodEntityChanged_WhenCard_AutoSelectsFvmResolution_Successfully()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var fvmRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FVM", Name = "Facturación Electrónica" };
+        var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS Estándar" };
+        vm.AvailableResolutions.Add(fvmRes);
+        vm.AvailableResolutions.Add(posRes);
+
+        var cardPaymentMethod = new PaymentMethodEntity
+        {
+            Id = 2,
+            Name = "Tarjeta de Crédito",
+            RequiresCashTender = false
+        };
+
+        // Act
+        vm.SelectedPaymentMethodEntity = cardPaymentMethod;
+
+        // Assert
+        vm.SelectedResolution.Should().NotBeNull();
+        vm.SelectedResolution.Should().Be(fvmRes);
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

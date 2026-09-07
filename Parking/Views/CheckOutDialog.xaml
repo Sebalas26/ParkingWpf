@@ -94,6 +94,7 @@
                                     <TextBlock Text="Placa: " FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
                                     <TextBlock Text="{Binding SelectedTicket.PlateNumber}" FontSize="18" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="{DynamicResource BrushPrimary}"/>
                                     <TextBlock Text="{Binding SelectedTicket.VehicleType, Converter={StaticResource VehicleTypeStrConv}, StringFormat='{} • {0}'}" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}"/>
+                                    <TextBlock Text="{Binding SelectedTicket.TicketNumber, StringFormat='{} • Tiquete: {0}'}" FontSize="15" FontWeight="SemiBold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="{DynamicResource BrushTextSecondary}"/>
                                 </StackPanel>
                             </StackPanel>
 

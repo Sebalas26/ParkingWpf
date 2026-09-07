@@ -305,6 +305,11 @@ public partial class CheckOutViewModel : ViewModelBase
             {
                 AutoSelectFvmResolution();
             }
+            // Si es efectivo o requiere cambio, auto-seleccionar resolución POS
+            else if (value.ToEnum() == Core.Enums.PaymentMethod.Cash || value.RequiresCashTender || IsCashPayment(value.Name))
+            {
+                AutoSelectPosResolution();
+            }
         }
     }
 
@@ -319,6 +324,26 @@ public partial class CheckOutViewModel : ViewModelBase
         {
             SelectedResolution = fvmRes;
         }
+    }
+
+    private void AutoSelectPosResolution()
+    {
+        if (AvailableResolutions.Count == 0) return;
+
+        var posRes = AvailableResolutions.FirstOrDefault(r => (r.Prefix?.Equals("POS", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                            || (r.DocumentType?.Contains("POS", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                            || (r.Name?.Contains("POS", StringComparison.OrdinalIgnoreCase) ?? false));
+        if (posRes != null)
+        {
+            SelectedResolution = posRes;
+        }
+    }
+
+    private static bool IsCashPayment(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text)) return false;
+        var clean = text.Trim().ToLowerInvariant();
+        return clean.Contains("efectivo") || clean.Contains("cash");
     }
 
     private static bool IsCardOrElectronicPayment(string? text)
