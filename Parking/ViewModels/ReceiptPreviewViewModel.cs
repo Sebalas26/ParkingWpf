@@ -17,6 +17,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private readonly IReceiptPrinterService _printerService;
     private readonly ISessionService _sessionService;
     private readonly IDbConnectionManager _connectionManager;
+    private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
 
     [ObservableProperty]
     private ParkingTicket _ticket = new();
@@ -183,18 +184,24 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     [ObservableProperty]
     private double _plateFontSize = 16;
 
-    public string PublicConsultationUrl => "https://www.parking-flow.com/mockup-consulta";
+    [ObservableProperty]
+    private string _publicConsultationUrl = "https://www.parking-flow.com/consulta";
+
+    [ObservableProperty]
+    private string _consultationDomainText = "www.parking-flow.com/consulta";
 
     public event Action? RequestClose;
 
     public ReceiptPreviewViewModel(
         IReceiptPrinterService printerService,
         ISessionService sessionService,
-        IDbConnectionManager connectionManager)
+        IDbConnectionManager connectionManager,
+        Microsoft.Extensions.Configuration.IConfiguration configuration)
     {
         _printerService = printerService;
         _sessionService = sessionService;
         _connectionManager = connectionManager;
+        _configuration = configuration;
     }
 
     public void LoadTicket(ParkingTicket ticket, BillingResolution? resolution = null)
@@ -439,6 +446,20 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             InvoiceDateStr = (ticket.EntryTime != default ? ticket.EntryTime : DateTime.Now).ToString("dd/MM/yy");
             InvoiceTimeStr = (ticket.EntryTime != default ? ticket.EntryTime : DateTime.Now).ToString("HH:mm:ss");
             BarcodeImage = Services.Implementations.BarcodeGeneratorService.GenerateCode128(ticket.PlateNumber);
+
+            var pwaBase = _configuration?["PwaSettings:BaseUrl"]?.TrimEnd('/') ?? "https://www.parking-flow.com";
+            PublicConsultationUrl = $"{pwaBase}/consulta?plate={Uri.EscapeDataString(ticket.PlateNumber)}&ticket={Uri.EscapeDataString(ticket.TicketNumber)}";
+
+            try
+            {
+                var uri = new Uri(pwaBase);
+                ConsultationDomainText = $"{uri.Host}/consulta";
+            }
+            catch
+            {
+                ConsultationDomainText = "www.parking-flow.com/consulta";
+            }
+
             ConsultationQrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(PublicConsultationUrl, 8);
             ElectronicInvoiceQrImage = null;
         }

@@ -66,6 +66,36 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-06 20:13:00] - [FEAT / TICKET / QR CONSULTATION] [WPF] - Modificación del Bloque QR de Entrada para Consulta en Línea de Vehículos Activos
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Quisiera que en pwa exista una pantalla, exclusiva para solo eso, que no tenga botones de redigirme a la dashboard ni nada, la cual me muestre la informacion de un vehiculo activo, es decir de los que se encuentren aca (pantallazo), Esa nueva pantalla debera dejarse ver cuando el cliente atraves de laimpresion de entrada, escaenee un QR, asi que si es posible crear una api la cual reciba la placa a consultar y esta me lleve a la internet a consultarla, modifica el QR de la impresion de entrada del vehiculo de mi wpf para que cumppla con la condicion que te acabo de especificar, asi mismo que si al vehiculo se le da salida, ese link de la nueva pantalla ya no muestre nada y muestre un mensaje informando que ya no es posible consultar vehiculo"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Rediseño y Optimización del Bloque QR en Tiquete de Entrada (`ReceiptPreviewDialog.xaml`)**:
+     - Se actualizó la sección visual del tiquete de ingreso (`IsEntryTicket`), expandiendo el código QR a una dimensión optimizada de 92x92 píxeles con renderizado nítido `NearestNeighbor` para garantizar lectura instantánea desde cualquier teléfono inteligente.
+     - Se incorporó encabezado explícito: `"CONSULTE SU VEHÍCULO EN LÍNEA"` en fuente monospace negrita.
+     - Se añadieron instrucciones claras al usuario: `"Escanee con la cámara de su celular:"`.
+     - Se integró el dominio y subtexto: `"{Binding ConsultationDomainText}"` y `"Estado, tiempo y cobro en tiempo real"`.
+  2. **Parametrización Dinámica de Enlace (`ReceiptPreviewViewModel.cs`, `appsettings.json`)**:
+     - Se ajustó el dominio base a `https://www.parking-flow.com` (en sustitución del subdominio inactivo `pwa.parking-flow.com`), apuntando a `{pwaBase}/consulta?plate={plate}&ticket={ticket}`.
+     - Se actualizaron `appsettings.json`, `appsettings.Development.json` y los fallbacks de `ReceiptPreviewViewModel.cs`.
+  3. **Backend Central (`ParkingApi`)**:
+     - En `PublicTicketsController.cs` y `PublicTicketStatusDto.cs`, se añadió `IsActive` y el manejo de tiquetes finalizados para que devuelvan el mensaje de salida y limpien los cobros en curso.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/appsettings.json`
+  - `Parking/appsettings.Development.json`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+
+---
+
 ### [2026-09-06 20:00:00] - [FEAT / OFFLINE PARITY / 100% DATA-DRIVEN / PRICING / OPERATING HOURS] [WPF] - Paridad Offline 100% Data-Driven: Sincronización a Nivel de Empresa, Horarios de Sede, Tarifas Cíclicas, Tiquete Perdido, Convenios por Tiempo y Novedad Extemporánea Transparente
 
 - **Autor**: Antigravity AI Assistant & Software Architect
