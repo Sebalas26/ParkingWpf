@@ -152,16 +152,32 @@ public class EfPricingCalculatorService : IPricingCalculatorService
             bool allowDay = branch == null || branch.AllowChargeByDay;
             bool allowNight = branch != null && branch.AllowChargeByNight;
 
-            // 2. Tarifa Nocturna (Pernocta) - 100% Data-Driven (Sin supuestos quemados de horas o minutos)
+            // 2. Tarifa Nocturna (Pernocta) - 100% Data-Driven (Hierarchical VehicleRate -> Branch)
             bool isNightStay = false;
-            if (allowNight && rate.NightRate > 0 && branch != null && branch.NightStartTime.HasValue && branch.NightEndTime.HasValue)
-            {
-                var nightStart = branch.NightStartTime.Value;
-                var nightEnd = branch.NightEndTime.Value;
-                int minNightStay = branch.NightStayMinMinutes.GetValueOrDefault(0);
+            var nightStart = rate.NightStartTime ?? branch?.NightStartTime;
+            var nightEnd = rate.NightEndTime ?? branch?.NightEndTime;
+            int minNightStay = rate.NightStayMinMinutes ?? branch?.NightStayMinMinutes ?? 0;
+            string? nightDays = branch?.NightApplicableDays;
+            bool nightDayApplies = IsDayApplicable(nightDays, cotDayOfWeek);
 
-                bool enteredDuringNight = cotEntryTime.TimeOfDay >= nightStart || cotEntryTime.TimeOfDay < nightEnd;
-                bool exitedDuringNightOrMorning = cotExitTime.TimeOfDay >= nightStart || cotExitTime.TimeOfDay < nightEnd || cotExitTime.Date > cotEntryTime.Date;
+            if (allowNight && rate.NightRate > 0 && nightStart.HasValue && nightEnd.HasValue && nightDayApplies)
+            {
+                var start = nightStart.Value;
+                var end = nightEnd.Value;
+
+                bool enteredDuringNight;
+                bool exitedDuringNightOrMorning;
+
+                if (start > end) // Cruce de medianoche (ej: 20:00 a 06:00)
+                {
+                    enteredDuringNight = cotEntryTime.TimeOfDay >= start || cotEntryTime.TimeOfDay < end;
+                    exitedDuringNightOrMorning = cotExitTime.TimeOfDay >= start || cotExitTime.TimeOfDay < end || cotExitTime.Date > cotEntryTime.Date;
+                }
+                else // Mismo día (ej: 01:00 a 05:00)
+                {
+                    enteredDuringNight = cotEntryTime.TimeOfDay >= start && cotEntryTime.TimeOfDay < end;
+                    exitedDuringNightOrMorning = cotExitTime.TimeOfDay >= start && cotExitTime.TimeOfDay < end;
+                }
 
                 if (enteredDuringNight && exitedDuringNightOrMorning && effectiveMinutes >= minNightStay)
                 {
@@ -173,17 +189,12 @@ public class EfPricingCalculatorService : IPricingCalculatorService
             // 3. Tarifa Plena Cíclica (si no aplicó pernocta) - 100% Data-Driven
             if (!isNightStay)
             {
-                bool fullDayConfigured = allowDay && rate.FullDayRate > 0 && branch != null && branch.FullDayThresholdMinutes.HasValue && branch.FullDayThresholdMinutes.Value > 0;
-                bool fullDayApplies = fullDayConfigured;
+                int fullDayThreshold = (rate.FullDayThresholdMinutes.HasValue && rate.FullDayThresholdMinutes.Value > 0)
+                    ? rate.FullDayThresholdMinutes.Value
+                    : (branch?.FullDayThresholdMinutes ?? 0);
 
-                if (fullDayConfigured && !string.IsNullOrWhiteSpace(branch!.FullDayApplicableDays))
-                {
-                    var currentDayStr = cotDayOfWeek.ToString();
-                    fullDayApplies = branch.FullDayApplicableDays.Contains(currentDayStr, StringComparison.OrdinalIgnoreCase)
-                                  || branch.FullDayApplicableDays.Equals("All", StringComparison.OrdinalIgnoreCase);
-                }
-
-                int fullDayThreshold = branch?.FullDayThresholdMinutes ?? 0;
+                bool fullDayConfigured = allowDay && rate.FullDayRate > 0 && fullDayThreshold > 0;
+                bool fullDayApplies = fullDayConfigured && IsDayApplicable(branch?.FullDayApplicableDays, cotDayOfWeek);
 
                 if (fullDayApplies && fullDayThreshold > 0 && effectiveMinutes >= fullDayThreshold)
                 {
@@ -277,5 +288,27 @@ public class EfPricingCalculatorService : IPricingCalculatorService
 
             _ratesCache[vehicleType] = rate;
         }
+    }
+
+    private static bool IsDayApplicable(string? applicableDays, DayOfWeek day)
+    {
+        if (string.IsNullOrWhiteSpace(applicableDays)) return true;
+        if (applicableDays.Equals("All", StringComparison.OrdinalIgnoreCase)) return true;
+
+        var tokens = applicableDays.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        int dayNum = (int)day; // 0=Sunday, 1=Monday... 6=Saturday
+        string dayNumStr = dayNum.ToString();
+        string dayName = day.ToString(); // e.g. "Monday"
+
+        foreach (var token in tokens)
+        {
+            var trimmed = token.Trim();
+            if (trimmed.Equals(dayNumStr, StringComparison.OrdinalIgnoreCase) ||
+                trimmed.Equals(dayName, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+        return false;
     }
 }

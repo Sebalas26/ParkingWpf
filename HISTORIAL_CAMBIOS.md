@@ -15,6 +15,41 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-07 09:10:00] - [FEAT / CORE / PRICING / SYNC] [WPF] - Días de Tarifa Nocturna, Umbrales Jerárquicos por Vehículo y Corrección en Detección de Días
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"todo desmarcado y que se deban marcar por que las pruebas necesitamos ahcerlas minusiosamente 1 por 1 donde activamos 1 miramos que funcione y asi vamos a la siguiente. pero desde que sea entendible para el wpf y el angular y que sea correcto y sea la mejor practica excelente. las parametrizaciones de cobro de plena y noche por dias ya sea marcar toda la semana pero con un boton y tambien que se puedan desmarcar dia por dia con un tac tac tac tac si me explico y las tarifas de los vehiculos cuando se cobran por plena deben tener su hora inicio su hora fin y cuantas horas son y el umbral de horas para el cobro si me explico"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Actualización de Entidades y Modelos (`Branch.cs`, `VehicleRate.cs`, `BranchModel.cs`, `BootstrapSyncResponse.cs`)**:
+     - En `Branch`: se agregó `NightApplicableDays` para controlar los días que aplica la tarifa nocturna en la sede.
+     - En `VehicleRate`: se agregaron `FullDayStartTime`, `FullDayEndTime`, `FullDayThresholdMinutes`, `NightStartTime`, `NightEndTime`, `NightStayMinMinutes` permitiendo parametrizar ventanas horarias y umbrales específicos a nivel de cada categoría vehicular.
+  2. **Migraciones Seguras en SQLite Local (`DbConnectionManager.cs`)**:
+     - Se agregaron sentencias seguras `ALTER TABLE ADD COLUMN` para `Branches.NightApplicableDays` y todas las nuevas columnas de `VehicleRates` en bases de datos SQLite existentes.
+  3. **Mapeo en Motor de Sincronización (`SyncEngineService.cs`)**:
+     - Sincronización completa desde `BootstrapSyncResponse` hacia las entidades SQLite locales de `Branch` y `VehicleRate`.
+  4. **Motor de Precios Robusto y Resiliente (`EfPricingCalculatorService.cs`)**:
+     - Corrección del fallo de evaluación de días mediante `IsDayApplicable(string? applicableDays, DayOfWeek day)` con soporte tolerante para números separados por coma (`"1,2,3,4,5,6,0"`), nombres en inglés y `"All"`.
+     - Soporte para ventanas nocturnas con cruce de medianoche (`nightStart > nightEnd`, ej: 20:00 a 06:00).
+     - Jerarquía de tarifas: `rate.FullDayThresholdMinutes` prevalece sobre el umbral general de la sede (`branch.FullDayThresholdMinutes`).
+  5. **Pruebas Unitarias Automatizadas (`EfPricingCalculatorServiceTests.cs`)**:
+     - Se crearon pruebas unitarias específicas validando la precedencia de umbrales del vehículo y el formato de días numéricos separados por comas.
+- **📦 Componentes Modificados**:
+  - `Parking/Entities/Branch.cs`
+  - `Parking/Entities/VehicleRate.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking.UnitTests/Pricing/EfPricingCalculatorServiceTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+  - `dotnet test ParkingWpf.slnx` → **100% Superado (47 de 47 pruebas exitosas, 0 fallos)**.
+
+---
+
 ### [2026-09-06 23:18:00] - [FEAT / SHIFTS / CAJA] [WPF] - Carga Automática de Base Inicial de Caja según Configuración de Sede (PWA)
 
 - **Autor**: Antigravity AI Assistant & Software Architect

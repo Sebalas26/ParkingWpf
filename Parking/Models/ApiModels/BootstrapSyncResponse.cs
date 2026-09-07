@@ -69,6 +69,9 @@ public class ApiBranchSyncDto
     [JsonPropertyName("fullDayEndTime")]
     public TimeSpan? FullDayEndTime { get; set; }
 
+    [JsonPropertyName("nightApplicableDays")]
+    public string? NightApplicableDays { get; set; }
+
     [JsonPropertyName("nightStartTime")]
     public TimeSpan? NightStartTime { get; set; }
 
@@ -298,6 +301,24 @@ public class ApiVehicleRateSyncDto
 
     [JsonPropertyName("dayOfWeek")]
     public DayOfWeek? DayOfWeek { get; set; }
+
+    [JsonPropertyName("fullDayStartTime")]
+    public TimeSpan? FullDayStartTime { get; set; }
+
+    [JsonPropertyName("fullDayEndTime")]
+    public TimeSpan? FullDayEndTime { get; set; }
+
+    [JsonPropertyName("fullDayThresholdMinutes")]
+    public int? FullDayThresholdMinutes { get; set; }
+
+    [JsonPropertyName("nightStartTime")]
+    public TimeSpan? NightStartTime { get; set; }
+
+    [JsonPropertyName("nightEndTime")]
+    public TimeSpan? NightEndTime { get; set; }
+
+    [JsonPropertyName("nightStayMinMinutes")]
+    public int? NightStayMinMinutes { get; set; }
 
     [JsonPropertyName("updatedAtUtc")]
     public DateTime? UpdatedAtUtc { get; set; }

@@ -25,6 +25,7 @@ public class Branch
     public string? FullDayApplicableDays { get; set; }
     public TimeSpan? FullDayStartTime { get; set; }
     public TimeSpan? FullDayEndTime { get; set; }
+    public string? NightApplicableDays { get; set; }
     public TimeSpan? NightStartTime { get; set; }
     public TimeSpan? NightEndTime { get; set; }
     public int? NightStayMinMinutes { get; set; }

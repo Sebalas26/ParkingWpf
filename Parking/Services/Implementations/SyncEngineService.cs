@@ -404,6 +404,7 @@ public class SyncEngineService : ISyncEngineService
                     existingBranch.FullDayApplicableDays = br.FullDayApplicableDays;
                     existingBranch.FullDayStartTime = br.FullDayStartTime;
                     existingBranch.FullDayEndTime = br.FullDayEndTime;
+                    existingBranch.NightApplicableDays = br.NightApplicableDays;
                     existingBranch.NightStartTime = br.NightStartTime;
                     existingBranch.NightEndTime = br.NightEndTime;
                     existingBranch.NightStayMinMinutes = br.NightStayMinMinutes;
@@ -433,6 +434,7 @@ public class SyncEngineService : ISyncEngineService
                         FullDayApplicableDays = br.FullDayApplicableDays,
                         FullDayStartTime = br.FullDayStartTime,
                         FullDayEndTime = br.FullDayEndTime,
+                        NightApplicableDays = br.NightApplicableDays,
                         NightStartTime = br.NightStartTime,
                         NightEndTime = br.NightEndTime,
                         NightStayMinMinutes = br.NightStayMinMinutes,
@@ -460,6 +462,7 @@ public class SyncEngineService : ISyncEngineService
                         b.FullDayApplicableDays = br.FullDayApplicableDays;
                         b.FullDayStartTime = br.FullDayStartTime;
                         b.FullDayEndTime = br.FullDayEndTime;
+                        b.NightApplicableDays = br.NightApplicableDays;
                         b.NightStartTime = br.NightStartTime;
                         b.NightEndTime = br.NightEndTime;
                         b.NightStayMinMinutes = br.NightStayMinMinutes;
@@ -656,7 +659,13 @@ public class SyncEngineService : ISyncEngineService
                     existing.HourRate = hourRate;
                     existing.MinuteRate = minuteRate;
                     existing.FullDayRate = fullDayRate;
+                    existing.FullDayStartTime = rate.FullDayStartTime;
+                    existing.FullDayEndTime = rate.FullDayEndTime;
+                    existing.FullDayThresholdMinutes = rate.FullDayThresholdMinutes;
                     existing.NightRate = nightRate;
+                    existing.NightStartTime = rate.NightStartTime;
+                    existing.NightEndTime = rate.NightEndTime;
+                    existing.NightStayMinMinutes = rate.NightStayMinMinutes;
                     existing.GracePeriodMinutes = grace;
                     existing.DayOfWeek = rate.DayOfWeek;
                     existing.IconKey = string.IsNullOrWhiteSpace(iconKey) ? "IconCar" : iconKey;
@@ -674,7 +683,13 @@ public class SyncEngineService : ISyncEngineService
                         MinuteRate = minuteRate,
                         HourRate = hourRate,
                         FullDayRate = fullDayRate,
+                        FullDayStartTime = rate.FullDayStartTime,
+                        FullDayEndTime = rate.FullDayEndTime,
+                        FullDayThresholdMinutes = rate.FullDayThresholdMinutes,
                         NightRate = nightRate,
+                        NightStartTime = rate.NightStartTime,
+                        NightEndTime = rate.NightEndTime,
+                        NightStayMinMinutes = rate.NightStayMinMinutes,
                         GracePeriodMinutes = grace,
                         DayOfWeek = rate.DayOfWeek,
                         IconKey = string.IsNullOrWhiteSpace(iconKey) ? "IconCar" : iconKey,

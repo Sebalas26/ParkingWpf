@@ -426,6 +426,82 @@ public class EfPricingCalculatorServiceTests : IDisposable
         mondayRate.HourRate.Should().Be(1500m);
     }
 
+    [Fact]
+    public async Task CalculateFee_FullDayRate_WhenVehicleThresholdOverridesBranchThreshold_UsesVehicleThreshold()
+    {
+        // Arrange: Sede tiene umbral de 12 horas (720 min), pero el vehículo tiene umbral personalizado de 8 horas (480 min)
+        _testBranchModel.AllowChargeByDay = true;
+        _testBranchModel.FullDayThresholdMinutes = 720; // 12 horas en sede
+        _testBranchModel.FullDayApplicableDays = "1,2,3,4,5,6,0";
+
+        await SeedRateAsync(new VehicleRate
+        {
+            BranchId = 1,
+            VehicleType = VehicleType.Car,
+            MinuteRate = 50m,
+            HourRate = 3000m,
+            FullDayRate = 18000m,
+            FullDayThresholdMinutes = 480, // 8 horas en vehículo
+            GracePeriodMinutes = 0,
+            IsActive = true
+        });
+
+        var service = new EfPricingCalculatorService(_connectionManager, _mockSyncEngine.Object, _mockSessionService.Object);
+        await service.ReloadRatesAsync();
+
+        // 9 horas de permanencia (540 minutos): Mayor a 8 horas (umbral vehículo), pero menor a 12 horas (umbral sede).
+        // Cobra 1 día pleno (18000) + 1 hora excedente (3000) = 21000.
+        // Si no hubiera aplicado el umbral de 8h del vehículo y se usara el de 12h de sede, cobraría 9h * 3000 = 27000.
+        var entryTime = new DateTime(2026, 9, 7, 13, 0, 0, DateTimeKind.Utc);
+        var exitTime = entryTime.AddHours(9);
+
+        // Act
+        var fee = service.CalculateFee(VehicleType.Car, entryTime, exitTime);
+
+        // Assert: Aplica tarifa plena de 18000 + 3000 = 21000 (en vez de 27000 por horas ordinarias)
+        fee.Should().Be(21000m);
+    }
+
+    [Fact]
+    public async Task CalculateFee_FullDayRate_RespectsApplicableDaysCommaSeparatedNumbers()
+    {
+        // Arrange: Plena solo aplica lunes a viernes ("1,2,3,4,5")
+        _testBranchModel.AllowChargeByDay = true;
+        _testBranchModel.FullDayThresholdMinutes = 480; // 8 horas
+        _testBranchModel.FullDayApplicableDays = "1,2,3,4,5";
+
+        await SeedRateAsync(new VehicleRate
+        {
+            BranchId = 1,
+            VehicleType = VehicleType.Car,
+            MinuteRate = 50m,
+            HourRate = 3000m,
+            FullDayRate = 15000m,
+            GracePeriodMinutes = 0,
+            IsActive = true
+        });
+
+        var service = new EfPricingCalculatorService(_connectionManager, _mockSyncEngine.Object, _mockSessionService.Object);
+        await service.ReloadRatesAsync();
+
+        // Domingo 13 de Septiembre 2026: 8 horas de permanencia.
+        // Como domingo (0) no está en "1,2,3,4,5", NO aplica plena y cobra horas ordinarias (8 * 3000 = 24000).
+        // 13:00 COT = 18:00 UTC
+        var sundayEntryUtc = new DateTime(2026, 9, 13, 18, 0, 0, DateTimeKind.Utc);
+        var sundayExitUtc = sundayEntryUtc.AddHours(8);
+
+        var sundayFee = service.CalculateFee(VehicleType.Car, sundayEntryUtc, sundayExitUtc);
+        sundayFee.Should().Be(24000m);
+
+        // Lunes 14 de Septiembre 2026: 8 horas de permanencia.
+        // Como lunes (1) SÍ está en "1,2,3,4,5", aplica plena exacta de 8 horas = 15000.
+        var mondayEntryUtc = new DateTime(2026, 9, 14, 18, 0, 0, DateTimeKind.Utc);
+        var mondayExitUtc = mondayEntryUtc.AddHours(8);
+
+        var mondayFee = service.CalculateFee(VehicleType.Car, mondayEntryUtc, mondayExitUtc);
+        mondayFee.Should().Be(15000m);
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

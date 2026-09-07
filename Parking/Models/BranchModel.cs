@@ -73,6 +73,9 @@ public class BranchModel
     [JsonPropertyName("fullDayEndTime")]
     public TimeSpan? FullDayEndTime { get; set; }
 
+    [JsonPropertyName("nightApplicableDays")]
+    public string? NightApplicableDays { get; set; }
+
     [JsonPropertyName("nightStartTime")]
     public TimeSpan? NightStartTime { get; set; }
 
