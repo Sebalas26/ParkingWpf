@@ -318,7 +318,11 @@ public partial class CheckOutViewModel : ViewModelBase
         if (AvailableResolutions.Count == 0) return;
 
         var fvmRes = AvailableResolutions.FirstOrDefault(r => (r.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                            || (r.Prefix?.Equals("FM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                            || (r.Prefix?.Equals("FE", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                            || (r.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)
                                                             || (r.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                            || (r.Name?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)
                                                             || (r.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false));
         if (fvmRes != null)
         {

@@ -15,6 +15,23 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-06 22:26:00] - [FEAT / CHECKOUT / INTEROP] [WPF] - Soporte de Compatibilidad con Resoluciones Electrónicas Prefijo FM en CheckOut
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Requerimiento**: Compatibilidad cruzada con las resoluciones oficiales generadas desde el PWA (donde el tipo Factura Electrónica de Venta asigna automáticamente el prefijo `FM`).
+- **🤖 Resumen Técnico para la IA**:
+  1. **Expansión de Detección en `AutoSelectFvmResolution` (`CheckOutViewModel.cs`)**:
+     - Se actualizó el selector para reconocer no solo el prefijo `"FVM"`, sino también `"FM"`, `"FE"` o cualquier resolución cuyo `DocumentType` o `Name` contenga el término `"Factura"`.
+     - Garantiza que al seleccionar pagos con tarjetas o transferencias electrónicas en el punto de cobro WPF, el sistema vincule automáticamente las resoluciones de facturación electrónica creadas desde el portal PWA con prefijo `FM`.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+  - `dotnet test ParkingWpf.slnx` → **100% Superado (45 de 45 pruebas exitosas, 0 fallos)**.
+
+---
+
 ### [2026-09-06 22:11:00] - [FEAT / CHECKOUT / UX / RESOLUTION] [WPF] - Visualización de Tiquete en Cabecera y Autoselección de Resolución POS para Efectivo
 
 - **Autor**: Antigravity AI Assistant & Software Architect
