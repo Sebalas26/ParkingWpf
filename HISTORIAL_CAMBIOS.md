@@ -15,6 +15,43 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-06 23:18:00] - [FEAT / SHIFTS / CAJA] [WPF] - Carga Automática de Base Inicial de Caja según Configuración de Sede (PWA)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Ayudame a que al abrir caja en el wpf , la base inciial sea lo mismo que se parametrizo al crearla sede desde el pwa (editar sede- base incial cjaja)"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Precarga Reactiva de Base Inicial desde Configuración de Sede (`ShiftClosureViewModel.cs`)**:
+     - En `LoadShiftDataAsync()`, al detectar que no hay un turno activo (`HasActiveShift == false`), el sistema consulta directamente la configuración de la sede activa (`DefaultInitialCash`), primero verificando el cache local SQLite `db.Branches` y luego la sesión activa.
+     - Si la sede tiene configurada una base inicial (`configuredBranchBase > 0`), se pre-asigna de forma prioritaria a `NewShiftBaseAmount`, garantizando que el campo de texto en el formulario *"Apertura de Turno Operativo"* muestre automáticamente el monto parametrizado en PWA (ej: $100,000) en lugar de un saldo previo o cero.
+     - En `OpenShiftAsync()`, se agregó lógica de resguardo adicional: si `NewShiftBaseAmount <= 0`, se intenta tomar el valor predeterminado de la sede antes de exigir validación obligatoria si la política `RequireInitialCashAmount` está activa.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+  - `dotnet test ParkingWpf.slnx` → **100% Superado (45 de 45 pruebas exitosas, 0 fallos)**.
+
+---
+
+### [2026-09-06 22:51:00] - [UI/UX / CLEANUP / SHIFTS] [WPF] - Remoción de Tarjeta de Historial de Turnos en Pantalla de Control de Turnos
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"ayudame a eliminar esto de esta pantalla del wpf"*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Remoción de Sección de Historial (`ShiftClosureView.xaml`)**:
+     - Se eliminó el contenedor `Border` inferior que alojaba el título *"Historial de Turnos y Liquidaciones Recientes"*, el badge *"Últimos 7 días"* y el `DataGrid` de consulta de turnos anteriores.
+     - Esta simplificación visual optimiza la experiencia del operador en la pantalla de Control de Turnos, focalizando la interfaz exclusivamente en el resumen financiero de la jornada activa, la captura del arqueo físico en gaveta y la entrega/relevo de caja.
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ShiftClosureView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+  - `dotnet test ParkingWpf.slnx` → **100% Superado (45 de 45 pruebas exitosas, 0 fallos)**.
+
+---
+
 ### [2026-09-06 22:26:00] - [FEAT / CHECKOUT / INTEROP] [WPF] - Soporte de Compatibilidad con Resoluciones Electrónicas Prefijo FM en CheckOut
 
 - **Autor**: Antigravity AI Assistant & Software Architect

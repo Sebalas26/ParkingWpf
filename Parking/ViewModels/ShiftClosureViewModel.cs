@@ -228,6 +228,15 @@ public partial class ShiftClosureViewModel : ViewModelBase
             return;
         }
 
+        if (NewShiftBaseAmount <= 0)
+        {
+            var branchDefault = _sessionService.CurrentBranch?.DefaultInitialCash ?? 0m;
+            if (branchDefault > 0)
+            {
+                NewShiftBaseAmount = branchDefault;
+            }
+        }
+
         if (_sessionService.CurrentUser?.RequireInitialCashAmount == true && NewShiftBaseAmount <= 0)
         {
             await _dialogService.ShowAlertAsync(
@@ -554,10 +563,23 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 CurrentShiftWithdrawals = new List<CashWithdrawal>();
                 LastClosedShift = await _shiftService.GetLastClosedShiftAsync();
                 HasLastClosedShift = LastClosedShift != null;
-                var configuredBranchBase = _sessionService.CurrentBranch?.DefaultInitialCash ?? 0m;
+                using var dbCheck = _connectionManager.CreateDbContext();
+                var currentBranchId = _sessionService.CurrentBranch?.Id;
+                var localBranch = currentBranchId.HasValue
+                    ? await dbCheck.Branches.AsNoTracking().FirstOrDefaultAsync(b => b.Id == currentBranchId.Value)
+                    : null;
+
+                var configuredBranchBase = (localBranch != null && localBranch.DefaultInitialCash > 0)
+                    ? localBranch.DefaultInitialCash
+                    : (_sessionService.CurrentBranch?.DefaultInitialCash ?? 0m);
+
                 if (configuredBranchBase > 0)
                 {
                     NewShiftBaseAmount = configuredBranchBase;
+                    if (_sessionService.CurrentBranch != null && (_sessionService.CurrentBranch.DefaultInitialCash == null || _sessionService.CurrentBranch.DefaultInitialCash == 0))
+                    {
+                        _sessionService.UpdateCurrentBranch(b => b.DefaultInitialCash = configuredBranchBase);
+                    }
                 }
                 else if (HasLastClosedShift)
                 {
