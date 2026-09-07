@@ -26,8 +26,18 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private readonly IDbConnectionManager _connectionManager;
     private readonly INavigationService _navigationService;
     private readonly IApiClientService _apiClient;
+    private readonly ISyncEngineService _syncEngine;
     private readonly ISessionService _sessionService;
     private readonly IPermissionService _permissionService;
+
+    [ObservableProperty]
+    private string _branchName = "Sede Principal";
+
+    [ObservableProperty]
+    private bool _isOnlineMode = true;
+
+    [ObservableProperty]
+    private string _syncStatusText = "API Central Online - Sincronizado";
 
     [ObservableProperty]
     private ShiftSummaryModel _summary = new();
@@ -126,9 +136,13 @@ public partial class ShiftClosureViewModel : ViewModelBase
         _connectionManager = connectionManager;
         _navigationService = navigationService;
         _apiClient = apiClient;
+        _syncEngine = syncEngine;
         _sessionService = sessionService;
         _permissionService = permissionService;
         _operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
+        _branchName = _sessionService.CurrentBranch?.Name ?? "Sede Principal";
+        _isOnlineMode = _syncEngine.IsOnline;
+        _syncStatusText = _isOnlineMode ? "API Central Online - Sincronizado" : "Modo Local / Desconectado";
 
         _permissionService.PermissionsChanged += () =>
         {
@@ -136,13 +150,23 @@ public partial class ShiftClosureViewModel : ViewModelBase
         };
         UpdatePermissions();
 
-        syncEngine.DataSynchronized += async () =>
+        _syncEngine.DataSynchronized += async () =>
         {
             await LoadShiftDataAsync();
         };
 
-        _sessionService.ActiveBranchChanged += async _ =>
+        _syncEngine.SyncStatusChanged += (s, e) =>
         {
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            {
+                IsOnlineMode = _syncEngine.IsOnline;
+                SyncStatusText = IsOnlineMode ? "API Central Online - Sincronizado" : "Modo Local / Desconectado";
+            });
+        };
+
+        _sessionService.ActiveBranchChanged += async branch =>
+        {
+            BranchName = branch?.Name ?? _sessionService.CurrentBranch?.Name ?? "Sede Principal";
             await LoadShiftDataAsync();
         };
     }
@@ -150,6 +174,9 @@ public partial class ShiftClosureViewModel : ViewModelBase
     public override async Task InitializeAsync()
     {
         OperatorName = _authService.CurrentUser?.FullName ?? "Operador General";
+        BranchName = _sessionService.CurrentBranch?.Name ?? "Sede Principal";
+        IsOnlineMode = _syncEngine.IsOnline;
+        SyncStatusText = IsOnlineMode ? "API Central Online - Sincronizado" : "Modo Local / Desconectado";
         UpdatePermissions();
         await LoadShiftDataAsync();
     }

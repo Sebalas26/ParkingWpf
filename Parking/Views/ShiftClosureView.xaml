@@ -10,8 +10,43 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="28,20,28,32">
         <StackPanel>
+            <!-- 0. Top Context & Status Bar -->
+            <Grid Margin="0,0,0,16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left: Sede Info -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="24" Height="24" CornerRadius="6" Background="#E0F2F1" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <Path Data="{StaticResource IconBuilding}" Fill="{DynamicResource BrushPrimary}" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="Sede: " FontSize="13" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding BranchName}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- Right: Online Sync Status -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Ellipse Width="8" Height="8" Margin="0,0,8,0" VerticalAlignment="Center">
+                        <Ellipse.Style>
+                            <Style TargetType="Ellipse">
+                                <Setter Property="Fill" Value="{DynamicResource BrushSuccess}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsOnlineMode}" Value="False">
+                                        <Setter Property="Fill" Value="{DynamicResource BrushWarning}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Ellipse.Style>
+                    </Ellipse>
+                    <TextBlock Text="{Binding SyncStatusText}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+
             <!-- 1. Header Area -->
-            <Grid Margin="0,0,0,18">
+            <Grid Margin="0,0,0,20">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
@@ -65,421 +100,474 @@
                 </Grid>
             </Border>
 
-            <!-- 3. Upper Operational Content Grid (Left KPIs + Right Action Box) -->
+            <!-- 3. Top Metrics Row: 4 Payment Method Cards + 2 Stacked Volume Cards -->
             <Grid Margin="0,0,0,24">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="1.3*"/>
-                    <ColumnDefinition Width="20"/>
-                    <ColumnDefinition Width="1.1*"/>
+                    <ColumnDefinition Width="4.2*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="1*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Left Column: Metrics KPI Cards & Ticket Volume Banner -->
-                <StackPanel Grid.Column="0">
-                    <StackPanel.Style>
-                        <Style TargetType="StackPanel">
+                <!-- Left: 4 Horizontal Payment Method Cards -->
+                <Grid Grid.Column="0">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
                             <Setter Property="Opacity" Value="1"/>
                             <Setter Property="IsEnabled" Value="True"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding HasActiveShift}" Value="False">
-                                    <Setter Property="Opacity" Value="0.3"/>
+                                    <Setter Property="Opacity" Value="0.4"/>
                                     <Setter Property="IsEnabled" Value="False"/>
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </StackPanel.Style>
-                    <!-- Live Breakdown Cards (2x2 Grid) -->
-                    <UniformGrid Columns="2" Rows="2" Margin="0,0,0,16">
-                        <!-- Card 1: Efectivo Cobrado -->
-                        <Border Background="{DynamicResource BrushCardBackground}"
-                                BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                BorderThickness="1"
-                                CornerRadius="12"
-                                Padding="16,14"
-                                Margin="0,0,6,10">
-                            <StackPanel>
-                                <Grid>
-                                    <TextBlock Text="EFECTIVO COBRADO" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
-                                    <Path HorizontalAlignment="Right" Data="{StaticResource IconCash}" Fill="{DynamicResource BrushSuccess}" Width="16" Height="16" Stretch="Uniform"/>
-                                </Grid>
-                                <TextBlock Text="{Binding Summary.TotalCashCollected, Converter={StaticResource CurrencyConv}}"
-                                           FontSize="22"
-                                           FontWeight="Black"
-                                           Foreground="{DynamicResource BrushSuccess}"
-                                           Margin="0,8,0,0"/>
-                                <TextBlock Text="Ingresos por tiquetes en efectivo" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
-                            </StackPanel>
-                        </Border>
+                    </Grid.Style>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-                        <!-- Card 2: Tarjetas Débito / Crédito -->
-                        <Border Background="{DynamicResource BrushCardBackground}"
-                                BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                BorderThickness="1"
-                                CornerRadius="12"
-                                Padding="16,14"
-                                Margin="6,0,0,10">
-                            <StackPanel>
-                                <Grid>
-                                    <TextBlock Text="TARJETAS DÉBITO / CRÉDITO" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
-                                    <Path HorizontalAlignment="Right" Data="{StaticResource IconCard}" Fill="{DynamicResource BrushPrimary}" Width="16" Height="16" Stretch="Uniform"/>
-                                </Grid>
-                                <TextBlock Text="{Binding Summary.TotalCardCollected, Converter={StaticResource CurrencyConv}}"
-                                           FontSize="22"
-                                           FontWeight="Black"
-                                           Foreground="{DynamicResource BrushPrimary}"
-                                           Margin="0,8,0,0"/>
-                                <TextBlock Text="Cobros procesados por datafono" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Card 3: Transferencias / QR -->
-                        <Border Background="{DynamicResource BrushCardBackground}"
-                                BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                BorderThickness="1"
-                                CornerRadius="12"
-                                Padding="16,14"
-                                Margin="0,0,6,0">
-                            <StackPanel>
-                                <Grid>
-                                    <TextBlock Text="TRANSFERENCIAS / QR" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
-                                    <Path HorizontalAlignment="Right" Data="{StaticResource IconQr}" Fill="{DynamicResource BrushCyan}" Width="16" Height="16" Stretch="Uniform"/>
-                                </Grid>
-                                <TextBlock Text="{Binding Summary.TotalTransferCollected, Converter={StaticResource CurrencyConv}}"
-                                           FontSize="22"
-                                           FontWeight="Black"
-                                           Foreground="{DynamicResource BrushCyan}"
-                                           Margin="0,8,0,0"/>
-                                <TextBlock Text="Transferencias directas verificadas" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Card 4: Descuentos de Convenios -->
-                        <Border Background="{DynamicResource BrushCardBackground}"
-                                BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                BorderThickness="1"
-                                CornerRadius="12"
-                                Padding="16,14"
-                                Margin="6,0,0,0">
-                            <StackPanel>
-                                <Grid>
-                                    <TextBlock Text="DESCUENTOS POR CONVENIOS" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}"/>
-                                    <Path HorizontalAlignment="Right" Data="{StaticResource IconDiscount}" Fill="{DynamicResource BrushWarning}" Width="16" Height="16" Stretch="Uniform"/>
-                                </Grid>
-                                <TextBlock Text="{Binding Summary.TotalDiscounts, Converter={StaticResource CurrencyConv}}"
-                                           FontSize="22"
-                                           FontWeight="Black"
-                                           Foreground="{DynamicResource BrushWarning}"
-                                           Margin="0,8,0,0"/>
-                                <TextBlock Text="Deducciones aplicadas por comercios" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
-                            </StackPanel>
-                        </Border>
-                    </UniformGrid>
-
-                    <!-- Shift Ticket Volumes Banner -->
-                    <Border Background="{DynamicResource BrushInputBackground}"
+                    <!-- Card 1: Efectivo Cobrado -->
+                    <Border Grid.Column="0"
+                            Background="{DynamicResource BrushSurfaceBackground}"
                             BorderBrush="{DynamicResource BrushBorderSubtle}"
                             BorderThickness="1"
-                            CornerRadius="10"
-                            Padding="16,12">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Grid.Column="0" HorizontalAlignment="Center">
-                                <TextBlock Text="TIQUETES LIQUIDADOS" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
-                                <TextBlock Text="{Binding Summary.TotalTicketsProcessed}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                            </StackPanel>
-                            <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource BrushBorderSubtle}" Margin="16,0"/>
-                            <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                                <TextBlock Text="VEHÍCULOS INGRESADOS" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
-                                <TextBlock Text="{Binding Summary.TotalVehiclesEntered}" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                </StackPanel>
-
-                <!-- Right Column: Cash Audit Action Box -->
-                <StackPanel Grid.Column="2">
-                    <!-- Mode A: Active Shift Open (Ready for Cash Count & Closure / Handover / Takeover) -->
-                    <Border Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}}"
-                            Background="{DynamicResource BrushCardBackground}"
-                            BorderBrush="{DynamicResource BrushBorderMedium}"
-                            BorderThickness="1"
                             CornerRadius="14"
-                            Padding="20">
-                        <StackPanel>
-                            <!-- Titular Normal vs Operador Entrante -->
-                            <StackPanel Visibility="{Binding IsShiftOwner, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="Arqueo de Gaveta y Cierre" Style="{StaticResource TextHeaderMedium}" Margin="0,0,0,4"/>
-                                <TextBlock Text="Verifique los montos de efectivo y proceda al arqueo físico." Style="{StaticResource TextBodySecondary}" Margin="0,0,0,16"/>
-
-                                <Border Background="{DynamicResource BrushInputBackground}" CornerRadius="8" Padding="12,8" Margin="0,0,0,14">
-                                    <StackPanel>
-                                        <TextBlock Text="OPERADOR DE TURNO" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
-                                        <TextBlock Text="{Binding OperatorName, Mode=OneWay}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,2,0,0"/>
-                                    </StackPanel>
+                            Padding="16,14">
+                        <StackPanel VerticalAlignment="Center">
+                            <Grid>
+                                <TextBlock Text="EFECTIVO COBRADO" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                                <Border HorizontalAlignment="Right" Width="26" Height="26" CornerRadius="13" Background="#E0F2F1">
+                                    <Path Data="{StaticResource IconCash}" Fill="{DynamicResource BrushPrimary}" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </Border>
-                            </StackPanel>
-
-                            <!-- Vista para Operador Entrante que viene a Tomar Relevo -->
-                            <StackPanel Visibility="{Binding IsShiftOwner, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
-                                <TextBlock Text="Recepción y Toma de Caja" Style="{StaticResource TextHeaderMedium}" Margin="0,0,0,4"/>
-                                <TextBlock Text="Existe un turno previo abierto. Cuente el dinero en gaveta y asuma la caja." Style="{StaticResource TextBodySecondary}" Margin="0,0,0,14"/>
-
-                                <Border Background="{DynamicResource BrushWarningBg}"
-                                        BorderBrush="{DynamicResource BrushWarning}"
-                                        BorderThickness="1"
-                                        CornerRadius="10"
-                                        Padding="12,10"
-                                        Margin="0,0,0,14">
-                                    <StackPanel>
-                                        <TextBlock Text="⚠️ TURNO EN CUSTODIA DE OTRO OPERADOR" FontSize="10" FontWeight="Black" Foreground="{DynamicResource BrushWarningText}"/>
-                                        <TextBlock FontSize="12" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,3,0,0">
-                                            <Run Text="Operador Saliente: " FontWeight="SemiBold"/>
-                                            <Run Text="{Binding ActiveShiftOperatorName, Mode=OneWay}" FontWeight="Bold"/>
-                                        </TextBlock>
-                                        <TextBlock FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,2,0,0">
-                                            <Run Text="Operador Receptor (Tú): " FontWeight="SemiBold"/>
-                                            <Run Text="{Binding OperatorName, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource BrushSuccess}"/>
-                                        </TextBlock>
-                                    </StackPanel>
-                                </Border>
-                            </StackPanel>
-
-                            <!-- Financial Summary Breakdown Table -->
-                            <StackPanel Margin="0,0,0,14">
-                                <Grid Margin="0,0,0,6">
-                                    <TextBlock Text="Base Inicial de Caja" Style="{StaticResource TextBodyDefault}"/>
-                                    <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.BaseAmount, Converter={StaticResource CurrencyConv}}" FontWeight="Bold" Style="{StaticResource TextBodyDefault}"/>
-                                </Grid>
-                                <Grid Margin="0,0,0,6">
-                                    <TextBlock Text="(+) Efectivo Cobrado en Tiquetes" Style="{StaticResource TextBodyDefault}"/>
-                                    <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.TotalCashCollected, Converter={StaticResource CurrencyConv}}" Foreground="{DynamicResource BrushSuccess}" FontWeight="Bold" Style="{StaticResource TextBodyDefault}"/>
-                                </Grid>
-                                <Grid Margin="0,0,0,6">
-                                    <TextBlock Text="(-) Retiros Parciales / Recogidas del Dueño" Style="{StaticResource TextBodyDefault}"/>
-                                    <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.TotalCashWithdrawals, Converter={StaticResource CurrencyConv}}" Foreground="{DynamicResource BrushWarning}" FontWeight="Bold" Style="{StaticResource TextBodyDefault}"/>
-                                </Grid>
-                                <Rectangle Height="1" Fill="{DynamicResource BrushBorderSubtle}" Margin="0,4,0,6"/>
-                                <Grid Margin="0,0,0,10">
-                                    <TextBlock Text="Total Efectivo Esperado en Gaveta" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                    <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.ExpectedCash, Converter={StaticResource CurrencyConv}}" FontSize="15" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}"/>
-                                </Grid>
-                            </StackPanel>
-
-                            <!-- Botón para Registrar Retiro Parcial de Efectivo (Sujeto a permiso RBAC shift.cash_withdrawal) -->
-                            <Button Command="{Binding OpenCashWithdrawalDialogCommand}"
-                                    Visibility="{Binding CanWithdrawCash, Converter={StaticResource BoolToVis}}"
-                                    Style="{StaticResource SecondaryButton}"
-                                    Height="38"
-                                    Margin="0,0,0,14"
-                                    ToolTip="Registrar recogida de efectivo por parte del dueño o gerencia con firma de seguridad">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                    <TextBlock Text="💸" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Registrar Retiro de Efectivo (Recogida)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-
-                            <!-- Physical Cash Count Input -->
-                            <TextBlock Text="Efectivo Físico Contado en Gaveta ($) *" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding ActualCashCounted, UpdateSourceTrigger=PropertyChanged, StringFormat='N0'}"
-                                     FontSize="16"
-                                     FontWeight="Bold"
-                                     Foreground="{DynamicResource BrushTextPrimary}"
-                                     Style="{StaticResource ModernTextBox}"
-                                     Margin="0,0,0,12"/>
-
-                            <!-- Difference Calculation Box -->
-                            <Border CornerRadius="8" Padding="12,8" Margin="0,0,0,12" Background="{DynamicResource BrushInputBackground}" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1">
-                                <Grid>
-                                    <TextBlock Text="Diferencia de Arqueo:" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
-                                    <TextBlock HorizontalAlignment="Right"
-                                               Text="{Binding CashDifference, Converter={StaticResource CurrencyConv}}"
-                                               FontSize="14"
-                                               FontWeight="Black"
-                                               VerticalAlignment="Center">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Foreground" Value="{DynamicResource BrushSuccess}"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Summary.IsDeficit}" Value="True">
-                                                        <Setter Property="Foreground" Value="{DynamicResource BrushDanger}"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </Grid>
-                            </Border>
-
-                            <!-- Notes -->
-                            <TextBlock Text="Observaciones / Novedades de Cierre" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,6"/>
-                            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
-                                     Height="45"
-                                     TextWrapping="Wrap"
-                                     AcceptsReturn="True"
-                                     Style="{StaticResource ModernTextBox}"
-                                     Margin="0,0,0,16"/>
-
-                            <!-- ============================================== -->
-                            <!-- SECCIÓN DE BOTONES: SI SOY EL TITULAR ACTUAL   -->
-                            <!-- ============================================== -->
-                            <StackPanel Visibility="{Binding IsShiftOwner, Converter={StaticResource BoolToVis}}">
-                                <!-- Aviso informativo si NO hay otros operadores registrados -->
-                                <Border Visibility="{Binding HasAvailableHandoverUsers, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
-                                        Background="{DynamicResource BrushWarningBg}"
-                                        BorderBrush="{DynamicResource BrushWarning}"
-                                        BorderThickness="1"
-                                        CornerRadius="8"
-                                        Padding="10,8"
-                                        Margin="0,0,0,12">
-                                    <StackPanel>
-                                        <TextBlock Text="ℹ️ Sin otros operadores para relevo" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushWarningText}"/>
-                                        <TextBlock Text="No hay más operadores en el sistema. Utiliza 'Cerrar Turno (Fin de Jornada)' para finalizar."
-                                                   FontSize="10" Foreground="{DynamicResource BrushTextPrimary}" TextWrapping="Wrap" Margin="0,2,0,0"/>
-                                    </StackPanel>
-                                </Border>
-
-                                <!-- Usuario Receptor de la Entrega de Turno (Solo visible si hay otros operadores) -->
-                                <StackPanel Visibility="{Binding HasAvailableHandoverUsers, Converter={StaticResource BoolToVis}}" Margin="0,0,0,12">
-                                    <TextBlock Text="OPERADOR RECEPTOR DEL RELEVO *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6"/>
-                                    <ComboBox ItemsSource="{Binding AvailableUsers}"
-                                              SelectedItem="{Binding SelectedHandoverUser}"
-                                              DisplayMemberPath="FullName"
-                                              Height="40"
-                                              Style="{StaticResource ModernComboBox}"/>
-                                </StackPanel>
-
-                                <!-- Botón 1: Cerrar Turno Definitivo (Fin de Jornada / Sin Relevo) -->
-                                <Button Command="{Binding CloseShiftDirectCommand}"
-                                        Style="{StaticResource ModernButton}"
-                                        Height="42"
-                                        Margin="0,0,0,8"
-                                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <TextBlock Text="🔒 Cerrar Turno (Fin de Jornada)" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold"/>
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
-
-                                <!-- Botón 2: Entregar Turno y Relevar Operador en Caliente -->
-                                <Button Command="{Binding HandoverShiftCommand}"
-                                        Style="{StaticResource SecondaryButton}"
-                                        Height="40"
-                                        IsEnabled="{Binding HasAvailableHandoverUsers}">
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                        <TextBlock Text="🤝" FontSize="13" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="Entregar Turno y Relevar Operador" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                </Button>
-                            </StackPanel>
-
-                            <!-- ============================================== -->
-                            <!-- SECCIÓN DE BOTONES: SI SOY OPERADOR ENTRANTE   -->
-                            <!-- ============================================== -->
-                            <StackPanel Visibility="{Binding IsShiftOwner, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
-                                <Border Background="{DynamicResource BrushInputBackground}"
-                                        BorderBrush="{DynamicResource BrushPrimary}"
-                                        BorderThickness="1"
-                                        CornerRadius="8"
-                                        Padding="10,8"
-                                        Margin="0,0,0,12">
-                                    <TextBlock Text="ℹ️ Al presionar el botón, se cerrará el turno anterior con el efectivo contado y se abrirá tu nuevo turno para que comiences a operar de inmediato."
-                                               FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" TextWrapping="Wrap"/>
-                                </Border>
-
-                                <Button Command="{Binding TakeOverShiftCommand}"
-                                        Style="{StaticResource ModernButton}"
-                                        Height="44"
-                                        IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}">
-                                    <Button.ContentTemplate>
-                                        <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                                <TextBlock Text="🤝" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="Recibir Caja, Tomar Turno e Iniciar Operación" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
-                                            </StackPanel>
-                                        </DataTemplate>
-                                    </Button.ContentTemplate>
-                                </Button>
-                            </StackPanel>
+                            </Grid>
+                            <TextBlock Text="{Binding Summary.TotalCashCollected, Converter={StaticResource CurrencyConv}}"
+                                       FontSize="20"
+                                       FontWeight="Black"
+                                       Foreground="{DynamicResource BrushPrimary}"
+                                       Margin="0,8,0,0"/>
+                            <TextBlock Text="Ingresos por tiquetes en efectivo" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
                         </StackPanel>
                     </Border>
 
-                    <!-- Mode B: No Active Shift (Apertura de Turno Prompt con Custodia de Turno Anterior) -->
-                    <Border Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
-                            Background="{DynamicResource BrushCardBackground}"
-                            BorderBrush="{DynamicResource BrushBorderMedium}"
+                    <!-- Card 2: Tarjetas Débito / Crédito -->
+                    <Border Grid.Column="2"
+                            Background="{DynamicResource BrushSurfaceBackground}"
+                            BorderBrush="{DynamicResource BrushBorderSubtle}"
                             BorderThickness="1"
                             CornerRadius="14"
-                            Padding="20">
-                        <StackPanel>
-                            <TextBlock Text="Apertura de Turno Operativo" Style="{StaticResource TextHeaderMedium}" Margin="0,0,0,4"/>
-                            <TextBlock Text="Actualmente no hay turno activo. Verifique el saldo de caja e inicie la jornada." Style="{StaticResource TextBodySecondary}" Margin="0,0,0,14"/>
+                            Padding="16,14">
+                        <StackPanel VerticalAlignment="Center">
+                            <Grid>
+                                <TextBlock Text="TARJETAS DÉBITO / CRÉDITO" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                <Border HorizontalAlignment="Right" Width="26" Height="26" CornerRadius="13" Background="#E0F2F1">
+                                    <Path Data="{StaticResource IconCard}" Fill="{DynamicResource BrushPrimary}" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </Grid>
+                            <TextBlock Text="{Binding Summary.TotalCardCollected, Converter={StaticResource CurrencyConv}}"
+                                       FontSize="20"
+                                       FontWeight="Black"
+                                       Foreground="{DynamicResource BrushPrimary}"
+                                       Margin="0,8,0,0"/>
+                            <TextBlock Text="Cobros procesados por datáfono" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Border>
 
-                            <!-- Tarjeta Informativa de Custodia de Turno Anterior -->
-                            <Border Visibility="{Binding HasLastClosedShift, Converter={StaticResource BoolToVis}}"
-                                    Background="{DynamicResource BrushInputBackground}"
-                                    BorderBrush="{DynamicResource BrushPrimary}"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="14,12"
-                                    Margin="0,0,0,14">
-                                <StackPanel>
-                                    <Grid Margin="0,0,0,4">
-                                        <TextBlock Text="💵 CUSTODIA DEL TURNO ANTERIOR" FontSize="14" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}"/>
-                                        <TextBlock HorizontalAlignment="Right"
-                                                   Text="{Binding LastClosedShift.ActualCashCounted, Converter={StaticResource CurrencyConv}}"
-                                                   FontSize="16" FontWeight="Black" Foreground="{DynamicResource BrushSuccess}"/>
-                                    </Grid>
-                                    <TextBlock FontSize="14" Foreground="{DynamicResource BrushTextSecondary}">
-                                        <Run Text="Dejado por: " FontWeight="SemiBold"/>
-                                        <Run Text="{Binding LastClosedShift.OperatorName, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                    </TextBlock>
-                                    <TextBlock FontSize="14" Foreground="Black" Margin="0,2,0,0">
-                                        <Run Text="Fecha de Cierre: "/>
-                                        <Run Text="{Binding LastClosedShift.EndTime, Mode=OneWay, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"/>
-                                    </TextBlock>
+                    <!-- Card 3: Transferencias / QR -->
+                    <Border Grid.Column="4"
+                            Background="{DynamicResource BrushSurfaceBackground}"
+                            BorderBrush="{DynamicResource BrushBorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="16,14">
+                        <StackPanel VerticalAlignment="Center">
+                            <Grid>
+                                <TextBlock Text="TRANSFERENCIAS / QR" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                                <Border HorizontalAlignment="Right" Width="26" Height="26" CornerRadius="13" Background="#E0F7FA">
+                                    <Path Data="{StaticResource IconQr}" Fill="{DynamicResource BrushCyan}" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </Grid>
+                            <TextBlock Text="{Binding Summary.TotalTransferCollected, Converter={StaticResource CurrencyConv}}"
+                                       FontSize="20"
+                                       FontWeight="Black"
+                                       Foreground="{DynamicResource BrushCyan}"
+                                       Margin="0,8,0,0"/>
+                            <TextBlock Text="Transferencias directas verificadas" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Card 4: Descuentos por Convenios -->
+                    <Border Grid.Column="6"
+                            Background="{DynamicResource BrushSurfaceBackground}"
+                            BorderBrush="{DynamicResource BrushBorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="16,14">
+                        <StackPanel VerticalAlignment="Center">
+                            <Grid>
+                                <TextBlock Text="DESCUENTOS POR CONVEN..." FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="Descuentos por Convenios"/>
+                                <Border HorizontalAlignment="Right" Width="26" Height="26" CornerRadius="13" Background="#FFF8E1">
+                                    <Path Data="{StaticResource IconDiscount}" Fill="{DynamicResource BrushWarning}" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </Grid>
+                            <TextBlock Text="{Binding Summary.TotalDiscounts, Converter={StaticResource CurrencyConv}}"
+                                       FontSize="20"
+                                       FontWeight="Black"
+                                       Foreground="{DynamicResource BrushWarningText}"
+                                       Margin="0,8,0,0"/>
+                            <TextBlock Text="Deducciones aplicadas por convenios" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Right: 2 Stacked Volume Cards -->
+                <Grid Grid.Column="2">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Opacity" Value="1"/>
+                            <Setter Property="IsEnabled" Value="True"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasActiveShift}" Value="False">
+                                    <Setter Property="Opacity" Value="0.4"/>
+                                    <Setter Property="IsEnabled" Value="False"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Card: Tiquetes Liquidados -->
+                    <Border Grid.Row="0"
+                            Background="{DynamicResource BrushSurfaceBackground}"
+                            BorderBrush="{DynamicResource BrushBorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="12,8">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="TIQUETES LIQUIDADOS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding Summary.TotalTicketsProcessed}" FontSize="24" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Card: Vehículos Ingresados -->
+                    <Border Grid.Row="2"
+                            Background="{DynamicResource BrushSurfaceBackground}"
+                            BorderBrush="{DynamicResource BrushBorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="12,8">
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="VEHÍCULOS INGRESADOS" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" HorizontalAlignment="Center"/>
+                            <TextBlock Text="{Binding Summary.TotalVehiclesEntered}" FontSize="24" FontWeight="Black" Foreground="{DynamicResource BrushTextPrimary}" HorizontalAlignment="Center" Margin="0,2,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Grid>
+
+            <!-- 4. Main Operational Card (Active Shift: Breakdown & Physical Cash Audit) -->
+            <Border Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}}"
+                    Background="{DynamicResource BrushSurfaceBackground}"
+                    BorderBrush="{DynamicResource BrushBorderSubtle}"
+                    BorderThickness="1"
+                    CornerRadius="16"
+                    Padding="28,24"
+                    Margin="0,0,0,24">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.2*"/>
+                        <ColumnDefinition Width="28"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left Column: Balance, Operator & Breakdown -->
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Arqueo de Gaveta y Cierre" Style="{StaticResource TextHeaderMedium}"/>
+                        <TextBlock Text="Verifique los montos de efectivo y proceda al arqueo" Style="{StaticResource TextBodySecondary}" Margin="0,2,0,16"/>
+
+                        <!-- Titular: Operator Badge -->
+                        <Border Visibility="{Binding IsShiftOwner, Converter={StaticResource BoolToVis}}"
+                                Background="#F1F5F9"
+                                CornerRadius="10"
+                                Padding="14,10"
+                                Margin="0,0,0,18">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Path Grid.Column="0" Data="{StaticResource IconUser}" Fill="{DynamicResource BrushTextSecondary}" Width="16" Height="16" Stretch="Uniform" Margin="0,0,12,0" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="OPERADOR DE TURNO" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                    <TextBlock Text="{Binding OperatorName, Mode=OneWay}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,2,0,0"/>
                                 </StackPanel>
-                            </Border>
+                            </Grid>
+                        </Border>
 
-                            <TextBlock Text="Operador Responsable" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,4"/>
-                            <TextBlock Text="{Binding OperatorName, Mode=OneWay}"
-                                       FontSize="15"
-                                       FontWeight="SemiBold"
-                                       Foreground="{DynamicResource BrushTextPrimary}"
-                                       Margin="0,0,0,14"/>
+                        <!-- Non-Owner: Incoming Operator Banner -->
+                        <Border Visibility="{Binding IsShiftOwner, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                                Background="{DynamicResource BrushWarningBg}"
+                                BorderBrush="{DynamicResource BrushWarning}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="12,10"
+                                Margin="0,0,0,18">
+                            <StackPanel>
+                                <TextBlock Text="⚠️ TURNO EN CUSTODIA DE OTRO OPERADOR" FontSize="10" FontWeight="Black" Foreground="{DynamicResource BrushWarningText}"/>
+                                <TextBlock FontSize="12" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,3,0,0">
+                                    <Run Text="Operador Saliente: " FontWeight="SemiBold"/>
+                                    <Run Text="{Binding ActiveShiftOperatorName, Mode=OneWay}" FontWeight="Bold"/>
+                                </TextBlock>
+                                <TextBlock FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,2,0,0">
+                                    <Run Text="Operador Receptor (Tú): " FontWeight="SemiBold"/>
+                                    <Run Text="{Binding OperatorName, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource BrushSuccess}"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
 
-                            <TextBlock Text="Monto Base Inicial de Caja ($) *" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding NewShiftBaseAmount, UpdateSourceTrigger=PropertyChanged, StringFormat='N0'}"
-                                     FontSize="15"
-                                     FontWeight="Bold"
-                                     Style="{StaticResource ModernTextBox}"
-                                     Margin="0,0,0,12"/>
+                        <!-- Financial Breakdown Rows -->
+                        <StackPanel Margin="0,0,0,16">
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="Base Inicial de Caja" Style="{StaticResource TextBodyDefault}" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.BaseAmount, Converter={StaticResource CurrencyConv}}" FontWeight="Bold" Style="{StaticResource TextBodyDefault}" Foreground="{DynamicResource BrushTextPrimary}"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="(+) Efectivo Cobrado en Tiquetes" Style="{StaticResource TextBodyDefault}" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.TotalCashCollected, Converter={StaticResource CurrencyConv}}" FontWeight="Bold" Style="{StaticResource TextBodyDefault}" Foreground="{DynamicResource BrushTextPrimary}"/>
+                            </Grid>
+                            <Grid Margin="0,0,0,8">
+                                <TextBlock Text="(-) Retiros Parciales / Recogidas" Style="{StaticResource TextBodyDefault}" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.TotalCashWithdrawals, Converter={StaticResource CurrencyConv}}" FontWeight="Bold" Style="{StaticResource TextBodyDefault}" Foreground="{DynamicResource BrushWarningText}"/>
+                            </Grid>
+                            <Rectangle Height="1" Fill="{DynamicResource BrushBorderSubtle}" Margin="0,4,0,10"/>
+                            <Grid Margin="0,0,0,14">
+                                <TextBlock Text="Total Efectivo Esperado" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                <TextBlock HorizontalAlignment="Right" Text="{Binding Summary.ExpectedCash, Converter={StaticResource CurrencyConv}}" FontSize="18" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                            </Grid>
+                        </StackPanel>
 
-                            <TextBlock Text="Notas de Apertura (Opcional)" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
-                                     Height="45"
-                                     TextWrapping="Wrap"
-                                     Style="{StaticResource ModernTextBox}"
-                                     Margin="0,0,0,18"/>
+                        <!-- Button: Registrar Retiro de Efectivo (Recogida) -->
+                        <Button Command="{Binding OpenCashWithdrawalDialogCommand}"
+                                Visibility="{Binding CanWithdrawCash, Converter={StaticResource BoolToVis}}"
+                                Style="{StaticResource SecondaryButton}"
+                                Height="40"
+                                ToolTip="Registrar recogida de efectivo por parte del dueño o gerencia con firma de seguridad">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Path Data="{StaticResource IconSync}" Fill="{DynamicResource BrushTextSecondary}" Width="13" Height="13" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Registrar Retiro de Efectivo (Recogida)" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
 
-                            <Button Command="{Binding OpenShiftCommand}"
+                    <!-- Vertical Separator Line -->
+                    <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource BrushBorderSubtle}" HorizontalAlignment="Center"/>
+
+                    <!-- Right Column: Physical Count, Live Difference, Notes & Closure Button -->
+                    <StackPanel Grid.Column="2">
+                        <!-- Label: Efectivo Físico Contado en Gaveta ($) -->
+                        <TextBlock Text="Efectivo Físico Contado en Gaveta ($)" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6"/>
+                        <TextBox Text="{Binding ActualCashCounted, UpdateSourceTrigger=PropertyChanged, StringFormat='N0'}"
+                                 Background="#F1F5F9"
+                                 BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                 BorderThickness="1"
+                                 FontSize="15"
+                                 FontWeight="Bold"
+                                 Foreground="{DynamicResource BrushTextPrimary}"
+                                 Style="{StaticResource ModernTextBox}"
+                                 Margin="0,0,0,10"/>
+
+                        <!-- Live Difference Display -->
+                        <Grid Margin="0,0,0,14">
+                            <TextBlock Text="Diferencia de Arqueo:" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                            <TextBlock HorizontalAlignment="Right"
+                                       Text="{Binding CashDifference, Converter={StaticResource CurrencyConv}}"
+                                       FontSize="13"
+                                       FontWeight="Black"
+                                       VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{DynamicResource BrushSuccess}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Summary.IsDeficit}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource BrushDanger}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+
+                        <!-- Label: Observaciones / Novedades de Cierre -->
+                        <TextBlock Text="Observaciones / Novedades de Cierre" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6"/>
+                        <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="#F1F5F9"
+                                 BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                 BorderThickness="1"
+                                 Height="55"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 FontSize="13"
+                                 Style="{StaticResource ModernTextBox}"
+                                 Margin="0,0,0,16"/>
+
+                        <!-- Owner Buttons Section -->
+                        <StackPanel Visibility="{Binding IsShiftOwner, Converter={StaticResource BoolToVis}}">
+                            <!-- Main Action Button: Realizar Cierre de Caja -->
+                            <Button Command="{Binding CloseShiftDirectCommand}"
                                     Style="{StaticResource ModernButton}"
-                                    Height="42">
+                                    Height="44"
+                                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
+                                    Margin="0,0,0,8">
                                 <Button.ContentTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="🚀 Abrir Turno e Iniciar Operación" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold"/>
+                                        <TextBlock Text="Realizar Cierre de Caja" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold"/>
+                                    </DataTemplate>
+                                </Button.ContentTemplate>
+                            </Button>
+
+                            <!-- Secondary Relevo Option if available users exist -->
+                            <Grid Visibility="{Binding HasAvailableHandoverUsers, Converter={StaticResource BoolToVis}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="8"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0"
+                                          ItemsSource="{Binding AvailableUsers}"
+                                          SelectedItem="{Binding SelectedHandoverUser}"
+                                          DisplayMemberPath="FullName"
+                                          Height="36"
+                                          Style="{StaticResource ModernComboBox}"/>
+                                <Button Grid.Column="2"
+                                        Command="{Binding HandoverShiftCommand}"
+                                        Style="{StaticResource SecondaryButton}"
+                                        Height="36"
+                                        Padding="12,0"
+                                        ToolTip="Entregar la caja y transferir el turno inmediatamente a este operador">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="🤝" FontSize="12" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="Relevar" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- Incoming Operator Button -->
+                        <StackPanel Visibility="{Binding IsShiftOwner, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
+                            <Button Command="{Binding TakeOverShiftCommand}"
+                                    Style="{StaticResource ModernButton}"
+                                    Height="44"
+                                    IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}">
+                                <Button.ContentTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                            <TextBlock Text="🤝" FontSize="14" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="Recibir Caja, Tomar Turno e Iniciar Operación" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </Button.ContentTemplate>
                             </Button>
                         </StackPanel>
-                    </Border>
-                </StackPanel>
-            </Grid>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
+            <!-- 5. Shift Opening Card (When no shift is currently open) -->
+            <Border Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                    Background="{DynamicResource BrushSurfaceBackground}"
+                    BorderBrush="{DynamicResource BrushBorderSubtle}"
+                    BorderThickness="1"
+                    CornerRadius="16"
+                    Padding="28,24"
+                    Margin="0,0,0,24">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.2*"/>
+                        <ColumnDefinition Width="28"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
 
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Apertura de Turno Operativo" Style="{StaticResource TextHeaderMedium}" Margin="0,0,0,4"/>
+                        <TextBlock Text="Actualmente no hay turno activo en esta terminal. Verifique el saldo de caja e inicie la jornada." Style="{StaticResource TextBodySecondary}" Margin="0,0,0,16"/>
+
+                        <!-- Tarjeta Informativa de Custodia de Turno Anterior -->
+                        <Border Visibility="{Binding HasLastClosedShift, Converter={StaticResource BoolToVis}}"
+                                Background="#F1F5F9"
+                                BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="14,12"
+                                Margin="0,0,0,16">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,4">
+                                    <TextBlock Text="💵 CUSTODIA DEL TURNO ANTERIOR" FontSize="12" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}"/>
+                                    <TextBlock HorizontalAlignment="Right"
+                                               Text="{Binding LastClosedShift.ActualCashCounted, Converter={StaticResource CurrencyConv}}"
+                                               FontSize="15" FontWeight="Black" Foreground="{DynamicResource BrushSuccess}"/>
+                                </Grid>
+                                <TextBlock FontSize="12" Foreground="{DynamicResource BrushTextSecondary}">
+                                    <Run Text="Dejado por: " FontWeight="SemiBold"/>
+                                    <Run Text="{Binding LastClosedShift.OperatorName, Mode=OneWay}" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                </TextBlock>
+                                <TextBlock FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0">
+                                    <Run Text="Fecha de Cierre: "/>
+                                    <Run Text="{Binding LastClosedShift.EndTime, Mode=OneWay, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}"/>
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Operador Responsable" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding OperatorName, Mode=OneWay}"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource BrushTextPrimary}"
+                                   Margin="0,0,0,12"/>
+                    </StackPanel>
+
+                    <Rectangle Grid.Column="1" Width="1" Fill="{DynamicResource BrushBorderSubtle}" HorizontalAlignment="Center"/>
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Monto Base Inicial de Caja ($) *" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6"/>
+                        <TextBox Text="{Binding NewShiftBaseAmount, UpdateSourceTrigger=PropertyChanged, StringFormat='N0'}"
+                                 Background="#F1F5F9"
+                                 BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                 BorderThickness="1"
+                                 FontSize="15"
+                                 FontWeight="Bold"
+                                 Style="{StaticResource ModernTextBox}"
+                                 Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Notas de Apertura (Opcional)" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,6"/>
+                        <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="#F1F5F9"
+                                 BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                 BorderThickness="1"
+                                 Height="55"
+                                 TextWrapping="Wrap"
+                                 Style="{StaticResource ModernTextBox}"
+                                 Margin="0,0,0,18"/>
+
+                        <Button Command="{Binding OpenShiftCommand}"
+                                Style="{StaticResource ModernButton}"
+                                Height="44">
+                            <Button.ContentTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="🚀 Abrir Turno e Iniciar Operación" Foreground="{DynamicResource BrushTextWhite}" FontSize="13" FontWeight="Bold"/>
+                                </DataTemplate>
+                            </Button.ContentTemplate>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>
