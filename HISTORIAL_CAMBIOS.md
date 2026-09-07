@@ -15,6 +15,135 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-06 20:20:00] - [TEST / QUALITY / ARCHITECTURE] [WPF] - Suite Completa de Pruebas Unitarias (Parking.UnitTests) y Regla de Oro en AGENTS.md (100% Tests Obligatorios)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"crear pruebas unitarias completas para este repositorio de parkingwpf. y como regla de oro en agents.md que siempre que se haga un cambio en el codigo del repo, por mas simple que sea, es OBLIGATORIO correr las pruebas del repo al 100% y no dar por terminada la tarea si alguna falla. En agents.md de ambos repositorios (ParkingApi y ParkingWpf) debe quedar esa regla de oro obligatoria."*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Regla de Oro en `AGENTS.md` (Ejecución Obligatoria del 100% de Pruebas)**:
+     - Se añadió como directiva inquebrantable en [`ParkingWpf/AGENTS.md`](file:///c:/Users/migue/source/repos/ParkingWpf/AGENTS.md) (Regla 6) y [`ParkingApi/AGENTS.md`](file:///c:/Users/migue/source/repos/ParkingApi/AGENTS.md) (Regla 5).
+     - Queda estrictamente prohibido dar por terminada una tarea o ajuste sin antes ejecutar `dotnet test ParkingWpf.slnx` y `dotnet test ParkingApi.slnx`, certificando **100% de pruebas superadas (0 fallos, 0 errores)**.
+  2. **Proyecto de Pruebas `Parking.UnitTests`**:
+     - Creado proyecto `net10.0-windows` con soporte WPF (`UseWPF: true`) para pruebas completas de conversores XAML y ViewModels.
+     - Integración con xUnit (2.9.3), Moq (4.20.72), FluentAssertions (8.1.1) y Microsoft.EntityFrameworkCore.Sqlite (9.0.2).
+     - Configurado `TestDbConnectionManager` con SQLite In-Memory aislado para testing de persistencia EF Core real sin tocar la base local.
+     - Enlazado oficialmente a la solución en `ParkingWpf.slnx`.
+  3. **Batería de Pruebas Unitarias Implementadas (43 Tests)**:
+     - **Motor Tarifario (`EfPricingCalculatorServiceTests` - 11 Tests)**: Cobertura exhaustiva de periodo de gracia, tarificación pura por minuto, tarificación pura por hora, liquidación mixta, liquidación cíclica de tarifa plena con días completos y fracción, flags de sede desactivados, deducción previa de cortesías de convenios antes de umbrales, recargo de tiquete perdido (`LostTicketFee`), liquidación de pernocta y jerarquía de tarifas por día de la semana COT.
+     - **Convenios Comerciales (`AgreementServiceTests` - 5 Tests)**: Descuentos por porcentaje, validación de compra mínima, monto fijo con tope sobre tarifa bruta, exclusión de convenios inactivos y persistencia CRUD.
+     - **Ciclo de Tiquetes (`EfParkingTicketServiceTests` - 6 Tests)**: Registro de ingreso válido, prevención de placas duplicadas activas, bloqueo preventivo por lista negra, registro de novedad extemporánea no bloqueante por horarios de operación de sede (`BranchOperatingHours`), liquidación de salida con cálculo neto y soporte para tiquete extraviado.
+     - **Turnos y Arqueos (`EfShiftServiceTests` - 4 Tests)**: Apertura de turno con base de caja, cálculo acumulado de dinero esperado y auditoría de arqueo con descuadre positivo/negativo, registro de retiros parciales de caja.
+     - **Seguridad RBAC (`PermissionServiceTests` - 5 Tests)**: Bypass de superadministrador global, coincidencia exacta de slug de permisos, comodines jerárquicos (`shifts.*`), soporte de prefijos de plataforma (`wpf.*`) y manejo de matrices vacías/nulas.
+     - **Conversores XAML (`ConvertersTests` - 5 Tests)**: `CurrencyConverter` (formateo monetario colombiano), `DurationConverter` (formateo legible de horas/minutos), `InverseBooleanConverter` y `TicketStatusToStringConverter`.
+     - **ViewModels Operativos (`CheckInViewModelTests` & `CheckOutViewModelTests` - 7 Tests)**:
+       - `CheckInViewModel`: Formateo automático de placas (espacios y mayúsculas), comando de registro de entrada, advertencia pre-cierre cuando faltan 5 minutos para el horario de cierre de sede, validación de horario superado y horario normal.
+       - `CheckOutViewModel`: Inicialización reactiva de tarifas de la sede al seleccionar tiquete, recálculo dinámico de tarifa con tiquete extraviado activado, y cálculo de cambio / devuelta en tiempo real según monto entregado.
+  4. **Verificación y Resultados de Ejecución**:
+     - `dotnet test ParkingWpf.slnx` -> **Total: 43 | Superadas: 43 | Fallidas: 0 | Omitidas: 0 (100% Exitoso)**.
+     - `dotnet test ParkingApi.slnx` -> **Total: 345 | Superadas: 345 | Fallidas: 0 | Omitidas: 0 (100% Exitoso)**.
+
+- **📦 Componentes Modificados / Creados**:
+  - `ParkingWpf/AGENTS.md`
+  - `ParkingWpf/ParkingWpf.slnx`
+  - `ParkingWpf/HISTORIAL_CAMBIOS.md`
+  - `ParkingWpf/Parking.UnitTests/Parking.UnitTests.csproj`
+  - `ParkingWpf/Parking.UnitTests/Common/TestDbConnectionManager.cs`
+  - `ParkingWpf/Parking.UnitTests/Pricing/EfPricingCalculatorServiceTests.cs`
+  - `ParkingWpf/Parking.UnitTests/Agreements/AgreementServiceTests.cs`
+  - `ParkingWpf/Parking.UnitTests/Tickets/EfParkingTicketServiceTests.cs`
+  - `ParkingWpf/Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
+  - `ParkingWpf/Parking.UnitTests/Security/PermissionServiceTests.cs`
+  - `ParkingWpf/Parking.UnitTests/Converters/ConvertersTests.cs`
+  - `ParkingWpf/Parking.UnitTests/ViewModels/CheckInViewModelTests.cs`
+  - `ParkingWpf/Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet test ParkingWpf.slnx` -> **43 de 43 PASADAS (0 errores)**.
+  - `dotnet test ParkingApi.slnx` -> **345 de 345 PASADAS (0 errores)**.
+  - Compilación de la solución: **0 Errores**.
+
+---
+
+### [2026-09-06 20:00:00] - [FEAT / OFFLINE PARITY / 100% DATA-DRIVEN / PRICING / OPERATING HOURS] [WPF] - Paridad Offline 100% Data-Driven: Sincronización a Nivel de Empresa, Horarios de Sede, Tarifas Cíclicas, Tiquete Perdido, Convenios por Tiempo y Novedad Extemporánea Transparente
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"analiza todo lo que te digo y haz un plan y cuentame que tanto es lo que se deberia hacer que tan dificil sería y como lo ves tan viable y dime que fue lo que entendiste bien detallado para ir refinando el plan antes de lanzarlo. ... Cero supuestos por defecto (depende de cómo tengan la plena, si la sede dice después de 6 horas o no aplica; si seleccionan solo minuto no cobra por nada más; hora colombia siempre; novedad automática transparente al ingresar fuera de horario; actualizar scripts 01_Clean_All_Tables.sql y 02_Init_RBAC_Seed.sql)."*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Directiva Fundamental: 100% Data-Driven sin Supuestos Quemados por Defecto**:
+     - Se eliminó cualquier valor por defecto hardcoded en C# (como asumir ventanas fijas de 18:00 a 06:00, 360 min de pernocta, o 720 min de plena).
+     - Si la sede no tiene activado `AllowChargeByNight` o carece de `NightStartTime`/`NightEndTime`, la pernocta **NO aplica**.
+     - Si la sede no tiene activado `AllowChargeByDay` o carece de `FullDayThresholdMinutes`, la tarifa plena **NO aplica**.
+     - Si la sede tiene configurado `FullDayApplicableDays`, solo aplica en los días de la semana especificados en hora legal de Colombia (COT, UTC-5).
+     - Si la sede tiene `LostTicketFee == 0`, no se cobra recargo por extravío.
+  2. **Alcance de Sincronización a Nivel de Empresa (Roaming Multi-Sede Seguro)**:
+     - En el primer inicio de sesión online, el endpoint `/api/sync/bootstrap` descarga la parametrización de toda la empresa (`targetCompanyId`), incluyendo todas las sedes activas, sus horarios de operación semanales (`BranchOperatingHours`), catálogo de tarifas vehiculares por día y sede (`VehicleRates`), y convenios comerciales (`CommercialAgreements`).
+     - Esto garantiza que si un equipo de cómputo físico es trasladado de una sede a otra dentro de la misma empresa o cambia de sede en modo offline, la base de datos local SQLite tiene todo el dataset completo y nunca falla ni corrompe información.
+  3. **Entidades y Esquema SQLite Local**:
+     - Creada entidad `BranchOperatingHour` con `DayOfWeek`, `IsOpen`, `OpeningTime`, `ClosingTime`, `BufferMinutesBefore`, `BufferMinutesAfter`.
+     - Actualizada entidad `Branch` con `LostTicketFee`, `FullDayThresholdMinutes`, `FullDayApplicableDays`, `FullDayStartTime`, `FullDayEndTime`, `NightStartTime`, `NightEndTime`, `NightStayMinMinutes`, y colección `OperatingHours`.
+     - Actualizada entidad `VehicleRate` con `DayOfWeek`.
+     - Actualizada entidad `CommercialAgreement` con `CompanyId`, `DiscountType`, `FreeMinutes`, `FreeHours`, `MaxMinutesApplicable`.
+     - Actualizada entidad `ParkingTicket` con `IsLostTicket` y `LostTicketFee`.
+     - Migraciones idempotentes en `DbConnectionManager.cs` (`EnsureDatabaseCreatedAsync` crea la tabla `BranchOperatingHours` y ejecuta `ALTER TABLE ... ADD COLUMN` seguros para bases locales existentes).
+  4. **Motor de Cobros Dinámico (`EfPricingCalculatorService`)**:
+     - Nueva firma: `CalculateFee(vehicleType, entryTime, exitTime, discountFreeMinutes, isLostTicket)`.
+     - `GetRate(vehicleType, dayOfWeek)`: búsqueda jerárquica (tarifa específica para el día de la semana COT -> tarifa general sin día asignado -> cualquier tarifa del tipo).
+     - Deducción previa de tiempo libre por convenios comerciales antes de evaluar umbrales de plena o pernocta.
+     - Liquidación de tarifa plena cíclica: `(fullDaysCount * FullDayRate) + remFee` con tope diario.
+     - Liquidación progresiva respetando flags estrictos de sede: `AllowChargeByMinute`, `AllowChargeByHour`, `AllowChargeByDay`, `AllowChargeByNight`.
+     - Suma aditiva y transparente del recargo `LostTicketFee` si `isLostTicket == true` y la sede lo tiene configurado.
+  5. **Ingreso y Novedad Extemporánea Transparente (`EfParkingTicketService`)**:
+     - Al registrar ingreso (`RegisterEntryAsync`), evalúa contra `BranchOperatingHours` en SQLite para el día actual y la hora de Colombia.
+     - Si el vehículo ingresa fuera del horario (incluyendo tolerancias `BufferMinutesBefore` y `BufferMinutesAfter`) o en un día cerrado, se registra automáticamente una novedad `VehicleIncident` de tipo `INGRESO_EXTEMPORANEO` (`IsBlocked = false`, `Status = "Activa"`) de forma 100% transparente y no bloqueante para el operador.
+     - En `CheckInViewModel` y `CheckInView.xaml`: Se implementó un banner superior de advertencia pre-cierre cuando faltan 5 minutos para el cierre de la sede activa (o si ya finalizó la jornada).
+  6. **Liquidación (Checkout), UI Dinámica y Recibo**:
+     - En `CheckOutDialog.xaml`:
+       - Se eliminó el texto estático quemado "VALOR MINUTO". Ahora muestra dinámicamente "TARIFA APLICADA" enlazada a `RateSummaryText` (`$X / min`, `$X / hora` o `$X plena`).
+       - Tarjeta interactiva con CheckBox para "Tiquete Extraviado / Dañado" con badge de recargo `+{LostTicketFee}`.
+       - Enlace reactivo en `CheckOutViewModel` recalculando en tiempo real el valor neto al marcar/desmarcar tiquete extraviado.
+       - Desglose transparente en el Total Neto a Pagar indicando el recargo aplicado.
+       - Al procesar la salida, `ProcessExitAsync` persiste `IsLostTicket` y `LostTicketFee` localmente y los envía al API Central o a la cola offline `PendingSyncItems`.
+     - En `ReceiptPreviewViewModel` y `ReceiptPreviewDialog.xaml`:
+       - Soporte para mostrar la línea `TIQUETE EXTRAVIADO: $XX.XXX` tanto en el recibo POS estándar como en la factura electrónica FVM.
+  7. **Scripts SQL Centrales (`ParkingApi/Scripts`)**:
+     - `01_Clean_All_Tables.sql` y `02_Init_RBAC_Seed.sql` actualizados eliminando valores por defecto quemados (720 min, 18-06h, 360 min) y asegurando las columnas de `CommercialAgreements` (`DiscountType`, `FreeMinutes`, `FreeHours`).
+
+- **📦 Componentes Modificados**:
+  - `Parking/Entities/BranchOperatingHour.cs` [NEW]
+  - `Parking/Entities/Branch.cs`
+  - `Parking/Entities/VehicleRate.cs`
+  - `Parking/Entities/CommercialAgreement.cs`
+  - `Parking/Entities/ParkingTicket.cs`
+  - `Parking/Data/ParkFlowDbContext.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Models/ApiModels/TicketApiModels.cs`
+  - `Parking/Services/Contracts/IPricingCalculatorService.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking/Services/Contracts/IParkingTicketService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **Compilación Correcta (0 Errores, 0 Advertencias)**.
+  - `dotnet build ParkingApi.slnx` → **Compilación Correcta (0 Errores)**.
+  - `dotnet test ParkingApi.slnx` → **345 Pruebas Superadas (0 Fallos)**.
+
+---
+
 ### [2026-09-05 09:58:00] - [UI/UX / SYNC] [WPF] - Incorporación del Botón de Sincronización Manual en la Barra Superior (MainShellWindow)
 
 - **Autor**: Antigravity AI Assistant & Software Architect

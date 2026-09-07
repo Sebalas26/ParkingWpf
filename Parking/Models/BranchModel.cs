@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using Parking.Entities;
 
 namespace Parking.Models;
 
@@ -55,6 +57,33 @@ public class BranchModel
 
     [JsonPropertyName("allowChargeByNight")]
     public bool AllowChargeByNight { get; set; }
+
+    [JsonPropertyName("lostTicketFee")]
+    public decimal LostTicketFee { get; set; } = 0m;
+
+    [JsonPropertyName("fullDayThresholdMinutes")]
+    public int? FullDayThresholdMinutes { get; set; }
+
+    [JsonPropertyName("fullDayApplicableDays")]
+    public string? FullDayApplicableDays { get; set; }
+
+    [JsonPropertyName("fullDayStartTime")]
+    public TimeSpan? FullDayStartTime { get; set; }
+
+    [JsonPropertyName("fullDayEndTime")]
+    public TimeSpan? FullDayEndTime { get; set; }
+
+    [JsonPropertyName("nightStartTime")]
+    public TimeSpan? NightStartTime { get; set; }
+
+    [JsonPropertyName("nightEndTime")]
+    public TimeSpan? NightEndTime { get; set; }
+
+    [JsonPropertyName("nightStayMinMinutes")]
+    public int? NightStayMinMinutes { get; set; }
+
+    [JsonPropertyName("operatingHours")]
+    public List<BranchOperatingHour> OperatingHours { get; set; } = new();
 
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;

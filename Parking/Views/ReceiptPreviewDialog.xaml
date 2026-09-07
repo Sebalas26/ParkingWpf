@@ -182,6 +182,16 @@
                                     <TextBlock Grid.Column="1" Text="{Binding DurationMinutesStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Right" Margin="0,0,10,0"/>
                                 </Grid>
 
+                                <!-- Recargo Tiquete Extraviado si aplica -->
+                                <Grid Margin="0,1,0,2" Visibility="{Binding HasLostTicketSurcharge, Converter={StaticResource BoolToVis}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="TIQUETE EXTRAVIADO:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding LostTicketFeeText}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
 
                                 <!-- 4. Liquidación Económica (Base Gravable, IVA 19%, TOTAL) -->
@@ -445,6 +455,16 @@
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="TIEMPO: " FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                     <TextBlock Grid.Column="1" Text="{Binding DurationMinutesStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Right" Margin="0,0,10,0"/>
+                                </Grid>
+
+                                <!-- Recargo Tiquete Extraviado si aplica -->
+                                <Grid Margin="0,1,0,2" Visibility="{Binding HasLostTicketSurcharge, Converter={StaticResource BoolToVis}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="TIQUETE EXTRAVIADO:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding LostTicketFeeText}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>

@@ -192,6 +192,48 @@ public class EfParkingTicketService : IParkingTicketService
         db.ParkingTickets.Add(ticket);
         await db.SaveChangesAsync();
 
+        // Validar si el ingreso ocurre fuera de horario de operación establecido para la sede (Novedad Automática Transparente)
+        try
+        {
+            var cotNow = DateTime.UtcNow.AddHours(-5);
+            var todayDayOfWeek = cotNow.DayOfWeek;
+            var currentTimeOfDay = cotNow.TimeOfDay;
+
+            var operatingHour = await db.BranchOperatingHours
+                .FirstOrDefaultAsync(oh => oh.BranchId == branchId.Value && oh.DayOfWeek == todayDayOfWeek);
+
+            if (operatingHour != null)
+            {
+                var allowedStart = operatingHour.OpeningTime.Subtract(TimeSpan.FromMinutes(operatingHour.BufferMinutesBefore));
+                var allowedEnd = operatingHour.ClosingTime.Add(TimeSpan.FromMinutes(operatingHour.BufferMinutesAfter));
+
+                bool isExtemporaneous = !operatingHour.IsOpen || currentTimeOfDay < allowedStart || currentTimeOfDay > allowedEnd;
+
+                if (isExtemporaneous)
+                {
+                    var incident = new VehicleIncident
+                    {
+                        IncidentId = Guid.NewGuid(),
+                        BranchId = branchId.Value,
+                        CompanyId = companyId.Value,
+                        PlateNumber = normalizedPlate,
+                        IncidentType = "INGRESO_EXTEMPORANEO",
+                        Description = $"Ingreso fuera de horario de operación de la sede ({currentTimeOfDay:hh\\:mm}. Horario: {(operatingHour.IsOpen ? $"{operatingHour.OpeningTime:hh\\:mm} - {operatingHour.ClosingTime:hh\\:mm}" : "Cerrado")}).",
+                        IsBlocked = false,
+                        Status = "Activa",
+                        ReportedBy = operatorName,
+                        CreatedAtUtc = DateTime.UtcNow
+                    };
+                    db.VehicleIncidents.Add(incident);
+                    await db.SaveChangesAsync();
+                }
+            }
+        }
+        catch
+        {
+            // La novedad extemporánea es transparente y no bloquea el ingreso operativo del vehículo
+        }
+
         TicketRegistered?.Invoke(this, ticket);
         OccupancyChanged?.Invoke(this, await GetOccupancyStatsAsync());
 
@@ -212,7 +254,9 @@ public class EfParkingTicketService : IParkingTicketService
         DateTime? customExitTimeUtc = null,
         Guid? resolutionId = null,
         string? resolutionName = null,
-        string? fiscalInvoiceNumber = null)
+        string? fiscalInvoiceNumber = null,
+        bool isLostTicket = false,
+        decimal lostTicketFee = 0m)
     {
         using var db = _connectionManager.CreateDbContext();
         var ticket = await db.ParkingTickets.FindAsync(ticketId);
@@ -222,7 +266,7 @@ public class EfParkingTicketService : IParkingTicketService
         }
 
         var exitTime = customExitTimeUtc ?? DateTime.UtcNow;
-        var gross = _pricingCalculator.CalculateFee(ticket.VehicleType, ticket.EntryTimeUtc, exitTime);
+        var gross = _pricingCalculator.CalculateFee(ticket.VehicleType, ticket.EntryTimeUtc, exitTime, 0, isLostTicket);
         var net = Math.Max(0m, gross - discountAmount);
 
         // Garantizar que el ID de la sede y empresa activa queden asignados al tiquete
@@ -252,6 +296,8 @@ public class EfParkingTicketService : IParkingTicketService
         ticket.ResolutionName = resolutionName;
         ticket.InvoiceNumber = fiscalInvoiceNumber;
         ticket.IsElectronicInvoice = !string.IsNullOrWhiteSpace(fiscalInvoiceNumber);
+        ticket.IsLostTicket = isLostTicket;
+        ticket.LostTicketFee = lostTicketFee;
         ticket.Status = TicketStatus.Completed;
         ticket.IsSynchronized = false;
 
@@ -279,6 +325,8 @@ public class EfParkingTicketService : IParkingTicketService
                     ResolutionId = resolutionId,
                     ResolutionName = resolutionName,
                     FiscalInvoiceNumber = fiscalInvoiceNumber,
+                    IsLostTicket = isLostTicket,
+                    LostTicketFee = lostTicketFee,
                     ExitTimeUtc = exitTime
                 });
 

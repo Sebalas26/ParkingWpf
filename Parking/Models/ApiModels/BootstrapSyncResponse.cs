@@ -54,11 +54,62 @@ public class ApiBranchSyncDto
     [JsonPropertyName("allowChargeByNight")]
     public bool AllowChargeByNight { get; set; }
 
+    [JsonPropertyName("lostTicketFee")]
+    public decimal LostTicketFee { get; set; } = 0m;
+
+    [JsonPropertyName("fullDayThresholdMinutes")]
+    public int? FullDayThresholdMinutes { get; set; }
+
+    [JsonPropertyName("fullDayApplicableDays")]
+    public string? FullDayApplicableDays { get; set; }
+
+    [JsonPropertyName("fullDayStartTime")]
+    public TimeSpan? FullDayStartTime { get; set; }
+
+    [JsonPropertyName("fullDayEndTime")]
+    public TimeSpan? FullDayEndTime { get; set; }
+
+    [JsonPropertyName("nightStartTime")]
+    public TimeSpan? NightStartTime { get; set; }
+
+    [JsonPropertyName("nightEndTime")]
+    public TimeSpan? NightEndTime { get; set; }
+
+    [JsonPropertyName("nightStayMinMinutes")]
+    public int? NightStayMinMinutes { get; set; }
+
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
 
     [JsonPropertyName("createdAtUtc")]
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+}
+
+public class ApiBranchOperatingHourSyncDto
+{
+    [JsonPropertyName("id")]
+    public int Id { get; set; }
+
+    [JsonPropertyName("branchId")]
+    public int BranchId { get; set; }
+
+    [JsonPropertyName("dayOfWeek")]
+    public DayOfWeek DayOfWeek { get; set; }
+
+    [JsonPropertyName("isOpen")]
+    public bool IsOpen { get; set; }
+
+    [JsonPropertyName("openingTime")]
+    public TimeSpan OpeningTime { get; set; } = new TimeSpan(8, 0, 0);
+
+    [JsonPropertyName("closingTime")]
+    public TimeSpan ClosingTime { get; set; } = new TimeSpan(22, 0, 0);
+
+    [JsonPropertyName("bufferMinutesBefore")]
+    public int BufferMinutesBefore { get; set; }
+
+    [JsonPropertyName("bufferMinutesAfter")]
+    public int BufferMinutesAfter { get; set; }
 }
 
 public class ApiUserSyncDto
@@ -245,6 +296,9 @@ public class ApiVehicleRateSyncDto
     [JsonPropertyName("state")]
     public bool? State { get; set; }
 
+    [JsonPropertyName("dayOfWeek")]
+    public DayOfWeek? DayOfWeek { get; set; }
+
     [JsonPropertyName("updatedAtUtc")]
     public DateTime? UpdatedAtUtc { get; set; }
 
@@ -333,6 +387,21 @@ public class ApiCommercialAgreementSyncDto
 
     [JsonPropertyName("maxHoursApplicable")]
     public int? MaxHoursApplicable { get; set; }
+
+    [JsonPropertyName("companyId")]
+    public int? CompanyId { get; set; }
+
+    [JsonPropertyName("discountType")]
+    public int DiscountType { get; set; } = 0;
+
+    [JsonPropertyName("freeMinutes")]
+    public int? FreeMinutes { get; set; }
+
+    [JsonPropertyName("freeHours")]
+    public int? FreeHours { get; set; }
+
+    [JsonPropertyName("maxMinutesApplicable")]
+    public int? MaxMinutesApplicable { get; set; }
 
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
@@ -835,6 +904,9 @@ public class BootstrapSyncResponse
 
     [JsonPropertyName("resolutions")]
     public List<ApiBillingResolutionSyncDto> Resolutions { get; set; } = new();
+
+    [JsonPropertyName("operatingHours")]
+    public List<ApiBranchOperatingHourSyncDto> OperatingHours { get; set; } = new();
 }
 
 public class PlateCheckResultDto

@@ -98,6 +98,12 @@ public partial class CheckInViewModel : ViewModelBase
     [ObservableProperty]
     private bool _hasConfiguredRates;
 
+    [ObservableProperty]
+    private bool _isPreClosingAlertVisible;
+
+    [ObservableProperty]
+    private string? _preClosingAlertMessage;
+
     public CheckInViewModel(
         IParkingTicketService ticketService,
         IPricingCalculatorService pricingCalculator,
@@ -122,10 +128,18 @@ public partial class CheckInViewModel : ViewModelBase
 
         _ticketService.TicketCompleted += (s, e) =>
         {
-            System.Windows.Application.Current.Dispatcher.InvokeAsync(async () =>
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null)
             {
-                await RefreshRecentEntriesAndOccupancyAsync();
-            });
+                dispatcher.InvokeAsync(async () =>
+                {
+                    await RefreshRecentEntriesAndOccupancyAsync();
+                });
+            }
+            else
+            {
+                _ = RefreshRecentEntriesAndOccupancyAsync();
+            }
         };
 
         syncEngine.DataSynchronized += async () =>
@@ -505,6 +519,51 @@ public partial class CheckInViewModel : ViewModelBase
         var rawDate = now.ToString("dddd, dd 'de' MMMM 'de' yyyy", SpanishCulture);
         CurrentDateString = char.ToUpper(rawDate[0], SpanishCulture) + rawDate[1..];
         CurrentTimeString = now.ToString("HH:mm:ss");
+
+        CheckOperatingHoursPreClosingAlert(now);
+    }
+
+    private void CheckOperatingHoursPreClosingAlert(DateTime now)
+    {
+        var branch = _sessionService.CurrentBranch;
+        if (branch?.OperatingHours == null || branch.OperatingHours.Count == 0)
+        {
+            IsPreClosingAlertVisible = false;
+            PreClosingAlertMessage = null;
+            return;
+        }
+
+        var todayDay = now.DayOfWeek;
+        var todayHours = branch.OperatingHours.FirstOrDefault(oh => oh.DayOfWeek == todayDay);
+        if (todayHours == null || !todayHours.IsOpen)
+        {
+            IsPreClosingAlertVisible = false;
+            PreClosingAlertMessage = null;
+            return;
+        }
+
+        var currentTime = now.TimeOfDay;
+        var closingTime = todayHours.ClosingTime;
+        var preClosingThreshold = closingTime.Subtract(TimeSpan.FromMinutes(5));
+
+        if (currentTime >= preClosingThreshold && currentTime <= closingTime.Add(TimeSpan.FromMinutes(todayHours.BufferMinutesAfter)))
+        {
+            IsPreClosingAlertVisible = true;
+            if (currentTime < closingTime)
+            {
+                var remaining = closingTime - currentTime;
+                PreClosingAlertMessage = $"ALERTA DE CIERRE: La sede '{branch.Name}' cerrará a las {closingTime:hh\\:mm} (en aprox. {(int)Math.Max(1, remaining.TotalMinutes)} min). Prepare el arqueo y cierre de turno.";
+            }
+            else
+            {
+                PreClosingAlertMessage = $"HORARIO DE CIERRE SUPERADO: La sede '{branch.Name}' finalizó su jornada a las {closingTime:hh\\:mm}. Todo ingreso posterior generará novedades de extemporaneidad.";
+            }
+        }
+        else
+        {
+            IsPreClosingAlertVisible = false;
+            PreClosingAlertMessage = null;
+        }
     }
 
     [RelayCommand]

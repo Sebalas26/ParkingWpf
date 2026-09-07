@@ -125,6 +125,12 @@ public class CheckOutApiRequest
     [JsonPropertyName("fiscalInvoiceNumber")]
     public string? FiscalInvoiceNumber { get; set; }
 
+    [JsonPropertyName("isLostTicket")]
+    public bool IsLostTicket { get; set; }
+
+    [JsonPropertyName("lostTicketFee")]
+    public decimal LostTicketFee { get; set; }
+
     [JsonPropertyName("exitTimeUtc")]
     public DateTime ExitTimeUtc { get; set; } = DateTime.UtcNow;
 }

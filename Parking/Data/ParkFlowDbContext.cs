@@ -31,6 +31,7 @@ public class ParkFlowDbContext : DbContext
     public DbSet<VehicleIncident> VehicleIncidents => Set<VehicleIncident>();
     public DbSet<VehicleIncidentBranch> VehicleIncidentBranches => Set<VehicleIncidentBranch>();
     public DbSet<BillingResolution> BillingResolutions => Set<BillingResolution>();
+    public DbSet<BranchOperatingHour> BranchOperatingHours => Set<BranchOperatingHour>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

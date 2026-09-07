@@ -28,7 +28,9 @@ public interface IParkingTicketService
         DateTime? customExitTimeUtc = null,
         Guid? resolutionId = null,
         string? resolutionName = null,
-        string? fiscalInvoiceNumber = null);
+        string? fiscalInvoiceNumber = null,
+        bool isLostTicket = false,
+        decimal lostTicketFee = 0m);
     Task<IReadOnlyList<ParkingTicket>> GetActiveTicketsAsync();
     Task<IReadOnlyList<ParkingTicket>> GetCompletedTicketsAsync();
     Task<IReadOnlyList<ParkingTicket>> GetAllTicketsAsync();

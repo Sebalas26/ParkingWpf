@@ -186,8 +186,8 @@
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2" HorizontalAlignment="Right">
-                                    <TextBlock Text="VALOR MINUTO" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Right"/>
-                                    <TextBlock Text="{Binding MinuteRate, Converter={StaticResource CurrencyConv}, StringFormat='{}{0} / min'}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,4,0,0" HorizontalAlignment="Right"/>
+                                    <TextBlock Text="TARIFA APLICADA" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" HorizontalAlignment="Right"/>
+                                    <TextBlock Text="{Binding RateSummaryText}" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,4,0,0" HorizontalAlignment="Right"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -323,6 +323,45 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Tiquete Extraviado / Dañado -->
+                        <Border Background="#F8FAFC"
+                                BorderBrush="{DynamicResource BrushBorderMedium}"
+                                BorderThickness="1.5"
+                                CornerRadius="12"
+                                Padding="14,10"
+                                Margin="0,0,0,16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <CheckBox Grid.Column="0"
+                                          IsChecked="{Binding IsLostTicket, Mode=TwoWay}"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,12,0"/>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Tiquete Extraviado / Dañado" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                    <TextBlock Text="Marque esta opción si el usuario no presenta el tiquete físico de ingreso."
+                                               FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
+                                </StackPanel>
+
+                                <Border Grid.Column="2"
+                                        Visibility="{Binding HasLostTicketFee, Converter={StaticResource BoolToVis}}"
+                                        Background="{DynamicResource BrushWarningBg}"
+                                        BorderBrush="{DynamicResource BrushWarning}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="8,3"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding LostTicketFee, Converter={StaticResource CurrencyConv}, StringFormat='{}Recargo: +{0}'}"
+                                               FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushWarningText}"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
                         <!-- Fila Única: Método de Pago (Izquierda) y Resolución / Doc (Derecha) -->
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
@@ -445,6 +484,10 @@
                                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,14,0">
                                         <TextBlock Text="TOTAL NETO A PAGAR" FontSize="13" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}"/>
                                         <TextBlock Text="{Binding CalculatedFee, Converter={StaticResource CurrencyConv}}" FontSize="34" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" Margin="0,2,0,0"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0" Visibility="{Binding IsLostTicket, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="{Binding LostTicketFee, Converter={StaticResource CurrencyConv}, StringFormat='{}Incluye tiquete extraviado: +{0}'}"
+                                                       FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushWarningText}"/>
+                                        </StackPanel>
                                     </StackPanel>
 
                                     <!-- Input de Efectivo Recibido en Grande con Billetes Rápidos -->

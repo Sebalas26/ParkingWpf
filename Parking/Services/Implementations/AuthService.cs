@@ -164,7 +164,10 @@ public class AuthService : IAuthService
         CurrentUser = localUserModel;
 
         // Cargar sedes locales de SQLite
-        var localBranches = await db.Branches.Where(b => b.IsActive).ToListAsync();
+        var localBranches = await db.Branches
+            .Include(b => b.OperatingHours)
+            .Where(b => b.IsActive)
+            .ToListAsync();
         var branchesList = localBranches.Select(b => new BranchModel
         {
             Id = b.Id,
@@ -183,6 +186,15 @@ public class AuthService : IAuthService
             AllowChargeByHour = b.AllowChargeByHour,
             AllowChargeByDay = b.AllowChargeByDay,
             AllowChargeByNight = b.AllowChargeByNight,
+            LostTicketFee = b.LostTicketFee,
+            FullDayThresholdMinutes = b.FullDayThresholdMinutes,
+            FullDayApplicableDays = b.FullDayApplicableDays,
+            FullDayStartTime = b.FullDayStartTime,
+            FullDayEndTime = b.FullDayEndTime,
+            NightStartTime = b.NightStartTime,
+            NightEndTime = b.NightEndTime,
+            NightStayMinMinutes = b.NightStayMinMinutes,
+            OperatingHours = b.OperatingHours != null ? b.OperatingHours.ToList() : new List<BranchOperatingHour>(),
             IsActive = b.IsActive
         }).ToList();
 

@@ -87,12 +87,21 @@ public class EfPricingCalculatorService : IPricingCalculatorService
         }
     }
 
-    public VehicleRate? GetRate(VehicleType vehicleType)
+    public VehicleRate? GetRate(VehicleType vehicleType, DayOfWeek? dayOfWeek = null)
     {
         lock (_lock)
         {
-            var match = _activeBranchRates.FirstOrDefault(r => r.VehicleType == vehicleType);
-            if (match != null) return match;
+            if (dayOfWeek.HasValue)
+            {
+                var specificRate = _activeBranchRates.FirstOrDefault(r => r.VehicleType == vehicleType && r.DayOfWeek == dayOfWeek.Value);
+                if (specificRate != null) return specificRate;
+            }
+
+            var generalRate = _activeBranchRates.FirstOrDefault(r => r.VehicleType == vehicleType && r.DayOfWeek == null);
+            if (generalRate != null) return generalRate;
+
+            var anyMatch = _activeBranchRates.FirstOrDefault(r => r.VehicleType == vehicleType);
+            if (anyMatch != null) return anyMatch;
         }
 
         if (_ratesCache.TryGetValue(vehicleType, out var rate))
@@ -106,9 +115,13 @@ public class EfPricingCalculatorService : IPricingCalculatorService
         }
     }
 
-    public decimal CalculateFee(VehicleType vehicleType, DateTime entryTime, DateTime exitTime)
+    public decimal CalculateFee(VehicleType vehicleType, DateTime entryTime, DateTime exitTime, int discountFreeMinutes = 0, bool isLostTicket = false)
     {
-        var rate = GetRate(vehicleType);
+        var cotExitTime = exitTime.AddHours(-5);
+        var cotEntryTime = entryTime.AddHours(-5);
+        var cotDayOfWeek = cotExitTime.DayOfWeek;
+
+        var rate = GetRate(vehicleType, cotDayOfWeek);
         if (rate == null)
         {
             return 0m;
@@ -120,91 +133,130 @@ public class EfPricingCalculatorService : IPricingCalculatorService
             return 0m;
         }
 
-        var totalMinutes = duration.TotalMinutes;
+        var rawMinutes = (int)Math.Max(0, duration.TotalMinutes);
+        var effectiveMinutes = Math.Max(0, rawMinutes - discountFreeMinutes);
         var branch = _sessionService.CurrentBranch;
 
-        // 1. Periodo de gracia
-        var grace = rate.GracePeriodMinutes;
-        if (totalMinutes <= grace)
-        {
-            return 0m;
-        }
-
-        bool allowMinute = branch == null || branch.AllowChargeByMinute;
-        bool allowHour = branch == null || branch.AllowChargeByHour;
-        bool allowDay = branch == null || branch.AllowChargeByDay;
-        bool allowNight = branch != null && branch.AllowChargeByNight;
-
-        // 2. Caso Nocturno
-        if (allowNight && rate.NightRate > 0)
-        {
-            bool isNightEntry = entryTime.Hour >= 18 || entryTime.Hour < 6;
-            bool isNightExit = exitTime.Hour >= 18 || exitTime.Hour < 6;
-            if (isNightEntry && isNightExit && totalMinutes >= 360)
-            {
-                return rate.NightRate;
-            }
-        }
-
-        // 3. Estancia Multidía (>= 1440 minutos y tarifa plena configurada)
-        if (allowDay && rate.FullDayRate > 0 && totalMinutes >= 1440)
-        {
-            var days = (int)(totalMinutes / 1440);
-            var remMinutes = totalMinutes % 1440;
-            decimal remFee = 0m;
-
-            if (allowMinute && rate.MinuteRate > 0 && allowHour && rate.HourRate > 0)
-            {
-                var remH = (int)(remMinutes / 60);
-                var remM = (decimal)(remMinutes % 60);
-                remFee = (remH * rate.HourRate) + Math.Min(rate.HourRate, remM * rate.MinuteRate);
-            }
-            else if (allowMinute && rate.MinuteRate > 0)
-            {
-                remFee = (decimal)Math.Ceiling(remMinutes) * rate.MinuteRate;
-            }
-            else if (allowHour && rate.HourRate > 0)
-            {
-                var remBillableHours = (int)Math.Max(1, Math.Ceiling(remMinutes / 60.0));
-                remFee = remBillableHours * rate.HourRate;
-            }
-            else
-            {
-                remFee = rate.FullDayRate;
-            }
-
-            return (days * rate.FullDayRate) + Math.Min(rate.FullDayRate, remFee);
-        }
-
-        // 4. Estancia estándar (< 1440 minutos)
         decimal fee = 0m;
-        if (allowMinute && rate.MinuteRate > 0 && allowHour && rate.HourRate > 0)
+
+        // 1. Periodo de gracia (se evalúa sobre los minutos efectivos con descuento)
+        var grace = rate.GracePeriodMinutes;
+        if (effectiveMinutes <= grace)
         {
-            // Cobro progresivo: horas completas + minutos restantes con tope de la hora
-            var hours = (int)(totalMinutes / 60);
-            var remMinutes = (decimal)(totalMinutes % 60);
-            var billableRemMinutes = (decimal)Math.Ceiling(remMinutes);
-            fee = (hours * rate.HourRate) + Math.Min(rate.HourRate, billableRemMinutes * rate.MinuteRate);
+            fee = 0m;
         }
-        else if (allowMinute && rate.MinuteRate > 0)
+        else
         {
-            var billableMinutes = (decimal)Math.Max(1, Math.Ceiling(totalMinutes));
-            fee = billableMinutes * rate.MinuteRate;
-        }
-        else if (allowHour && rate.HourRate > 0)
-        {
-            var billableHours = (int)Math.Max(1, Math.Ceiling(Math.Max(0.01, totalMinutes) / 60.0));
-            fee = billableHours * rate.HourRate;
-        }
-        else if (allowDay && rate.FullDayRate > 0)
-        {
-            fee = rate.FullDayRate;
+            bool allowMinute = branch == null || branch.AllowChargeByMinute;
+            bool allowHour = branch == null || branch.AllowChargeByHour;
+            bool allowDay = branch == null || branch.AllowChargeByDay;
+            bool allowNight = branch != null && branch.AllowChargeByNight;
+
+            // 2. Tarifa Nocturna (Pernocta) - 100% Data-Driven (Sin supuestos quemados de horas o minutos)
+            bool isNightStay = false;
+            if (allowNight && rate.NightRate > 0 && branch != null && branch.NightStartTime.HasValue && branch.NightEndTime.HasValue)
+            {
+                var nightStart = branch.NightStartTime.Value;
+                var nightEnd = branch.NightEndTime.Value;
+                int minNightStay = branch.NightStayMinMinutes.GetValueOrDefault(0);
+
+                bool enteredDuringNight = cotEntryTime.TimeOfDay >= nightStart || cotEntryTime.TimeOfDay < nightEnd;
+                bool exitedDuringNightOrMorning = cotExitTime.TimeOfDay >= nightStart || cotExitTime.TimeOfDay < nightEnd || cotExitTime.Date > cotEntryTime.Date;
+
+                if (enteredDuringNight && exitedDuringNightOrMorning && effectiveMinutes >= minNightStay)
+                {
+                    isNightStay = true;
+                    fee = rate.NightRate;
+                }
+            }
+
+            // 3. Tarifa Plena Cíclica (si no aplicó pernocta) - 100% Data-Driven
+            if (!isNightStay)
+            {
+                bool fullDayConfigured = allowDay && rate.FullDayRate > 0 && branch != null && branch.FullDayThresholdMinutes.HasValue && branch.FullDayThresholdMinutes.Value > 0;
+                bool fullDayApplies = fullDayConfigured;
+
+                if (fullDayConfigured && !string.IsNullOrWhiteSpace(branch!.FullDayApplicableDays))
+                {
+                    var currentDayStr = cotDayOfWeek.ToString();
+                    fullDayApplies = branch.FullDayApplicableDays.Contains(currentDayStr, StringComparison.OrdinalIgnoreCase)
+                                  || branch.FullDayApplicableDays.Equals("All", StringComparison.OrdinalIgnoreCase);
+                }
+
+                int fullDayThreshold = branch?.FullDayThresholdMinutes ?? 0;
+
+                if (fullDayApplies && fullDayThreshold > 0 && effectiveMinutes >= fullDayThreshold)
+                {
+                    int fullDaysCount = effectiveMinutes / fullDayThreshold;
+                    int remMins = effectiveMinutes % fullDayThreshold;
+                    decimal remFee = 0m;
+
+                    if (remMins > 0)
+                    {
+                        if (allowMinute && allowHour && rate.MinuteRate > 0 && rate.HourRate > 0)
+                        {
+                            var remH = remMins / 60;
+                            var remM = remMins % 60;
+                            remFee = (remH * rate.HourRate) + Math.Min(rate.HourRate, remM * rate.MinuteRate);
+                        }
+                        else if (allowMinute && rate.MinuteRate > 0)
+                        {
+                            remFee = remMins * rate.MinuteRate;
+                        }
+                        else if (allowHour && rate.HourRate > 0)
+                        {
+                            var remH = (int)Math.Max(1, Math.Ceiling(remMins / 60.0));
+                            remFee = remH * rate.HourRate;
+                        }
+                        else
+                        {
+                            remFee = rate.FullDayRate;
+                        }
+
+                        if (remFee > rate.FullDayRate)
+                        {
+                            remFee = rate.FullDayRate;
+                        }
+                    }
+
+                    fee = (fullDaysCount * rate.FullDayRate) + remFee;
+                }
+                else
+                {
+                    // 4. Cobro regular por minuto / hora
+                    if (allowMinute && allowHour && rate.MinuteRate > 0 && rate.HourRate > 0)
+                    {
+                        var hours = effectiveMinutes / 60;
+                        var rem = effectiveMinutes % 60;
+                        fee = (hours * rate.HourRate) + Math.Min(rate.HourRate, rem * rate.MinuteRate);
+                    }
+                    else if (allowMinute && rate.MinuteRate > 0)
+                    {
+                        fee = effectiveMinutes * rate.MinuteRate;
+                    }
+                    else if (allowHour && rate.HourRate > 0)
+                    {
+                        var billableHours = (int)Math.Max(1, Math.Ceiling(effectiveMinutes / 60.0));
+                        fee = billableHours * rate.HourRate;
+                    }
+                    else if (allowDay && rate.FullDayRate > 0)
+                    {
+                        fee = rate.FullDayRate;
+                    }
+
+                    // Tope de tarifa plena del día si aplica
+                    if (fullDayApplies && rate.FullDayRate > 0 && fee > rate.FullDayRate)
+                    {
+                        fee = rate.FullDayRate;
+                    }
+                }
+            }
         }
 
-        // Tope de tarifa plena del día
-        if (allowDay && rate.FullDayRate > 0 && fee > rate.FullDayRate)
+        // 5. Recargo de Tiquete Extraviado (si aplica y la sede tiene tarifa configurada)
+        if (isLostTicket && branch != null && branch.LostTicketFee > 0)
         {
-            fee = rate.FullDayRate;
+            fee += branch.LostTicketFee;
         }
 
         return fee;

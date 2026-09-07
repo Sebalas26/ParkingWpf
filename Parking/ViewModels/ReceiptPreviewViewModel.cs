@@ -70,6 +70,12 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private string _formattedTotalPaid = "$ 0";
 
     [ObservableProperty]
+    private bool _hasLostTicketSurcharge;
+
+    [ObservableProperty]
+    private string _lostTicketFeeText = string.Empty;
+
+    [ObservableProperty]
     private string _ivaPercentageText = "19%";
 
     [ObservableProperty]
@@ -340,6 +346,10 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                     AgreementDisplayName = $"Descuento (-{ticket.DiscountAmount:C0})";
                 }
             }
+
+            // 3.1 Recargo por Tiquete Extraviado
+            HasLostTicketSurcharge = ticket.IsLostTicket && ticket.LostTicketFee > 0;
+            LostTicketFeeText = HasLostTicketSurcharge ? $"{ticket.LostTicketFee:C0}" : string.Empty;
 
             // 4. Valor que pagó y % IVA
             var totalPaid = ticket.NetAmount > 0 ? ticket.NetAmount : (ticket.AmountPaid > 0 ? ticket.AmountPaid : (ticket.TotalAmount > 0 ? ticket.TotalAmount : ticket.GrossAmount));

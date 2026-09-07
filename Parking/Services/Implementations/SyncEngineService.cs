@@ -399,6 +399,14 @@ public class SyncEngineService : ISyncEngineService
                     existingBranch.AllowChargeByHour = br.AllowChargeByHour;
                     existingBranch.AllowChargeByDay = br.AllowChargeByDay;
                     existingBranch.AllowChargeByNight = br.AllowChargeByNight;
+                    existingBranch.LostTicketFee = br.LostTicketFee;
+                    existingBranch.FullDayThresholdMinutes = br.FullDayThresholdMinutes;
+                    existingBranch.FullDayApplicableDays = br.FullDayApplicableDays;
+                    existingBranch.FullDayStartTime = br.FullDayStartTime;
+                    existingBranch.FullDayEndTime = br.FullDayEndTime;
+                    existingBranch.NightStartTime = br.NightStartTime;
+                    existingBranch.NightEndTime = br.NightEndTime;
+                    existingBranch.NightStayMinMinutes = br.NightStayMinMinutes;
                     existingBranch.IsActive = br.IsActive;
                 }
                 else
@@ -420,6 +428,14 @@ public class SyncEngineService : ISyncEngineService
                         AllowChargeByHour = br.AllowChargeByHour,
                         AllowChargeByDay = br.AllowChargeByDay,
                         AllowChargeByNight = br.AllowChargeByNight,
+                        LostTicketFee = br.LostTicketFee,
+                        FullDayThresholdMinutes = br.FullDayThresholdMinutes,
+                        FullDayApplicableDays = br.FullDayApplicableDays,
+                        FullDayStartTime = br.FullDayStartTime,
+                        FullDayEndTime = br.FullDayEndTime,
+                        NightStartTime = br.NightStartTime,
+                        NightEndTime = br.NightEndTime,
+                        NightStayMinMinutes = br.NightStayMinMinutes,
                         IsActive = br.IsActive,
                         CreatedAtUtc = br.CreatedAtUtc
                     });
@@ -439,10 +455,69 @@ public class SyncEngineService : ISyncEngineService
                         b.AllowChargeByHour = br.AllowChargeByHour;
                         b.AllowChargeByDay = br.AllowChargeByDay;
                         b.AllowChargeByNight = br.AllowChargeByNight;
+                        b.LostTicketFee = br.LostTicketFee;
+                        b.FullDayThresholdMinutes = br.FullDayThresholdMinutes;
+                        b.FullDayApplicableDays = br.FullDayApplicableDays;
+                        b.FullDayStartTime = br.FullDayStartTime;
+                        b.FullDayEndTime = br.FullDayEndTime;
+                        b.NightStartTime = br.NightStartTime;
+                        b.NightEndTime = br.NightEndTime;
+                        b.NightStayMinMinutes = br.NightStayMinMinutes;
                     });
                 }
             }
             await db.SaveChangesAsync(ct);
+        }
+
+        // 4.1 Sincronizar Horarios de Operación de Sedes
+        if (bootstrap.OperatingHours != null)
+        {
+            var incomingOhIds = bootstrap.OperatingHours.Select(o => o.Id).ToHashSet();
+            var localOhs = await db.BranchOperatingHours.ToListAsync(ct);
+            var ohsToDelete = localOhs.Where(o => !incomingOhIds.Contains(o.Id)).ToList();
+            if (ohsToDelete.Count > 0)
+            {
+                db.BranchOperatingHours.RemoveRange(ohsToDelete);
+            }
+
+            foreach (var oh in bootstrap.OperatingHours)
+            {
+                var existing = localOhs.FirstOrDefault(o => o.Id == oh.Id);
+                if (existing != null)
+                {
+                    existing.BranchId = oh.BranchId;
+                    existing.DayOfWeek = oh.DayOfWeek;
+                    existing.IsOpen = oh.IsOpen;
+                    existing.OpeningTime = oh.OpeningTime;
+                    existing.ClosingTime = oh.ClosingTime;
+                    existing.BufferMinutesBefore = oh.BufferMinutesBefore;
+                    existing.BufferMinutesAfter = oh.BufferMinutesAfter;
+                }
+                else
+                {
+                    db.BranchOperatingHours.Add(new BranchOperatingHour
+                    {
+                        Id = oh.Id,
+                        BranchId = oh.BranchId,
+                        DayOfWeek = oh.DayOfWeek,
+                        IsOpen = oh.IsOpen,
+                        OpeningTime = oh.OpeningTime,
+                        ClosingTime = oh.ClosingTime,
+                        BufferMinutesBefore = oh.BufferMinutesBefore,
+                        BufferMinutesAfter = oh.BufferMinutesAfter
+                    });
+                }
+            }
+            await db.SaveChangesAsync(ct);
+
+            // Actualizar OperatingHours en la sede activa de la sesión
+            if (_sessionService.CurrentBranch != null)
+            {
+                var currentBranchOhs = await db.BranchOperatingHours
+                    .Where(o => o.BranchId == _sessionService.CurrentBranch.Id)
+                    .ToListAsync(ct);
+                _sessionService.UpdateCurrentBranch(b => b.OperatingHours = currentBranchOhs);
+            }
         }
 
         int paymentMethodsCount = 0;
@@ -571,7 +646,7 @@ public class SyncEngineService : ISyncEngineService
                 var isActive = rate.GetEffectiveActive();
 
                 var existing = localRates.FirstOrDefault(r => r.RateId == rateId)
-                            ?? localRates.FirstOrDefault(r => r.BranchId == targetBranchId && r.VehicleType == vehicleType);
+                            ?? localRates.FirstOrDefault(r => r.BranchId == targetBranchId && r.VehicleType == vehicleType && r.DayOfWeek == rate.DayOfWeek);
 
                 if (existing != null)
                 {
@@ -583,6 +658,7 @@ public class SyncEngineService : ISyncEngineService
                     existing.FullDayRate = fullDayRate;
                     existing.NightRate = nightRate;
                     existing.GracePeriodMinutes = grace;
+                    existing.DayOfWeek = rate.DayOfWeek;
                     existing.IconKey = string.IsNullOrWhiteSpace(iconKey) ? "IconCar" : iconKey;
                     existing.IsActive = isActive;
                     existing.UpdatedAtUtc = rate.UpdatedAtUtc ?? DateTime.UtcNow;
@@ -600,6 +676,7 @@ public class SyncEngineService : ISyncEngineService
                         FullDayRate = fullDayRate,
                         NightRate = nightRate,
                         GracePeriodMinutes = grace,
+                        DayOfWeek = rate.DayOfWeek,
                         IconKey = string.IsNullOrWhiteSpace(iconKey) ? "IconCar" : iconKey,
                         IsActive = isActive,
                         UpdatedAtUtc = rate.UpdatedAtUtc ?? DateTime.UtcNow
@@ -680,9 +757,14 @@ public class SyncEngineService : ISyncEngineService
                 {
                     existing.Name = ag.Name;
                     existing.StoreId = ag.StoreId;
+                    existing.CompanyId = ag.CompanyId;
+                    existing.DiscountType = ag.DiscountType;
                     existing.DiscountPercentage = ag.DiscountPercentage;
                     existing.DiscountFixedAmount = ag.DiscountFixedAmount;
+                    existing.FreeMinutes = ag.FreeMinutes;
+                    existing.FreeHours = ag.FreeHours;
                     existing.MaxHoursApplicable = ag.MaxHoursApplicable;
+                    existing.MaxMinutesApplicable = ag.MaxMinutesApplicable;
                     existing.MinPurchaseAmount = ag.MinPurchaseAmount;
                     existing.IsActive = ag.IsActive;
                     existing.ImageUrl = ag.ImageUrl;
@@ -693,11 +775,16 @@ public class SyncEngineService : ISyncEngineService
                     {
                         AgreementId = ag.AgreementId,
                         StoreId = ag.StoreId,
+                        CompanyId = ag.CompanyId,
                         Name = ag.Name,
+                        DiscountType = ag.DiscountType,
                         MinPurchaseAmount = ag.MinPurchaseAmount,
                         DiscountPercentage = ag.DiscountPercentage,
                         DiscountFixedAmount = ag.DiscountFixedAmount,
+                        FreeMinutes = ag.FreeMinutes,
+                        FreeHours = ag.FreeHours,
                         MaxHoursApplicable = ag.MaxHoursApplicable,
+                        MaxMinutesApplicable = ag.MaxMinutesApplicable,
                         IsActive = ag.IsActive,
                         ImageUrl = ag.ImageUrl,
                         CreatedAtUtc = DateTime.UtcNow
@@ -1284,6 +1371,8 @@ public class SyncEngineService : ISyncEngineService
                 ResolutionId = ticket.ResolutionId,
                 ResolutionName = ticket.ResolutionName,
                 FiscalInvoiceNumber = ticket.InvoiceNumber,
+                IsLostTicket = ticket.IsLostTicket,
+                LostTicketFee = ticket.LostTicketFee,
                 ExitTimeUtc = ticket.ExitTimeUtc ?? DateTime.UtcNow
             }),
             CreatedAtUtc = DateTime.UtcNow,

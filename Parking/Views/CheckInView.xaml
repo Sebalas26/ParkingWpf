@@ -184,6 +184,36 @@
                 <StackPanel>
 
 
+                    <!-- 1.1 Alerta de Horario Pre-Cierre / Cierre Superado -->
+                    <Border Visibility="{Binding IsPreClosingAlertVisible, Converter={StaticResource BoolToVis}}"
+                            Background="{DynamicResource BrushWarningBg}"
+                            BorderBrush="{DynamicResource BrushWarning}"
+                            BorderThickness="1.5"
+                            CornerRadius="10"
+                            Padding="14,10"
+                            Margin="0,0,0,16">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Path Grid.Column="0"
+                                  Data="{StaticResource IconAlertTriangle}"
+                                  Fill="{DynamicResource BrushWarning}"
+                                  Width="18" Height="18"
+                                  Stretch="Uniform"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,10,0"/>
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding PreClosingAlertMessage}"
+                                       FontSize="13"
+                                       FontWeight="Bold"
+                                       Foreground="{DynamicResource BrushWarningText}"
+                                       TextWrapping="Wrap"
+                                       VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+
                     <!-- 2. Alerta de Feedback (Informativo / Advertencia en Amarillo Institucional) -->
                     <Border Visibility="{Binding HasFeedback, Converter={StaticResource BoolToVis}}"
                             CornerRadius="10"

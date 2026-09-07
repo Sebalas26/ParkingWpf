@@ -24,6 +24,8 @@ public class ParkingTicket
     public decimal NetAmount { get; set; }
     public decimal AmountPaid { get; set; }
     public decimal ChangeGiven { get; set; }
+    public bool IsLostTicket { get; set; } = false;
+    public decimal LostTicketFee { get; set; } = 0m;
     public PaymentMethod? PaymentMethod { get; set; }
     public int? PaymentMethodId { get; set; }
     public string? ExitNotes { get; set; }

@@ -20,6 +20,16 @@ public class Branch
     public bool AllowChargeByHour { get; set; } = true;
     public bool AllowChargeByDay { get; set; } = true;
     public bool AllowChargeByNight { get; set; }
+    public decimal LostTicketFee { get; set; } = 0m;
+    public int? FullDayThresholdMinutes { get; set; }
+    public string? FullDayApplicableDays { get; set; }
+    public TimeSpan? FullDayStartTime { get; set; }
+    public TimeSpan? FullDayEndTime { get; set; }
+    public TimeSpan? NightStartTime { get; set; }
+    public TimeSpan? NightEndTime { get; set; }
+    public int? NightStayMinMinutes { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    public virtual ICollection<BranchOperatingHour> OperatingHours { get; set; } = new List<BranchOperatingHour>();
 }

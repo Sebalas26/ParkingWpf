@@ -179,6 +179,17 @@ public class DbConnectionManager : IDbConnectionManager
                     ""BranchId"" INTEGER NOT NULL,
                     PRIMARY KEY (""UserId"", ""BranchId"")
                 );
+
+                CREATE TABLE IF NOT EXISTS ""BranchOperatingHours"" (
+                    ""Id"" INTEGER PRIMARY KEY AUTOINCREMENT,
+                    ""BranchId"" INTEGER NOT NULL,
+                    ""DayOfWeek"" INTEGER NOT NULL,
+                    ""IsOpen"" INTEGER NOT NULL DEFAULT 1,
+                    ""OpeningTime"" TEXT NOT NULL DEFAULT '08:00:00',
+                    ""ClosingTime"" TEXT NOT NULL DEFAULT '22:00:00',
+                    ""BufferMinutesBefore"" INTEGER NOT NULL DEFAULT 30,
+                    ""BufferMinutesAfter"" INTEGER NOT NULL DEFAULT 30
+                );
             ");
 
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PendingSyncItems\" ADD COLUMN \"OperationType\" TEXT DEFAULT '';"); } catch { }
@@ -202,6 +213,8 @@ public class DbConnectionManager : IDbConnectionManager
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"OperatorExitId\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"BayNumber\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"CreatedAtUtc\" TEXT DEFAULT '';"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"IsLostTicket\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"LostTicketFee\" TEXT NOT NULL DEFAULT '0';"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"MonthlySubscriptions\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"MonthlySubscriptions\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleIncidents\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
@@ -213,9 +226,23 @@ public class DbConnectionManager : IDbConnectionManager
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"AllowChargeByHour\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"AllowChargeByDay\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"AllowChargeByNight\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"LostTicketFee\" TEXT NOT NULL DEFAULT '0';"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"FullDayThresholdMinutes\" INTEGER NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"FullDayApplicableDays\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"FullDayStartTime\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"FullDayEndTime\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"NightStartTime\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"NightEndTime\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"NightStayMinMinutes\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"DayOfWeek\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"NightRate\" TEXT NOT NULL DEFAULT '0';"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"FullDayRate\" TEXT NOT NULL DEFAULT '0';"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"CommercialAgreements\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"CommercialAgreements\" ADD COLUMN \"DiscountType\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"CommercialAgreements\" ADD COLUMN \"FreeMinutes\" INTEGER NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"CommercialAgreements\" ADD COLUMN \"FreeHours\" INTEGER NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"CommercialAgreements\" ADD COLUMN \"MaxMinutesApplicable\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PaymentMethods\" ADD COLUMN \"RequiresCashTender\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PaymentMethods\" ADD COLUMN \"State\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PaymentMethods\" ADD COLUMN \"Icon\" TEXT NOT NULL DEFAULT 'IconCash';"); } catch { }

@@ -50,6 +50,33 @@ public partial class CheckOutViewModel : ViewModelBase
     private decimal _grossFee;
 
     [ObservableProperty]
+    private decimal _hourRate;
+
+    [ObservableProperty]
+    private bool _isLostTicket;
+
+    [ObservableProperty]
+    private decimal _lostTicketFee;
+
+    [ObservableProperty]
+    private bool _hasLostTicketFee;
+
+    [ObservableProperty]
+    private bool _allowMinute = true;
+
+    [ObservableProperty]
+    private bool _allowHour = true;
+
+    [ObservableProperty]
+    private bool _allowDay = true;
+
+    [ObservableProperty]
+    private bool _allowNight = false;
+
+    [ObservableProperty]
+    private string _rateSummaryText = string.Empty;
+
+    [ObservableProperty]
     private decimal _discountAmount;
 
     [ObservableProperty]
@@ -639,11 +666,38 @@ public partial class CheckOutViewModel : ViewModelBase
             _frozenExitTimeUtc = _ticketSelectionTimeUtc;
             _isPaymentTimeoutDialogShowing = false;
 
+            var currentBranch = _sessionService.CurrentBranch;
+            AllowMinute = currentBranch?.AllowChargeByMinute ?? true;
+            AllowHour = currentBranch?.AllowChargeByHour ?? true;
+            AllowDay = currentBranch?.AllowChargeByDay ?? true;
+            AllowNight = currentBranch?.AllowChargeByNight ?? false;
+            LostTicketFee = currentBranch?.LostTicketFee ?? 0m;
+            HasLostTicketFee = LostTicketFee > 0;
+            IsLostTicket = false;
+
             var rateInfo = _pricingCalculator.GetRate(value.VehicleType);
             _currentGracePeriodSeconds = (rateInfo?.GracePeriodMinutes ?? 0) * 60;
+            HourRate = rateInfo?.HourRate ?? 0m;
             MinuteRate = rateInfo != null && rateInfo.MinuteRate > 0
                 ? rateInfo.MinuteRate
                 : (rateInfo != null && rateInfo.HourRate > 0 ? Math.Round(rateInfo.HourRate / 60m, 2) : 0m);
+
+            if (AllowMinute && MinuteRate > 0)
+            {
+                RateSummaryText = $"${MinuteRate:N0} / min";
+            }
+            else if (AllowHour && HourRate > 0)
+            {
+                RateSummaryText = $"${HourRate:N0} / hora";
+            }
+            else if (rateInfo != null && rateInfo.FullDayRate > 0)
+            {
+                RateSummaryText = $"${rateInfo.FullDayRate:N0} plena";
+            }
+            else
+            {
+                RateSummaryText = "$0";
+            }
 
             IsMonthlyTicket = (value.Notes?.Contains("Mensualidad", StringComparison.OrdinalIgnoreCase) ?? false);
             if (!IsMonthlyTicket)
@@ -683,7 +737,11 @@ public partial class CheckOutViewModel : ViewModelBase
             _ticketSelectionTimeUtc = default;
             _frozenExitTimeUtc = default;
             _currentGracePeriodSeconds = 900;
+            HourRate = 0m;
             MinuteRate = 0m;
+            IsLostTicket = false;
+            LostTicketFee = 0m;
+            HasLostTicketFee = false;
             IsMonthlyTicket = false;
             GrossFee = 0m;
             DiscountAmount = 0m;
@@ -697,6 +755,7 @@ public partial class CheckOutViewModel : ViewModelBase
 
     partial void OnAmountTenderedChanged(decimal value) => CalculateChange();
     partial void OnCalculatedFeeChanged(decimal value) => CalculateChange();
+    partial void OnIsLostTicketChanged(bool value) => RecalculateLiveFee();
 
     private void CalculateChange()
     {
@@ -724,7 +783,7 @@ public partial class CheckOutViewModel : ViewModelBase
 
         if (duration.TotalDays >= 1)
         {
-            ElapsedTimeString = $"{(int)duration.TotalDays}d {duration.Hours}h {duration.Minutes}min {duration.Seconds}seg";
+            ElapsedTimeString = $"{(int)duration.TotalDays}d {duration.Hours}h {duration.Minutes}m";
         }
         else if (duration.TotalHours >= 1)
         {
@@ -745,16 +804,30 @@ public partial class CheckOutViewModel : ViewModelBase
             return;
         }
 
-        GrossFee = _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, feeCalculationTime);
+        GrossFee = _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, feeCalculationTime, 0, IsLostTicket);
 
         if (HasAgreementDiscount && SelectedAgreement != null)
         {
-            DiscountAmount = _agreementService.CalculateDiscount(SelectedAgreement, CustomerPurchaseAmount, GrossFee);
-            if (DiscountAmount == 0m && SelectedAgreement.MaxHoursApplicable.HasValue && SelectedAgreement.MaxHoursApplicable.Value > 0)
+            if (SelectedAgreement.DiscountType == 2 || (SelectedAgreement.FreeHours.GetValueOrDefault(0) > 0 || SelectedAgreement.FreeMinutes.GetValueOrDefault(0) > 0))
             {
-                var freeMinutes = SelectedAgreement.MaxHoursApplicable.Value * 60;
-                var freeUntil = SelectedTicket.EntryTimeUtc.AddMinutes(freeMinutes);
-                DiscountAmount = Math.Min(GrossFee, _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, freeUntil));
+                int freeMins = (SelectedAgreement.FreeHours.GetValueOrDefault(0) * 60) + SelectedAgreement.FreeMinutes.GetValueOrDefault(0);
+                if (freeMins <= 0 && SelectedAgreement.MaxHoursApplicable.HasValue)
+                {
+                    freeMins = (SelectedAgreement.MaxHoursApplicable.Value * 60) + SelectedAgreement.MaxMinutesApplicable.GetValueOrDefault(0);
+                }
+                var feeWithoutFreeTime = _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, feeCalculationTime, 0, false);
+                var feeWithFreeTime = _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, feeCalculationTime, freeMins, false);
+                DiscountAmount = Math.Max(0m, feeWithoutFreeTime - feeWithFreeTime);
+            }
+            else
+            {
+                DiscountAmount = _agreementService.CalculateDiscount(SelectedAgreement, CustomerPurchaseAmount, GrossFee);
+                if (DiscountAmount == 0m && SelectedAgreement.MaxHoursApplicable.HasValue && SelectedAgreement.MaxHoursApplicable.Value > 0)
+                {
+                    var freeMinutes = SelectedAgreement.MaxHoursApplicable.Value * 60;
+                    var freeUntil = SelectedTicket.EntryTimeUtc.AddMinutes(freeMinutes);
+                    DiscountAmount = Math.Min(GrossFee, _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, freeUntil));
+                }
             }
         }
         else
@@ -991,7 +1064,9 @@ public partial class CheckOutViewModel : ViewModelBase
                 _frozenExitTimeUtc,
                 SelectedResolution?.ResolutionId,
                 SelectedResolution?.Name ?? SelectedResolution?.DocumentType,
-                generatedInvoiceNumber);
+                generatedInvoiceNumber,
+                IsLostTicket,
+                IsLostTicket ? LostTicketFee : 0m);
 
             if (completedTicket != null)
             {
@@ -1006,6 +1081,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 ChangeDue = 0m;
                 ExitNotes = string.Empty;
                 HasAgreementDiscount = false;
+                IsLostTicket = false;
 
                 HasFeedback = true;
                 IsSuccessFeedback = true;

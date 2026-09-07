@@ -1,3 +1,5 @@
 <Solution>
   <Project Path="Parking/Parking.csproj" />
+  <Project Path="Parking.UnitTests/Parking.UnitTests.csproj" />
 </Solution>
+
