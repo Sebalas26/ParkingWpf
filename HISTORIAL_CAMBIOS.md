@@ -15,6 +15,56 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-07 17:48:00] - [FEATURE / UI/UX / CASH / SHIFTS] [WPF] - Integración de Tarjeta de "Total en Caja" en Pantalla de Ingreso de Vehículos (CheckInView)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"En esta pantalla me podrias mostrar cuanto lleva en caja total, solo el total para que el cliente tenga de primera mano el dato y con aprovechamos ese espacio en blanco que sobra"* (Adjuntando captura de CheckInView con el área inferior enmarcada en rojo)
+- **🤖 Resumen Técnico para la IA**:
+  1. **ViewModel Reactivo (`CheckInViewModel.cs`)**:
+     - Nuevas propiedades observables: `TotalCashInRegister` (`decimal`), `TotalShiftCollected` (`decimal`), `HasActiveShift` (`bool`) y `ShiftOperatorName` (`string`).
+     - Método reactivo `RefreshShiftSummaryAsync()` que consulta `_shiftService.GetCurrentShiftSummaryAsync()` y actualiza el saldo de efectivo esperado en caja (`ExpectedCash` = Base Inicial + Cobrado en Efectivo - Retiros).
+     - Escuchadores en `_shiftService.ShiftStateChanged` y `_ticketService.TicketCompleted` para mantener el total sincronizado en caliente ante cualquier liquidación o cambio de turno.
+  2. **Diseño XAML de Alto Impacto (`CheckInView.xaml`)**:
+     - Ubicación estratégica debajo de los botones de acción del formulario de entrada.
+     - Contenedor con estilo de tarjeta institucional (`CornerRadius="14"`, fondo suave `#F8FAFC`, borde `#E2E8F0`).
+     - Icono oficial `IconCashRegister` con acento primario suave (`BrushPrimaryLight`).
+     - Insignia de estado del turno (*TURNO ACTIVO* en verde / *SIN TURNO* en amarillo).
+     - Nombre del operador en custodia del turno.
+     - Valor numérico destacado en tipografía 24pt bold en color primario (`#00867A`) formateado como moneda con `CurrencyConv`.
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/Views/CheckInView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet test ParkingWpf.slnx` → **47 de 47 pruebas superadas (0 fallos, 100% éxito)**.
+  - `dotnet build ParkingWpf.slnx` → **0 Errores, 0 Advertencias**.
+
+---
+
+### [2026-09-07 17:28:00] - [FIX / SYNC / DATABASE / SQLITE] [WPF] - Corrección de Error de Restricción Única (SQLite Error 19: UNIQUE constraint failed: ParkingTickets.TicketNumber) en Sincronización de Tiquetes
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Cuando se sincroniza el wpf automaticamente por algun cambio que hago dede el pwa , se sincroniza y pasa esto en el wpf"* (Adjuntando captura con error `SQLite Error 19: 'UNIQUE constraint failed: ParkingTickets.TicketNumber'`)
+- **🤖 Resumen Técnico para la IA**:
+  1. **Deduplicación en Memoria de Lista Entrante (`SyncEngineService.cs`)**:
+     - Se implementó deduplicación estricta de `allIncomingTickets` agrupando por `TicketId` y por `TicketNumber.Trim()` con `StringComparer.OrdinalIgnoreCase`.
+     - Esto erradica que elementos coincidentes en `ActiveTickets` y `RecentTickets` sean evaluados dos veces en la misma transacción.
+  2. **Indexación Local en Memoria**:
+     - Carga de los registros locales de SQLite en diccionarios en memoria (`localByTicketId` y `localByTicketNumber`).
+     - Cada nuevo tiquete instanciado y agregado a `db.ParkingTickets` se registra inmediatamente en estos diccionarios, impidiendo que iteraciones subsiguientes intenten duplicar la inserción en el Change Tracker antes de `SaveChangesAsync()`.
+  3. **Limpieza de Bloques Redundantes**:
+     - Eliminación de la sincronización duplicada de resoluciones DIAN al final del método (ya ejecutada en el paso 8.5).
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet test ParkingWpf.slnx` → **47 de 47 pruebas superadas (0 fallos, 100% éxito)**.
+  - `dotnet build ParkingWpf.slnx` → **0 Errores**.
+
+---
+
 ### [2026-09-07 16:15:00] - [UI/UX / SHIFTS / FIGMA] [WPF] - Rediseño Total de Pantalla de Entrega de Turno y Arqueo de Caja según Figma
 
 - **Autor**: Antigravity AI Assistant & Software Architect

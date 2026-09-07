@@ -104,6 +104,18 @@ public partial class CheckInViewModel : ViewModelBase
     [ObservableProperty]
     private string? _preClosingAlertMessage;
 
+    [ObservableProperty]
+    private decimal _totalCashInRegister;
+
+    [ObservableProperty]
+    private decimal _totalShiftCollected;
+
+    [ObservableProperty]
+    private bool _hasActiveShift;
+
+    [ObservableProperty]
+    private string _shiftOperatorName = string.Empty;
+
     public CheckInViewModel(
         IParkingTicketService ticketService,
         IPricingCalculatorService pricingCalculator,
@@ -134,11 +146,26 @@ public partial class CheckInViewModel : ViewModelBase
                 dispatcher.InvokeAsync(async () =>
                 {
                     await RefreshRecentEntriesAndOccupancyAsync();
+                    await RefreshShiftSummaryAsync();
                 });
             }
             else
             {
                 _ = RefreshRecentEntriesAndOccupancyAsync();
+                _ = RefreshShiftSummaryAsync();
+            }
+        };
+
+        _shiftService.ShiftStateChanged += () =>
+        {
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null)
+            {
+                dispatcher.InvokeAsync(async () => await RefreshShiftSummaryAsync());
+            }
+            else
+            {
+                _ = RefreshShiftSummaryAsync();
             }
         };
 
@@ -190,6 +217,37 @@ public partial class CheckInViewModel : ViewModelBase
             CurrentRate = null;
         }
         await RefreshRecentEntriesAndOccupancyAsync();
+        await RefreshShiftSummaryAsync();
+    }
+
+    public async Task RefreshShiftSummaryAsync()
+    {
+        try
+        {
+            HasActiveShift = _shiftService.HasActiveShift;
+            if (HasActiveShift)
+            {
+                var summary = await _shiftService.GetCurrentShiftSummaryAsync();
+                TotalCashInRegister = summary.ExpectedCash;
+                TotalShiftCollected = summary.TotalCollectedAllMethods;
+                ShiftOperatorName = !string.IsNullOrWhiteSpace(summary.OperatorName)
+                    ? summary.OperatorName
+                    : (_sessionService.CurrentUser?.FullName ?? "Operador");
+            }
+            else
+            {
+                TotalCashInRegister = 0m;
+                TotalShiftCollected = 0m;
+                ShiftOperatorName = string.Empty;
+            }
+        }
+        catch
+        {
+            HasActiveShift = false;
+            TotalCashInRegister = 0m;
+            TotalShiftCollected = 0m;
+            ShiftOperatorName = string.Empty;
+        }
     }
 
     public async Task RefreshRecentEntriesAndOccupancyAsync()

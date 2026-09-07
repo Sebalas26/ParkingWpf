@@ -1121,19 +1121,49 @@ public class SyncEngineService : ISyncEngineService
         if (bootstrap.ActiveTickets != null) allIncomingTickets.AddRange(bootstrap.ActiveTickets);
         if (bootstrap.RecentTickets != null) allIncomingTickets.AddRange(bootstrap.RecentTickets);
 
+        // Deduplicar lista entrante primero por TicketId y luego por TicketNumber
+        var deduplicatedIncoming = allIncomingTickets
+            .Where(t => !string.IsNullOrWhiteSpace(t.TicketNumber))
+            .GroupBy(t => t.TicketId)
+            .Select(g => g.First())
+            .GroupBy(t => t.TicketNumber.Trim(), StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .ToList();
+
+        var localTickets = await db.ParkingTickets.ToListAsync(ct);
+        var localByTicketId = localTickets.ToDictionary(t => t.TicketId);
+        var localByTicketNumber = new Dictionary<string, ParkingTicket>(StringComparer.OrdinalIgnoreCase);
+        foreach (var lt in localTickets)
+        {
+            if (!string.IsNullOrWhiteSpace(lt.TicketNumber))
+            {
+                localByTicketNumber[lt.TicketNumber.Trim()] = lt;
+            }
+        }
+
         int ticketsCount = 0;
-        foreach (var ticket in allIncomingTickets)
+        foreach (var ticket in deduplicatedIncoming)
         {
             var vehicleType = ticket.GetVehicleType();
             var status = ticket.GetTicketStatus();
             var paymentMethod = ticket.GetPaymentMethod();
-
             var targetBranchId = ticket.BranchId ?? currentBranchId;
-            var existing = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == ticket.TicketId || t.TicketNumber == ticket.TicketNumber, ct);
+            var normalizedTicketNumber = ticket.TicketNumber.Trim();
+
+            ParkingTicket? existing = null;
+            if (localByTicketId.TryGetValue(ticket.TicketId, out var matchById))
+            {
+                existing = matchById;
+            }
+            else if (localByTicketNumber.TryGetValue(normalizedTicketNumber, out var matchByNum))
+            {
+                existing = matchByNum;
+            }
+
             if (existing != null)
             {
                 existing.BranchId = targetBranchId;
-                existing.TicketNumber = ticket.TicketNumber;
+                existing.TicketNumber = normalizedTicketNumber;
                 existing.PlateNumber = ticket.PlateNumber;
                 existing.VehicleType = vehicleType;
                 existing.CustomerPhone = ticket.CustomerPhone;
@@ -1153,14 +1183,17 @@ public class SyncEngineService : ISyncEngineService
                 existing.PaymentMethodId = ticket.PaymentMethodId;
                 existing.ExitNotes = ticket.ExitNotes;
                 existing.IsSynchronized = true;
+
+                localByTicketId[existing.TicketId] = existing;
+                localByTicketNumber[normalizedTicketNumber] = existing;
             }
             else
             {
-                db.ParkingTickets.Add(new ParkingTicket
+                var newTicket = new ParkingTicket
                 {
                     TicketId = ticket.TicketId,
                     BranchId = targetBranchId,
-                    TicketNumber = ticket.TicketNumber,
+                    TicketNumber = normalizedTicketNumber,
                     PlateNumber = ticket.PlateNumber,
                     VehicleType = vehicleType,
                     CustomerPhone = ticket.CustomerPhone,
@@ -1182,65 +1215,15 @@ public class SyncEngineService : ISyncEngineService
                     OperatorName = !string.IsNullOrWhiteSpace(ticket.OperatorName) ? ticket.OperatorName : "Operador General",
                     IsSynchronized = true,
                     CreatedAtUtc = ticket.CreatedAtUtc
-                });
+                };
+
+                db.ParkingTickets.Add(newTicket);
+                localByTicketId[ticket.TicketId] = newTicket;
+                localByTicketNumber[normalizedTicketNumber] = newTicket;
             }
             ticketsCount++;
         }
         result.SyncedTicketsCount = ticketsCount;
-
-        // 10. Sincronizar Resoluciones de Facturación DIAN
-        if (bootstrap.Resolutions != null)
-        {
-            var incomingResIds = bootstrap.Resolutions.Select(r => r.ResolutionId).ToHashSet();
-            var localResolutions = await db.BillingResolutions.ToListAsync(ct);
-            var resToDelete = localResolutions.Where(r => !incomingResIds.Contains(r.ResolutionId)).ToList();
-            if (resToDelete.Count > 0)
-            {
-                db.BillingResolutions.RemoveRange(resToDelete);
-            }
-
-            foreach (var r in bootstrap.Resolutions)
-            {
-                var existing = localResolutions.FirstOrDefault(lr => lr.ResolutionId == r.ResolutionId);
-                if (existing != null)
-                {
-                    existing.BranchId = r.BranchId;
-                    existing.CompanyId = r.CompanyId;
-                    existing.Name = r.Name;
-                    existing.DocumentType = r.DocumentType;
-                    existing.Prefix = r.Prefix;
-                    existing.ResolutionNumber = r.ResolutionNumber;
-                    existing.FromNumber = r.FromNumber;
-                    existing.ToNumber = r.ToNumber;
-                    existing.CurrentNumber = r.CurrentNumber;
-                    existing.ValidFrom = r.ValidFrom;
-                    existing.ValidTo = r.ValidTo;
-                    existing.IsActive = r.IsActive;
-                    existing.TechnicalKey = r.TechnicalKey;
-                }
-                else
-                {
-                    db.BillingResolutions.Add(new BillingResolution
-                    {
-                        ResolutionId = r.ResolutionId,
-                        BranchId = r.BranchId,
-                        CompanyId = r.CompanyId,
-                        Name = r.Name,
-                        DocumentType = r.DocumentType,
-                        Prefix = r.Prefix,
-                        ResolutionNumber = r.ResolutionNumber,
-                        FromNumber = r.FromNumber,
-                        ToNumber = r.ToNumber,
-                        CurrentNumber = r.CurrentNumber,
-                        ValidFrom = r.ValidFrom,
-                        ValidTo = r.ValidTo,
-                        IsActive = r.IsActive,
-                        TechnicalKey = r.TechnicalKey,
-                        CreatedAtUtc = DateTime.UtcNow
-                    });
-                }
-            }
-        }
 
         await db.SaveChangesAsync(ct);
         _lastSyncTime = DateTime.UtcNow;
