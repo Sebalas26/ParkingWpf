@@ -317,18 +317,43 @@
                                            HorizontalAlignment="Center"
                                            Margin="0,2,0,4"/>
 
-                                <TextBlock Text="Conserve este tiquete para retirar su vehículo." FontSize="9.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,4"/>
+                                <TextBlock Text="Conserve este tiquete para retirar su vehículo." FontSize="9.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,6"/>
 
-                                <!-- Código QR Pequeño de Consulta / Web -->
+                                <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,2,0,6"/>
+
+                                <!-- Código QR de Consulta en Línea para el Cliente -->
+                                <TextBlock Text="CONSULTE SU VEHÍCULO EN LÍNEA"
+                                           FontSize="10"
+                                           FontWeight="Bold"
+                                           FontFamily="{StaticResource FontFamilyMonospace}"
+                                           Foreground="#000000"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,2,0,2"/>
+
+                                <TextBlock Text="Escanee con la cámara de su celular:"
+                                           FontSize="8.5"
+                                           FontFamily="{StaticResource FontFamilyMonospace}"
+                                           Foreground="#000000"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,0,0,4"/>
+
                                 <Image Source="{Binding ConsultationQrCodeImage}"
-                                       Width="70" Height="70"
+                                       Width="92" Height="92"
                                        Stretch="Uniform"
                                        RenderOptions.BitmapScalingMode="NearestNeighbor"
                                        HorizontalAlignment="Center"
-                                       Margin="0,4,0,2"/>
+                                       Margin="0,2,0,3"/>
 
-                                <TextBlock Text="www.parking-flow.com"
+                                <TextBlock Text="{Binding ConsultationDomainText}"
                                            FontSize="8.5"
+                                           FontWeight="Bold"
+                                           FontFamily="{StaticResource FontFamilyMonospace}"
+                                           Foreground="#000000"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,0,0,1"/>
+
+                                <TextBlock Text="Estado, tiempo y cobro en tiempo real"
+                                           FontSize="8"
                                            FontFamily="{StaticResource FontFamilyMonospace}"
                                            Foreground="#000000"
                                            HorizontalAlignment="Center"
