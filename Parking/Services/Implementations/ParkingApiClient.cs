@@ -198,7 +198,7 @@ public class ParkingApiClient : IApiClientService
 
         try
         {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(12));
             var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/auth/login", request, cts.Token);
             
             if (response.IsSuccessStatusCode)
@@ -225,7 +225,7 @@ public class ParkingApiClient : IApiClientService
             var fallbackUrl = BaseUrl.Contains("7023") ? "http://localhost:5135" : "https://localhost:7023";
             try
             {
-                using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(12));
                 var response = await _httpClient.PostAsJsonAsync($"{fallbackUrl}/api/auth/login", request, ctsFallback.Token);
                 if (response.IsSuccessStatusCode)
                 {

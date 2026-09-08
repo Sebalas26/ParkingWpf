@@ -46,6 +46,7 @@ public interface ISyncEngineService
     Task<bool> PerformFullSyncAsync();
     Task<SyncResultReport> PerformFullSyncWithProgressAsync(IProgress<SyncProgressReport> progress, CancellationToken ct = default);
     Task<bool> ForceCleanResyncAsync();
+    Task<SyncResultReport> ResetLocalDatabaseFromCloudAsync(IProgress<SyncProgressReport>? progress = null);
     Task EnqueueOfflineCheckInAsync(ParkingTicket ticket);
     Task EnqueueOfflineCheckOutAsync(ParkingTicket ticket);
     Task ProcessPendingQueueAsync();

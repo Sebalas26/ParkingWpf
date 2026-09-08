@@ -91,6 +91,24 @@ public class AuthService : IAuthService
                     }
                 }
 
+                // Persistir credenciales actualizadas en SQLite para garantizar disponibilidad offline inmediata
+                try
+                {
+                    using var localDb = _connectionManager.CreateDbContext();
+                    var localUser = await localDb.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUser || (u.Email != null && u.Email.ToLower() == normalizedUser));
+                    if (localUser != null)
+                    {
+                        if (!string.IsNullOrWhiteSpace(password))
+                        {
+                            localUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11);
+                        }
+                        localUser.FullName = apiLogin.FullName;
+                        localUser.IsActive = true;
+                        await localDb.SaveChangesAsync();
+                    }
+                }
+                catch { }
+
                 return new LoginResultModel
                 {
                     Success = true,
@@ -118,10 +136,25 @@ public class AuthService : IAuthService
             .Include(u => u.Role)
             .FirstOrDefaultAsync(u => (u.Username.ToLower() == normalizedUser || (u.Email != null && u.Email.ToLower() == normalizedUser)) && u.IsActive);
 
-        var isValidLocal = user != null && (
-            user.PasswordHash == passwordHash ||
-            user.PasswordHash == password
-        );
+        var isValidLocal = false;
+        if (user != null && !string.IsNullOrWhiteSpace(user.PasswordHash))
+        {
+            // A. Verificación BCrypt estándar (para usuarios sincronizados desde MySQL)
+            try
+            {
+                if (user.PasswordHash.StartsWith("$2") && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+                {
+                    isValidLocal = true;
+                }
+            }
+            catch { }
+
+            // B. Verificación SHA-256 legacy o texto plano
+            if (!isValidLocal && (user.PasswordHash == passwordHash || user.PasswordHash == password))
+            {
+                isValidLocal = true;
+            }
+        }
 
         if (user == null || !isValidLocal)
         {

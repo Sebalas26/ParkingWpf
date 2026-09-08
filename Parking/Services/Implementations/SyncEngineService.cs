@@ -1287,26 +1287,95 @@ public class SyncEngineService : ISyncEngineService
 
     public async Task<bool> ForceCleanResyncAsync()
     {
+        var report = await ResetLocalDatabaseFromCloudAsync();
+        return report.Success;
+    }
+
+    public async Task<SyncResultReport> ResetLocalDatabaseFromCloudAsync(IProgress<SyncProgressReport>? progress = null)
+    {
+        progress ??= new Progress<SyncProgressReport>();
+
+        progress.Report(new SyncProgressReport
+        {
+            Percentage = 10,
+            StepIndex = 1,
+            CurrentStepTitle = "Verificando conectividad con la Nube...",
+            DetailMessage = "Comprobando que el API Central esté en línea antes de restablecer..."
+        });
+
         var isApiAvailable = await _apiClient.PingAsync();
         _isOnline = isApiAvailable;
 
-        if (isApiAvailable)
+        if (!isApiAvailable)
         {
-            using var db = _dbManager.CreateDbContext();
-
-            // 1. Limpiar caché local transaccional
-            db.PendingSyncItems.RemoveRange(db.PendingSyncItems);
-            db.TicketDiscounts.RemoveRange(db.TicketDiscounts);
-            db.ParkingTickets.RemoveRange(db.ParkingTickets);
-            await db.SaveChangesAsync();
-
-            // 2. Traer bootstrap limpio desde MySQL
-            var report = await PerformFullSyncWithProgressAsync(new Progress<SyncProgressReport>());
-            return report.Success;
+            progress.Report(new SyncProgressReport
+            {
+                Percentage = 100,
+                StepIndex = 1,
+                CurrentStepTitle = "Servidor no disponible",
+                DetailMessage = "No se puede restablecer la base de datos local porque el servidor central está desconectado. Se conservaron los datos locales intactos.",
+                IsSuccessStep = false
+            });
+            return new SyncResultReport
+            {
+                Success = false,
+                Message = "El servidor central no está en línea. No se modificaron los datos locales por seguridad."
+            };
         }
 
-        await ClearLocalTicketsMemoryAsync();
-        return false;
+        progress.Report(new SyncProgressReport
+        {
+            Percentage = 25,
+            StepIndex = 2,
+            CurrentStepTitle = "Despachando transacciones pendientes...",
+            DetailMessage = "Asegurando que todas las transacciones locales queden guardadas en MySQL..."
+        });
+
+        // 1. Despachar cola de transacciones locales pendientes antes de purgar
+        await ProcessPendingQueueAsync();
+
+        progress.Report(new SyncProgressReport
+        {
+            Percentage = 45,
+            StepIndex = 2,
+            CurrentStepTitle = "Purgando caché y reconstruyendo esquema...",
+            DetailMessage = "Limpiando tablas locales de SQLite y asegurando esquema actualizado..."
+        });
+
+        // 2. Limpiar tablas locales de caché transaccional y catálogos
+        using (var db = _dbManager.CreateDbContext())
+        {
+            db.PendingSyncItems.RemoveRange(db.PendingSyncItems.Where(p => p.IsProcessed));
+            db.TicketDiscounts.RemoveRange(db.TicketDiscounts);
+            db.ParkingTickets.RemoveRange(db.ParkingTickets);
+            db.MonthlySubscriptions.RemoveRange(db.MonthlySubscriptions);
+            db.VehicleIncidents.RemoveRange(db.VehicleIncidents);
+            db.VehicleIncidentBranches.RemoveRange(db.VehicleIncidentBranches);
+            db.BranchOperatingHours.RemoveRange(db.BranchOperatingHours);
+            db.BranchPaymentMethods.RemoveRange(db.BranchPaymentMethods);
+            db.VehicleRates.RemoveRange(db.VehicleRates);
+            db.CommercialAgreements.RemoveRange(db.CommercialAgreements);
+            db.BillingResolutions.RemoveRange(db.BillingResolutions);
+            await db.SaveChangesAsync();
+
+            // 3. Ejecutar auto-migración dinámica para garantizar que cualquier columna o tabla nueva exista
+            if (_dbManager is DbConnectionManager concreteManager)
+            {
+                await concreteManager.AutoMigrateDatabaseAsync(db);
+            }
+        }
+
+        progress.Report(new SyncProgressReport
+        {
+            Percentage = 60,
+            StepIndex = 3,
+            CurrentStepTitle = "Descargando catálogo completo desde la Nube...",
+            DetailMessage = "Descargando sedes, tarifas, usuarios, convenios y vehículos activos..."
+        });
+
+        // 4. Descargar el 100% del Bootstrap desde el API
+        var syncResult = await PerformFullSyncWithProgressAsync(progress);
+        return syncResult;
     }
 
     public async Task EnqueueOfflineCheckInAsync(ParkingTicket ticket)

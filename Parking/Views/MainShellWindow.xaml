@@ -437,6 +437,30 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Botón Restablecer BD (Visible exclusivamente para SuperAdmin) -->
+                        <Button Command="{Binding ResetLocalDatabaseCommand}"
+                                Visibility="{Binding IsSuperAdmin, Converter={StaticResource BoolToVis}}"
+                                IsEnabled="{Binding IsSyncing, Converter={StaticResource InverseBoolConv}}"
+                                Style="{StaticResource SecondaryButton}"
+                                Height="24"
+                                Padding="8,0"
+                                Margin="0,0,6,0"
+                                ToolTip="Restablecer y reconstruir la base de datos local desde la Nube (Solo SuperAdmin)">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconRefresh}"
+                                      Fill="{DynamicResource BrushWarning}"
+                                      Width="11" Height="11"
+                                      Stretch="Uniform"
+                                      Margin="0,0,5,0"
+                                      VerticalAlignment="Center"/>
+                                <TextBlock Text="Restablecer BD"
+                                           FontSize="11"
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource BrushWarning}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
                         <!-- Botón Sincronizar -->
                         <Button Command="{Binding ForceSyncCommand}"
                                 IsEnabled="{Binding IsSyncing, Converter={StaticResource InverseBoolConv}}"

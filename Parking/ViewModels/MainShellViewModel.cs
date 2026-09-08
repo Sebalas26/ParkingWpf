@@ -36,7 +36,10 @@ public partial class MainShellViewModel : ViewModelBase
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanOperateTerminal))]
+    [NotifyPropertyChangedFor(nameof(IsSuperAdmin))]
     private UserSessionModel? _currentUser;
+
+    public bool IsSuperAdmin => CurrentUser?.IsSuperAdmin == true;
 
     [ObservableProperty]
     private BranchModel? _currentBranch;
@@ -489,6 +492,64 @@ public partial class MainShellViewModel : ViewModelBase
         catch (Exception ex)
         {
             SyncStatusText = $"Error de sincronización: {ex.Message}";
+        }
+        finally
+        {
+            IsSyncing = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ResetLocalDatabaseAsync()
+    {
+        if (!IsSuperAdmin)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Acceso Denegado",
+                "Esta función de restablecimiento de base de datos local está reservada exclusivamente para el Super Administrador del sistema.",
+                DialogNotificationType.Warning);
+            return;
+        }
+
+        if (IsSyncing) return;
+
+        var confirmed = await _dialogService.ShowConfirmationAsync(
+            "Restablecer Base de Datos Local",
+            "¿Está seguro de que desea restablecer y reconstruir la base de datos local SQLite desde la nube?\n\n• Si hay transacciones locales pendientes, se enviarán primero a MySQL.\n• Se descargará nuevamente el catálogo completo y limpio desde el servidor central.\n\nEsta acción se utiliza como desvare técnico o sincronización integral.");
+
+        if (!confirmed) return;
+
+        IsSyncing = true;
+        SyncStatusText = "Restableciendo base de datos local desde la Nube...";
+
+        try
+        {
+            var result = await _syncEngine.ResetLocalDatabaseFromCloudAsync();
+            if (result.Success)
+            {
+                await RefreshOccupancyAsync();
+                SyncStatusText = $"Base local reconstruida con éxito ({DateTime.Now:HH:mm})";
+                await _dialogService.ShowAlertAsync(
+                    "Restablecimiento Exitoso",
+                    $"La base de datos local SQLite ha sido purgada y reconstruida con éxito desde la Nube.\n\n• Usuarios: {result.SyncedUsersCount}\n• Sedes: 1\n• Tarifas: {result.SyncedRatesCount}\n• Tiquetes activos: {result.SyncedTicketsCount}",
+                    DialogNotificationType.Success);
+            }
+            else
+            {
+                SyncStatusText = "Aviso de restablecimiento";
+                await _dialogService.ShowAlertAsync(
+                    "Aviso de Restablecimiento",
+                    result.Message ?? "No se pudo completar el restablecimiento de la base de datos local.",
+                    DialogNotificationType.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            SyncStatusText = $"Error al restablecer: {ex.Message}";
+            await _dialogService.ShowAlertAsync(
+                "Error Crítico",
+                $"Ocurrió un error al restablecer la base de datos local:\n{ex.Message}",
+                DialogNotificationType.Error);
         }
         finally
         {

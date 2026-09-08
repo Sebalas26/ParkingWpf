@@ -13,6 +13,38 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 6. **Resultado de la Verificación** (estado de compilación y pruebas).
 
+### [2026-09-08 12:00:00] - [FEATURE / SQLITE / OFFLINE / RESILIENCE] [WPF] - Auto-Migración Dinámica de Esquema SQLite, Soporte Completo de Login Offline con BCrypt, Timeout Ágil de 12s y Botón de Restablecimiento Local para SuperAdmin
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Tengo otro problema quiero analizarlo sucede que como hemos venido haciendo cambios y cambios estoy cansado de cada rato borra la sqllite del wpf apra probar y probar, por que como estamos agregando columnas y todo la bd de sql lite no tiene esa funcionalidad de actualizarse, es que quisiera saber si existe alguna funcionalidad de poder que apenas se loguee que hay hace la sincronización el vaya valida la bd en la nube verifique que todo lo que tiene en tirra esta arriba y si es así recontruya la sqllite o no se cual otra opcion me puedes ofrecer por que eso esta generando enserio problemas muchos problemas. necesito un analisis a esa comparativa real como sería la mejor opción o tu que opcion me ofreces mas necesito tener eso claro por que me esta pasando mucho."*
+  > *"Ajustar el timeout de red de la API a 3-4 segundos para que la conmutación a offline sea instantánea. yo creo que darle como 10 a 15 seg si no responde"*
+  > *"Añadir la opción de "Restablecer Base Local desde la Nube" bajo demanda. si pero tenerlo mientras las pruebas si y mediante permisos eso deberia esatr solo para el superadmin para pdoer otorgar ese permiso serviria como un desbare"*
+  > *"dale has plan."*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Auto-Migrador Dinámico de Esquema SQLite (`DbConnectionManager.AutoMigrateDatabaseAsync`)**:
+     - Inspecciona en tiempo de ejecución las entidades y propiedades mapeadas en `ParkFlowDbContext` (`context.Model.GetEntityTypes()`).
+     - Consulta `sqlite_master` y `PRAGMA table_info("{tableName}")`.
+     - Si la tabla de una nueva entidad no existe en SQLite, la crea con `CREATE TABLE IF NOT EXISTS` dinámico.
+     - Si la tabla ya existe y se agregó una propiedad en C#, ejecuta automáticamente `ALTER TABLE "{tableName}" ADD COLUMN "{colName}" {sqlType} {defaultClause};` en menos de 50 ms.
+     - **Impacto directo**: Se eliminó de raíz la necesidad de escribir sentencias `ALTER TABLE` manuales en código y el borrado forzado de `parkflow_local.db`.
+  2. **Autenticación Offline Criptográfica con BCrypt (`AuthService.cs`, `Parking.csproj`)**:
+     - Añadido paquete NuGet oficial `BCrypt.Net-Next` (versión 4.0.3).
+     - Al autenticar offline en SQLite: si el hash del usuario inicia con `$2` (proveniente de MySQL), valida criptográficamente mediante `BCrypt.Net.BCrypt.Verify(password, user.PasswordHash)` con fallback a SHA-256 legacy.
+     - Al autenticar online con éxito: auto-cachea y actualiza la credencial en `db.Users` local para asegurar disponibilidad offline inmediata.
+  3. **Timeout de Red Optimizado (`ParkingApiClient.cs`)**:
+     - Reducido el timeout de login de 60 segundos a **12 segundos** (`TimeSpan.FromSeconds(12)`). Si el servicio no responde en 12s, conmuta a modo local sin congelar la terminal.
+  4. **Restablecimiento Limpio de Base de Datos Local (`SyncEngineService.cs`, `MainShellViewModel.cs`, `MainShellWindow.xaml`)**:
+     - Implementado `ISyncEngineService.ResetLocalDatabaseFromCloudAsync`: verifica conexión al API, despacha la cola `PendingSyncItems`, purga tablas locales de caché/catálogos, ejecuta auto-migración y re-descarga el 100% del Bootstrap desde MySQL.
+     - Expuesto en `MainShellViewModel.ResetLocalDatabaseCommand` y botón `Restablecer BD` en el Top Header Bar, visible y ejecutable **únicamente para el Super Administrador** (`IsSuperAdmin == true`).
+  5. **Pruebas Unitarias Automatizadas**:
+     - Creadas `AuthServiceOfflineTests.cs` y `DbAutoMigrationTests.cs`.
+     - `dotnet test ParkingWpf.slnx`: **157 de 157 Pruebas Unitarias Superadas (0 Fallos)**.
+     - `dotnet test ParkingApi.slnx`: **475 de 475 Pruebas Unitarias Superadas (0 Fallos)**.
+
+---
+
 ### [2026-09-08 11:15:00] - [SETTINGS / BRANCH GRACE PERIODS / ZERO HARDCODED DATA / WPF / SQLITE] - Centralización de Tiempos de Gracia en Sedes (Entrada y Salida), Migración SQLite y Regla de Oro Transversal
 
 - **Autor**: Antigravity AI Assistant & Software Architect

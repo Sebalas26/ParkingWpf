@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
 using Parking.Core.Constants;
 using Parking.Core.Enums;
 using Parking.Entities;
@@ -192,71 +194,10 @@ public class DbConnectionManager : IDbConnectionManager
                 );
             ");
 
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PendingSyncItems\" ADD COLUMN \"OperationType\" TEXT DEFAULT '';"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PendingSyncItems\" ADD COLUMN \"LastError\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PendingSyncItems\" ADD COLUMN \"IsProcessed\" INTEGER DEFAULT 0;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"CashRegisterName\" TEXT NOT NULL DEFAULT 'Caja Principal';"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"TotalCashWithdrawals\" TEXT NOT NULL DEFAULT '0';"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"HandoverToUserId\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"HandoverToUserName\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"WorkShifts\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"PaymentMethodId\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"ExitNotes\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"ResolutionId\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"ResolutionName\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"InvoiceNumber\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"IsElectronicInvoice\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"OperatorEntryId\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"OperatorExitId\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"BayNumber\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"CreatedAtUtc\" TEXT DEFAULT '';"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"IsLostTicket\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"LostTicketFee\" TEXT NOT NULL DEFAULT '0';"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"MonthlySubscriptions\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"MonthlySubscriptions\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleIncidents\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleIncidents\" ADD COLUMN \"IsGlobal\" INTEGER DEFAULT 0;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"PaperWidth\" INTEGER NOT NULL DEFAULT 80;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"DefaultInitialCash\" TEXT NOT NULL DEFAULT '0';"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"AllowChargeByMinute\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"AllowChargeByHour\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"AllowChargeByDay\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"AllowChargeByNight\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"LostTicketFee\" TEXT NOT NULL DEFAULT '0';"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"FullDayThresholdMinutes\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"FullDayApplicableDays\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"FullDayStartTime\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"FullDayEndTime\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"FullDayRulesJson\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"NightApplicableDays\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"NightStartTime\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"NightEndTime\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"NightStayMinMinutes\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"EntryGracePeriodMinutes\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"ExitGracePeriodMinutes\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"DayOfWeek\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"NightRate\" TEXT NOT NULL DEFAULT '0';"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"FullDayRate\" TEXT NOT NULL DEFAULT '0';"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"FullDayStartTime\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"FullDayEndTime\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"FullDayThresholdMinutes\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"FullDayCoverageMinutes\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"NightStartTime\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"NightEndTime\" TEXT NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"NightStayMinMinutes\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"CommercialAgreements\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"CommercialAgreements\" ADD COLUMN \"DiscountType\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"CommercialAgreements\" ADD COLUMN \"FreeMinutes\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"CommercialAgreements\" ADD COLUMN \"FreeHours\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"CommercialAgreements\" ADD COLUMN \"MaxMinutesApplicable\" INTEGER NULL;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PaymentMethods\" ADD COLUMN \"RequiresCashTender\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PaymentMethods\" ADD COLUMN \"State\" INTEGER NOT NULL DEFAULT 1;"); } catch { }
-            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"PaymentMethods\" ADD COLUMN \"Icon\" TEXT NOT NULL DEFAULT 'IconCash';"); } catch { }
+            // 1. Auto-Migración Dinámica de Esquema SQLite basada en el Modelo de EF Core
+            await AutoMigrateDatabaseAsync(context);
+
+            // 2. Ajustes semánticos de compatibilidad histórica
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"GracePeriodMinutes\" = 0;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"VehicleType\" = 1 WHERE LOWER(\"DisplayName\") LIKE '%moto%';"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"VehicleType\" = 4 WHERE LOWER(\"DisplayName\") LIKE '%bici%' OR LOWER(\"DisplayName\") LIKE '%bike%';"); } catch { }
@@ -265,6 +206,154 @@ public class DbConnectionManager : IDbConnectionManager
         }
         catch { }
 
+    }
+
+    /// <summary>
+    /// Inspecciona el modelo relacional de Entity Framework Core contra las tablas existentes en SQLite.
+    /// Crea automáticamente cualquier tabla faltante y añade con ALTER TABLE cualquier columna nueva en C#
+    /// sin requerir mantenimiento manual ni borrar el archivo de base de datos local.
+    /// </summary>
+    public async Task AutoMigrateDatabaseAsync(ParkFlowDbContext context)
+    {
+        try
+        {
+            var connection = context.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
+            // 1. Obtener nombres de tablas existentes en SQLite
+            var existingTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            using (var cmdTables = connection.CreateCommand())
+            {
+                cmdTables.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '__EFMigrations%';";
+                using var reader = await cmdTables.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    existingTables.Add(reader.GetString(0));
+                }
+            }
+
+            // 2. Recorrer cada entidad configurada en el DbContext
+            foreach (var entityType in context.Model.GetEntityTypes())
+            {
+                var tableName = entityType.GetTableName();
+                if (string.IsNullOrWhiteSpace(tableName)) continue;
+
+                var storeObject = StoreObjectIdentifier.Table(tableName, null);
+
+                // Escenario A: La tabla no existe en SQLite -> Crearla dinámicamente
+                if (!existingTables.Contains(tableName))
+                {
+                    var primaryKey = entityType.FindPrimaryKey();
+                    var pkProps = primaryKey?.Properties;
+                    var pkColNames = pkProps?.Select(p => $"\"{p.GetColumnName(storeObject) ?? p.Name}\"").ToList() ?? new List<string>();
+
+                    var colDefs = new List<string>();
+                    foreach (var p in entityType.GetProperties())
+                    {
+                        var cName = p.GetColumnName(storeObject) ?? p.Name;
+                        var pClrType = Nullable.GetUnderlyingType(p.ClrType) ?? p.ClrType;
+                        string pSqlType = (pClrType == typeof(int) || pClrType == typeof(long) || pClrType == typeof(short) || pClrType == typeof(byte) || pClrType == typeof(bool) || pClrType.IsEnum)
+                            ? "INTEGER"
+                            : (pClrType == typeof(float) || pClrType == typeof(double)) ? "REAL" : (pClrType == typeof(byte[]) ? "BLOB" : "TEXT");
+
+                        var isPk = pkProps != null && pkProps.Contains(p);
+                        var nullability = isPk || !p.IsNullable ? "NOT NULL" : "NULL";
+                        colDefs.Add($"\"{cName}\" {pSqlType} {nullability}");
+                    }
+
+                    if (pkColNames.Count > 0)
+                    {
+                        colDefs.Add($"PRIMARY KEY ({string.Join(", ", pkColNames)})");
+                    }
+
+                    var createTableSql = $"CREATE TABLE IF NOT EXISTS \"{tableName}\" ({string.Join(", ", colDefs)});";
+                    using var createCmd = connection.CreateCommand();
+                    createCmd.CommandText = createTableSql;
+                    await createCmd.ExecuteNonQueryAsync();
+                    existingTables.Add(tableName);
+                    continue;
+                }
+
+                // Escenario B: La tabla existe -> Verificar columnas faltantes con PRAGMA
+                var existingColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                using (var pragmaCmd = connection.CreateCommand())
+                {
+                    pragmaCmd.CommandText = $"PRAGMA table_info(\"{tableName}\");";
+                    using var pragmaReader = await pragmaCmd.ExecuteReaderAsync();
+                    while (await pragmaReader.ReadAsync())
+                    {
+                        existingColumns.Add(pragmaReader.GetString(1)); // Columna 'name'
+                    }
+                }
+
+                // Evaluar cada propiedad de la entidad
+                foreach (var prop in entityType.GetProperties())
+                {
+                    var colName = prop.GetColumnName(storeObject) ?? prop.Name;
+                    if (string.IsNullOrWhiteSpace(colName) || existingColumns.Contains(colName))
+                    {
+                        continue;
+                    }
+
+                    // Determinar tipo SQLite
+                    var clrType = Nullable.GetUnderlyingType(prop.ClrType) ?? prop.ClrType;
+                    string sqlType;
+                    string defaultClause;
+
+                    if (clrType == typeof(int) || clrType == typeof(long) || clrType == typeof(short) || 
+                        clrType == typeof(byte) || clrType == typeof(bool) || clrType.IsEnum)
+                    {
+                        sqlType = "INTEGER";
+                        defaultClause = prop.IsNullable ? "DEFAULT NULL" : "NOT NULL DEFAULT 0";
+                    }
+                    else if (clrType == typeof(decimal))
+                    {
+                        sqlType = "TEXT";
+                        defaultClause = prop.IsNullable ? "DEFAULT NULL" : "NOT NULL DEFAULT '0'";
+                    }
+                    else if (clrType == typeof(string) || clrType == typeof(Guid) || 
+                             clrType == typeof(DateTime) || clrType == typeof(DateTimeOffset) || clrType == typeof(TimeSpan))
+                    {
+                        sqlType = "TEXT";
+                        defaultClause = prop.IsNullable ? "DEFAULT NULL" : "NOT NULL DEFAULT ''";
+                    }
+                    else if (clrType == typeof(float) || clrType == typeof(double))
+                    {
+                        sqlType = "REAL";
+                        defaultClause = prop.IsNullable ? "DEFAULT NULL" : "NOT NULL DEFAULT 0.0";
+                    }
+                    else if (clrType == typeof(byte[]))
+                    {
+                        sqlType = "BLOB";
+                        defaultClause = "DEFAULT NULL";
+                    }
+                    else
+                    {
+                        sqlType = "TEXT";
+                        defaultClause = "DEFAULT NULL";
+                    }
+
+                    // Ejecutar ALTER TABLE dinámico
+                    try
+                    {
+                        using var alterCmd = connection.CreateCommand();
+                        alterCmd.CommandText = $"ALTER TABLE \"{tableName}\" ADD COLUMN \"{colName}\" {sqlType} {defaultClause};";
+                        await alterCmd.ExecuteNonQueryAsync();
+                    }
+                    catch
+                    {
+                        // Si ya existe o sqlite no permite cierta cláusula, tolerar
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Resiliencia defensiva
+        }
     }
 
     public async Task<bool> TestConnectionAsync()
