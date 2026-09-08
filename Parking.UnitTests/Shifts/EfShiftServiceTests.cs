@@ -216,6 +216,63 @@ public class EfShiftServiceTests : IDisposable
         eventFired.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task RefreshCurrentShiftAsync_WhenShiftActiveInApi_UpdatesCurrentShiftAndPersistsInLocalDb()
+    {
+        // Arrange
+        var service = CreateService();
+        var shiftId = Guid.NewGuid();
+        var remoteShift = new WorkShift
+        {
+            ShiftId = shiftId,
+            BranchId = 1,
+            CompanyId = 5,
+            UserId = 1,
+            OperatorName = "Carlos Operador",
+            Status = 0,
+            BaseAmount = 80000m,
+            StartTimeUtc = DateTime.UtcNow
+        };
+
+        _mockApiClient.Setup(a => a.GetActiveShiftAsync(It.IsAny<int?>(), It.IsAny<int?>()))
+            .ReturnsAsync(remoteShift);
+
+        // Act
+        await service.RefreshCurrentShiftAsync();
+
+        // Assert
+        service.CurrentShift.Should().NotBeNull();
+        service.CurrentShift!.ShiftId.Should().Be(shiftId);
+        service.CurrentShift.OperatorName.Should().Be("Carlos Operador");
+        service.HasActiveShift.Should().BeTrue();
+
+        using var db = _connectionManager.CreateDbContext();
+        var savedInSqlite = await db.WorkShifts.FindAsync(shiftId);
+        savedInSqlite.Should().NotBeNull();
+        savedInSqlite!.Status.Should().Be(0);
+        savedInSqlite.BaseAmount.Should().Be(80000m);
+    }
+
+    [Theory]
+    [InlineData("{\"shiftId\":\"a3b2c1d0-0000-0000-0000-000000000001\",\"operatorName\":\"Test\",\"status\":\"Open\"}", 0)]
+    [InlineData("{\"shiftId\":\"a3b2c1d0-0000-0000-0000-000000000002\",\"operatorName\":\"Test\",\"status\":\"Closed\"}", 1)]
+    [InlineData("{\"shiftId\":\"a3b2c1d0-0000-0000-0000-000000000003\",\"operatorName\":\"Test\",\"status\":0}", 0)]
+    [InlineData("{\"shiftId\":\"a3b2c1d0-0000-0000-0000-000000000004\",\"operatorName\":\"Test\",\"status\":1}", 1)]
+    [InlineData("{\"shiftId\":\"a3b2c1d0-0000-0000-0000-000000000005\",\"operatorName\":\"Test\",\"status\":\"0\"}", 0)]
+    [InlineData("{\"shiftId\":\"a3b2c1d0-0000-0000-0000-000000000006\",\"operatorName\":\"Test\",\"status\":\"1\"}", 1)]
+    public void WorkShift_JsonDeserialization_StatusStringOrNumber_DeserializesCorrectly(string json, int expectedStatus)
+    {
+        var options = new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
+
+        var shift = System.Text.Json.JsonSerializer.Deserialize<WorkShift>(json, options);
+
+        shift.Should().NotBeNull();
+        shift!.Status.Should().Be(expectedStatus);
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

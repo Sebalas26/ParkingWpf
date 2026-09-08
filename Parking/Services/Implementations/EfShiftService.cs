@@ -34,7 +34,7 @@ public class EfShiftService : IShiftService
         _sessionService = sessionService;
     }
 
-    private int? CurrentBranchId => _sessionService.CurrentBranch?.Id;
+    private int? CurrentBranchId => _sessionService.CurrentBranch?.Id ?? _sessionService.CurrentBranchId;
 
     public async Task<WorkShift> OpenShiftAsync(decimal baseAmount, string? notes = null)
     {
@@ -116,11 +116,39 @@ public class EfShiftService : IShiftService
     public async Task RefreshCurrentShiftAsync()
     {
         var branchId = CurrentBranchId;
+        var currentUser = _authService.CurrentUser;
+        int? queryUserId = (currentUser != null && !currentUser.IsAdmin && currentUser.ServerUserId.HasValue)
+            ? currentUser.ServerUserId.Value
+            : null;
+
         try
         {
-            var apiShift = await _apiClient.GetActiveShiftAsync(branchId: branchId);
+            var apiShift = await _apiClient.GetActiveShiftAsync(userId: queryUserId, branchId: branchId);
             if (apiShift != null)
             {
+                using var dbPersist = _connectionManager.CreateDbContext();
+                var local = await dbPersist.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == apiShift.ShiftId);
+                if (local == null)
+                {
+                    apiShift.IsSynchronized = true;
+                    dbPersist.WorkShifts.Add(apiShift);
+                }
+                else
+                {
+                    local.Status = apiShift.Status;
+                    local.BaseAmount = apiShift.BaseAmount;
+                    local.StartTimeUtc = apiShift.StartTimeUtc;
+                    local.EndTimeUtc = apiShift.EndTimeUtc;
+                    local.OperatorName = apiShift.OperatorName;
+                    local.UserId = apiShift.UserId;
+                    local.BranchId = apiShift.BranchId;
+                    local.CompanyId = apiShift.CompanyId;
+                    local.CashRegisterName = apiShift.CashRegisterName;
+                    local.Notes = apiShift.Notes;
+                    local.IsSynchronized = true;
+                }
+                await dbPersist.SaveChangesAsync();
+
                 CurrentShift = apiShift;
                 ShiftStateChanged?.Invoke();
                 return;

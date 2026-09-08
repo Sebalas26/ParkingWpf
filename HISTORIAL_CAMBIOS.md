@@ -13,6 +13,41 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 6. **Resultado de la Verificación** (estado de compilación y pruebas).
 
+### [2026-09-08 16:30:00] - [FIX / SYNC / SIGNALR / WORKSHIFT / DESERIALIZATION / WPF] - Corrección Definitiva de Sincronización en Tiempo Real de Cajas (PWA -> API -> WPF), Deserialización Resiliente de Status y Transición Automática desde ShiftClosureViewModel
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"tenemos la siguiente falla, desde la pwa se puede abrir y cerrar caja que ese es la administración y se abre caja al usuario, pero el wpf no esta tomando esa sincronización en tiempo real si yo abro caja en el pwa y después me logueo en el wpf me sigue pidiendo abrir caja y ya en la bd y la misma pwa muestran que ese operador tiene caja abierta el wpf no esta siendo capaz de recibir esas configuraciones y poder trabajar. en sintonia si me explico algo sucede hay algo esta mal. algo no esta sucediendo bien y pasando por el wpf y le doy sincronizar y nada no pasa . no trae los turnos ni nada enserio esa sincronización entonces que hace por que no trae todo lo que deberia traer de la sede. haz el plan"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Causa Raíz Identificada**:
+     - En `ParkingApi`, la entidad `WorkShift.Status` es un enum serializado como string JSON (`"Open"` / `"Closed"`). En WPF, `WorkShift.Status` era un entero (`int`). Al consultar `GetActiveShiftAsync(userId, branchId)`, `System.Text.Json` lanzaba `JsonException` ("The JSON value could not be converted to System.Int32").
+     - `ParkingApiClient.GetActiveShiftAsync` capturaba la excepción y retornaba silenciosamente `null`.
+     - `EfShiftService.RefreshCurrentShiftAsync()` interpretaba ese `null` como si el turno hubiera sido cerrado en el servidor y **procedía a cerrar forzadamente los turnos en SQLite (`Status = 1`) y limpiar `CurrentShift = null`**, destruyendo el turno recién creado.
+     - `GetActiveShiftAsync` no diferenciaba un `404 Not Found` legítimo de fallos de red o errores de serialización.
+  2. **Correcciones Aplicadas en WPF**:
+     - `WorkShift.cs`: Se implementó y decoró la propiedad `Status` con `[JsonConverter(typeof(ShiftStatusJsonConverter))]`, permitiendo deserializar indistintamente strings (`"Open"` = 0, `"Closed"` = 1) o números (`0`, `1`).
+     - `ParkingApiClient.cs`: En `GetActiveShiftAsync`, ahora solo se retorna `null` cuando la API responde estrictamente con código HTTP `404 NotFound`. En caso de caída de conexión o error de red, lanza `HttpRequestException` para que el servicio no asuma que el turno fue cerrado.
+     - `EfShiftService.cs`:
+       - `CurrentBranchId`: Ajustado a `_sessionService.CurrentBranch?.Id ?? _sessionService.CurrentBranchId` para garantizar que consulte la sede activa real.
+       - `RefreshCurrentShiftAsync()`: Para usuarios no-administradores pasa su `userId`. Al recibir el turno activo remoto, lo upserta y persiste en SQLite (`Status = 0`, `IsSynchronized = true`) y actualiza `CurrentShift`.
+     - `MainShellViewModel.cs`:
+       - `HandleRealtimeNotificationAsync`: Al recibir SignalR `ShiftOpened`, ejecuta la reconciliación del turno. Si `ActiveView` se encontraba bloqueado en `ShiftClosureViewModel` y ahora `HasActiveShift == true`, navega automáticamente a la vista autorizada inicial (`NavigateToInitialAuthorizedView()`) y muestra la notificación *"Turno Habilitado: Se ha abierto un turno de caja para su usuario..."*.
+       - `ForceSyncAsync`: Al hacer clic en "Sincronizar", ejecuta `RefreshCurrentShiftAsync()`, refresca `HasActiveShift` y desbloquea hacia la vista operativa si la caja ya fue abierta remotamente.
+  3. **Certificación y Pruebas Unitarias**:
+     - `dotnet test ParkingWpf.slnx`: **165 de 165 Pruebas Unitarias Superadas (0 Fallos)**.
+     - `dotnet test ParkingApi.slnx`: **475 de 475 Pruebas Unitarias Superadas (0 Fallos)**.
+     - Pruebas añadidas en `EfShiftServiceTests.cs` validando deserialización de status y persistencia de turno en SQLite local.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Parking/Entities/WorkShift.cs`
+  - `Parking/Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
+
+---
+
 ### [2026-09-08 13:30:00] - [FEATURE / SIGNALR / SYNC / RBAC / PWA / WPF] - Restricciones Numéricas y Moneda en PWA, Validación Plena Cobertura > Rige, Desacoplamiento Total RBAC, Horario Sticky, Bloqueo de Login por Horario en WPF y Cierre Reactivo de Turno Remoto en Garita
 
 - **Autor**: Antigravity AI Assistant & Software Architect

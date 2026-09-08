@@ -296,11 +296,25 @@ public class ParkingApiClient : IApiClientService
             var url = $"{BaseUrl}/api/shifts/active{queryString}";
             var response = await _httpClient.GetAsync(url, cts.Token);
             CheckUnauthorized(response);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return null; // Confirmación explícita del API de que NO hay turno activo
+            }
+
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<WorkShift>(JsonOptions, cts.Token);
             }
-            return null;
+
+            throw new HttpRequestException($"Error del servidor al consultar turno activo: {response.StatusCode}");
+        }
+        catch (HttpRequestException)
+        {
+            throw;
+        }
+        catch (TaskCanceledException)
+        {
+            throw new HttpRequestException("Tiempo de espera agotado al consultar turno activo central.");
         }
         catch
         {

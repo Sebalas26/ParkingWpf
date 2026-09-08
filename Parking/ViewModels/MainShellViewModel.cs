@@ -274,6 +274,8 @@ public partial class MainShellViewModel : ViewModelBase
                 try
                 {
                     await _shiftService.RefreshCurrentShiftAsync();
+                    HasActiveShift = _shiftService.HasActiveShift;
+
                     if (notification.EventType == "ShiftClosed")
                     {
                         SyncStatusText = $"Caja cerrada centralmente ({DateTime.Now:HH:mm})";
@@ -285,6 +287,14 @@ public partial class MainShellViewModel : ViewModelBase
                     else
                     {
                         SyncStatusText = $"Turno de caja actualizado ({DateTime.Now:HH:mm})";
+                        if (ActiveView is ShiftClosureViewModel && HasActiveShift)
+                        {
+                            NavigateToInitialAuthorizedView();
+                            await _dialogService.ShowAlertAsync(
+                                "Turno Habilitado",
+                                "Se ha registrado la apertura de caja desde la administración. El terminal se encuentra habilitado para operar.",
+                                DialogNotificationType.Success);
+                        }
                     }
                 }
                 catch { }
@@ -555,7 +565,15 @@ public partial class MainShellViewModel : ViewModelBase
         try
         {
             var success = await _dialogService.ShowSyncProgressModalAsync(_syncEngine);
+            await _shiftService.RefreshCurrentShiftAsync();
             await RefreshOccupancyAsync();
+            HasActiveShift = _shiftService.HasActiveShift;
+
+            if (ActiveView is ShiftClosureViewModel && HasActiveShift)
+            {
+                NavigateToInitialAuthorizedView();
+            }
+
             SyncStatusText = success ? "Sincronización completada" : "Sincronización finalizada con advertencias";
         }
         catch (Exception ex)
