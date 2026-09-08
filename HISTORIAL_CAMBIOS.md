@@ -13,6 +13,49 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 6. **Resultado de la Verificación** (estado de compilación y pruebas).
 
+### [2026-09-08 17:50:00] - [UI / UX / CHECKIN / WPF] - Unificación de Fecha y Hora del Sistema en una Sola Línea con Tipografía Homogénea (CheckInView)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Dejame esto en una sola linea y los 2 textos con el mismo tamaño de letra , osea el de la hora"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Ajuste de Disposición XAML (`CheckInView.xaml`)**:
+     - Se transformó el contenedor de Fecha y Hora de disposición vertical a horizontal (`Orientation="Horizontal"`).
+     - Se homogeneizó el tamaño tipográfico de la fecha (`CurrentDateString`) y la hora (`CurrentTimeString`) a `FontSize="20"`, con la fecha en `FontWeight="Bold"` (`BrushTextPrimary`) y la hora en `FontWeight="Black"` (`BrushPrimary`), conectadas mediante un separador sutil (`•`).
+  2. **Certificación y Verificación**:
+     - `dotnet test ParkingWpf.slnx`: **165 de 165 Pruebas Unitarias Superadas (0 Fallos)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckInView.xaml`
+
+---
+
+### [2026-09-08 17:30:00] - [UI / UX / LAYOUT / CHECKIN / WPF] - Reorganización Visual de la Pantalla de Ingreso de Vehículos (CheckInView): Total en Caja a Columna Derecha, Fecha/Hora sobre Placa y Ajuste Panorámico
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Quisiera que esta pantalla me la modifiques , donde el total de caja se mueva a donde se encuentra la hora, la hora a ala parter superior de de donde la placa y la placa baje un poco haciendo que quepa la hora en la parte de el"*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Reorganización de Distribución XAML (`CheckInView.xaml`)**:
+     - **Columna Izquierda (Captura e Ingreso)**:
+       - Se trasladó el bloque de fecha y hora (`CurrentDateString`, `CurrentTimeString`) al encabezado de la columna izquierda con tarjeta estilizada `#F8FAFC`, borde `#E2E8F0` y badge con icono `IconClock`.
+       - Se ajustó la caja de placa panorámica (`PlateTextBox`) debajo del reloj/fecha con altura equilibrada (`Height="145"` y `FontSize="84"`), manteniendo accesos rápidos a teclado táctil y atajos con Enter/Return.
+       - Se removió la tarjeta inferior de total en caja de la columna izquierda para dejar el formulario limpio y enfocado directamente en los campos de captura y los botones de acción ("Registrar e Imprimir Entrada" / "Limpiar Formulario").
+     - **Columna Derecha (Monitoreo en Vivo)**:
+       - Se ubicó en la parte superior la tarjeta de **TOTAL EN CAJA (TURNO ACTIVO)** (`TotalCashInRegister`), con badge de estado en tiempo real (`TURNO ACTIVO` en verde / `SIN TURNO` en amarillo), operador de turno e icono institucional `IconCashRegister`.
+       - Se conservaron intactas debajo las tarjetas de **Tarifa Activa Seleccionada**, **Ocupación de Parqueadero** y **Últimos Vehículos Ingresados**.
+  2. **Certificación y Verificación**:
+     - `dotnet test ParkingWpf.slnx`: **165 de 165 Pruebas Unitarias Superadas (0 Fallos)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckInView.xaml`
+
+---
+
 ### [2026-09-08 16:30:00] - [FIX / SYNC / SIGNALR / WORKSHIFT / DESERIALIZATION / WPF] - Corrección Definitiva de Sincronización en Tiempo Real de Cajas (PWA -> API -> WPF), Deserialización Resiliente de Status y Transición Automática desde ShiftClosureViewModel
 
 - **Autor**: Antigravity AI Assistant & Software Architect
