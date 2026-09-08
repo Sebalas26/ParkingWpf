@@ -203,6 +203,7 @@ public class EfPricingCalculatorServiceTests : IDisposable
             MinuteRate = 50m,
             HourRate = 3000m,
             FullDayRate = 18000m,
+            FullDayCoverageMinutes = 360,
             GracePeriodMinutes = 0,
             IsActive = true
         });
@@ -442,6 +443,7 @@ public class EfPricingCalculatorServiceTests : IDisposable
             HourRate = 3000m,
             FullDayRate = 18000m,
             FullDayThresholdMinutes = 480, // 8 horas en vehículo
+            FullDayCoverageMinutes = 480, // 8 horas de cobertura en vehículo
             GracePeriodMinutes = 0,
             IsActive = true
         });
@@ -498,6 +500,157 @@ public class EfPricingCalculatorServiceTests : IDisposable
         var mondayEntryUtc = new DateTime(2026, 9, 14, 18, 0, 0, DateTimeKind.Utc);
         var mondayExitUtc = mondayEntryUtc.AddHours(8);
 
+        var mondayFee = service.CalculateFee(VehicleType.Car, mondayEntryUtc, mondayExitUtc);
+        mondayFee.Should().Be(15000m);
+    }
+
+    [Fact]
+    public async Task CalculateFee_FullDay_EarlyTriggerWithBroadCoverage_ChargesSingleFullDayWithinCoverage()
+    {
+        // Caso: Umbral de activación a las 3 horas (180 min), pero cobertura de 12 horas (720 min).
+        // Si el vehículo permanece 9 horas (540 min), supera el umbral de 3h y está amparado dentro de las 12h.
+        // Debe cobrar únicamente la tarifa plena (18000), sin cobrar horas ordinarias ni excedentes adicionales.
+        _testBranchModel.AllowChargeByDay = true;
+        _testBranchModel.FullDayThresholdMinutes = 180; // 3h activación
+        _testBranchModel.FullDayApplicableDays = "All";
+
+        await SeedRateAsync(new VehicleRate
+        {
+            BranchId = 1,
+            VehicleType = VehicleType.Car,
+            MinuteRate = 50m,
+            HourRate = 3000m,
+            FullDayRate = 18000m,
+            FullDayThresholdMinutes = 180,
+            FullDayCoverageMinutes = 720, // 12h cobertura
+            GracePeriodMinutes = 0,
+            IsActive = true
+        });
+
+        var service = new EfPricingCalculatorService(_connectionManager, _mockSyncEngine.Object, _mockSessionService.Object);
+        await service.ReloadRatesAsync();
+
+        var entryUtc = new DateTime(2026, 9, 7, 13, 0, 0, DateTimeKind.Utc); // 8:00 COT
+        var exitUtc = entryUtc.AddHours(9); // 17:00 COT (9 horas de estadía)
+
+        var fee = service.CalculateFee(VehicleType.Car, entryUtc, exitUtc);
+
+        fee.Should().Be(18000m);
+    }
+
+    [Fact]
+    public async Task CalculateFee_FullDay_CyclicRecurrence_TriggersSecondFullDayWhenExceedingCoveragePlusTrigger()
+    {
+        // Caso recurrente cíclico: Cobertura de 12h (720 min), umbral de 3h (180 min).
+        // A las 15 horas y 10 minutos (910 min): 
+        // 1er ciclo completo = 720 min (18000).
+        // Excedente = 190 min. Como 190 min >= 180 min (umbral), se activa la SEGUNDA tarifa plena!
+        // Cobro esperado = 18000 + 18000 = 36000.
+        _testBranchModel.AllowChargeByDay = true;
+        _testBranchModel.FullDayApplicableDays = "All";
+
+        await SeedRateAsync(new VehicleRate
+        {
+            BranchId = 1,
+            VehicleType = VehicleType.Car,
+            MinuteRate = 50m,
+            HourRate = 3000m,
+            FullDayRate = 18000m,
+            FullDayThresholdMinutes = 180,
+            FullDayCoverageMinutes = 720,
+            GracePeriodMinutes = 0,
+            IsActive = true
+        });
+
+        var service = new EfPricingCalculatorService(_connectionManager, _mockSyncEngine.Object, _mockSessionService.Object);
+        await service.ReloadRatesAsync();
+
+        var entryUtc = new DateTime(2026, 9, 7, 13, 0, 0, DateTimeKind.Utc); // 8:00 COT
+        var exitUtc = entryUtc.AddHours(15).AddMinutes(10); // 15h 10m
+
+        var fee = service.CalculateFee(VehicleType.Car, entryUtc, exitUtc);
+
+        fee.Should().Be(36000m);
+    }
+
+    [Fact]
+    public async Task CalculateFee_FullDay_DayToNightTransition_AppliesNightRateWhenOverstayExceedsNightMinStay()
+    {
+        // Caso solapamiento diurno -> nocturno:
+        // Ingreso 8:00 COT (13:00 UTC). Plena de 12 horas (720 min) que ampara hasta las 20:00 COT.
+        // Franja nocturna: 18:00 a 06:00 COT.
+        // Mínimo de permanencia nocturna: 6 horas (360 min). Tarifa noche = 25000.
+        // El vehículo se retira al día siguiente a las 03:00 COT (19 horas en total).
+        // Excedente después de las 20:00 COT = 7 horas (420 min en la noche) >= 360 min mínimo nocturno.
+        // Cobro esperado = 1 Plena diurna (18000) + 1 Tarifa nocturna (25000) = 43000.
+        _testBranchModel.AllowChargeByDay = true;
+        _testBranchModel.AllowChargeByNight = true;
+        _testBranchModel.NightStartTime = new TimeSpan(18, 0, 0);
+        _testBranchModel.NightEndTime = new TimeSpan(6, 0, 0);
+        _testBranchModel.NightStayMinMinutes = 360;
+
+        await SeedRateAsync(new VehicleRate
+        {
+            BranchId = 1,
+            VehicleType = VehicleType.Car,
+            MinuteRate = 50m,
+            HourRate = 3000m,
+            FullDayRate = 18000m,
+            FullDayThresholdMinutes = 180,
+            FullDayCoverageMinutes = 720,
+            NightRate = 25000m,
+            NightStartTime = new TimeSpan(18, 0, 0),
+            NightEndTime = new TimeSpan(6, 0, 0),
+            NightStayMinMinutes = 360,
+            GracePeriodMinutes = 0,
+            IsActive = true
+        });
+
+        var service = new EfPricingCalculatorService(_connectionManager, _mockSyncEngine.Object, _mockSessionService.Object);
+        await service.ReloadRatesAsync();
+
+        var entryUtc = new DateTime(2026, 9, 7, 13, 0, 0, DateTimeKind.Utc); // 8:00 COT
+        var exitUtc = entryUtc.AddHours(19); // 03:00 COT del día siguiente
+
+        var fee = service.CalculateFee(VehicleType.Car, entryUtc, exitUtc);
+
+        fee.Should().Be(43000m);
+    }
+
+    [Fact]
+    public async Task CalculateFee_FullDay_JsonRules_AppliesSegmentedThresholdAndCoveragePerDay()
+    {
+        // Reglas JSON de la sede: L-V umbral 8h (480 min) cobertura 12h (720 min). S-D umbral 4h (240 min) cobertura 8h (480 min).
+        _testBranchModel.AllowChargeByDay = true;
+        _testBranchModel.FullDayRulesJson = "[{\"days\":\"1,2,3,4,5\",\"triggerMinutes\":480,\"coverageMinutes\":720},{\"days\":\"6,0\",\"triggerMinutes\":240,\"coverageMinutes\":480}]";
+
+        await SeedRateAsync(new VehicleRate
+        {
+            BranchId = 1,
+            VehicleType = VehicleType.Car,
+            MinuteRate = 50m,
+            HourRate = 3000m,
+            FullDayRate = 20000m,
+            GracePeriodMinutes = 0,
+            IsActive = true
+        });
+
+        var service = new EfPricingCalculatorService(_connectionManager, _mockSyncEngine.Object, _mockSessionService.Object);
+        await service.ReloadRatesAsync();
+
+        // 1. Domingo (0): 5 horas de permanencia (300 min).
+        // En fin de semana el umbral es 4h (240 min) y cobertura 8h (480 min).
+        // 300 min supera 240 min -> aplica tarifa plena de 20000!
+        var sundayEntryUtc = new DateTime(2026, 9, 13, 18, 0, 0, DateTimeKind.Utc);
+        var sundayExitUtc = sundayEntryUtc.AddHours(5);
+        var sundayFee = service.CalculateFee(VehicleType.Car, sundayEntryUtc, sundayExitUtc);
+        sundayFee.Should().Be(20000m);
+
+        // 2. Lunes (1): 5 horas de permanencia (300 min).
+        // Entre semana el umbral es 8h (480 min).
+        // 300 min NO alcanza 480 min -> cobra 5 horas * 3000 = 15000!
+        var mondayEntryUtc = new DateTime(2026, 9, 14, 18, 0, 0, DateTimeKind.Utc);
+        var mondayExitUtc = mondayEntryUtc.AddHours(5);
         var mondayFee = service.CalculateFee(VehicleType.Car, mondayEntryUtc, mondayExitUtc);
         mondayFee.Should().Be(15000m);
     }

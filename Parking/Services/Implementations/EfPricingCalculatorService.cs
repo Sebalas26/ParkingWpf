@@ -8,6 +8,7 @@ using Parking.Core.Converters;
 using Parking.Core.Enums;
 using Parking.Data.Factories;
 using Parking.Entities;
+using Parking.Models;
 using Parking.Services.Contracts;
 
 namespace Parking.Services.Implementations;
@@ -186,51 +187,83 @@ public class EfPricingCalculatorService : IPricingCalculatorService
                 }
             }
 
-            // 3. Tarifa Plena Cíclica (si no aplicó pernocta) - 100% Data-Driven
+            // 3. Tarifa Plena Cíclica y Ciclos Recurrentes (si no aplicó pernocta inicial)
             if (!isNightStay)
             {
-                int fullDayThreshold = (rate.FullDayThresholdMinutes.HasValue && rate.FullDayThresholdMinutes.Value > 0)
-                    ? rate.FullDayThresholdMinutes.Value
-                    : (branch?.FullDayThresholdMinutes ?? 0);
+                var (fullDayApplies, triggerMinutes, coverageMinutes) = ResolveFullDayParameters(branch, rate, cotDayOfWeek);
+                bool fullDayConfigured = allowDay && rate.FullDayRate > 0 && triggerMinutes > 0;
 
-                bool fullDayConfigured = allowDay && rate.FullDayRate > 0 && fullDayThreshold > 0;
-                bool fullDayApplies = fullDayConfigured && IsDayApplicable(branch?.FullDayApplicableDays, cotDayOfWeek);
-
-                if (fullDayApplies && fullDayThreshold > 0 && effectiveMinutes >= fullDayThreshold)
+                if (fullDayConfigured && fullDayApplies && effectiveMinutes >= triggerMinutes)
                 {
-                    int fullDaysCount = effectiveMinutes / fullDayThreshold;
-                    int remMins = effectiveMinutes % fullDayThreshold;
+                    int completeCycles = effectiveMinutes / coverageMinutes;
+                    int remMins = effectiveMinutes % coverageMinutes;
                     decimal remFee = 0m;
 
                     if (remMins > 0)
                     {
-                        if (allowMinute && allowHour && rate.MinuteRate > 0 && rate.HourRate > 0)
+                        if (remMins >= triggerMinutes)
                         {
-                            var remH = remMins / 60;
-                            var remM = remMins % 60;
-                            remFee = (remH * rate.HourRate) + Math.Min(rate.HourRate, remM * rate.MinuteRate);
-                        }
-                        else if (allowMinute && rate.MinuteRate > 0)
-                        {
-                            remFee = remMins * rate.MinuteRate;
-                        }
-                        else if (allowHour && rate.HourRate > 0)
-                        {
-                            var remH = (int)Math.Max(1, Math.Ceiling(remMins / 60.0));
-                            remFee = remH * rate.HourRate;
+                            // El excedente superó el umbral de activación del nuevo ciclo -> cobra otra plena
+                            remFee = rate.FullDayRate;
                         }
                         else
                         {
-                            remFee = rate.FullDayRate;
-                        }
+                            // El excedente cobra por horas/minutos normales
+                            if (allowMinute && allowHour && rate.MinuteRate > 0 && rate.HourRate > 0)
+                            {
+                                var remH = remMins / 60;
+                                var remM = remMins % 60;
+                                remFee = (remH * rate.HourRate) + Math.Min(rate.HourRate, remM * rate.MinuteRate);
+                            }
+                            else if (allowMinute && rate.MinuteRate > 0)
+                            {
+                                remFee = remMins * rate.MinuteRate;
+                            }
+                            else if (allowHour && rate.HourRate > 0)
+                            {
+                                var remH = (int)Math.Max(1, Math.Ceiling(remMins / 60.0));
+                                remFee = remH * rate.HourRate;
+                            }
+                            else
+                            {
+                                remFee = rate.FullDayRate;
+                            }
 
-                        if (remFee > rate.FullDayRate)
-                        {
-                            remFee = rate.FullDayRate;
+                            if (remFee > rate.FullDayRate)
+                            {
+                                remFee = rate.FullDayRate;
+                            }
                         }
                     }
 
-                    fee = (fullDaysCount * rate.FullDayRate) + remFee;
+                    if (completeCycles == 0 && remMins < triggerMinutes)
+                    {
+                        fee = remFee;
+                    }
+                    else
+                    {
+                        // Validar si el vehículo ingresó de día pero su estancia finalizó en franja nocturna
+                        // y el tiempo excedente después de la plena diurna cumple con el mínimo de permanencia nocturna
+                        int minStay = (rate.NightStayMinMinutes.HasValue && rate.NightStayMinMinutes.Value > 0)
+                            ? rate.NightStayMinMinutes.Value
+                            : (branch?.NightStayMinMinutes ?? 360);
+
+                        if (allowNight && rate.NightRate > 0 && completeCycles >= 1 && remMins >= minStay)
+                        {
+                            var nStart = rate.NightStartTime ?? branch?.NightStartTime ?? new TimeSpan(18, 0, 0);
+                            var nEnd = rate.NightEndTime ?? branch?.NightEndTime ?? new TimeSpan(6, 0, 0);
+                            bool inNight = (nStart > nEnd)
+                                ? (cotExitTime.TimeOfDay >= nStart || cotExitTime.TimeOfDay < nEnd)
+                                : (cotExitTime.TimeOfDay >= nStart && cotExitTime.TimeOfDay <= nEnd);
+
+                            if (inNight)
+                            {
+                                remFee = rate.NightRate;
+                            }
+                        }
+
+                        fee = (completeCycles * rate.FullDayRate) + remFee;
+                    }
                 }
                 else
                 {
@@ -256,7 +289,7 @@ public class EfPricingCalculatorService : IPricingCalculatorService
                     }
 
                     // Tope de tarifa plena del día si aplica
-                    if (fullDayApplies && rate.FullDayRate > 0 && fee > rate.FullDayRate)
+                    if (allowDay && fullDayApplies && rate.FullDayRate > 0 && fee > rate.FullDayRate)
                     {
                         fee = rate.FullDayRate;
                     }
@@ -310,5 +343,66 @@ public class EfPricingCalculatorService : IPricingCalculatorService
             }
         }
         return false;
+    }
+
+    private static (bool applies, int triggerMinutes, int coverageMinutes) ResolveFullDayParameters(
+        BranchModel? branch, VehicleRate rate, DayOfWeek day)
+    {
+        if (!string.IsNullOrWhiteSpace(branch?.FullDayRulesJson))
+        {
+            try
+            {
+                var rules = System.Text.Json.JsonSerializer.Deserialize<List<FullDayRuleItem>>(branch.FullDayRulesJson);
+                if (rules != null && rules.Count > 0)
+                {
+                    var matchingRule = rules.FirstOrDefault(r => IsDayApplicable(r.Days, day));
+                    if (matchingRule != null)
+                    {
+                        int trigger = (rate.FullDayThresholdMinutes.HasValue && rate.FullDayThresholdMinutes.Value > 0)
+                            ? rate.FullDayThresholdMinutes.Value
+                            : (matchingRule.TriggerMinutes.GetValueOrDefault() > 0 ? matchingRule.TriggerMinutes.GetValueOrDefault(180) : 180);
+
+                        int coverage = (rate.FullDayCoverageMinutes.HasValue && rate.FullDayCoverageMinutes.Value > 0)
+                            ? rate.FullDayCoverageMinutes.Value
+                            : (matchingRule.CoverageMinutes.GetValueOrDefault() > 0 ? matchingRule.CoverageMinutes.GetValueOrDefault(720) : 720);
+
+                        return (true, trigger, Math.Max(trigger, coverage));
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback defensivo
+            }
+        }
+
+        bool fullDayApplies = IsDayApplicable(branch?.FullDayApplicableDays, day);
+        int defaultTrigger = (rate.FullDayThresholdMinutes.HasValue && rate.FullDayThresholdMinutes.Value > 0)
+            ? rate.FullDayThresholdMinutes.Value
+            : (branch?.FullDayThresholdMinutes ?? 720);
+
+        int defaultCoverage = (rate.FullDayCoverageMinutes.HasValue && rate.FullDayCoverageMinutes.Value > 0)
+            ? rate.FullDayCoverageMinutes.Value
+            : Math.Max(defaultTrigger, 720);
+
+        return (fullDayApplies, defaultTrigger, defaultCoverage);
+    }
+
+    private sealed class FullDayRuleItem
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("days")]
+        public string? Days { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("triggerMinutes")]
+        public int? TriggerMinutes { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("coverageMinutes")]
+        public int? CoverageMinutes { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("startTime")]
+        public string? StartTime { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("endTime")]
+        public string? EndTime { get; set; }
     }
 }

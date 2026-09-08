@@ -231,6 +231,7 @@ public class DbConnectionManager : IDbConnectionManager
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"FullDayApplicableDays\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"FullDayStartTime\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"FullDayEndTime\" TEXT NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"FullDayRulesJson\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"NightApplicableDays\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"NightStartTime\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"NightEndTime\" TEXT NULL;"); } catch { }
@@ -242,6 +243,7 @@ public class DbConnectionManager : IDbConnectionManager
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"FullDayStartTime\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"FullDayEndTime\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"FullDayThresholdMinutes\" INTEGER NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"FullDayCoverageMinutes\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"NightStartTime\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"NightEndTime\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"NightStayMinMinutes\" INTEGER NULL;"); } catch { }

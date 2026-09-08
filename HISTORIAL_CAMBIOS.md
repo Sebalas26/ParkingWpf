@@ -15,6 +15,45 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-07 22:05:00] - [FEATURE / ARCHITECTURE / PRICING] [WPF] - Motor Offline de Tarifa Plena Cíclica Recurrente, Cobertura Independiente, Transición a Nocturna y Soporte JSON Segmentado
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"revisa el comentario y vuelve a lanzar el plan... esta bien pero falta un ejemplo grandisimo por que dices que la plena es apartir de 8 horas ejemplo pero hasta que horas es la plena ? si me explico y como funcionaria el caso siguiente, ingresa el vehiculo a las 8 am y la plena es despues de 3 horas hasta 8 horas entonces a las 8 horas ya logico vale la plena y sigue entonces el sistema le cobra la plena y vuelve a empezar a cobrar en minuto hasta volver alcanar las 3 horas para que se sume otra plena?? otro caso ingresa a las 8 am pero la plena es de 12 horas y es depues e 3 horas entonces saldria con la plena a las 8 pm pero si sigue derecho y esa sede tambien tiene noctura y si es de 6 pm a 6 am como funcionaria hay..."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Entidades y Modelos SQLite (`Branch.cs`, `VehicleRate.cs`, `BranchModel.cs`)**:
+     - Agregada propiedad `FullDayRulesJson` (`string?`) en `Branch` y `BranchModel`.
+     - Agregada propiedad `FullDayCoverageMinutes` (`int?`) en `VehicleRate`.
+     - Migración defensiva en tiempo de ejecución en `DbConnectionManager.cs` (`PRAGMA table_info` + `ALTER TABLE ADD COLUMN` para `FullDayRulesJson` en `Branches` y `FullDayCoverageMinutes` en `VehicleRates`).
+  2. **Motor de Sincronización Offline (`SyncEngineService.cs`, `BootstrapSyncResponse.cs`)**:
+     - Actualizados DTOs `ApiBranchSyncDto` y `ApiVehicleRateSyncDto` para mapear `FullDayRulesJson` y `FullDayCoverageMinutes` desde el API central a la base de datos local SQLite.
+  3. **Motor Matemático de Cobro Offline (`EfPricingCalculatorService.cs`)**:
+     - Implementado método `ResolveFullDayParameters` con deserialización tolerante a fallos del JSON segmentado `FullDayRulesJson` y compatibilidad jerárquica con tarifas por vehículo o parámetros globales de la sede.
+     - Separación estricta entre `triggerMinutes` (umbral para cobrar la tarifa plena) y `coverageMinutes` (tiempo amparado por la tarifa plena).
+     - Soporte para **Ciclos Recurrentes Cíclicos**: `completeCycles = effectiveMinutes / coverageMinutes`, `remMins = effectiveMinutes % coverageMinutes`. Si el excedente supera el umbral de activación (`remMins >= triggerMinutes`), se gatilla automáticamente la siguiente tarifa plena en cascada.
+     - **Transición y Solapamiento Diurno a Nocturno**: Si un vehículo ingresó con tarifa plena diurna y su estadía se extiende hasta la franja nocturna, no se factura tarifa nocturna a menos que el tiempo excedente posterior a la cobertura de la plena diurna supere el tiempo mínimo de permanencia nocturna (`NightStayMinMinutes`).
+     - Corregida condición de tope de tarifa plena ordinaria para respetar estrictamente `branch.AllowChargeByDay`.
+  4. **Suite de Pruebas Unitarias Masiva (`EfPricingCalculatorServiceTests.cs`)**:
+     - Pruebas exhaustivas para umbral anticipado con cobertura amplia (`CalculateFee_FullDay_EarlyTriggerWithBroadCoverage_ChargesSingleFullDayWithinCoverage`).
+     - Pruebas de ciclos recurrentes de 2da plena (`CalculateFee_FullDay_CyclicRecurrence_TriggersSecondFullDayWhenExceedingCoveragePlusTrigger`).
+     - Pruebas de transición diurno a nocturno con permanencia mínima nocturna (`CalculateFee_FullDay_DayToNightTransition_AppliesNightRateWhenOverstayExceedsNightMinStay`).
+     - Pruebas de reglas segmentadas por días vía JSON (`CalculateFee_FullDay_JsonRules_AppliesSegmentedThresholdAndCoveragePerDay`).
+- **📦 Componentes Modificados**:
+  - `Parking/Entities/Branch.cs`
+  - `Parking/Entities/VehicleRate.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking.UnitTests/Pricing/EfPricingCalculatorServiceTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` → **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` → **51 de 51 pruebas superadas (0 fallos, 100% éxito)**.
+
+---
+
 ### [2026-09-07 17:48:00] - [FEATURE / UI/UX / CASH / SHIFTS] [WPF] - Integración de Tarjeta de "Total en Caja" en Pantalla de Ingreso de Vehículos (CheckInView)
 
 - **Autor**: Antigravity AI Assistant & Software Architect
