@@ -15,6 +15,30 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-07 22:25:00] - [CLEANUP / ARCHITECTURE / REFACTOR] [WPF] - Erradicación Total de Números y Horas Quemadas (100% Data-Driven) en EfPricingCalculatorService
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"pero por que tienes numeros quemados no entiendo como si tuvieras horas ya quemadas eso no deberia estar quemado en el codigo."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Motor de Cobro 100% Data-Driven en WPF (`EfPricingCalculatorService.cs`)**:
+     - Eliminados todos los números mágicos residuales (`360`, `180`, `720`) y las franjas horarias quemadas (`new TimeSpan(18, 0, 0)`, `new TimeSpan(6, 0, 0)`).
+     - **Horario Nocturno**: Si `NightStartTime` o `NightEndTime` no están configurados en la tarifa ni en la sede, la tarifa nocturna **NO aplica** (no se asume franja 18:00 a 06:00).
+     - **Permanencia Mínima Nocturna**: Si no está configurada, su valor por defecto es `0` (aplica la tarifa nocturna en su horario sin exigir permanencia mínima). CERO `360` minutos inventado.
+     - **Umbral de Tarifa Plena**: Se obtiene de la regla del día o de la sede. Si no está configurado (`<= 0`), la tarifa plena **NO aplica**. CERO `180` o `720` quemado.
+     - **Cobertura de Tarifa Plena**: Si no se configuró una cobertura extendida independiente, ampara estrictamente el tiempo del umbral (`triggerMinutes`), jamás un 720 inventado.
+  2. **Verificación y Compilación**:
+     - Compilación: `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+     - Pruebas Unitarias: `dotnet test ParkingWpf.slnx` -> **51 de 51 Superadas (100% Éxito, 0 Fallos)**.
+
+- **Componentes Modificados**:
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **Resultado**: Compilación limpia y 100% de pruebas superadas sin fallos.
+
+---
+
 ### [2026-09-07 22:05:00] - [FEATURE / ARCHITECTURE / PRICING] [WPF] - Motor Offline de Tarifa Plena Cíclica Recurrente, Cobertura Independiente, Transición a Nocturna y Soporte JSON Segmentado
 
 - **Autor**: Antigravity AI Assistant & Software Architect

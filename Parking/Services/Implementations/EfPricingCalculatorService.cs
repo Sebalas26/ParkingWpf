@@ -244,21 +244,22 @@ public class EfPricingCalculatorService : IPricingCalculatorService
                     {
                         // Validar si el vehículo ingresó de día pero su estancia finalizó en franja nocturna
                         // y el tiempo excedente después de la plena diurna cumple con el mínimo de permanencia nocturna
-                        int minStay = (rate.NightStayMinMinutes.HasValue && rate.NightStayMinMinutes.Value > 0)
-                            ? rate.NightStayMinMinutes.Value
-                            : (branch?.NightStayMinMinutes ?? 360);
+                        int minStay = rate.NightStayMinMinutes ?? branch?.NightStayMinMinutes ?? 0;
 
                         if (allowNight && rate.NightRate > 0 && completeCycles >= 1 && remMins >= minStay)
                         {
-                            var nStart = rate.NightStartTime ?? branch?.NightStartTime ?? new TimeSpan(18, 0, 0);
-                            var nEnd = rate.NightEndTime ?? branch?.NightEndTime ?? new TimeSpan(6, 0, 0);
-                            bool inNight = (nStart > nEnd)
-                                ? (cotExitTime.TimeOfDay >= nStart || cotExitTime.TimeOfDay < nEnd)
-                                : (cotExitTime.TimeOfDay >= nStart && cotExitTime.TimeOfDay <= nEnd);
-
-                            if (inNight)
+                            var nStart = rate.NightStartTime ?? branch?.NightStartTime;
+                            var nEnd = rate.NightEndTime ?? branch?.NightEndTime;
+                            if (nStart.HasValue && nEnd.HasValue)
                             {
-                                remFee = rate.NightRate;
+                                bool inNight = (nStart.Value > nEnd.Value)
+                                    ? (cotExitTime.TimeOfDay >= nStart.Value || cotExitTime.TimeOfDay < nEnd.Value)
+                                    : (cotExitTime.TimeOfDay >= nStart.Value && cotExitTime.TimeOfDay <= nEnd.Value);
+
+                                if (inNight)
+                                {
+                                    remFee = rate.NightRate;
+                                }
                             }
                         }
 
@@ -360,13 +361,17 @@ public class EfPricingCalculatorService : IPricingCalculatorService
                     {
                         int trigger = (rate.FullDayThresholdMinutes.HasValue && rate.FullDayThresholdMinutes.Value > 0)
                             ? rate.FullDayThresholdMinutes.Value
-                            : (matchingRule.TriggerMinutes.GetValueOrDefault() > 0 ? matchingRule.TriggerMinutes.GetValueOrDefault(180) : 180);
+                            : (matchingRule.TriggerMinutes.GetValueOrDefault() > 0 
+                                ? matchingRule.TriggerMinutes.GetValueOrDefault() 
+                                : (branch?.FullDayThresholdMinutes ?? 0));
 
                         int coverage = (rate.FullDayCoverageMinutes.HasValue && rate.FullDayCoverageMinutes.Value > 0)
                             ? rate.FullDayCoverageMinutes.Value
-                            : (matchingRule.CoverageMinutes.GetValueOrDefault() > 0 ? matchingRule.CoverageMinutes.GetValueOrDefault(720) : 720);
+                            : (matchingRule.CoverageMinutes.GetValueOrDefault() > 0 
+                                ? matchingRule.CoverageMinutes.GetValueOrDefault() 
+                                : trigger);
 
-                        return (true, trigger, Math.Max(trigger, coverage));
+                        return (trigger > 0, trigger, Math.Max(trigger, coverage));
                     }
                 }
             }
@@ -379,13 +384,13 @@ public class EfPricingCalculatorService : IPricingCalculatorService
         bool fullDayApplies = IsDayApplicable(branch?.FullDayApplicableDays, day);
         int defaultTrigger = (rate.FullDayThresholdMinutes.HasValue && rate.FullDayThresholdMinutes.Value > 0)
             ? rate.FullDayThresholdMinutes.Value
-            : (branch?.FullDayThresholdMinutes ?? 720);
+            : (branch?.FullDayThresholdMinutes ?? 0);
 
         int defaultCoverage = (rate.FullDayCoverageMinutes.HasValue && rate.FullDayCoverageMinutes.Value > 0)
             ? rate.FullDayCoverageMinutes.Value
-            : Math.Max(defaultTrigger, 720);
+            : defaultTrigger;
 
-        return (fullDayApplies, defaultTrigger, defaultCoverage);
+        return (fullDayApplies && defaultTrigger > 0, defaultTrigger, Math.Max(defaultTrigger, defaultCoverage));
     }
 
     private sealed class FullDayRuleItem
