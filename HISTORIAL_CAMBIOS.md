@@ -13,6 +13,33 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 6. **Resultado de la Verificación** (estado de compilación y pruebas).
 
+### [2026-09-08 11:15:00] - [SETTINGS / BRANCH GRACE PERIODS / ZERO HARDCODED DATA / WPF / SQLITE] - Centralización de Tiempos de Gracia en Sedes (Entrada y Salida), Migración SQLite y Regla de Oro Transversal
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"tengo otra cosa que analice y creo que esta mal quiero que me digas tu, ese tiempo de gracia deberia ser general no por vehiculo sería canson o que dices si es mejor por vehiculo, por que igual nos hace falta un campo el tiempo de gracia de salida después de pagar, eso aplicaria cuando se tienen talanqueras y todo si me explico. analiza esa pregunta y dime como lo ves mejor."*
+  > *"siii dale realiza eso que quede en la creación de la sede. haz el plan"*
+  > *"sin data definida como te hago saber que no se puede quemar data enserio no es no se puede quemar data agrega eso como regla de oro en todos los 3 proyectos no se puede quemar data."*
+  > *"no se puede colocar data siempre se usa placeholder si me explico ya lo hemos repetido todo el tiempo otra regla de oro mas para todos los 3 sistemas"*
+  > *"no quiero el texto de tolenrancia para talanquera por que eso dice que el sistema tiene talanquera y de ser asi no lo tenga que ? eso mensaje es nosivo para el sistema solo decir tolenacia para no generar cobro en la salida o algo así e igual para el ingreso."*
+  > *"yo pienso que no deberian ser nulables por que eso debe tener las validaciones en rojo de angular de que deben agregar algo si colocan 0 entonces no seran nulables siempre deben tener dato si me explico. para ser eso pósible debo eliminar o correr el script 3 para borrar todas las sede me avisas."*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Entidades y Modelos de Sincronización (`Branch.cs`, `BranchModel.cs`, `BootstrapSyncResponse.cs`)**:
+     - Agregadas propiedades `EntryGracePeriodMinutes` y `ExitGracePeriodMinutes` (`int`) con valor base 0.
+     - Mapeadas en `SyncEngineService.cs` para replicar desde la API hacia la base de datos local SQLite y actualizar `_sessionService.CurrentBranch`.
+  2. **Migración Defensiva Local en SQLite (`DbConnectionManager.cs`)**:
+     - Añadidas sentencias:
+       `ALTER TABLE "Branches" ADD COLUMN "EntryGracePeriodMinutes" INTEGER NOT NULL DEFAULT 0;`
+       `ALTER TABLE "Branches" ADD COLUMN "ExitGracePeriodMinutes" INTEGER NOT NULL DEFAULT 0;`
+  3. **Motor de Precios y Checkout (`EfPricingCalculatorService.cs`, `CheckOutViewModel.cs`)**:
+     - En `EfPricingCalculatorService.cs`, se resuelve el tiempo de gracia de entrada usando `branch?.EntryGracePeriodMinutes ?? rate.GracePeriodMinutes`.
+     - En `CheckOutViewModel.cs`, el cálculo del límite de salida tras cobro (`_currentGracePeriodSeconds`) adopta `currentBranch?.ExitGracePeriodMinutes` si está configurado.
+  4. **Codificación de Regla de Oro en `AGENTS.md`**:
+     - Incorporada la Regla de Oro 8 contra data quemada y pre-llenado de diálogos/formularios.
+  5. **Verificación y Pruebas**:
+     - `dotnet test ParkingWpf.slnx` -> **154 de 154 Pruebas Unitarias Superadas (0 Fallos)**.
+
 ---
 
 ### [2026-09-08 07:15:00] - [FEATURE / PRICING / DATA-DRIVEN] [WPF] - Soporte Completo para Tarifas Plenas Dinámicas por Bloques de Días (FullDayRatesJson) y Batería Masiva de Pruebas de Estrés

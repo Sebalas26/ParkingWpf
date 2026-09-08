@@ -141,8 +141,10 @@ public class EfPricingCalculatorService : IPricingCalculatorService
         decimal fee = 0m;
 
         // 1. Periodo de gracia (se evalúa sobre los minutos efectivos con descuento)
-        var grace = rate.GracePeriodMinutes;
-        if (effectiveMinutes <= grace)
+        var grace = branch != null && branch.EntryGracePeriodMinutes > 0
+            ? branch.EntryGracePeriodMinutes
+            : rate.GracePeriodMinutes;
+        if (grace > 0 && effectiveMinutes <= grace)
         {
             fee = 0m;
         }

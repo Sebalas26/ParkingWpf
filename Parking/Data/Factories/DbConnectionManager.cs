@@ -236,6 +236,8 @@ public class DbConnectionManager : IDbConnectionManager
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"NightStartTime\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"NightEndTime\" TEXT NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"NightStayMinMinutes\" INTEGER NULL;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"EntryGracePeriodMinutes\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"Branches\" ADD COLUMN \"ExitGracePeriodMinutes\" INTEGER NOT NULL DEFAULT 0;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"DayOfWeek\" INTEGER NULL;"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("ALTER TABLE \"VehicleRates\" ADD COLUMN \"NightRate\" TEXT NOT NULL DEFAULT '0';"); } catch { }

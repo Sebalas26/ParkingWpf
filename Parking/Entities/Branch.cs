@@ -30,6 +30,8 @@ public class Branch
     public TimeSpan? NightStartTime { get; set; }
     public TimeSpan? NightEndTime { get; set; }
     public int? NightStayMinMinutes { get; set; }
+    public int EntryGracePeriodMinutes { get; set; } = 0;
+    public int ExitGracePeriodMinutes { get; set; } = 0;
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 

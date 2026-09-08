@@ -409,6 +409,8 @@ public class SyncEngineService : ISyncEngineService
                     existingBranch.NightStartTime = br.NightStartTime;
                     existingBranch.NightEndTime = br.NightEndTime;
                     existingBranch.NightStayMinMinutes = br.NightStayMinMinutes;
+                    existingBranch.EntryGracePeriodMinutes = br.EntryGracePeriodMinutes;
+                    existingBranch.ExitGracePeriodMinutes = br.ExitGracePeriodMinutes;
                     existingBranch.IsActive = br.IsActive;
                 }
                 else
@@ -440,6 +442,8 @@ public class SyncEngineService : ISyncEngineService
                         NightStartTime = br.NightStartTime,
                         NightEndTime = br.NightEndTime,
                         NightStayMinMinutes = br.NightStayMinMinutes,
+                        EntryGracePeriodMinutes = br.EntryGracePeriodMinutes,
+                        ExitGracePeriodMinutes = br.ExitGracePeriodMinutes,
                         IsActive = br.IsActive,
                         CreatedAtUtc = br.CreatedAtUtc
                     });
@@ -469,6 +473,8 @@ public class SyncEngineService : ISyncEngineService
                         b.NightStartTime = br.NightStartTime;
                         b.NightEndTime = br.NightEndTime;
                         b.NightStayMinMinutes = br.NightStayMinMinutes;
+                        b.EntryGracePeriodMinutes = br.EntryGracePeriodMinutes;
+                        b.ExitGracePeriodMinutes = br.ExitGracePeriodMinutes;
                     });
                 }
             }

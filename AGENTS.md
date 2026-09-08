@@ -80,3 +80,32 @@ Este documento define las **Reglas de Oro y Estándares Obligatorios** para cual
    - La tarea **NUNCA** se dará por concluida si existe un solo fallo (`Failed > 0`) o error en los tests.
    - Todo cambio debe certificar **100% de Pruebas Superadas (0 Fallos)** y **0 Errores de Compilación** antes de responder al usuario y registrar en [`HISTORIAL_CAMBIOS.md`](file:///c:/Users/migue/source/repos/ParkingWpf/HISTORIAL_CAMBIOS.md).
 
+---
+
+## 🛑 7. REGLA DE ORO: PROHIBICIÓN ESTRICTA DE REGRESIONES Y ALTERACIÓN DE DISEÑOS FUNCIONALES (NO DAÑAR LO QUE YA FUNCIONA)
+> [!CAUTION]
+> **PROHIBICIÓN ESTRICTA DE ALTERAR ELEMENTOS PREVIAMENTE FUNCIONALES**:
+> Está terminantemente prohibido modificar, "optimizar", reestructurar o cambiar estilos, contenedores, barras de navegación/pestañas, márgenes o componentes adyacentes que ya estén funcionando correctamente si el usuario no lo ha solicitado de forma expresa.
+
+1. **Principio de Modificación Quirúrgica y Mínima**:
+   - Todo cambio debe limitarse exclusivamente al componente o línea exacta requerida para cumplir la solicitud puntual del usuario.
+   - Si el usuario solicita modificar un elemento específico, no se deben tocar cabeceras, pestañas, barras de herramientas ni la estructura circundante que ya se encuentre operativa.
+2. **Cero Tolerancia a Regresiones Visuales**:
+   - Si un componente, diálogo, vista XAML o control ya fue probado y aprobado por el usuario, **NO SE TOCA**.
+   - Cada intervención debe garantizar que el comportamiento y la apariencia previa del resto de la pantalla se mantengan al 100% intactos.
+
+---
+
+## 🛑 8. REGLA DE ORO: PROHIBICIÓN ESTRICTA DE DATA QUEMADA (HARDCODED) Y CAMPOS PRE-LLENADOS EN FORMULARIOS
+> [!CAUTION]
+> **PROHIBICIÓN ESTRICTA DE QUEMAR DATA O PRE-LLENAR FORMULARIOS CON DATOS ARBITRARIOS**:
+> Jamás asumir o imponer valores de negocio por defecto inventados por la IA en la base de datos o en los diálogos de captura.
+
+1. **Formularios y Diálogos 100% Limpios (Uso Exclusivo de Placeholders)**:
+   - Al crear una nueva entidad, los campos numéricos y de texto deben inicializarse estrictamente en `null` o vacíos (`''`).
+   - Está terminantemente prohibido pre-llenar inputs con valores arbitrarios. Para orientar al usuario se debe utilizar **únicamente el atributo de placeholder o texto de guía**.
+2. **Cero Data Quemada en Esquemas y Migraciones**:
+   - Las columnas no deben imponer valores de negocio inventados en `DEFAULT` de SQL (ej: `DEFAULT 15`). Deben ser `NULL` o `DEFAULT 0` si son requeridas.
+3. **Validaciones Claras de Obligatoriedad**:
+   - Si un campo es obligatorio, debe validar activamente y notificar en pantalla si el usuario omite su ingreso, permitiendo ingresar `0` si la regla de negocio no aplica para esa sede.
+

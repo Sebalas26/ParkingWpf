@@ -705,7 +705,8 @@ public partial class CheckOutViewModel : ViewModelBase
             IsLostTicket = false;
 
             var rateInfo = _pricingCalculator.GetRate(value.VehicleType);
-            _currentGracePeriodSeconds = (rateInfo?.GracePeriodMinutes ?? 0) * 60;
+            var exitGrace = currentBranch?.ExitGracePeriodMinutes ?? 0;
+            _currentGracePeriodSeconds = exitGrace > 0 ? exitGrace * 60 : (rateInfo?.GracePeriodMinutes ?? 0) * 60;
             HourRate = rateInfo?.HourRate ?? 0m;
             MinuteRate = rateInfo != null && rateInfo.MinuteRate > 0
                 ? rateInfo.MinuteRate
