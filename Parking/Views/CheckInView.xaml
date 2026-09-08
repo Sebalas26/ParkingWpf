@@ -246,6 +246,56 @@
                         </TextBlock>
                     </Border>
 
+                    <!-- 2.5 Reloj y Fecha del Sistema en Tiempo Real (Una Sola Línea) -->
+                    <Border Background="#F8FAFC"
+                            BorderBrush="{DynamicResource BrushBorderMedium}"
+                            BorderThickness="1"
+                            CornerRadius="12"
+                            Padding="16,12"
+                            Margin="0,0,0,14">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Icono de Reloj -->
+                            <Border Grid.Column="0"
+                                    Width="38" Height="38"
+                                    CornerRadius="9"
+                                    Background="#EBF6F8"
+                                    Margin="0,0,12,0"
+                                    VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconClock}"
+                                      Fill="{DynamicResource BrushPrimary}"
+                                      Width="18" Height="18"
+                                      Stretch="Uniform"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                            </Border>
+
+                            <!-- Fecha y Hora en una Sola Línea -->
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding CurrentDateString}"
+                                           FontSize="20"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                           VerticalAlignment="Center"/>
+                                <TextBlock Text=" • "
+                                           FontSize="20"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource BrushTextMuted}"
+                                           VerticalAlignment="Center"
+                                           Margin="8,0,8,0"/>
+                                <TextBlock Text="{Binding CurrentTimeString}"
+                                           FontSize="20"
+                                           FontWeight="Black"
+                                           Foreground="{DynamicResource BrushPrimary}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
                     <!-- 3. Caja Panorámica de Placa -->
                     <Border Background="#F8FAFC"
                             BorderBrush="{DynamicResource BrushBorderMedium}"
@@ -285,8 +335,8 @@
                             <TextBox x:Name="PlateTextBox"
                                      Text="{Binding PlateNumber, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource PlateInputTextBox}"
-                                     Height="160"
-                                     FontSize="90"
+                                     Height="145"
+                                     FontSize="84"
                                      KeyDown="PlateTextBox_KeyDown"
                                      Margin="0,0,0,6">
                                 <TextBox.InputBindings>
@@ -539,97 +589,6 @@
                                 FontSize="14"
                                 FontWeight="Bold"/>
                     </Grid>
-
-                    <!-- 7. Resumen Rápido: Total en Caja / Turno Activo -->
-                    <Border Background="#F8FAFC"
-                            BorderBrush="{DynamicResource BrushBorderMedium}"
-                            BorderThickness="1"
-                            CornerRadius="14"
-                            Padding="18,16"
-                            Margin="0,18,0,0">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <!-- Icono de Caja Registradora -->
-                            <Border Grid.Column="0"
-                                    Width="46" Height="46"
-                                    CornerRadius="12"
-                                    Background="{DynamicResource BrushPrimaryLight}"
-                                    Margin="0,0,14,0"
-                                    VerticalAlignment="Center">
-                                <Path Data="{StaticResource IconCashRegister}"
-                                      Fill="{DynamicResource BrushPrimary}"
-                                      Width="22" Height="22"
-                                      Stretch="Uniform"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center"/>
-                            </Border>
-
-                            <!-- Títulos y Estado del Turno -->
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="TOTAL EN CAJA"
-                                               FontSize="13"
-                                               FontWeight="Black"
-                                               Foreground="{DynamicResource BrushTextPrimary}"
-                                               Margin="0,0,8,0"/>
-                                    <Border Background="{DynamicResource BrushSuccessBg}"
-                                            BorderBrush="{DynamicResource BrushSuccess}"
-                                            BorderThickness="1"
-                                            CornerRadius="4"
-                                            Padding="6,2"
-                                            Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}}">
-                                        <TextBlock Text="TURNO ACTIVO"
-                                                   FontSize="10"
-                                                   FontWeight="Black"
-                                                   Foreground="{DynamicResource BrushSuccessText}"/>
-                                    </Border>
-                                    <Border Background="{DynamicResource BrushWarningBg}"
-                                            BorderBrush="{DynamicResource BrushWarning}"
-                                            BorderThickness="1"
-                                            CornerRadius="4"
-                                            Padding="6,2"
-                                            Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
-                                        <TextBlock Text="SIN TURNO"
-                                                   FontSize="10"
-                                                   FontWeight="Black"
-                                                   Foreground="{DynamicResource BrushWarningText}"/>
-                                    </Border>
-                                </StackPanel>
-                                <TextBlock Text="{Binding ShiftOperatorName, StringFormat='Operador de caja: {0}'}"
-                                           FontSize="12"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource BrushTextMuted}"
-                                           Margin="0,3,0,0"
-                                           Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}}"/>
-                                <TextBlock Text="Abra un turno en Control de Turnos para registrar cobros"
-                                           FontSize="11"
-                                           FontWeight="SemiBold"
-                                           Foreground="{DynamicResource BrushTextMuted}"
-                                           Margin="0,3,0,0"
-                                           Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
-                                </TextBlock>
-                            </StackPanel>
-
-                            <!-- Monto Total en Caja -->
-                            <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding TotalCashInRegister, Converter={StaticResource CurrencyConv}}"
-                                           FontSize="24"
-                                           FontWeight="Black"
-                                           Foreground="{DynamicResource BrushPrimary}"
-                                           HorizontalAlignment="Right"/>
-                                <TextBlock Text="Efectivo en Caja"
-                                           FontSize="11"
-                                           FontWeight="Bold"
-                                           Foreground="{DynamicResource BrushTextMuted}"
-                                           HorizontalAlignment="Right"/>
-                            </StackPanel>
-                        </Grid>
-                    </Border>
                 </StackPanel>
             </ScrollViewer>
         </Border>
@@ -639,7 +598,7 @@
         <!-- ========================================================================= -->
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
-                <!-- Tarjeta de Reloj y Fecha del Sistema en Tiempo Real -->
+                <!-- 1. Tarjeta de Total en Caja / Turno Activo -->
                 <Border Style="{StaticResource ModernCard}" Padding="16,14" Margin="0,0,0,14">
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -647,14 +606,14 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <!-- Icono de Reloj -->
+                        <!-- Icono de Caja Registradora -->
                         <Border Grid.Column="0"
                                 Width="44" Height="44"
                                 CornerRadius="10"
-                                Background="#F1F5F9"
+                                Background="{DynamicResource BrushPrimaryLight}"
                                 Margin="0,0,14,0"
                                 VerticalAlignment="Center">
-                            <Path Data="{StaticResource IconClock}"
+                            <Path Data="{StaticResource IconCashRegister}"
                                   Fill="{DynamicResource BrushPrimary}"
                                   Width="22" Height="22"
                                   Stretch="Uniform"
@@ -662,18 +621,65 @@
                                   VerticalAlignment="Center"/>
                         </Border>
 
-                        <!-- Fecha y Hora en Letra Negra y Tamaño Destacado -->
+                        <!-- Información de Caja y Monto -->
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding CurrentDateString}"
-                                       FontSize="14"
-                                       FontWeight="Bold"
-                                       Foreground="Black"
-                                       TextTrimming="CharacterEllipsis"/>
-                            <TextBlock Text="{Binding CurrentTimeString}"
-                                       FontSize="26"
+                            <Grid Margin="0,0,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                                           Text="TOTAL EN CAJA"
+                                           FontSize="12"
+                                           FontWeight="Black"
+                                           Foreground="{DynamicResource BrushTextMuted}"
+                                           VerticalAlignment="Center"/>
+
+                                <!-- Badges de Estado -->
+                                <Border Grid.Column="1"
+                                        Background="{DynamicResource BrushSuccessBg}"
+                                        BorderBrush="{DynamicResource BrushSuccess}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="6,2"
+                                        Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="TURNO ACTIVO"
+                                               FontSize="10"
+                                               FontWeight="Black"
+                                               Foreground="{DynamicResource BrushSuccessText}"/>
+                                </Border>
+                                <Border Grid.Column="1"
+                                        Background="{DynamicResource BrushWarningBg}"
+                                        BorderBrush="{DynamicResource BrushWarning}"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Padding="6,2"
+                                        Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
+                                    <TextBlock Text="SIN TURNO"
+                                               FontSize="10"
+                                               FontWeight="Black"
+                                               Foreground="{DynamicResource BrushWarningText}"/>
+                                </Border>
+                            </Grid>
+
+                            <!-- Monto en Efectivo Esperado -->
+                            <TextBlock Text="{Binding TotalCashInRegister, Converter={StaticResource CurrencyConv}}"
+                                       FontSize="24"
                                        FontWeight="Black"
-                                       Foreground="Black"
-                                       Margin="0,2,0,0"/>
+                                       Foreground="{DynamicResource BrushPrimary}"
+                                       Margin="0,2,0,2"/>
+
+                            <TextBlock Text="{Binding ShiftOperatorName, StringFormat='Operador: {0}'}"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource BrushTextMuted}"
+                                       Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}}"/>
+                            <TextBlock Text="Sin turno activo iniciado"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource BrushWarningText}"
+                                       Visibility="{Binding HasActiveShift, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"/>
                         </StackPanel>
                     </Grid>
                 </Border>

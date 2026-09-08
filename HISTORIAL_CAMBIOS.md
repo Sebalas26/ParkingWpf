@@ -1,11 +1,14 @@
 # Historial Oficial de Modificaciones y Control de Cambios
+
 **Proyecto**: ParkFlow Desktop (WPF) & API Central  
-**Fecha de Creación**: 2026-08-24  
+**Fecha de Creación**: 2026-08-24
 
 ---
 
 ## 📌 Protocolo Obligatorio de Registro de Cambios
+
 A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o mantenedor que realice cambios en el código fuente de la aplicación WPF o del API **DEBE** registrar su modificación en este documento antes de finalizar su turno o tarea, incluyendo:
+
 1. **Fecha y Hora Exacta (ISO o Local)**.
 2. **Autor / Agente Responsable**.
 3. **Componentes / Módulos Modificados** (archivos afectados).
@@ -13,18 +16,21 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 6. **Resultado de la Verificación** (estado de compilación y pruebas).
 
+<<<<<<< HEAD
+
 ### [2026-09-08 17:50:00] - [FIX / NAVIGATION / SHIFTS / SIGNALR / REALTIME / WPF] - Redirección Obligatoria Inmediata a Apertura de Turno (ShiftClosureViewModel) tras Cierre Remoto de Caja desde PWA y Bloqueo de Operaciones
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Listo el wpf ya sincroniza cuando desde la pwa cierra caja en el wpf sale el aviso pero lo deja en el modulo que esta deberia devolverlo a obligarlo a abrir turno nuevamente si me explico eso no lo esta haciendo otra cosa no esta siendo reactivo con la pwa cuando se abre el turno en el wpf por que en la pwa no se avisa estoy en el modulo caja y no aparece que se abrio caja y me toca darle actualizar para que se refresque si me explico."*
+
+  > _"Listo el wpf ya sincroniza cuando desde la pwa cierra caja en el wpf sale el aviso pero lo deja en el modulo que esta deberia devolverlo a obligarlo a abrir turno nuevamente si me explico eso no lo esta haciendo otra cosa no esta siendo reactivo con la pwa cuando se abre el turno en el wpf por que en la pwa no se avisa estoy en el modulo caja y no aparece que se abrio caja y me toca darle actualizar para que se refresque si me explico."_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Redirección Obligatoria en Terminal WPF (`MainShellViewModel.cs`)**:
      - Al recibir el evento SignalR `ShiftClosed` desde la nube, `MainShellViewModel` reconcilia el turno y limpia el estado local con `_shiftService.RefreshCurrentShiftAsync()`.
      - Anteriormente, el sistema mostraba la alerta pero dejaba al operador en la pantalla en la que se encontraba (ej. `CheckInViewModel` o `CheckOutViewModel`), permitiendo ver formularios de cobro u operaciones huérfanas.
      - Se implementó la navegación obligatoria inmediata: si el usuario cuenta con el permiso `shifts.view_current`, se ejecuta de forma síncrona `NavigateToShiftClosure()`, forzando la transición visual a la pantalla de Apertura de Turno (`ShiftClosureViewModel`), donde se exige ingresar la base inicial de caja y hacer clic en "Abrir Turno".
-     - Si el usuario no cuenta con dicho permiso, se redirige a `NavigateToInitialAuthorizedView()`, donde cualquier intento de navegar o registrar movimientos es rechazado de inmediato por `ValidateShiftAccess` con la advertencia *"Apertura de Turno Requerida"*, manteniendo el terminal completamente protegido.
+     - Si el usuario no cuenta con dicho permiso, se redirige a `NavigateToInitialAuthorizedView()`, donde cualquier intento de navegar o registrar movimientos es rechazado de inmediato por `ValidateShiftAccess` con la advertencia _"Apertura de Turno Requerida"_, manteniendo el terminal completamente protegido.
      - Se actualizó el diálogo interactivo para indicar con total claridad que la caja fue cerrada centralmente y que se debe abrir un nuevo turno para continuar operando.
   2. **Verificación y Pruebas Unitarias**:
      - `dotnet test ParkingWpf.slnx`: **165 de 165 pruebas superadas (0 fallos)**.
@@ -32,13 +38,58 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **📦 Componentes Modificados**:
   - `Parking/Parking/ViewModels/MainShellViewModel.cs`
 
+### [2026-09-08 17:50:00] - [UI / UX / CHECKIN / WPF] - Unificación de Fecha y Hora del Sistema en una Sola Línea con Tipografía Homogénea (CheckInView)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+
+  > _"Dejame esto en una sola linea y los 2 textos con el mismo tamaño de letra , osea el de la hora"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Ajuste de Disposición XAML (`CheckInView.xaml`)**:
+     - Se transformó el contenedor de Fecha y Hora de disposición vertical a horizontal (`Orientation="Horizontal"`).
+     - Se homogeneizó el tamaño tipográfico de la fecha (`CurrentDateString`) y la hora (`CurrentTimeString`) a `FontSize="20"`, con la fecha en `FontWeight="Bold"` (`BrushTextPrimary`) y la hora en `FontWeight="Black"` (`BrushPrimary`), conectadas mediante un separador sutil (`•`).
+  2. **Certificación y Verificación**:
+     - `dotnet test ParkingWpf.slnx`: **165 de 165 Pruebas Unitarias Superadas (0 Fallos)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckInView.xaml`
+
+---
+
+### [2026-09-08 17:30:00] - [UI / UX / LAYOUT / CHECKIN / WPF] - Reorganización Visual de la Pantalla de Ingreso de Vehículos (CheckInView): Total en Caja a Columna Derecha, Fecha/Hora sobre Placa y Ajuste Panorámico
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+
+  > _"Quisiera que esta pantalla me la modifiques , donde el total de caja se mueva a donde se encuentra la hora, la hora a ala parter superior de de donde la placa y la placa baje un poco haciendo que quepa la hora en la parte de el"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Reorganización de Distribución XAML (`CheckInView.xaml`)**:
+     - **Columna Izquierda (Captura e Ingreso)**:
+       - Se trasladó el bloque de fecha y hora (`CurrentDateString`, `CurrentTimeString`) al encabezado de la columna izquierda con tarjeta estilizada `#F8FAFC`, borde `#E2E8F0` y badge con icono `IconClock`.
+       - Se ajustó la caja de placa panorámica (`PlateTextBox`) debajo del reloj/fecha con altura equilibrada (`Height="145"` y `FontSize="84"`), manteniendo accesos rápidos a teclado táctil y atajos con Enter/Return.
+       - Se removió la tarjeta inferior de total en caja de la columna izquierda para dejar el formulario limpio y enfocado directamente en los campos de captura y los botones de acción ("Registrar e Imprimir Entrada" / "Limpiar Formulario").
+     - **Columna Derecha (Monitoreo en Vivo)**:
+       - Se ubicó en la parte superior la tarjeta de **TOTAL EN CAJA (TURNO ACTIVO)** (`TotalCashInRegister`), con badge de estado en tiempo real (`TURNO ACTIVO` en verde / `SIN TURNO` en amarillo), operador de turno e icono institucional `IconCashRegister`.
+       - Se conservaron intactas debajo las tarjetas de **Tarifa Activa Seleccionada**, **Ocupación de Parqueadero** y **Últimos Vehículos Ingresados**.
+  2. **Certificación y Verificación**:
+     - `dotnet test ParkingWpf.slnx`: **165 de 165 Pruebas Unitarias Superadas (0 Fallos)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckInView.xaml`
+    > > > > > > > f9ecec0cfe1a33197c80b419854d5e32c0087d9a
+
 ---
 
 ### [2026-09-08 16:30:00] - [FIX / SYNC / SIGNALR / WORKSHIFT / DESERIALIZATION / WPF] - Corrección Definitiva de Sincronización en Tiempo Real de Cajas (PWA -> API -> WPF), Deserialización Resiliente de Status y Transición Automática desde ShiftClosureViewModel
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"tenemos la siguiente falla, desde la pwa se puede abrir y cerrar caja que ese es la administración y se abre caja al usuario, pero el wpf no esta tomando esa sincronización en tiempo real si yo abro caja en el pwa y después me logueo en el wpf me sigue pidiendo abrir caja y ya en la bd y la misma pwa muestran que ese operador tiene caja abierta el wpf no esta siendo capaz de recibir esas configuraciones y poder trabajar. en sintonia si me explico algo sucede hay algo esta mal. algo no esta sucediendo bien y pasando por el wpf y le doy sincronizar y nada no pasa . no trae los turnos ni nada enserio esa sincronización entonces que hace por que no trae todo lo que deberia traer de la sede. haz el plan"*
+
+  > _"tenemos la siguiente falla, desde la pwa se puede abrir y cerrar caja que ese es la administración y se abre caja al usuario, pero el wpf no esta tomando esa sincronización en tiempo real si yo abro caja en el pwa y después me logueo en el wpf me sigue pidiendo abrir caja y ya en la bd y la misma pwa muestran que ese operador tiene caja abierta el wpf no esta siendo capaz de recibir esas configuraciones y poder trabajar. en sintonia si me explico algo sucede hay algo esta mal. algo no esta sucediendo bien y pasando por el wpf y le doy sincronizar y nada no pasa . no trae los turnos ni nada enserio esa sincronización entonces que hace por que no trae todo lo que deberia traer de la sede. haz el plan"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Causa Raíz Identificada**:
@@ -53,7 +104,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
        - `CurrentBranchId`: Ajustado a `_sessionService.CurrentBranch?.Id ?? _sessionService.CurrentBranchId` para garantizar que consulte la sede activa real.
        - `RefreshCurrentShiftAsync()`: Para usuarios no-administradores pasa su `userId`. Al recibir el turno activo remoto, lo upserta y persiste en SQLite (`Status = 0`, `IsSynchronized = true`) y actualiza `CurrentShift`.
      - `MainShellViewModel.cs`:
-       - `HandleRealtimeNotificationAsync`: Al recibir SignalR `ShiftOpened`, ejecuta la reconciliación del turno. Si `ActiveView` se encontraba bloqueado en `ShiftClosureViewModel` y ahora `HasActiveShift == true`, navega automáticamente a la vista autorizada inicial (`NavigateToInitialAuthorizedView()`) y muestra la notificación *"Turno Habilitado: Se ha abierto un turno de caja para su usuario..."*.
+       - `HandleRealtimeNotificationAsync`: Al recibir SignalR `ShiftOpened`, ejecuta la reconciliación del turno. Si `ActiveView` se encontraba bloqueado en `ShiftClosureViewModel` y ahora `HasActiveShift == true`, navega automáticamente a la vista autorizada inicial (`NavigateToInitialAuthorizedView()`) y muestra la notificación _"Turno Habilitado: Se ha abierto un turno de caja para su usuario..."_.
        - `ForceSyncAsync`: Al hacer clic en "Sincronizar", ejecuta `RefreshCurrentShiftAsync()`, refresca `HasActiveShift` y desbloquea hacia la vista operativa si la caja ya fue abierta remotamente.
   3. **Certificación y Pruebas Unitarias**:
      - `dotnet test ParkingWpf.slnx`: **165 de 165 Pruebas Unitarias Superadas (0 Fallos)**.
@@ -73,7 +124,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Agregar restrinccion pero los input de valores donde vayan datos numericos no debe permitir letras y donde sean datos numrico de precios debe ir en formato pesos analiza todo el pwa para eso, los campos de texto como deben tener limite de 50 max al seleccionar en la creación de sede la tarifa plena le pide desde que horas rige la plena y cuantas horas es la plena se hizo el ejemplo de colocar que rige desde la 3 hora y la plena es 1 hora eso esta mal la hora de tarifa plena debe ser superior a la hora desde que rige si me explico. al configurar permisos si marco todo los del wpf se marcan unos del pwa y viceversa eso nod eberia ser así son totalemnte independientes. el boton de guardar horario de atencion en parametrización de la sede deberia quedar estatico no que hasta que se baje el scrolll. se hizo la prueba del horario de atención estaba activo el día martes que es hoy se ignreso al wpf en la pwa se desactivo el martes y en el wpf se deslogueo normal yo y volvi a ingresar pensando que no me dejaria ingresar y me dejo ingresar eso deberia bloquear el ingreso al wpf ya que ese día no atiende. y la ultima prueba que se hizo fue que cerre el turno en la pwa fui al wpf y el turno seguia abierto en el wpf no se habia cerrado y al hacer sincronización manual en el wpf no se cerro tampoco seguia abierto y se realizo cobro y genero cobro normal."*
+
+  > _"Agregar restrinccion pero los input de valores donde vayan datos numericos no debe permitir letras y donde sean datos numrico de precios debe ir en formato pesos analiza todo el pwa para eso, los campos de texto como deben tener limite de 50 max al seleccionar en la creación de sede la tarifa plena le pide desde que horas rige la plena y cuantas horas es la plena se hizo el ejemplo de colocar que rige desde la 3 hora y la plena es 1 hora eso esta mal la hora de tarifa plena debe ser superior a la hora desde que rige si me explico. al configurar permisos si marco todo los del wpf se marcan unos del pwa y viceversa eso nod eberia ser así son totalemnte independientes. el boton de guardar horario de atencion en parametrización de la sede deberia quedar estatico no que hasta que se baje el scrolll. se hizo la prueba del horario de atención estaba activo el día martes que es hoy se ignreso al wpf en la pwa se desactivo el martes y en el wpf se deslogueo normal yo y volvi a ingresar pensando que no me dejaria ingresar y me dejo ingresar eso deberia bloquear el ingreso al wpf ya que ese día no atiende. y la ultima prueba que se hizo fue que cerre el turno en la pwa fui al wpf y el turno seguia abierto en el wpf no se habia cerrado y al hacer sincronización manual en el wpf no se cerro tampoco seguia abierto y se realizo cobro y genero cobro normal."_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Sincronización Reactiva de Cierre de Turno Remoto (PWA -> API -> SignalR -> WPF)**:
@@ -82,7 +134,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - `SyncEngineService.cs`: Al ejecutar la sincronización manual, invoca `await _shiftService.RefreshCurrentShiftAsync()` para reconciliar el estado en memoria de la garita con SQLite.
      - `MainShellViewModel.cs`: Se suscribió al evento SignalR `ShiftClosed`, reconciliando el turno, alertando al operador en pantalla y bloqueando acciones de checkout.
   2. **Bloqueo Operativo de Login en WPF por Horario de Atención (`LoginViewModel.cs`, `MainShellViewModel.cs`)**:
-     - Al iniciar sesión, `LoginViewModel` inspecciona `selectedBranch.OperatingHours` para el día actual (`DateTime.Now.DayOfWeek`). Si `IsOpen == false`, cancela el inicio de sesión, purga el token/sesión y muestra en rojo: *"La sede {branch.Name} se encuentra cerrada el día de hoy según el horario de atención configurado..."*.
+     - Al iniciar sesión, `LoginViewModel` inspecciona `selectedBranch.OperatingHours` para el día actual (`DateTime.Now.DayOfWeek`). Si `IsOpen == false`, cancela el inicio de sesión, purga el token/sesión y muestra en rojo: _"La sede {branch.Name} se encuentra cerrada el día de hoy según el horario de atención configurado..."_.
      - Al modificarse el horario mientras la sesión está abierta, `MainShellViewModel` recibe `OperatingHoursChanged`, sincroniza en segundo plano y cierra la sesión con diálogo explicativo si el día actual quedó desactivado.
   3. **Certificación de Calidad y Pruebas Unitarias**:
      - `dotnet test ParkingWpf.slnx`: **158 de 158 Pruebas Unitarias Superadas (0 Fallos)**.
@@ -106,10 +158,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Tengo otro problema quiero analizarlo sucede que como hemos venido haciendo cambios y cambios estoy cansado de cada rato borra la sqllite del wpf apra probar y probar, por que como estamos agregando columnas y todo la bd de sql lite no tiene esa funcionalidad de actualizarse, es que quisiera saber si existe alguna funcionalidad de poder que apenas se loguee que hay hace la sincronización el vaya valida la bd en la nube verifique que todo lo que tiene en tirra esta arriba y si es así recontruya la sqllite o no se cual otra opcion me puedes ofrecer por que eso esta generando enserio problemas muchos problemas. necesito un analisis a esa comparativa real como sería la mejor opción o tu que opcion me ofreces mas necesito tener eso claro por que me esta pasando mucho."*
-  > *"Ajustar el timeout de red de la API a 3-4 segundos para que la conmutación a offline sea instantánea. yo creo que darle como 10 a 15 seg si no responde"*
-  > *"Añadir la opción de "Restablecer Base Local desde la Nube" bajo demanda. si pero tenerlo mientras las pruebas si y mediante permisos eso deberia esatr solo para el superadmin para pdoer otorgar ese permiso serviria como un desbare"*
-  > *"dale has plan."*
+
+  > _"Tengo otro problema quiero analizarlo sucede que como hemos venido haciendo cambios y cambios estoy cansado de cada rato borra la sqllite del wpf apra probar y probar, por que como estamos agregando columnas y todo la bd de sql lite no tiene esa funcionalidad de actualizarse, es que quisiera saber si existe alguna funcionalidad de poder que apenas se loguee que hay hace la sincronización el vaya valida la bd en la nube verifique que todo lo que tiene en tirra esta arriba y si es así recontruya la sqllite o no se cual otra opcion me puedes ofrecer por que eso esta generando enserio problemas muchos problemas. necesito un analisis a esa comparativa real como sería la mejor opción o tu que opcion me ofreces mas necesito tener eso claro por que me esta pasando mucho."_
+  > _"Ajustar el timeout de red de la API a 3-4 segundos para que la conmutación a offline sea instantánea. yo creo que darle como 10 a 15 seg si no responde"_
+  > _"Añadir la opción de "Restablecer Base Local desde la Nube" bajo demanda. si pero tenerlo mientras las pruebas si y mediante permisos eso deberia esatr solo para el superadmin para pdoer otorgar ese permiso serviria como un desbare"_
+  > _"dale has plan."_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Auto-Migrador Dinámico de Esquema SQLite (`DbConnectionManager.AutoMigrateDatabaseAsync`)**:
@@ -138,12 +191,13 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"tengo otra cosa que analice y creo que esta mal quiero que me digas tu, ese tiempo de gracia deberia ser general no por vehiculo sería canson o que dices si es mejor por vehiculo, por que igual nos hace falta un campo el tiempo de gracia de salida después de pagar, eso aplicaria cuando se tienen talanqueras y todo si me explico. analiza esa pregunta y dime como lo ves mejor."*
-  > *"siii dale realiza eso que quede en la creación de la sede. haz el plan"*
-  > *"sin data definida como te hago saber que no se puede quemar data enserio no es no se puede quemar data agrega eso como regla de oro en todos los 3 proyectos no se puede quemar data."*
-  > *"no se puede colocar data siempre se usa placeholder si me explico ya lo hemos repetido todo el tiempo otra regla de oro mas para todos los 3 sistemas"*
-  > *"no quiero el texto de tolenrancia para talanquera por que eso dice que el sistema tiene talanquera y de ser asi no lo tenga que ? eso mensaje es nosivo para el sistema solo decir tolenacia para no generar cobro en la salida o algo así e igual para el ingreso."*
-  > *"yo pienso que no deberian ser nulables por que eso debe tener las validaciones en rojo de angular de que deben agregar algo si colocan 0 entonces no seran nulables siempre deben tener dato si me explico. para ser eso pósible debo eliminar o correr el script 3 para borrar todas las sede me avisas."*
+
+  > _"tengo otra cosa que analice y creo que esta mal quiero que me digas tu, ese tiempo de gracia deberia ser general no por vehiculo sería canson o que dices si es mejor por vehiculo, por que igual nos hace falta un campo el tiempo de gracia de salida después de pagar, eso aplicaria cuando se tienen talanqueras y todo si me explico. analiza esa pregunta y dime como lo ves mejor."_
+  > _"siii dale realiza eso que quede en la creación de la sede. haz el plan"_
+  > _"sin data definida como te hago saber que no se puede quemar data enserio no es no se puede quemar data agrega eso como regla de oro en todos los 3 proyectos no se puede quemar data."_
+  > _"no se puede colocar data siempre se usa placeholder si me explico ya lo hemos repetido todo el tiempo otra regla de oro mas para todos los 3 sistemas"_
+  > _"no quiero el texto de tolenrancia para talanquera por que eso dice que el sistema tiene talanquera y de ser asi no lo tenga que ? eso mensaje es nosivo para el sistema solo decir tolenacia para no generar cobro en la salida o algo así e igual para el ingreso."_
+  > _"yo pienso que no deberian ser nulables por que eso debe tener las validaciones en rojo de angular de que deben agregar algo si colocan 0 entonces no seran nulables siempre deben tener dato si me explico. para ser eso pósible debo eliminar o correr el script 3 para borrar todas las sede me avisas."_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Entidades y Modelos de Sincronización (`Branch.cs`, `BranchModel.cs`, `BootstrapSyncResponse.cs`)**:
@@ -167,7 +221,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"entonces revisa analiza y dame el plan completo ."*
+  > _"entonces revisa analiza y dame el plan completo ."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Modelo y Mapeo EF Core (`VehicleRate.cs`, `VehicleRateConfiguration.cs`)**:
      - Agregada propiedad `FullDayRatesJson` (`string?`) a la entidad `VehicleRate` para almacenar los precios de tarifa plena específicos para cada bloque de días configurado en la sede.
@@ -201,7 +255,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"pero por que tienes numeros quemados no entiendo como si tuvieras horas ya quemadas eso no deberia estar quemado en el codigo."*
+  > _"pero por que tienes numeros quemados no entiendo como si tuvieras horas ya quemadas eso no deberia estar quemado en el codigo."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Motor de Cobro 100% Data-Driven en WPF (`EfPricingCalculatorService.cs`)**:
      - Eliminados todos los números mágicos residuales (`360`, `180`, `720`) y las franjas horarias quemadas (`new TimeSpan(18, 0, 0)`, `new TimeSpan(6, 0, 0)`).
@@ -225,7 +279,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"revisa el comentario y vuelve a lanzar el plan... esta bien pero falta un ejemplo grandisimo por que dices que la plena es apartir de 8 horas ejemplo pero hasta que horas es la plena ? si me explico y como funcionaria el caso siguiente, ingresa el vehiculo a las 8 am y la plena es despues de 3 horas hasta 8 horas entonces a las 8 horas ya logico vale la plena y sigue entonces el sistema le cobra la plena y vuelve a empezar a cobrar en minuto hasta volver alcanar las 3 horas para que se sume otra plena?? otro caso ingresa a las 8 am pero la plena es de 12 horas y es depues e 3 horas entonces saldria con la plena a las 8 pm pero si sigue derecho y esa sede tambien tiene noctura y si es de 6 pm a 6 am como funcionaria hay..."*
+  > _"revisa el comentario y vuelve a lanzar el plan... esta bien pero falta un ejemplo grandisimo por que dices que la plena es apartir de 8 horas ejemplo pero hasta que horas es la plena ? si me explico y como funcionaria el caso siguiente, ingresa el vehiculo a las 8 am y la plena es despues de 3 horas hasta 8 horas entonces a las 8 horas ya logico vale la plena y sigue entonces el sistema le cobra la plena y vuelve a empezar a cobrar en minuto hasta volver alcanar las 3 horas para que se sume otra plena?? otro caso ingresa a las 8 am pero la plena es de 12 horas y es depues e 3 horas entonces saldria con la plena a las 8 pm pero si sigue derecho y esa sede tambien tiene noctura y si es de 6 pm a 6 am como funcionaria hay..."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Entidades y Modelos SQLite (`Branch.cs`, `VehicleRate.cs`, `BranchModel.cs`)**:
      - Agregada propiedad `FullDayRulesJson` (`string?`) en `Branch` y `BranchModel`.
@@ -264,7 +318,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"En esta pantalla me podrias mostrar cuanto lleva en caja total, solo el total para que el cliente tenga de primera mano el dato y con aprovechamos ese espacio en blanco que sobra"* (Adjuntando captura de CheckInView con el área inferior enmarcada en rojo)
+  > _"En esta pantalla me podrias mostrar cuanto lleva en caja total, solo el total para que el cliente tenga de primera mano el dato y con aprovechamos ese espacio en blanco que sobra"_ (Adjuntando captura de CheckInView con el área inferior enmarcada en rojo)
 - **🤖 Resumen Técnico para la IA**:
   1. **ViewModel Reactivo (`CheckInViewModel.cs`)**:
      - Nuevas propiedades observables: `TotalCashInRegister` (`decimal`), `TotalShiftCollected` (`decimal`), `HasActiveShift` (`bool`) y `ShiftOperatorName` (`string`).
@@ -274,7 +328,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - Ubicación estratégica debajo de los botones de acción del formulario de entrada.
      - Contenedor con estilo de tarjeta institucional (`CornerRadius="14"`, fondo suave `#F8FAFC`, borde `#E2E8F0`).
      - Icono oficial `IconCashRegister` con acento primario suave (`BrushPrimaryLight`).
-     - Insignia de estado del turno (*TURNO ACTIVO* en verde / *SIN TURNO* en amarillo).
+     - Insignia de estado del turno (_TURNO ACTIVO_ en verde / _SIN TURNO_ en amarillo).
      - Nombre del operador en custodia del turno.
      - Valor numérico destacado en tipografía 24pt bold en color primario (`#00867A`) formateado como moneda con `CurrencyConv`.
 - **📦 Componentes Modificados**:
@@ -291,7 +345,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Cuando se sincroniza el wpf automaticamente por algun cambio que hago dede el pwa , se sincroniza y pasa esto en el wpf"* (Adjuntando captura con error `SQLite Error 19: 'UNIQUE constraint failed: ParkingTickets.TicketNumber'`)
+  > _"Cuando se sincroniza el wpf automaticamente por algun cambio que hago dede el pwa , se sincroniza y pasa esto en el wpf"_ (Adjuntando captura con error `SQLite Error 19: 'UNIQUE constraint failed: ParkingTickets.TicketNumber'`)
 - **🤖 Resumen Técnico para la IA**:
   1. **Deduplicación en Memoria de Lista Entrante (`SyncEngineService.cs`)**:
      - Se implementó deduplicación estricta de `allIncomingTickets` agrupando por `TicketId` y por `TicketNumber.Trim()` con `StringComparer.OrdinalIgnoreCase`.
@@ -314,7 +368,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"quisiera que la pantalla de entrega de turno y arqueo de caja quede en diseño igual a este ejmplo que me genero el figma"*
+  > _"quisiera que la pantalla de entrega de turno y arqueo de caja quede en diseño igual a este ejmplo que me genero el figma"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Top Context & Status Bar (`ShiftClosureView.xaml`, `ShiftClosureViewModel.cs`)**:
      - Se incorporó la barra de estado superior con icono de sede, etiqueta reactiva con el nombre de la sede activa (`BranchName`) y el indicador en vivo del API Central (`IsOnlineMode`, `SyncStatusText` con punto de estado verde/ámbar).
@@ -323,8 +377,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - Columna lateral derecha con 2 tarjetas apiladas para volumen operativo (`TIQUETES LIQUIDADOS` y `VEHÍCULOS INGRESADOS`) con números de gran escala centrados.
   3. **Tarjeta Central Unificada de Arqueo y Cierre**:
      - Contenedor elevado con esquinas redondeadas (`CornerRadius="16"`) dividido en dos columnas:
-       - **Columna Izquierda (Balance y Desglose Financiero)**: Título, badge gris claro del *Operador de Turno* (`#F1F5F9`) con icono `IconUser`, desglose financiero contable (`Base Inicial`, `(+) Cobrado`, `(-) Retiros`, `Total Efectivo Esperado` destacado en verde `#00867A`) y botón de acción para registrar retiros o recogidas de efectivo (`CanWithdrawCash`).
-       - **Columna Derecha (Conteo Físico y Cierre)**: Input de *Efectivo Físico Contado en Gaveta* con fondo gris suave, cálculo dinámico en tiempo real de la *Diferencia de Arqueo* (verde/rojo), campo multilínea para *Observaciones / Novedades* y botón principal de ancho completo `Realizar Cierre de Caja` (`#00867A`).
+       - **Columna Izquierda (Balance y Desglose Financiero)**: Título, badge gris claro del _Operador de Turno_ (`#F1F5F9`) con icono `IconUser`, desglose financiero contable (`Base Inicial`, `(+) Cobrado`, `(-) Retiros`, `Total Efectivo Esperado` destacado en verde `#00867A`) y botón de acción para registrar retiros o recogidas de efectivo (`CanWithdrawCash`).
+       - **Columna Derecha (Conteo Físico y Cierre)**: Input de _Efectivo Físico Contado en Gaveta_ con fondo gris suave, cálculo dinámico en tiempo real de la _Diferencia de Arqueo_ (verde/rojo), campo multilínea para _Observaciones / Novedades_ y botón principal de ancho completo `Realizar Cierre de Caja` (`#00867A`).
        - Soporte completo y seguro para entrega/relevo en caliente (`HandoverShiftCommand`) y asunción/toma de turno por operador entrante (`TakeOverShiftCommand`).
        - Modo de apertura de turno operativo con custodia de turno anterior (`HasActiveShift == false`).
 - **📦 Componentes Modificados**:
@@ -341,7 +395,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"todo desmarcado y que se deban marcar por que las pruebas necesitamos ahcerlas minusiosamente 1 por 1 donde activamos 1 miramos que funcione y asi vamos a la siguiente. pero desde que sea entendible para el wpf y el angular y que sea correcto y sea la mejor practica excelente. las parametrizaciones de cobro de plena y noche por dias ya sea marcar toda la semana pero con un boton y tambien que se puedan desmarcar dia por dia con un tac tac tac tac si me explico y las tarifas de los vehiculos cuando se cobran por plena deben tener su hora inicio su hora fin y cuantas horas son y el umbral de horas para el cobro si me explico"*
+  > _"todo desmarcado y que se deban marcar por que las pruebas necesitamos ahcerlas minusiosamente 1 por 1 donde activamos 1 miramos que funcione y asi vamos a la siguiente. pero desde que sea entendible para el wpf y el angular y que sea correcto y sea la mejor practica excelente. las parametrizaciones de cobro de plena y noche por dias ya sea marcar toda la semana pero con un boton y tambien que se puedan desmarcar dia por dia con un tac tac tac tac si me explico y las tarifas de los vehiculos cuando se cobran por plena deben tener su hora inicio su hora fin y cuantas horas son y el umbral de horas para el cobro si me explico"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Actualización de Entidades y Modelos (`Branch.cs`, `VehicleRate.cs`, `BranchModel.cs`, `BootstrapSyncResponse.cs`)**:
      - En `Branch`: se agregó `NightApplicableDays` para controlar los días que aplica la tarifa nocturna en la sede.
@@ -376,11 +430,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ayudame a que al abrir caja en el wpf , la base inciial sea lo mismo que se parametrizo al crearla sede desde el pwa (editar sede- base incial cjaja)"*
+  > _"Ayudame a que al abrir caja en el wpf , la base inciial sea lo mismo que se parametrizo al crearla sede desde el pwa (editar sede- base incial cjaja)"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Precarga Reactiva de Base Inicial desde Configuración de Sede (`ShiftClosureViewModel.cs`)**:
      - En `LoadShiftDataAsync()`, al detectar que no hay un turno activo (`HasActiveShift == false`), el sistema consulta directamente la configuración de la sede activa (`DefaultInitialCash`), primero verificando el cache local SQLite `db.Branches` y luego la sesión activa.
-     - Si la sede tiene configurada una base inicial (`configuredBranchBase > 0`), se pre-asigna de forma prioritaria a `NewShiftBaseAmount`, garantizando que el campo de texto en el formulario *"Apertura de Turno Operativo"* muestre automáticamente el monto parametrizado en PWA (ej: $100,000) en lugar de un saldo previo o cero.
+     - Si la sede tiene configurada una base inicial (`configuredBranchBase > 0`), se pre-asigna de forma prioritaria a `NewShiftBaseAmount`, garantizando que el campo de texto en el formulario _"Apertura de Turno Operativo"_ muestre automáticamente el monto parametrizado en PWA (ej: $100,000) en lugar de un saldo previo o cero.
      - En `OpenShiftAsync()`, se agregó lógica de resguardo adicional: si `NewShiftBaseAmount <= 0`, se intenta tomar el valor predeterminado de la sede antes de exigir validación obligatoria si la política `RequireInitialCashAmount` está activa.
 - **📦 Componentes Modificados**:
   - `Parking/ViewModels/ShiftClosureViewModel.cs`
@@ -395,10 +449,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"ayudame a eliminar esto de esta pantalla del wpf"*
+  > _"ayudame a eliminar esto de esta pantalla del wpf"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Remoción de Sección de Historial (`ShiftClosureView.xaml`)**:
-     - Se eliminó el contenedor `Border` inferior que alojaba el título *"Historial de Turnos y Liquidaciones Recientes"*, el badge *"Últimos 7 días"* y el `DataGrid` de consulta de turnos anteriores.
+     - Se eliminó el contenedor `Border` inferior que alojaba el título _"Historial de Turnos y Liquidaciones Recientes"_, el badge _"Últimos 7 días"_ y el `DataGrid` de consulta de turnos anteriores.
      - Esta simplificación visual optimiza la experiencia del operador en la pantalla de Control de Turnos, focalizando la interfaz exclusivamente en el resumen financiero de la jornada activa, la captura del arqueo físico en gaveta y la entrega/relevo de caja.
 - **📦 Componentes Modificados**:
   - `Parking/Views/ShiftClosureView.xaml`
@@ -430,7 +484,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ayudame que en esta pantalla del wpf me muestre enla parte superior el numero de ticket , adicional que si se elige en metodo de pago efectivo, en la resolucion me elija a POS, algo asi aplicando la misma lgica que uso para el de la tarjeta de credito y debito que elige a FVM"*
+
+  > _"Ayudame que en esta pantalla del wpf me muestre enla parte superior el numero de ticket , adicional que si se elige en metodo de pago efectivo, en la resolucion me elija a POS, algo asi aplicando la misma lgica que uso para el de la tarjeta de credito y debito que elige a FVM"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Visualización de Número de Tiquete en Cabecera (`CheckOutDialog.xaml`)**:
@@ -438,7 +493,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
        `<TextBlock Text="{Binding SelectedTicket.TicketNumber, StringFormat='{} • Tiquete: {0}'}" FontSize="15" FontWeight="SemiBold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="{DynamicResource BrushTextSecondary}"/>`
      - Permite al cajero identificar con total claridad y de un solo vistazo el código único del tiquete liquidado.
   2. **Autoselección Inteligente de Resolución POS para Efectivo (`CheckOutViewModel.cs`)**:
-     - Se implementó el método privado `AutoSelectPosResolution()` que busca entre las resoluciones disponibles (`AvailableResolutions`) aquella cuyo `Prefix`, `DocumentType` o `Name` contenga *"POS"*.
+     - Se implementó el método privado `AutoSelectPosResolution()` que busca entre las resoluciones disponibles (`AvailableResolutions`) aquella cuyo `Prefix`, `DocumentType` o `Name` contenga _"POS"_.
      - Se implementó `IsCashPayment(string? text)` para detección confiable de pagos en efectivo.
      - En `OnSelectedPaymentMethodEntityChanged`, se enlazó la condición para que al seleccionar un método de pago en efectivo (`value.ToEnum() == PaymentMethod.Cash || value.RequiresCashTender || IsCashPayment(value.Name)`), se autoseleccione la resolución **POS**, replicando la lógica previa que asigna **FVM** a pagos electrónicos/tarjetas.
   3. **Pruebas Unitarias Automatizadas (`CheckOutViewModelTests.cs`)**:
@@ -462,7 +517,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"crear pruebas unitarias completas para este repositorio de parkingwpf. y como regla de oro en agents.md que siempre que se haga un cambio en el codigo del repo, por mas simple que sea, es OBLIGATORIO correr las pruebas del repo al 100% y no dar por terminada la tarea si alguna falla. En agents.md de ambos repositorios (ParkingApi y ParkingWpf) debe quedar esa regla de oro obligatoria."*
+
+  > _"crear pruebas unitarias completas para este repositorio de parkingwpf. y como regla de oro en agents.md que siempre que se haga un cambio en el codigo del repo, por mas simple que sea, es OBLIGATORIO correr las pruebas del repo al 100% y no dar por terminada la tarea si alguna falla. En agents.md de ambos repositorios (ParkingApi y ParkingWpf) debe quedar esa regla de oro obligatoria."_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Regla de Oro en `AGENTS.md` (Ejecución Obligatoria del 100% de Pruebas)**:
@@ -513,7 +569,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Quisiera que en pwa exista una pantalla, exclusiva para solo eso, que no tenga botones de redigirme a la dashboard ni nada, la cual me muestre la informacion de un vehiculo activo, es decir de los que se encuentren aca (pantallazo), Esa nueva pantalla debera dejarse ver cuando el cliente atraves de laimpresion de entrada, escaenee un QR, asi que si es posible crear una api la cual reciba la placa a consultar y esta me lleve a la internet a consultarla, modifica el QR de la impresion de entrada del vehiculo de mi wpf para que cumppla con la condicion que te acabo de especificar, asi mismo que si al vehiculo se le da salida, ese link de la nueva pantalla ya no muestre nada y muestre un mensaje informando que ya no es posible consultar vehiculo"*
+
+  > _"Quisiera que en pwa exista una pantalla, exclusiva para solo eso, que no tenga botones de redigirme a la dashboard ni nada, la cual me muestre la informacion de un vehiculo activo, es decir de los que se encuentren aca (pantallazo), Esa nueva pantalla debera dejarse ver cuando el cliente atraves de laimpresion de entrada, escaenee un QR, asi que si es posible crear una api la cual reciba la placa a consultar y esta me lleve a la internet a consultarla, modifica el QR de la impresion de entrada del vehiculo de mi wpf para que cumppla con la condicion que te acabo de especificar, asi mismo que si al vehiculo se le da salida, ese link de la nueva pantalla ya no muestre nada y muestre un mensaje informando que ya no es posible consultar vehiculo"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Rediseño y Optimización del Bloque QR en Tiquete de Entrada (`ReceiptPreviewDialog.xaml`)**:
@@ -543,7 +600,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"analiza todo lo que te digo y haz un plan y cuentame que tanto es lo que se deberia hacer que tan dificil sería y como lo ves tan viable y dime que fue lo que entendiste bien detallado para ir refinando el plan antes de lanzarlo. ... Cero supuestos por defecto (depende de cómo tengan la plena, si la sede dice después de 6 horas o no aplica; si seleccionan solo minuto no cobra por nada más; hora colombia siempre; novedad automática transparente al ingresar fuera de horario; actualizar scripts 01_Clean_All_Tables.sql y 02_Init_RBAC_Seed.sql)."*
+
+  > _"analiza todo lo que te digo y haz un plan y cuentame que tanto es lo que se deberia hacer que tan dificil sería y como lo ves tan viable y dime que fue lo que entendiste bien detallado para ir refinando el plan antes de lanzarlo. ... Cero supuestos por defecto (depende de cómo tengan la plena, si la sede dice después de 6 horas o no aplica; si seleccionan solo minuto no cobra por nada más; hora colombia siempre; novedad automática transparente al ingresar fuera de horario; actualizar scripts 01_Clean_All_Tables.sql y 02_Init_RBAC_Seed.sql)."_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Directiva Fundamental: 100% Data-Driven sin Supuestos Quemados por Defecto**:
@@ -621,7 +679,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"En esta parte, me podrias agregar el boton de sincronizar"*
+
+  > _"En esta parte, me podrias agregar el boton de sincronizar"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Botón de Sincronización Manual (`MainShellWindow.xaml`)**:
@@ -632,7 +691,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
        - Estilo oficial `SecondaryButton` de `Parking/Styles/Controls.xaml`.
        - Geometría vectorial `{StaticResource IconSync}` en color primario (`BrushPrimary`), asegurando la integridad de recursos estipulada en `AGENTS.md`.
        - Dimensiones de 24px de altura, padding ergonómico y texto "Sincronizar" en tipografía nítida `11px SemiBold` en armonía con el botón "Cambiar" de sede.
-       - Tooltip informativo: *"Sincronizar datos con el servidor central"*.
+       - Tooltip informativo: _"Sincronizar datos con el servidor central"_.
 
 - **📦 Componentes Modificados**:
   - `Parking/Views/MainShellWindow.xaml`
@@ -647,7 +706,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Si, ajusta todas las impresiones de acurdo a ese taamaño configurado para la sede"*
+
+  > _"Si, ajusta todas las impresiones de acurdo a ese taamaño configurado para la sede"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Persistencia y Modelado de Datos**:
@@ -696,7 +756,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"quiero que esta pantalla tambien permita dar salida al vehiculo que le de click en la card"*
+
+  > _"quiero que esta pantalla tambien permita dar salida al vehiculo que le de click en la card"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Integración de Liquidación Rápida (`CheckInViewModel.cs`)**:
@@ -728,7 +789,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"En esta lista, estas cards puedes verse de a 3 por fila, actualmente se ven de a 2"*
+
+  > _"En esta lista, estas cards puedes verse de a 3 por fila, actualmente se ven de a 2"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Reconfiguración de Cuadrícula Uniforme (`CheckOutView.xaml`)**:
@@ -748,7 +810,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Quisiera que este boton se encuentre inactivo y color gris hasta que el campo de la placa detecte almenos un caracter , ahi si se vuelve verde osea como se ven en la foot"*
+
+  > _"Quisiera que este boton se encuentre inactivo y color gris hasta que el campo de la placa detecte almenos un caracter , ahi si se vuelve verde osea como se ven en la foot"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Comportamiento Reactivo del Comando (`CheckOutViewModel.cs`)**:
@@ -775,8 +838,9 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ayudame ahora que para en esta pantalla el numero de ticket sea el que se encuentra en BD"*
-  > *"Quiero que este boton sea circular"*
+
+  > _"Ayudame ahora que para en esta pantalla el numero de ticket sea el que se encuentra en BD"_
+  > _"Quiero que este boton sea circular"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Botón Circular en Salida y Cobro / Caja (`CheckOutView.xaml`)**:
@@ -801,7 +865,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Quiero que esta pantalla haga la accion de cobrar y registrar salida por el boton de enter"*
+
+  > _"Quiero que esta pantalla haga la accion de cobrar y registrar salida por el boton de enter"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Soporte Nativo de Tecla Enter en Modal (`CheckOutDialog.xaml`, `CheckOutDialog.xaml.cs`)**:
@@ -826,11 +891,12 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ajusta este boton, elimina la palabra buscar y agranda mas el ic de la lupa"*
+
+  > _"Ajusta este boton, elimina la palabra buscar y agranda mas el ic de la lupa"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Rediseño del Botón de Búsqueda (`CheckOutView.xaml`)**:
-     - Se eliminó el texto literal *"Buscar"* (`TextBlock`) y el contenedor horizontal (`StackPanel`), despejando el área de acción.
+     - Se eliminó el texto literal _"Buscar"_ (`TextBlock`) y el contenedor horizontal (`StackPanel`), despejando el área de acción.
      - Se incrementó la escala del ícono vectorial de la lupa (`IconSearch`) de `28x28` a **`58x58`** (`Width="58" Height="58" Stretch="Uniform"`), centrado directamente dentro del botón (`HorizontalAlignment="Center" VerticalAlignment="Center"`).
      - Se ajustó el botón a dimensiones táctiles armoniosas (`Width="160" Height="160"`), maximizando el espacio de captura para la caja de texto adyacente (`SearchTextBox`) y mejorando la ergonomía táctil en pantalla POS.
      - Se mantuvo el comando `SearchTicketCommand` y el `ToolTip="Buscar tiquete o placa (Enter)"` para accesibilidad.
@@ -848,7 +914,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Quisiera que en esta pantalla , elimines en lo que te encerre en rojo, sin embargo la fecha y la hora quisiera que la pongas arriba de taria activa seleccionada, con una tamaño medianamente grande y letra negra"*
+
+  > _"Quisiera que en esta pantalla , elimines en lo que te encerre en rojo, sin embargo la fecha y la hora quisiera que la pongas arriba de taria activa seleccionada, con una tamaño medianamente grande y letra negra"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Limpieza de Barra Superior (`MainShellWindow.xaml`)**:
@@ -856,7 +923,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - Se preservó el indicador de conectividad de la sede (`SyncStatusText`, "API Central Online • Sincronizado") con alineación derecha limpia y sin saturación visual.
   2. **Reubicación de Reloj y Fecha del Sistema (`CheckInView.xaml`, `CheckInViewModel.cs`)**:
      - En `CheckInViewModel.cs`, se añadieron propiedades observables `CurrentDateString` y `CurrentTimeString`, gobernadas por un `DispatcherTimer` con intervalo de 1 segundo utilizando la cultura en español (`es-ES`).
-     - En `CheckInView.xaml`, se insertó una tarjeta moderna dedicada (`ModernCard`) directamente sobre la tarjeta de *"Tarifa Activa Seleccionada"*.
+     - En `CheckInView.xaml`, se insertó una tarjeta moderna dedicada (`ModernCard`) directamente sobre la tarjeta de _"Tarifa Activa Seleccionada"_.
      - Se configuró la visualización en dos líneas con formato de alta legibilidad para terminal de caja: fecha completa en español (`FontSize="14"`, `FontWeight="Bold"`, `Foreground="Black"`) y reloj digital en tiempo real (`FontSize="26"`, `FontWeight="Black"`, `Foreground="Black"`), acompañado del ícono oficial `IconClock`.
 
 - **📦 Componentes Modificados**:
@@ -874,7 +941,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"tengo este error peor en la ultima prueba estaba funcionando bien si deja entrar, no sincroniza con la sede, que sucede por que da ese error si todo estaba bien anteriormente. solo que iniciamos sesion en otro pc con el wpf eso deberia sincronizar todo completo . analiza y dame plan"*
+
+  > _"tengo este error peor en la ultima prueba estaba funcionando bien si deja entrar, no sincroniza con la sede, que sucede por que da ese error si todo estaba bien anteriormente. solo que iniciamos sesion en otro pc con el wpf eso deberia sincronizar todo completo . analiza y dame plan"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Diagnóstico y Causa Raíz de Incompatibilidad Multi-PC (`DbConnectionManager.cs`)**:
@@ -913,9 +981,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"tenemos un error se modifico el cupo de la sede para el parqueadero y dejo superar el limite se coloco 3 y dejo meter 4 entonces eso es algo de validacion grave,
-  > se tiene un error grave que es que las resoluciones queda de una vez activas en la pwa en la modal de parametrizacion así no funciona eso deberia estas como los demas modulos de la parametrización ejemplo el de convenios medios de pago si me hago entender e igual acá en el wpf por que sucede que cuando en el amestro de la empresa se crea una reesolucion o un medio de pago esta de uan sincronizando no deberia el wpf deberia sincronizar información maestra solo cuando se le asocie en la paramertrización si me explico. 
-  > y esta algo quemado que todo dice automovil / sedan recuerda que nada quemado nada es nada nada nada ... m,ira acá eso no deberia estar así y valor acomulado esta mal no esta calculando el valor real por los minutos entonces necesito que hagas mejor las cosas y sean mas precisas"*
+
+  > _"tenemos un error se modifico el cupo de la sede para el parqueadero y dejo superar el limite se coloco 3 y dejo meter 4 entonces eso es algo de validacion grave,
+  > se tiene un error grave que es que las resoluciones queda de una vez activas en la pwa en la modal de parametrizacion así no funciona eso deberia estas como los demas modulos de la parametrización ejemplo el de convenios medios de pago si me hago entender e igual acá en el wpf por que sucede que cuando en el amestro de la empresa se crea una reesolucion o un medio de pago esta de uan sincronizando no deberia el wpf deberia sincronizar información maestra solo cuando se le asocie en la paramertrización si me explico.
+  > y esta algo quemado que todo dice automovil / sedan recuerda que nada quemado nada es nada nada nada ... m,ira acá eso no deberia estar así y valor acomulado esta mal no esta calculando el valor real por los minutos entonces necesito que hagas mejor las cosas y sean mas precisas"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Control Estricto de Aforo y Cupo Máximo en CheckIn (`CheckInViewModel.cs`, `EfParkingTicketService.cs`)**:
@@ -923,7 +992,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - Si la sede alcanza o sobrepasa el cupo configurado, se bloquea el registro del vehículo, se dispara un diálogo de alerta modal y se informa en el banner de retroalimentación: `"Capacidad máxima alcanzada para esta sede ({OccupiedSpots}/{TotalCapacity}). No es posible registrar más ingresos."`, arrojando `InvalidOperationException` para blindar la base de datos.
   2. **Eliminación Total de Nombres de Categoría Quemados (`VehicleTypeToStringConverter.cs`, `EfPricingCalculatorService.cs`)**:
      - Se añadió un delegado estático de resolución dinámica de nombres: `public static Func<VehicleType, string?>? CustomNameResolver { get; set; }` en `VehicleTypeToStringConverter.cs`.
-     - `EfPricingCalculatorService.cs` registra el delegado para consultar la parametrización viva de tarifas de la sede (`GetRate(vt)?.DisplayName`), resolviendo el nombre exacto configurado por el usuario (ej: *"Carro"*, *"Moto"*, *"Bici"*, *"Camión"*) en todas las vistas de la aplicación WPF (tickets recientes, detalle de cobro, historial del turno), erradicando el texto estático *"Automóvil / Sedán"*.
+     - `EfPricingCalculatorService.cs` registra el delegado para consultar la parametrización viva de tarifas de la sede (`GetRate(vt)?.DisplayName`), resolviendo el nombre exacto configurado por el usuario (ej: _"Carro"_, _"Moto"_, _"Bici"_, _"Camión"_) en todas las vistas de la aplicación WPF (tickets recientes, detalle de cobro, historial del turno), erradicando el texto estático _"Automóvil / Sedán"_.
   3. **Cálculo Preciso y Progresivo de Valor Acumulado en Vivo (`ParkingTicket.cs`, `EfPricingCalculatorService.cs`, `CheckOutViewModel.cs`)**:
      - `ParkingTicket.CurrentEstimatedAmount` ahora delega el cálculo mediante `public static Func<ParkingTicket, decimal>? EstimatedFeeCalculator { get; set; }`.
      - `EfPricingCalculatorService` calcula la tarifa real aplicando el cobro progresivo por horas y minutos exactos redondeados hacia arriba (`Math.Ceiling(remMinutes) * MinuteRate`) en vez de redondear a bloques fijos de horas completas ($5,000.00 fijos).
@@ -946,7 +1015,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"desde la pwa le modifique el cupo de la sede si llego que tenia alguna actualizacion pero no fue reactivo por que sali y volvi a ingresar, y bay si trajo la informacion real entonces falta algo por que si sincroniza pero en la sincronización solo esta mostrando esto deberia ser mas diciente osea mostrar cupos, creo que falta siii no se que mas valida eso."*
+
+  > _"desde la pwa le modifique el cupo de la sede si llego que tenia alguna actualizacion pero no fue reactivo por que sali y volvi a ingresar, y bay si trajo la informacion real entonces falta algo por que si sincroniza pero en la sincronización solo esta mostrando esto deberia ser mas diciente osea mostrar cupos, creo que falta siii no se que mas valida eso."_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Actualización Reactiva de Sede en Memoria (`SessionService.cs`, `ISessionService.cs`)**:
@@ -980,13 +1050,14 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"tenemos un error grave por que en la empresa se esta creando los tipos de vehiculos pero no se les asocio a la sede el tipo de vehiculo el sistema de una vez detecto los cambios creo que por lo del signal pero eso deberia ir asociado es por sede si me explico no cuando se cree el tipo de vehjciulo esta mal el hub cuando se dispara por que se deberia disparar cuando se le asocie a la sede si me explico, por que es por sede las parametrizaciones analiza eso"*
+
+  > _"tenemos un error grave por que en la empresa se esta creando los tipos de vehiculos pero no se les asocio a la sede el tipo de vehiculo el sistema de una vez detecto los cambios creo que por lo del signal pero eso deberia ir asociado es por sede si me explico no cuando se cree el tipo de vehjciulo esta mal el hub cuando se dispara por que se deberia disparar cuando se le asocie a la sede si me explico, por que es por sede las parametrizaciones analiza eso"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Filtro Defensivo en `MainShellViewModel.cs`**:
      - En `HandleRealtimeNotificationAsync`: Se añadió validación estricta para eventos de tipo `"RatesChanged"`. Si el mensaje no especifica `BranchId`, se descarta de forma silenciosa e inmediata, impidiendo que la creación de tipos en el catálogo general de empresa abra la ventana modal `SyncRequiredDialog` en las terminales de las sedes.
   2. **Refuerzo en Purga Local de `SyncEngineService.cs`**:
-     - En la fase de eliminación de tarifas obsoletas (`ratesToDelete`), se incluyó cualquier tarifa en SQLite con `BranchId == null` o huérfana que no pertenezca a la lista oficial de tarifas entregada por la API para la sede activa. Esto purga de forma automática registros residuales de prueba (ej: *"Moto $0.00"*).
+     - En la fase de eliminación de tarifas obsoletas (`ratesToDelete`), se incluyó cualquier tarifa en SQLite con `BranchId == null` o huérfana que no pertenezca a la lista oficial de tarifas entregada por la API para la sede activa. Esto purga de forma automática registros residuales de prueba (ej: _"Moto $0.00"_).
      - En el ciclo de inserción/actualización de tarifas locales, se omiten explícitamente plantillas de catálogo general sin sede asignada que tengan tarifas en `$0.00`.
 
 - **📦 Componentes Modificados**:
@@ -996,11 +1067,12 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **`✅ Verificación y Compilación`**:
   - `dotnet build ParkingWpf.slnx` → **0 Errores, 4 Advertencias (previas CS8601 en temporal)**
 
-### [2026-09-04 16:55:00] - [FIX / SECURITY / RBAC] [WPF] - Soporte Completo para RequireOpenShiftToOperate, Desacople de Acciones wpf.*, Asignación GrantedPermissions y Navegación Dinámica
+### [2026-09-04 16:55:00] - [FIX / SECURITY / RBAC] [WPF] - Soporte Completo para RequireOpenShiftToOperate, Desacople de Acciones wpf.\*, Asignación GrantedPermissions y Navegación Dinámica
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"El WPF dejo pasar del login con el usuario que me logueey eso que el usuario no tiene permisos asignados pero si los tiene completamente ya revise desde el administrador desde la pwa y tiene los permisos correspondientes... otra cosa es que me di cuenta que al editar el rol le estaba asignando permisos de solo wpf pero asignaba uno y automaticamente se asignaba a pwa ? por que si son independiente no que se le asigne a uno se le asigna al otro si me explico eso es un bug terrible... aparte medio vi que el wpf no esta parametrizado con todo lo que ya se ha hecho de parametriaación de que si no se requiere abrir caja por que así se creo la empresa no debe por que exigirlo... pero ten en cuenta que ya no se debe obligar si o si a abrir caja o turno eso depende de la empresa a la que este el usuario por que recuerda que la empresa cuadno se crea se parametriza si requiere eso de caja y turnos o no entonces si en la emrpesa esta parametrizado que no solo es ingresar y tener directo los permisos a ingresar vehiculo y salidas si me explico como funcioan igual en la pwa."*
+
+  > _"El WPF dejo pasar del login con el usuario que me logueey eso que el usuario no tiene permisos asignados pero si los tiene completamente ya revise desde el administrador desde la pwa y tiene los permisos correspondientes... otra cosa es que me di cuenta que al editar el rol le estaba asignando permisos de solo wpf pero asignaba uno y automaticamente se asignaba a pwa ? por que si son independiente no que se le asigne a uno se le asigna al otro si me explico eso es un bug terrible... aparte medio vi que el wpf no esta parametrizado con todo lo que ya se ha hecho de parametriaación de que si no se requiere abrir caja por que así se creo la empresa no debe por que exigirlo... pero ten en cuenta que ya no se debe obligar si o si a abrir caja o turno eso depende de la empresa a la que este el usuario por que recuerda que la empresa cuadno se crea se parametriza si requiere eso de caja y turnos o no entonces si en la emrpesa esta parametrizado que no solo es ingresar y tener directo los permisos a ingresar vehiculo y salidas si me explico como funcioan igual en la pwa."_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Bypass Completo de Exigencia de Turno (`RequireOpenShiftToOperate`)**:
@@ -1034,7 +1106,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"# Plan de Arquitectura e Implementación: Validaciones Multi-Sede, Convenios en Salida, Tarifas Progresivas, Resoluciones y Sincronización WPF..."*
+
+  > _"# Plan de Arquitectura e Implementación: Validaciones Multi-Sede, Convenios en Salida, Tarifas Progresivas, Resoluciones y Sincronización WPF..."_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Validación Preventiva en Check-In (`CheckInViewModel.cs`, `EfPricingCalculatorService.cs`)**:
@@ -1071,7 +1144,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"cuando se intenta abrir caja no esta tomando el valor de caja inicial que se configuro en la creación de la sede esta trayendo información como quemada si me explico eso aplica tanto para el pwa como para el wpf."*
+
+  > _"cuando se intenta abrir caja no esta tomando el valor de caja inicial que se configuro en la creación de la sede esta trayendo información como quemada si me explico eso aplica tanto para el pwa como para el wpf."_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Modelo de Datos de Sede (`BranchModel.cs`, `Branch.cs`)**:
@@ -1096,7 +1170,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Pero si se va a crear los planes y en los planes se va a definir las cosas que se van a tener entonces si selecciono en la creación de empresa un plan ya se tendriá claro cuantas sedes, si va con el wpf y que modulos lleva el plan, otra cosa es que cuando este creando la empresa y le de plan personalizado hay si se desbloquea las opciones y deja modificar las sedes, y seleccionar los modulos que lleva, otra cosa es que no me hablaste de la cantidad de usuarios que puede tener una empresa eso tambien va en el plan, otra cosa es que las plataformas pueden ser (solo web, solo wpf, web y wpf) eso tambien deberia ser configurable en el plan y en el plan personalizado. y en base a eso se deberia restringir el acceso a la plataforma si no lo tiene. Moneda COP, catalogo de planes desde cero."*
+
+  > _"Pero si se va a crear los planes y en los planes se va a definir las cosas que se van a tener entonces si selecciono en la creación de empresa un plan ya se tendriá claro cuantas sedes, si va con el wpf y que modulos lleva el plan, otra cosa es que cuando este creando la empresa y le de plan personalizado hay si se desbloquea las opciones y deja modificar las sedes, y seleccionar los modulos que lleva, otra cosa es que no me hablaste de la cantidad de usuarios que puede tener una empresa eso tambien va en el plan, otra cosa es que las plataformas pueden ser (solo web, solo wpf, web y wpf) eso tambien deberia ser configurable en el plan y en el plan personalizado. y en base a eso se deberia restringir el acceso a la plataforma si no lo tiene. Moneda COP, catalogo de planes desde cero."_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Contratos DTO de Login y Sesión (`TicketApiModels.cs`, `LoginResultModel.cs`, `UserSessionModel.cs`)**:
@@ -1111,9 +1186,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 ---
 
 ### [2026-09-03 17:15:00] - [SECURITY / REALTIME / REFACTOR] [WPF] - Extracción de JTI en AuthService y Cierre Forzado Reactivo por Token y Compañía en MainShellViewModel
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Tenemos un error, estamos probando las nuevas parametrizaciones, sucede y acontese que creamos una empresa con la opción de que multiple sesiones le colocamos 2 bien accedimos a una tercera y bien super bien cerraba como la ultima que iniciaba bien y así en secuencia pero entramos a editar la empresa y le quitamos la opción de multisesion me acuerdo que te habia dicho que deberia cerrar todas las sesiones de los dispositivos que de la empresa que estuvieran iniciados si me explico pues con el fin de la nueva parametrización si me epxlico ? eso no sucedio. analiza eso . esto en version web sale así en movil si sale como deberia pues como no hay anda cargado no deberia mockup nada eso es plenamente dinamico y de acuerod a lo que se cree sucede lo mismo con la siguiente imagen eso tambien esta en movil y en web y eso ya se habia solucionado no entiendo en que parte del codigo esta eso qumado eso no deberia ser quemado ni nada si me explico."*
+  > _"Tenemos un error, estamos probando las nuevas parametrizaciones, sucede y acontese que creamos una empresa con la opción de que multiple sesiones le colocamos 2 bien accedimos a una tercera y bien super bien cerraba como la ultima que iniciaba bien y así en secuencia pero entramos a editar la empresa y le quitamos la opción de multisesion me acuerdo que te habia dicho que deberia cerrar todas las sesiones de los dispositivos que de la empresa que estuvieran iniciados si me explico pues con el fin de la nueva parametrización si me epxlico ? eso no sucedio. analiza eso . esto en version web sale así en movil si sale como deberia pues como no hay anda cargado no deberia mockup nada eso es plenamente dinamico y de acuerod a lo que se cree sucede lo mismo con la siguiente imagen eso tambien esta en movil y en web y eso ya se habia solucionado no entiendo en que parte del codigo esta eso qumado eso no deberia ser quemado ni nada si me explico."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Extracción y Almacenamiento de JTI en `AuthService` (`AuthService.cs`)**:
      - Se implementó el método auxiliar `ExtractJtiFromJwt(string? token)` que parsea el payload Base64Url del JWT usando `System.Text.Json.JsonDocument` y extrae el identificador GUID `jti`.
@@ -1135,9 +1211,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 ---
 
 ### [2026-09-03 16:20:00] - [FEATURE / ARCHITECTURE / INTEGRATION] [WPF & API] - Soporte Integral de Esquemas de Cobro por Sede (Minuto, Hora, Plena, Nocturna), Operación Libre sin Caja, Sesiones Concurrentes Selectivas y Validación de Base Inicial Obligatoria
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"el orden es el siguiente: le muestra la primera configuracion que es si es multisesion si dice si le pregunta cuantas, despues le aparece la opcion requiere abrir caja entonces si dice [si] le aparece la 3 opcion que es un usuario puede abrir multiples cajas si dice que si pues le pregunta en un input cuantas si me explico despues aparece la 4 opcion la 3 y 4 son dependientes de la 2 si me explico entonces la 4 opcion es requiere un monto inicial en cada caja si o no eso obligaria si marca si en que cuando se creen sedes se le pida el parametro de monto base inicial si dicen no entonces esa compañia no manejaria eso... otra cosa que se debe tener encuenta es que al momento de crear la sede las cosas van a cambiar por que tambien se quiere parametrizar lo siguiente que es que le pregunte como una lista de check bien bakanos bien pro de que le diga que tipos de cobros va a tener en la sede, que son Por Minuto, Por Hora, Plena, nocturna, con eso cuando se cree en el maestro el tipo de vehiculo despues se vaya parametrizar la sede pues el sistema con ese dinamismo sabe que le debe paremetrizar a ese vehiculo de acuerdo a lo que selecciono en la sede si me explico ?... y hay algo supremamente importante que no hemos analziado y toca revisar por que el tema de roles y permisos cambiaria desde que se cree la compañia si una compañia se crea en que no necsita abrir cajas entonces para que le vamos a mostrar al administrador los modulos de cajas o que pueda asignar esos permisos de cajas si me explico debe ser todo muy coherente con lo que se esta parametrizando... veo que no se ha modificado wpf y estos cambios le pegan demasiado al wpf por las validaciones que tiene si lo has revisado y tener encuenta las cosas enserio ?"*
+  > _"el orden es el siguiente: le muestra la primera configuracion que es si es multisesion si dice si le pregunta cuantas, despues le aparece la opcion requiere abrir caja entonces si dice [si] le aparece la 3 opcion que es un usuario puede abrir multiples cajas si dice que si pues le pregunta en un input cuantas si me explico despues aparece la 4 opcion la 3 y 4 son dependientes de la 2 si me explico entonces la 4 opcion es requiere un monto inicial en cada caja si o no eso obligaria si marca si en que cuando se creen sedes se le pida el parametro de monto base inicial si dicen no entonces esa compañia no manejaria eso... otra cosa que se debe tener encuenta es que al momento de crear la sede las cosas van a cambiar por que tambien se quiere parametrizar lo siguiente que es que le pregunte como una lista de check bien bakanos bien pro de que le diga que tipos de cobros va a tener en la sede, que son Por Minuto, Por Hora, Plena, nocturna, con eso cuando se cree en el maestro el tipo de vehiculo despues se vaya parametrizar la sede pues el sistema con ese dinamismo sabe que le debe paremetrizar a ese vehiculo de acuerdo a lo que selecciono en la sede si me explico ?... y hay algo supremamente importante que no hemos analziado y toca revisar por que el tema de roles y permisos cambiaria desde que se cree la compañia si una compañia se crea en que no necsita abrir cajas entonces para que le vamos a mostrar al administrador los modulos de cajas o que pueda asignar esos permisos de cajas si me explico debe ser todo muy coherente con lo que se esta parametrizando... veo que no se ha modificado wpf y estos cambios le pegan demasiado al wpf por las validaciones que tiene si lo has revisado y tener encuenta las cosas enserio ?"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Integración de Directivas de Empresa en WPF (`TicketApiModels.cs`, `UserSessionModel.cs`, `AuthService.cs`)**:
      - Se enriqueció `LoginApiResponse` y `UserSessionModel` con las directivas corporativas: `AllowMultipleSessions`, `MaxActiveSessionsPerUser`, `AllowMultipleOpenShifts`, `MaxOpenShiftsPerUser`, `RequireOpenShiftToOperate`, `RequireInitialCashAmount`.
@@ -1178,9 +1255,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 ---
 
 ### [2026-09-03 10:50:00] - [FEATURE / SECURITY / UI] [WPF] - Restricción de Login Sin Permisos, Validación Visual en Salida, Confirmación de Impresión de Factura y Entrega de Turno Multi-Sede
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"📱 1. PWA - Interfaz de Usuario (UI) y Diseño Móvil ... ⚙️ 2. PWA - Lógica de Negocio y Funcionalidad ... 🗄️ 3. Backend, Base de Datos y API ... 🖥️ 4. Aplicación de Escritorio (WPF): Login sin Permisos, Validación Salida con bordes rojos, Confirmación Impresión Factura, Entregar Caja usuarios asociados..."*
+  > _"📱 1. PWA - Interfaz de Usuario (UI) y Diseño Móvil ... ⚙️ 2. PWA - Lógica de Negocio y Funcionalidad ... 🗄️ 3. Backend, Base de Datos y API ... 🖥️ 4. Aplicación de Escritorio (WPF): Login sin Permisos, Validación Salida con bordes rojos, Confirmación Impresión Factura, Entregar Caja usuarios asociados..."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Control de Acceso Estricto en Login (`LoginViewModel.cs`)**:
      - Se inyectó `IPermissionService`. Se implementó validación posterior a la autenticación: si el usuario no es Administrador y no tiene ningún permiso asignado en la matriz relacional (`_permissionService.GrantedPermissions.Count == 0`), se cierra la sesión, se aborta la navegación y se despliega `ModernMessageDialog.ShowAlert` con el mensaje informativo de "Acceso Denegado".
@@ -1204,9 +1282,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 ---
 
 ### [2026-09-02 15:35:00] - [ARCHITECTURE / MULTI-TENANT / INTEGRITY] [WPF] - Persistencia e Integridad Obligatoria de CompanyId y BranchId en Operaciones Transaccionales
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Se necesita que cuando se haga el ingreso de un vehiculo en el wpf siempre se guarde el id de la compañia mas bien necesito una revisión completa exaustiva que revise todas esas inserciones en la tablas transacionales que tienen la columna Company Id y la BranchId por que eso datos son vitales para todo el funcionamiento... si esa info no llega no deberia insertar... tanto en la pwa como en el wpf... haz el plan"*
+  > _"Se necesita que cuando se haga el ingreso de un vehiculo en el wpf siempre se guarde el id de la compañia mas bien necesito una revisión completa exaustiva que revise todas esas inserciones en la tablas transacionales que tienen la columna Company Id y la BranchId por que eso datos son vitales para todo el funcionamiento... si esa info no llega no deberia insertar... tanto en la pwa como en el wpf... haz el plan"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Propagación de CompanyId en Entidades y SQLite (`DbConnectionManager.cs`, `ParkingTicket.cs`, `WorkShift.cs`, `MonthlySubscription.cs`, `VehicleIncident.cs`, `Branch.cs`)**:
      - Se añadió la propiedad `CompanyId` en todas las entidades transaccionales del cliente WPF.
@@ -1241,9 +1320,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 ---
 
 ### [2026-09-02 12:28:00] - [UI/UX] [PRINTING] [WPF] - Código QR Pequeño en Tiquete de Entrada (Check-In)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"En la impresion de entrada, agregale en la parte inferior un QR que me lleve a este link https://www.parking-flow.com/ dejalo pequeño no tan grande"*
+  > _"En la impresion de entrada, agregale en la parte inferior un QR que me lleve a este link https://www.parking-flow.com/ dejalo pequeño no tan grande"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Incorporación de Código QR en Tiquete de Entrada (`ReceiptPreviewDialog.xaml`)**:
      - Se añadió un elemento `Image` discreto (`Width="70" Height="70"`) en la parte inferior del tiquete de ingreso enlazado a `ConsultationQrCodeImage` con el subtítulo centrado `"www.parking-flow.com"`.
@@ -1258,9 +1338,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet run`: Terminal WPF en ejecución interactiva en pantalla.
 
 ### [2026-09-02 12:10:00] - [UI/UX] [PRINTING] [WPF] - Homologación de Plantilla de Recibo POS Estándar
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"ayudame que la impresion cuando sea POS , sea casi similar a esta, pero eliminale temas relacionados a la factura electronica"*
+  > _"ayudame que la impresion cuando sea POS , sea casi similar a esta, pero eliminale temas relacionados a la factura electronica"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Homologación de Cuadrícula y Diseño POS (`ReceiptPreviewDialog.xaml`)**:
      - Se rediseñó la plantilla de salida POS estándar (`IsStandardExitReceipt`) adoptando la misma cuadrícula estructurada:
@@ -1283,9 +1364,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet run`: Terminal WPF en ejecución interactiva en pantalla.
 
 ### [2026-09-02 11:52:00] - [UX] [CHECKIN] [WPF] - Limpieza Automática del Campo de Placa tras Descartar Alerta de Bloqueo
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Bien, pero quiero que cuando salga la alerta de novedad y me muestre dialog, al darle en la x o entendido el componente donde se ingresa la placa de ingreso se borre , me la deje vacia"*
+  > _"Bien, pero quiero que cuando salga la alerta de novedad y me muestre dialog, al darle en la x o entendido el componente donde se ingresa la placa de ingreso se borre , me la deje vacia"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Limpieza Inmediata del Formulario (`CheckInViewModel.cs`)**:
      - Se invocó `ClearInputs()` inmediatamente después de cerrar el diálogo de alerta `_dialogService.ShowAlertAsync`, tanto en la validación preventiva de ingreso como en la captura de excepciones de negocio.
@@ -1298,12 +1380,13 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet run`: Terminal WPF en ejecución interactiva en pantalla.
 
 ### [2026-09-02 11:45:00] - [UI/UX] [CHECKIN] [WPF] - Limpieza Minimalista del Texto del Diálogo de Vehículo Restringido
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"bien, peroe eliminale novedd y motivo"*
+  > _"bien, peroe eliminale novedd y motivo"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Simplificación Minimalista del Mensaje (`CheckInViewModel.cs`)**:
-     - Se eliminaron las viñetas de *Tipo de Novedad* y *Motivo / Detalle*.
+     - Se eliminaron las viñetas de _Tipo de Novedad_ y _Motivo / Detalle_.
      - El mensaje del diálogo modal presenta ahora una estructura directa y concisa:
        `"La placa '{normalizedPlate}' presenta un bloqueo activo en el sistema.\n\nContáctese con su administrador."`
 - **📦 Componentes Modificados**:
@@ -1314,9 +1397,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet run`: Terminal WPF en ejecución interactiva en pantalla.
 
 ### [2026-09-02 11:35:00] - [UI/UX] [CHECKIN] [WPF] - Simplificación y Resumen de Alerta Modal de Vehículo Restringido
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"bien ahora si bloqueo, sin embargo quisiera que no me muestres este componente de bloqueo y solo dejame el dialog que me muestre en la segunda imaggen ,y en esa segunda imagen dejame mas resumido la advertencia, eliminame lo amarillo, el texto dejalo Vehiculo restringido, adicional deja al final un texto que diga \"Contactese con su administrador\""*
+  > _"bien ahora si bloqueo, sin embargo quisiera que no me muestres este componente de bloqueo y solo dejame el dialog que me muestre en la segunda imaggen ,y en esa segunda imagen dejame mas resumido la advertencia, eliminame lo amarillo, el texto dejalo Vehiculo restringido, adicional deja al final un texto que diga \"Contactese con su administrador\""_
 - **🤖 Resumen Técnico para la IA**:
   1. **Eliminación de Banner Inferior en Ingreso (`CheckInView.xaml`)**:
      - Se eliminó el `Border` rojo ubicado bajo el campo de digitación de placa, dejando la interfaz limpia durante la digitación.
@@ -1326,7 +1410,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - El contenido del mensaje se formateó de manera directa y concisa:
        - Placa y estado de bloqueo.
        - Tipo de novedad y motivo descriptivo.
-       - Mensaje de cierre: *"Contáctese con su administrador."*
+       - Mensaje de cierre: _"Contáctese con su administrador."_
 - **📦 Componentes Modificados**:
   - `Parking/Views/CheckInView.xaml`
   - `Parking/Views/ModernMessageDialog.xaml`
@@ -1337,9 +1421,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet run`: Terminal WPF en ejecución activa en pantalla.
 
 ### [2026-09-02 11:20:00] - [FIX] [SECURITY] [CHECKIN] [API & WPF] - Bloqueo Preventivo Obligatorio para Toda Placa con Novedad Activa en `VehicleIncidents`
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Noto que me esta permitiendo ingresar la placa apesar de que la placa se encuentra en la tabla de vehicleincidents"*
+  > _"Noto que me esta permitiendo ingresar la placa apesar de que la placa se encuentra en la tabla de vehicleincidents"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Flexibilización de Detección de Novedades Activas (`VehicleIncidentRepository.cs` & `VehicleIncidentService.cs`)**:
      - Se corrigió la condición que exigía exclusivamente `IsBlocked == true` para catalogar un vehículo como bloqueado.
@@ -1358,9 +1443,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet run`: Terminal WPF en ejecución interactiva en segundo plano.
 
 ### [2026-09-02 10:45:00] - [FEAT] [SECURITY] [CHECKIN] [WPF] - Bloqueo Estricto y Validación Híbrida en Tiempo Real para Vehículos en Lista Negra / Novedades
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ayudame a que mi wpf no me permita ingresar vehiculos de la lista negra , desde el wpa se guardan placa con novedad, valida la bd y las apis para que sepas a donde validar"*
+  > _"Ayudame a que mi wpf no me permita ingresar vehiculos de la lista negra , desde el wpa se guardan placa con novedad, valida la bd y las apis para que sepas a donde validar"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Validación Híbrida en Tiempo Real (`EfParkingTicketService.cs`)**:
      - Se actualizó `GetActiveBlockAsync(plateNumber)` para realizar una verificación de dos niveles:
@@ -1381,9 +1467,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet run`: Terminal WPF en ejecución interactiva en segundo plano.
 
 ### [2026-09-02 09:34:00] - [UI/UX] [CHECKOUT] [WPF] - Eliminación de Franja de Feedback en Liquidación y Salida
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"eliminame esto"* (referenciando la franja de confirmación de pago en Salida y Cobro)
+  > _"eliminame esto"_ (referenciando la franja de confirmación de pago en Salida y Cobro)
 - **🤖 Resumen Técnico para la IA**:
   1. **Simplificación y Estabilidad Visual (`CheckOutView.xaml`)**:
      - Se eliminó el `Border` de feedback asociado a `HasFeedback` en la tarjeta superior.
@@ -1398,12 +1485,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build`: **0 Errores, 4 Advertencias leves de nulabilidad**.
   - `dotnet run`: Terminal WPF en ejecución.
 
-
-
 ### [2026-09-02 09:12:00] - [UI/UX] [CHECKOUT] [WPF] - Homologación de Tamaño y Tipografía de Caja de Placa en Salida y Cobro
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"qquisiera que me dejaras la caja de texto de ingreso de placa de salida al mismo tamaño que el de entrada"*
+  > _"qquisiera que me dejaras la caja de texto de ingreso de placa de salida al mismo tamaño que el de entrada"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Homologación de Dimensiones y Tipografía (`Controls.xaml` & `CheckOutView.xaml`)**:
      - Se actualizó el estilo `CheckoutSearchTextBox` y el control `SearchTextBox` a `Height="160"` y `FontSize="90"` para igualar exactamente las proporciones de `PlateInputTextBox` en `CheckInView`.
@@ -1419,12 +1505,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build`: **0 Errores, 4 Advertencias leves de nulabilidad**.
   - `dotnet run`: Terminal WPF en ejecución (`RUNNING`, PID: 5688).
 
-
-
 ### [2026-09-02 08:53:00] - [FIX] [MERGE] [BUILD] [WPF] - Resolución de Conflictos de Git Residuales y Lanzamiento de Terminal Desktop
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"ejecuta wpf"*
+  > _"ejecuta wpf"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Resolución de Conflictos de Combinación (Git Merge)**:
      - Se resolvieron marcadores residuales (`<<<<<<< HEAD`, `=======`, `>>>>>>>`) en 6 archivos generados por un merge commit previo.
@@ -1447,18 +1532,18 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build`: **0 Errores, 4 Advertencias leves de nulabilidad**.
   - `dotnet run`: Proceso WPF en ejecución activa (`RUNNING`).
 
-
 ### [2026-08-31 23:08:00] - [FEAT] [RATES] [MULTI-BRANCH] [WPF] - Preservación Integral de Todos los Tipos de Vehículos Parametrizados por Sede Activa
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Pues ya me muestra el otro tipo de vehiculo , pero sigue faltandome los demas y que los muestre por sede logeada"*
+  > _"Pues ya me muestra el otro tipo de vehiculo , pero sigue faltandome los demas y que los muestre por sede logeada"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Eliminación de Sobreescritura por Enum (`EfPricingCalculatorService.cs`)**:
      - Se reemplazó el almacenamiento indexado por `ConcurrentDictionary<VehicleType, VehicleRate>` por una lista viva `List<VehicleRate> _activeBranchRates` que preserva el 100% de los registros parametrizados en la base de datos sin colisiones entre categorías.
   2. **Filtrado Estricto por Sede Logueada**:
      - `ReloadRatesAsync()` carga prioritariamente todas las tarifas asignadas a `r.BranchId == currentBranchId.Value`, ordenadas por nombre, y recurre a tarifas globales (`r.BranchId == null`) únicamente si la sede no tiene tarifas propias.
   3. **Ampliación Léxica de Tipos de Vehículos (`VehicleTypeHelper.cs`)**:
-     - Cobertura completa para variantes comerciales como *motocarro, patineta, cuatrimoto, monopatín, bus, buseta, volqueta, remolque, camioneta, furgón, microbús, etc.*
+     - Cobertura completa para variantes comerciales como _motocarro, patineta, cuatrimoto, monopatín, bus, buseta, volqueta, remolque, camioneta, furgón, microbús, etc._
 - **📦 Componentes Modificados**:
   - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
   - `Parking/Core/Helpers/VehicleTypeHelper.cs`
@@ -1468,9 +1553,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet run`: Terminal WPF en ejecución.
 
 ### [2026-08-31 23:00:00] - [FIX] [API] [SYNC] [RATES] [WPF] - Soporte Multinombre de Tarifas en Deserialización JSON y Reconciliación Integral por Sede
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Revisa desde el pwa, ya que desde el pwa veo y asigne mas tipos de vehiculo , pero en el wpf solo recibo moto, revisa que retorna la api y ajuste donde se encuentre el error"*
+  > _"Revisa desde el pwa, ya que desde el pwa veo y asigne mas tipos de vehiculo , pero en el wpf solo recibo moto, revisa que retorna la api y ajuste donde se encuentre el error"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Tolerancia y Deserialización Resiliente (`BootstrapSyncResponse.cs`)**:
      - Se refactorizó `ApiVehicleRateSyncDto` con mapeo de campos alternativos (`id`, `rateId`, `branch_id`, `sedeId`, `valorHora`, `hourlyRate`, `hour_rate`, `valorMinuto`, `minuteRate`, `maximoDia`, `fullDayRate`, etc.).
@@ -1489,9 +1575,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet run`: Terminal WPF en ejecución.
 
 ### [2026-08-31 22:48:00] - [FEAT] [UI/UX] [MVVM] [WPF] - Implementación de Selector ComboBox de Tipos de Vehículo por Sede con Empty State y Reactividad en Tiempo Real
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Actúa como un desarrollador experto en C# y WPF utilizando el patrón de diseño MVVM... aplicalo... agrégale estas 3 consideraciones: 1. Manejo de Estados Vacíos (Empty State)... 2. Verificación del Conversor... 3. Escucha de eventos de cambio de Sede..."*
+  > _"Actúa como un desarrollador experto en C# y WPF utilizando el patrón de diseño MVVM... aplicalo... agrégale estas 3 consideraciones: 1. Manejo de Estados Vacíos (Empty State)... 2. Verificación del Conversor... 3. Escucha de eventos de cambio de Sede..."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Selector ComboBox Moderno (`CheckInView.xaml`)**:
      - Se integró el `ComboBox` con estilo `ModernComboBox`, enlazado bidireccionalmente a `SelectedRate` y a la colección filtrada por sede `AvailableRates`.
@@ -1511,9 +1598,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet run`: Terminal WPF en ejecución.
 
 ### [2026-08-31 22:31:00] - [FEAT] [UI/UX] [RATES] [SYNC] [WPF] - Carga Completa y Ajuste Visual de Categorías de Vehículos por Sede
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ajustame este componente, donde vea el nombre del tipo ed vehiculo, ademas validame que me carguen todos los tipos de vehiculo configurados para esa sede"*
+  > _"Ajustame este componente, donde vea el nombre del tipo ed vehiculo, ademas validame que me carguen todos los tipos de vehiculo configurados para esa sede"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Helper Centralizado de Tipos de Vehículo (`VehicleTypeHelper.cs`)**:
      - Se implementó un parser resiliente multilingüe que mapea sinónimos en español e inglés (`"moto"`, `"carro"`, `"motocicleta"`, `"camioneta"`, `"suv"`, `"bicicleta"`, `"camión"`, etc.) e infiere el tipo a partir de `DisplayName` o `PlateNumber` en caso de discrepancias.
@@ -1542,9 +1630,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet run`: Terminal WPF en ejecución.
 
 ### [2026-08-31 22:15:00] - [UI/UX] [DESIGN] [WPF] - Estandarización Global de Fondo Oscuro Translúcido (Backdrop Overlay) en Diálogos y Modales
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Mi wpf tiene varias alertas de este estilo , quiero que cuando kas muestre, la pantalla de detras me la dejes oscura, revisa toda mi wpf y ajustalo para todos"*
+  > _"Mi wpf tiene varias alertas de este estilo , quiero que cuando kas muestre, la pantalla de detras me la dejes oscura, revisa toda mi wpf y ajustalo para todos"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Estandarización de XAML (`Background="#B3000000"` y Centrado Absoluto)**:
      - Se eliminaron los anchos fijos y `SizeToContent` de la etiqueta raíz `<Window>` en todos los diálogos y alertas.
@@ -1583,9 +1672,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet run`: Terminal WPF en ejecución.
 
 ### [2026-08-31 21:50:00] - [FEAT] [SYNC] [MULTI-BRANCH] [WPF] - Sincronización Automática al Cambiar de Sede y Validación Dinámica de Turno Operativo
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ayudame que cuando hago cambio de sede en mi Wpf me haga la sincronizacion automatica"*
+  > _"Ayudame que cuando hago cambio de sede en mi Wpf me haga la sincronizacion automatica"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Conversión de Comando Asíncrono (`MainShellViewModel.cs`)**:
      - Se convirtió `SwitchBranch` a `SwitchBranchAsync` bajo `[RelayCommand]` (`SwitchBranchCommand`).
@@ -1604,12 +1694,13 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **✅ Verificación y Compilación**:
   - `dotnet build`: **0 Errores, 0 Advertencias**.
   - `dotnet run`: Terminal WPF en ejecución.
->>>>>>> dec9abebb249833f08c6ee6001f810e2bd23104f
+    > > > > > > > dec9abebb249833f08c6ee6001f810e2bd23104f
 
 ### [2026-08-31 17:38:00] - [BUGFIX] [INTEGRITY] [WPF] - Validación Estricta de Placa Única Activa y Control de Duplicidad en Ingreso
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Me dejo pero ahora me quitaste la logica de que permite ingresar la placa mas de una vez, observando el admin ahi quedaron 2, el ingreso de la placa solo debe permitirse una vez por registro, es decir que si existe una placa ya ingresada, no permita mas veces, sin embargo que si le doy salida por el pwa o wpf ya se actualice el proceso y permita inhgresar de nuevo qeu fue algo que estaba fallando"*
+  > _"Me dejo pero ahora me quitaste la logica de que permite ingresar la placa mas de una vez, observando el admin ahi quedaron 2, el ingreso de la placa solo debe permitirse una vez por registro, es decir que si existe una placa ya ingresada, no permita mas veces, sin embargo que si le doy salida por el pwa o wpf ya se actualice el proceso y permita inhgresar de nuevo qeu fue algo que estaba fallando"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Restablecimiento de la Regla de Placa Única**:
      - Se eliminó el auto-cierre prematuro que existía dentro de `RegisterEntryAsync` en `EfParkingTicketService.cs`.
@@ -1625,9 +1716,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Compilación `dotnet build` (**0 Errores**).
 
 ### [2026-08-31 17:18:00] - [BUGFIX] [SYNC] [WPF] - Reconciliación de Tiquetes Salidos desde PWA y Validación de Ingreso por Sede
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"estoy teniendo este problema al entrar un vehiculo , pero el vehiculo estaba ingresado en otra, ya le di salida desde el administrador pwa, pero en el wpf me sigue restringiendo el ingreso de esa placa"*
+  > _"estoy teniendo este problema al entrar un vehiculo , pero el vehiculo estaba ingresado en otra, ya le di salida desde el administrador pwa, pero en el wpf me sigue restringiendo el ingreso de esa placa"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Diagnóstico**: Al dar salida a un vehículo desde la PWA, el backend central lo removía de los activos. Sin embargo, en SQLite local el registro anterior quedaba en estado `Active` huérfano porque la sincronización solo iteraba los tiquetes presentes en el payload entrante.
   2. **Reconciliación Automática en `SyncEngineService.cs`**:
@@ -1643,9 +1735,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Compilación `dotnet build` (**0 Errores**).
 
 ### [2026-08-31 16:57:00] - [FEATURE] [SYNC] [WPF] - Sincronización y Selector de Resoluciones de Facturación DIAN por Sede en Salida de Vehículos
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ayudame a que esto quede un poco mas para la izquierda y me dejes un espacio para incluir la resoluciones que me envia el pwa por la sincro y estan almacenadas en BD, ya quedepende de ello se relaciona a una factura pos o por factura, sin embargo conectala a las que me retorna ya la BD por sede elegida y logeada en el wpf"*
+  > _"Ayudame a que esto quede un poco mas para la izquierda y me dejes un espacio para incluir la resoluciones que me envia el pwa por la sincro y estan almacenadas en BD, ya quedepende de ello se relaciona a una factura pos o por factura, sin embargo conectala a las que me retorna ya la BD por sede elegida y logeada en el wpf"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Sincronización Backend / API**:
      - Se integró `Resolutions` (`BillingResolution`) en `BootstrapSyncDto` (`ParkingApi.Domain.Dtos.Sync.SyncDtos.cs`) y se inyectó `IBillingResolutionRepository` en `SyncService.cs` para entregar las resoluciones activas asociadas a la sede y empresa.
@@ -1676,9 +1769,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Compilación limpia `dotnet build` (**0 Errores**).
 
 ### [2026-08-31 16:07:00] - [UI/UX] [FEATURE] [WPF] - Botones Interactivos de Convenios por Logo con Icono de Ojo y Pop-up Flotante de 6 Segundos
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"ahi me cargo la imagen del convenio, pero quiero que esa imagen sea el boton que el usuario seleccione para hacer descuento del covenio, adicional que tenga en una esquina del boton un icono de ojo para ver toda la descripcion del convenio, ahi puedes traer toda la info del convenio , eso muestralo como un pop up que se abra y se cierre en 6 segundos , que no sea tan grande para que no sea tan invasivo"*
+  > _"ahi me cargo la imagen del convenio, pero quiero que esa imagen sea el boton que el usuario seleccione para hacer descuento del covenio, adicional que tenga en una esquina del boton un icono de ojo para ver toda la descripcion del convenio, ahi puedes traer toda la info del convenio , eso muestralo como un pop up que se abra y se cierre en 6 segundos , que no sea tan grande para que no sea tan invasivo"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Logos de Convenio como Botones Interactivos (`CheckOutDialog.xaml`)**:
      - Se transformó la galería de convenios para que cada logo sea un botón interactivo (`ToggleSelectAgreementCommand`).
@@ -1697,9 +1791,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Compilación limpia con 0 errores.
 
 ### [2026-08-31 15:42:00] - [FIX] [SYNC] [WPF] - Corrección de Cobro por Tiempo/Tarifa y Sincronización de Convenios con Imágenes de la PWA
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Bien, dejamelo asi, ahora ayudame a saber porque no me esta cobran el valor de acuerdo al tiempo y tarifa, asi mismo quisiera que me cargaras los convenios que se crean desde la pwa y se almacenan en la bd, carga la imagen con la que quedan almacenadas"*
+  > _"Bien, dejamelo asi, ahora ayudame a saber porque no me esta cobran el valor de acuerdo al tiempo y tarifa, asi mismo quisiera que me cargaras los convenios que se crean desde la pwa y se almacenan en la bd, carga la imagen con la que quedan almacenadas"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Corrección de Cálculo de Tarifa ($0.00 -> Valor Real)**:
      - En `CheckOutViewModel.cs`, se removió la condición `value.HourlyRate == 0m` en `IsMonthlyTicket`. Anteriormente, cualquier tiquete con tarifa por minuto o sin tarifa horaria fija al momento de check-in era catalogado erróneamente como mensualidad gratis, forzando `CalculatedFee = 0m`.
@@ -1720,9 +1815,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Compilación limpia con 0 errores.
 
 ### [2026-08-31 14:43:00] - [UI/UX] [WPF] - Ampliación de Ancho y Limpieza Visual en Diálogo de Cobro (CheckOutDialog)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"quisiera que me ancharas mas esta pantalla dialog para que quepa mas informacion, adicionalo lo que esta en verde eliminalo"*
+  > _"quisiera que me ancharas mas esta pantalla dialog para que quepa mas informacion, adicionalo lo que esta en verde eliminalo"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Ampliación de Ancho (`CheckOutDialog.xaml`)**:
      - Se incrementó el ancho de la tarjeta modal a `Width="800"` (anteriormente 550px), dando máxima amplitud a los botones de métodos de pago y campos numéricos de caja.
@@ -1737,9 +1833,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Compilación limpia con 0 errores.
 
 ### [2026-08-31 14:15:00] - [UI/UX] [PRINT] [WPF] - Reemplazo de URL por Texto 'PARKING - FLOW' en Fuente Raleway
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"en la impresion quiero que esto me reemplace por la palabra PARKING - FLOW en negrilla y en fuente de raleway y tenga 2 lineas de espacion entre consulte su estado y la palabra que te pedi"*
+  > _"en la impresion quiero que esto me reemplace por la palabra PARKING - FLOW en negrilla y en fuente de raleway y tenga 2 lineas de espacion entre consulte su estado y la palabra que te pedi"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Ajuste en `ReceiptPreviewDialog.xaml`**:
      - Se reemplazó el texto estático de la URL por `PARKING - FLOW` en negrilla (`FontWeight="Bold"`), con tipografía `Raleway` y un margen superior de 2 líneas (`Margin="0,16,0,12"`).
@@ -1750,9 +1847,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Compilación limpia con 0 errores.
 
 ### [2026-08-31 13:01:00] - [FEAT] [PRINT] [WPF] - Parametrización Dinámica de Datos de Sede, Tarifa y QR de Consulta en Tiquete Térmico
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"en la impresion de la etiqueta quisiera que en el ciruclo amarillo me reemplace 1- nombre de la sede que se encuentra seleccionada en el wpf , el nit y la direccion, valida porque eso me lo retorna la BD , en lo azul pon el tipo de medio seleccionado cuadno ingreso el vehiculo , en lo rojo pon la tarifa del tipo de vehiculo elegido, y en lo verde las 3 filas reemplazalas por un QR que me lleve a esta url https://www.parking-flow.com/mockup-consulta"*
+  > _"en la impresion de la etiqueta quisiera que en el ciruclo amarillo me reemplace 1- nombre de la sede que se encuentra seleccionada en el wpf , el nit y la direccion, valida porque eso me lo retorna la BD , en lo azul pon el tipo de medio seleccionado cuadno ingreso el vehiculo , en lo rojo pon la tarifa del tipo de vehiculo elegido, y en lo verde las 3 filas reemplazalas por un QR que me lleve a esta url https://www.parking-flow.com/mockup-consulta"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Encabezado Dinámico de Sede (`ReceiptPreviewViewModel.cs`, `ReceiptPreviewDialog.xaml`)**:
      - Se integró `ISessionService` para proyectar `BranchName`, `BranchNit` y `BranchAddress` de la sede activa.
@@ -1768,9 +1866,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Compilación limpia con 0 errores.
 
 ### [2026-08-31 12:31:00] - [UI/UX] [WPF] - Altura Compacta y 100% Adaptativa al Contenido en Tarjetas de Patio
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Bien pero la altura de los componentes es mucho, dejamelo adaptitivos al text"*
+  > _"Bien pero la altura de los componentes es mucho, dejamelo adaptitivos al text"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Ajuste en `CheckOutView.xaml`**:
      - Se configuró `VerticalAlignment="Top"` en `ItemsControl`, `UniformGrid` y en cada tarjeta `Border`, eliminando el estiramiento vertical innecesario.
@@ -1782,9 +1881,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Compilación limpia con 0 errores.
 
 ### [2026-08-31 12:18:00] - [UI/UX] [WPF] - Distribución Uniforme en 2 Columnas de Tarjetas de Vehículos Activos
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"bien, ahora ayudame a organizar esos componentes , por que ahi se pueden mostrar por fila de a 2"*
+  > _"bien, ahora ayudame a organizar esos componentes , por que ahi se pueden mostrar por fila de a 2"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Distribución en `CheckOutView.xaml`**:
      - Se reemplazó el `WrapPanel` por `<UniformGrid Columns="2"/>` en el listado de vehículos activos en patio.
@@ -1796,9 +1896,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Compilación limpia con 0 errores.
 
 ### [2026-08-31 12:01:00] - [FEAT] [PRINT] [WPF] - Sustitución de Código QR por Código de Barras Code 128 con Placa en Tiquete Térmico
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"en la impresion de la etiqueta reemplazame el codigo qr por uno de barras code 128, el cual contenga la placa ingresada al ingresar vehiculo, la cual es la misam que esta debajo de la impresion"*
+  > _"en la impresion de la etiqueta reemplazame el codigo qr por uno de barras code 128, el cual contenga la placa ingresada al ingresar vehiculo, la cual es la misam que esta debajo de la impresion"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Servicio `BarcodeGeneratorService.cs`**:
      - Se creó un generador de códigos de barras estándar **Code 128** usando `ZXing.Net` (`BarcodeWriterPixelData`), generando `BitmapSource` de alta nitidez en escala de grises / monocromático para impresión térmica de 58/80mm y pantalla.
@@ -1814,15 +1915,16 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Compilación limpia con 0 errores y renderizado validado.
 
 ### [2026-08-31 11:46:00] - [FEAT] [UI/UX] [WPF] - Acceso con Tecla Enter al Digitar Placa y Limpieza de Encabezado de Ocupación
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Quiero que en esta pantalla cuando la persona digite la placa, permita el acceso dando enter y por el bton de registrar e imprimir entrada . adicional eliminame lo que te señale en verde que es informacion innecesaria"*
+  > _"Quiero que en esta pantalla cuando la persona digite la placa, permita el acceso dando enter y por el bton de registrar e imprimir entrada . adicional eliminame lo que te señale en verde que es informacion innecesaria"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Acceso con Enter al Digitar Placa (`CheckInView.xaml`, `CheckInView.xaml.cs`)**:
      - Se configuraron `InputBindings` (`KeyBinding Key="Return"`, `KeyBinding Key="Enter"`) vinculados a `RegisterAndPrintCommand`.
      - Se implementó el manejador `PlateTextBox_KeyDown` para disparar el comando de registro e impresión al pulsar `Enter` de manera instantánea.
   2. **Limpieza del Encabezado de Ocupación (`CheckInView.xaml`)**:
-     - Se removió el texto resumen redundante `OccupancySummary` (*"34 disponibles / 3 ocupados"*) del encabezado, evitando el recorte de texto del título (*"Ocupación de Parqueadero"*) y manteniendo las píldoras inferiores de disponibles y ocupados limpias y claras.
+     - Se removió el texto resumen redundante `OccupancySummary` (_"34 disponibles / 3 ocupados"_) del encabezado, evitando el recorte de texto del título (_"Ocupación de Parqueadero"_) y manteniendo las píldoras inferiores de disponibles y ocupados limpias y claras.
 - **📦 Componentes Modificados**:
   - `Parking/Views/CheckInView.xaml`
   - `Parking/Views/CheckInView.xaml.cs`
@@ -1831,9 +1933,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - XAML y C# validados limpiamente con 0 errores.
 
 ### [2026-08-31 11:34:00] - [UI/UX] [WPF] - Cambio de Campo 'Operador Responsable' a Texto Plano en Apertura de Turno
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Cuando este en la pantalla para abriri caja, este cuadro no deberia de verse como un cuadro seleccionable si no debe ser un text plano , dejalo como si no un boton"*
+  > _"Cuando este en la pantalla para abriri caja, este cuadro no deberia de verse como un cuadro seleccionable si no debe ser un text plano , dejalo como si no un boton"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Ajuste en `ShiftClosureView.xaml`**:
      - Se reemplazó el control interactivo `<TextBox IsReadOnly="True" Style="{StaticResource ModernTextBox}" .../>` por un `<TextBlock>` de texto plano informativo (`FontSize="15"`, `FontWeight="SemiBold"`, `Foreground="{DynamicResource BrushTextPrimary}"`).
@@ -1845,13 +1948,14 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - XAML y C# validados limpiamente con 0 errores.
 
 ### [2026-08-31 10:33:00] - [UI/UX] [WPF] - Rediseño y Ajuste Proporcional del Cuadro de Captura de Placa en Salida y Liquidación
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ayudame que en mi wpf me ajuste esta pantalla , donde el cuadro de donde se ingresa la placa quede mas angosta y alta, algo como deje el cuadro rojo"*
+  > _"Ayudame que en mi wpf me ajuste esta pantalla , donde el cuadro de donde se ingresa la placa quede mas angosta y alta, algo como deje el cuadro rojo"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Distribución Integral y Solución de Recorte (`CheckOutView.xaml`)**:
      - Se configuró la caja de búsqueda para abarcar de forma fluida el ancho completo de la tarjeta superior (`Grid.Column="0"` con `Width="*"`, `Height="100"` y tipografía `48px Black Monospace`), evitando márgenes vacíos antiestéticos.
-     - Se ajustó el botón `"Buscar / Cobrar"` con `MinWidth="210"`, `Height="100"` y `Padding="24,0"`, eliminando por completo el recorte de texto observado (*"Buscar / Cobra"*).
+     - Se ajustó el botón `"Buscar / Cobrar"` con `MinWidth="210"`, `Height="100"` y `Padding="24,0"`, eliminando por completo el recorte de texto observado (_"Buscar / Cobra"_).
      - **Rediseño Adaptativo de Tarjetas de Patio**: Se rediseñó el `DataTemplate` de las tarjetas de vehículos activos a `Width="460"`, `CornerRadius="16"`, `Padding="18,16"` y una arquitectura interna en 2 niveles (Fila 1: Icono + Placa 22px y Categoría; Fila 2: Hora de entrada y tiempo transcurrido en pastilla destacada sin colisiones, junto con el botón Liquidar).
   2. **Actualización de Estilo Visual (`Controls.xaml` -> `CheckoutSearchTextBox`)**:
      - Altura establecida en `100px` con `FontSize="48"` y alineación centrada.
@@ -1864,9 +1968,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - XAML y C# validados y estructurados correctamente con 0 errores de sintaxis/diseño.
 
 ### [2026-08-30 23:59:00] - [UI/UX] [WPF] - Corrección de Cobertura de Fondo Oscuro (Backdrop) en Modal de Cobro y Liquidación
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Pero la pantallaoscura no se ve ajustada"*
+  > _"Pero la pantallaoscura no se ve ajustada"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Diagnóstico**: CheckOutDialog.xaml tenía propiedades quemadas Height="800" Width="1000" con fondo translúcido #B3000000. Al abrirse sobre una ventana maximizada o de mayor resolución, el telón/overlay oscuro solo cubría ese rectángulo central de 1000x800 px, dejando los costados sin oscurecer.
   2. **Remoción de Restricciones Fijas (CheckOutDialog.xaml)**: Se eliminaron los atributos Height="800" y Width="1000" del elemento raíz <Window>.
@@ -1883,9 +1988,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - dotnet build: **0 Errores, 0 Advertencias**.
 
 ### [2026-08-30 20:30:00] - [SECURITY] [RBAC] [SYNC] - Estandarización Canónica de Permisos RBAC, Motor de Alias Resiliente y Sincronización Offline en Terminal WPF
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"AUDITORÍA TÉCNICA EXHAUSTIVA: SISTEMA DE PERMISOS (PWA/API/WPF) Y MULTI-TENANCY SaaS. Diagnóstico del flujo de permisos (PWA -> API -> WPF), blindaje de aislamiento multi-tenant SaaS (Organizaciones y Sedes), cero errores de compilación y registro estricto en HISTORIAL_CAMBIOS.md."*
+  > _"AUDITORÍA TÉCNICA EXHAUSTIVA: SISTEMA DE PERMISOS (PWA/API/WPF) Y MULTI-TENANCY SaaS. Diagnóstico del flujo de permisos (PWA -> API -> WPF), blindaje de aislamiento multi-tenant SaaS (Organizaciones y Sedes), cero errores de compilación y registro estricto en HISTORIAL_CAMBIOS.md."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Motor de Permisos Canónico y Aliases Bidireccionales (`PermissionService.cs`)**:
      - Se implementó una matriz de resolución de permisos que soporta coincidencia exacta, comodines globales (`*`, `all`), comodines a nivel de módulo (`shifts.*`, `monitoring.*`, `analytics.*`) y mapeo bidireccional de alias entre slugs canónicos de backend/PWA (`shifts.view_current`, `monitoring.view_occupancy`, `analytics.view_dashboard`) y nombres de vista de WPF (`shift.view`, `recent_entries.view`, `analytics.view`).
@@ -1913,13 +2019,14 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 ---
 
 ### [2026-08-30 23:15:00] - [Funcionalidad/UI] [WPF] - Visualización de Logos de Convenios Activos
+
 - **Autor**: Antigravity AI Assistant
 - **💬 Prompt Original del Usuario**:
-  > *"Quisiera que en esta pantalla me cargue los logos de los convenios que se encuentran registrados para esa sede"*
+  > _"Quisiera que en esta pantalla me cargue los logos de los convenios que se encuentran registrados para esa sede"_
 - **🤖 Resumen Técnico para la IA**:
   1. En `CheckOutViewModel.cs` se creó la colección `BranchAgreements`.
   2. Al ejecutar `LoadStoresAsync()` (que trae las tiendas activas de la sede), se invocó `_agreementService.GetAgreementsByStoreAsync` para cada una de ellas con el fin de recolectar todos los convenios y poblar `BranchAgreements`.
-  3. En `CheckOutView.xaml` se incrustó un `ItemsControl` horizontal a la derecha del `CheckBox` *"Aplicar Convenio"*.
+  3. En `CheckOutView.xaml` se incrustó un `ItemsControl` horizontal a la derecha del `CheckBox` _"Aplicar Convenio"_.
   4. Este `ItemsControl` renderiza una previsualización pequeña (tarjeta de imagen con tooltip) por cada convenio disponible usando su `ImageUrl` (con fallback dinámico al logo principal en caso de ausencia de imagen).
 - **📦 Componentes Modificados**:
   - `Parking/ViewModels/CheckOutViewModel.cs`
@@ -1927,9 +2034,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `HISTORIAL_CAMBIOS.md`
 
 ### [2026-08-30 22:54:00] - [UI/UX] [WPF] - Rediseño Profesional de Tiquete Térmico
+
 - **Autor**: Antigravity AI Assistant
 - **💬 Prompt Original del Usuario**:
-  > *"la impresion que me genera, quisiera que me generara una mas pro (basate en la 2da imagen), quisiera que la generaras en blanco negro, ademas que tuviese el logo que tiene el login en la parte superior"*
+  > _"la impresion que me genera, quisiera que me generara una mas pro (basate en la 2da imagen), quisiera que la generaras en blanco negro, ademas que tuviese el logo que tiene el login en la parte superior"_
 - **🤖 Resumen Técnico para la IA**:
   1. Se reestructuró por completo el contenedor principal en `ReceiptPreviewDialog.xaml`.
   2. Se adoptó una estética monocromática `blanco/negro` típica de las impresoras térmicas (fondos blancos sólidos, textos `#000000`).
@@ -1942,9 +2050,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `HISTORIAL_CAMBIOS.md`
 
 ### [2026-08-30 22:06:00] - [UI/UX] [WPF] - Optimización de Espacio y Placa Gigante
+
 - **Autor**: Antigravity AI Assistant
 - **💬 Prompt Original del Usuario**:
-  > *"Elimina esto y aprovecha esos texta para aumentar el cuadro donde se digita la placa"*
+  > _"Elimina esto y aprovecha esos texta para aumentar el cuadro donde se digita la placa"_
 - **🤖 Resumen Técnico para la IA**:
   1. Se eliminó por completo el bloque `<Grid>` del "Header del Módulo" (que contenía los textos "Registro de Entrada de Vehículo" y el badge de "Terminal Activa") en `CheckInView.xaml` para liberar espacio vertical en la columna izquierda.
   2. Se aplicaron los tamaños masivos directamente al `PlateTextBox` (`Height="160"` y `FontSize="90"`) ocupando el espacio liberado por el header, sin romper el diseño de 2 columnas ni provocar scroll horizontal.
@@ -1953,9 +2062,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `HISTORIAL_CAMBIOS.md`
 
 ### [2026-08-30 21:55:00] - [UI/UX] [WPF] - Toggle de Contraseña en Inicio de Sesión
+
 - **Autor**: Antigravity AI Assistant
 - **💬 Prompt Original del Usuario**:
-  > *"ayudame con el login que tenga un icono para ver la clave"*
+  > _"ayudame con el login que tenga un icono para ver la clave"_
 - **🤖 Resumen Técnico para la IA**:
   1. Se agregaron las geometrías de íconos `IconEye` y `IconEyeOff` a `Icons.xaml` para mantener la estandarización de recursos vectoriales.
   2. En `LoginWindow.xaml`, se reemplazó el `PasswordBox` solitario por un `Grid` superpuesto que contiene el `PasswordBox`, un `TextBox` en modo `Collapsed` y un `Button` transparente de alternancia alineado a la derecha.
@@ -1967,9 +2077,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `HISTORIAL_CAMBIOS.md`
 
 ### [2026-08-30 21:47:00] - [UI/UX] [WPF] - Ajuste de Tamaño Masivo en Caja de Placa
+
 - **Autor**: Antigravity AI Assistant
 - **💬 Prompt Original del Usuario**:
-  > *"quisiera que donde se ingresa la placa tenga este tamaño, sin que las otras cards se corten, dejalas responsive tambien"*
+  > _"quisiera que donde se ingresa la placa tenga este tamaño, sin que las otras cards se corten, dejalas responsive tambien"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Ajuste XAML (`CheckInView.xaml`)**: Se incrementó drásticamente el alto (`Height="160"`) y el tamaño de la fuente (`FontSize="90"`) del `PlateTextBox`.
   2. **Responsividad**: Dado que la fila inferior del Grid (`Row 1`) posee un `Height="*"`, absorbe dinámicamente el espacio restante. Los contenedores de las columnas inferiores ya cuentan con `ScrollViewer` (`VerticalScrollBarVisibility="Auto"`), lo que garantiza que las tarjetas (Cards) nunca se corten irreparablemente; simplemente habilitarán el scroll vertical si la pantalla es muy pequeña.
@@ -1978,9 +2089,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `HISTORIAL_CAMBIOS.md`
 
 ### [2026-08-30 21:20:00] - [UI/UX] [WPF] - Reorganización Panorámica de Pantalla (Eliminación de Título y Expansión de Placa)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Quiero que me reorganices esta pantalla , donde lo rojo quiero que me quede en lo que te encerre en azul y lo de verde eliminalo, dejame el tamaño del rojocon mas 4 de size"*
+  > _"Quiero que me reorganices esta pantalla , donde lo rojo quiero que me quede en lo que te encerre en azul y lo de verde eliminalo, dejame el tamaño del rojocon mas 4 de size"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Reestructuración de XAML (`CheckInView.xaml`)**:
      - Se añadió `RowDefinitions` al Grid principal para dividir la vista horizontalmente (Top/Bottom).
@@ -1996,9 +2108,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - XAML compilado sin problemas y aplicativo reiniciado.
 
 ### [2026-08-30 20:49:00] - [UI/UX] [WPF] - Ajuste de Tamaño en Cuadro de Texto de Placa
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"ayudame que este cuadro se vea un poco mas ancho y con 4 mas de size en el text"*
+  > _"ayudame que este cuadro se vea un poco mas ancho y con 4 mas de size en el text"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Ajuste de Dimensiones (`CheckInView.xaml`)**:
      - Se incrementó el `Height` de `PlateTextBox` de 84 a 100 para que se vea más amplio (ancho/alto) en la interfaz.
@@ -2010,9 +2123,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build`: **0 Errores**.
 
 ### [2026-08-30 20:47:00] - [UI/UX] [WPF] - Validación Visual del Botón de Ingreso (Botón Gris)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"ayudame con que este boton se muestre en gris y quede inhabiitado hasta que el campo de la placa tenga min 1 letra, cuando ya detecte , ahi si se pnga en verde osea en el color que ya esta"*
+  > _"ayudame con que este boton se muestre en gris y quede inhabiitado hasta que el campo de la placa tenga min 1 letra, cuando ya detecte , ahi si se pnga en verde osea en el color que ya esta"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Validación MVVM (`CheckInViewModel.cs`)**:
      - Se añadió lógica de evaluación `CanExecute` (`CanRegisterAndPrint()`) al comando `RegisterAndPrintCommand` evaluando que `PlateNumber` no esté vacío.
@@ -2028,9 +2142,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Reinicio del aplicativo ejecutado correctamente.
 
 ### [2026-08-30 20:39:00] - [UI/UX] [WPF] - Incremento General de Tamaño de Fuente en Registro de Entrada (Check-In)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"podrias subirle 2 mas al fontsize de esta pantalla"*
+  > _"podrias subirle 2 mas al fontsize de esta pantalla"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Aumento de Tamaño de Fuente (`CheckInView.xaml`)**:
      - Se realizó un incremento global de +2 puntos en todos los atributos `FontSize` definidos en la vista de Ingreso de Vehículos.
@@ -2043,9 +2158,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Reinicio del aplicativo ejecutado correctamente.
 
 ### [2026-08-30 20:25:00] - [UI/UX] [WPF] - Configuración Global de la Tipografía (Inter)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"perfecto, ahora ayudame a que todo el wpf tenga como fuente de texto (inter)"*
+  > _"perfecto, ahora ayudame a que todo el wpf tenga como fuente de texto (inter)"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Actualización de FontFamilyPrimary (`Typography.xaml`)**:
      - Se añadió `Inter` como la primera prioridad en la pila de fuentes de la aplicación para `<FontFamily x:Key="FontFamilyPrimary">`.
@@ -2060,9 +2176,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Se espera un reinicio del aplicativo para aplicar los cambios a nivel de `App.xaml`.
 
 ### [2026-08-30 20:16:00] - [UI/UX] [WPF] - Opacidad y Deshabilitación Visual de Interfaz al no tener Turno Activo
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ayduame con algo, cuando un usuario ingresa a mi wpf y no he abierto caja, el actualmente obliga a que la persona abra caja para permitirle avanzar, sin embargo quisiera que todo lo que te señale en rjo se vea opaco haciendo la alucion de que se encuentra inactivo"*
+  > _"Ayduame con algo, cuando un usuario ingresa a mi wpf y no he abierto caja, el actualmente obliga a que la persona abra caja para permitirle avanzar, sin embargo quisiera que todo lo que te señale en rjo se vea opaco haciendo la alucion de que se encuentra inactivo"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Exposición del Estado del Turno (`MainShellViewModel.cs`)**:
      - Se añadió la propiedad `HasActiveShift` (`[ObservableProperty] private bool _hasActiveShift;`).
@@ -2081,9 +2198,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build`: **0 Errores**. (Compilación reiniciada exitosamente).
 
 ### [2026-08-28 08:00:00] - [SECURITY] [RBAC] [REFACTOR] - Erradicación Total de Contraseñas Maestras y Desacoplamiento de Roles Quemados en Terminal WPF
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Listo sucede que el superadmin accede y super bien accede al perfil de eso pero cree un administrador y tambien accede al portal del superadmin y eso no deberia ser así creo que esta algo quemado en codigo que sea administrador aparte necesito que revises todo el codigo de todos los 3 proyectos que no tenga cosas quemadas que no deberian estar . analiza completamente todo el desarrollo"*
+  > _"Listo sucede que el superadmin accede y super bien accede al perfil de eso pero cree un administrador y tambien accede al portal del superadmin y eso no deberia ser así creo que esta algo quemado en codigo que sea administrador aparte necesito que revises todo el codigo de todos los 3 proyectos que no tenga cosas quemadas que no deberian estar . analiza completamente todo el desarrollo"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Eliminación de Contraseñas Maestras Quemadas / Backdoors (`AuthService.cs`)**:
      - Se eliminaron completamente las validaciones de bypass por contraseña fija (`"Admin2026*"` y `"9988"`) tanto en autenticación local offline como en autorizaciones administrativas en caliente (`ValidateAdminAuthorizationAsync`). Toda autenticación se verifica exclusivamente contra el hash BCrypt del usuario.
@@ -2106,9 +2224,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingWpf.slnx`: **0 Errores**.
 
 ### [2026-08-27 13:10:00] - [ARCHITECTURE] [SAAS] [MULTI-TENANT] - Transición a Arquitectura Multi-Tenant SaaS Centralizada y Compatibilidad
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Tengo una consulta, se penso que el sistema es para venderlo pero es un saas completo entonces necesitamos un super admin que nosotros creemos entremos creemos un administrador y le demos ese usuario al man y que le ingrese cree su parqueadero y sus sedes y si le vendemos el producto a otras personas e igual se les cree su usuario administrador y que ingrese registre su parqueadero y sus sedes si me explico como se quiere manejar antes eso si lo entiendes encesito que revises toda la BD si la logica que tenemos si nos da para eso o que tanto se deberia cambiar ? necesito que revises eso y has un analisis completo y el plan completo que se deberia tomar."*
+  > _"Tengo una consulta, se penso que el sistema es para venderlo pero es un saas completo entonces necesitamos un super admin que nosotros creemos entremos creemos un administrador y le demos ese usuario al man y que le ingrese cree su parqueadero y sus sedes y si le vendemos el producto a otras personas e igual se les cree su usuario administrador y que ingrese registre su parqueadero y sus sedes si me explico como se quiere manejar antes eso si lo entiendes encesito que revises toda la BD si la logica que tenemos si nos da para eso o que tanto se deberia cambiar ? necesito que revises eso y has un analisis completo y el plan completo que se deberia tomar."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Aislamiento Multi-Tenant Centralizado en Backend API**:
      - Introducción de la entidad `Company` y discriminadores `CompanyId` en todas las entidades de negocio.
@@ -2123,11 +2242,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **✅ Verificación y Compilación**:
   - `dotnet build Parking.sln`: **0 Errores**.
 
-
 ### [2026-08-27 11:47:00] - [FEATURE] [ARCHITECTURE] [RELATIONAL] [MULTI-BRANCH] [INCIDENTS] - Arquitectura Relacional Multi-Sede (VehicleIncidentBranches), Fix SQLite y Modal Informativo
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"estoy probando pero ese error no es diciente si me explico . por que primero que todo no es error es que el esa placa tiene una novedad y por eso no se puede registrar deberia mostrar la novedad en una modal explicando el por que no. tengo una duda esas novedades puede ser generales o pueden ser para una sede especifica cuando este null el branchid es que es general ? o como hacemoes eso explicame eso ? .. y si quiero que sea ejemplo tengo 5 sedes y solo aplique para 2 como funcionaria eso ? la bd esta contemplada apra eso ? analiza eso (...) pero esa es la mejor opcion seguro ? no es mejor una tabla relacionada o que ? por que esas cosas de metes un json en una columna no se no me cuadra. analiza eso por que si es necesario hacer eso para 1 para algunas o para todas. realiza el plan completo e incluyendo lo que dijiste de como se muestra esto que se ve horrible si me explico."*
+  > _"estoy probando pero ese error no es diciente si me explico . por que primero que todo no es error es que el esa placa tiene una novedad y por eso no se puede registrar deberia mostrar la novedad en una modal explicando el por que no. tengo una duda esas novedades puede ser generales o pueden ser para una sede especifica cuando este null el branchid es que es general ? o como hacemoes eso explicame eso ? .. y si quiero que sea ejemplo tengo 5 sedes y solo aplique para 2 como funcionaria eso ? la bd esta contemplada apra eso ? analiza eso (...) pero esa es la mejor opcion seguro ? no es mejor una tabla relacionada o que ? por que esas cosas de metes un json en una columna no se no me cuadra. analiza eso por que si es necesario hacer eso para 1 para algunas o para todas. realiza el plan completo e incluyendo lo que dijiste de como se muestra esto que se ve horrible si me explico."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Arquitectura Relacional Canónica Multi-Sede (3NF) (`ParkingApi` & MySQL)**:
      - `VehicleIncidentBranch.cs`: Entidad relacional con clave compuesta `(IncidentId, BranchId)` y relaciones de integridad referencial hacia `VehicleIncident` y `Branch`.
@@ -2176,9 +2295,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `Parking` (WPF): `dotnet build` (**0 Errores**, 5.82s).
 
 ### [2026-08-27 11:06:00] - [FEATURE] [SECURITY] [INCIDENTS] [WPF & API] - Integración Completa de Novedades y Bloqueo de Placas (Lista Negra) en Terminal WPF y Sincronización
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Listo por hay me baje cambios de la PWA y me dijo mi compañero que le agrego algo de placas restingidas osea bloquedas para que no se les permita el ingreso me puedes decir si eso esta analiza y dime . (...) si realiza el plan para integrarlo completo"*
+  > _"Listo por hay me baje cambios de la PWA y me dijo mi compañero que le agrego algo de placas restingidas osea bloquedas para que no se les permita el ingreso me puedes decir si eso esta analiza y dime . (...) si realiza el plan para integrarlo completo"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Soporte de Sincronización de Novedades en Backend (`ParkingApi`)**:
      - `SyncDtos.cs`: Se agregó `public List<VehicleIncident> Incidents { get; set; } = new();` a `BootstrapSyncDto`.
@@ -2215,9 +2335,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `Parking` (WPF): `dotnet build` (**0 Errores**, 7.66s).
 
 ### [2026-08-27 10:44:00] - [FIX] [MULTI-BRANCH] [SYNC] [OFFLINE] [WPF & API] - Persistencia Estricta de BranchId en Tiquetes y Encolado de Ingresos Offline
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"que pasa en la sincronización debe sincronizar todo lo de la sede siempre filtrando por las sedes si me explico ? no general solo lo que se tienen en la sede recuerda que todas las tablas tienen eso del branch, otra cosa es cuando se agregue un vehiculo no esta guardando el brancid entonces eso es lo que genera error tambien en la sincronización si no trae información revisa eso por que eso debe ser error del api o error del wpf que no guarda el idbranch osea si o si deberia guardar siempre por que todo cambia de ingreso y salida va en una sede especifica me explico. ?"*
+  > _"que pasa en la sincronización debe sincronizar todo lo de la sede siempre filtrando por las sedes si me explico ? no general solo lo que se tienen en la sede recuerda que todas las tablas tienen eso del branch, otra cosa es cuando se agregue un vehiculo no esta guardando el brancid entonces eso es lo que genera error tambien en la sincronización si no trae información revisa eso por que eso debe ser error del api o error del wpf que no guarda el idbranch osea si o si deberia guardar siempre por que todo cambia de ingreso y salida va en una sede especifica me explico. ?"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Persistencia Estricta de `BranchId` en Backend (`ParkingApi`)**:
      - `CheckInRequestDto.cs` y `CheckOutRequestDto.cs`: Se agregó la propiedad `public int? BranchId { get; set; }`.
@@ -2236,9 +2357,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `Parking` (WPF): `dotnet build` (**0 Errores**, 7.27s).
 
 ### [2026-08-27 10:01:00] - [FIX] [SECURITY] [SYNC] [WPF] - Aislamiento Estricto de Sesiones Concurrentes por Usuario y Sincronización Inmutable de RateId
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"tengo un problema yo inicie sesión solo con el usuario miguel123 en el wpf, y el pwa inicie sesion con el admin osea son diferentes por que me cerro la sesión de todo así inicie con uno de una cierra todos eso esta super mal solo debe cerrar sesión de los que estan logueados con el mismos usuario si me explico. eso es un error garrafal. aparte tengo este problema y muestra offline activo no se y falla la sincronización osea no tienen sentido eso que esta pasando. ? analiza por favor esos cambios. me urge el de seguridad por usuario ."*
+  > _"tengo un problema yo inicie sesión solo con el usuario miguel123 en el wpf, y el pwa inicie sesion con el admin osea son diferentes por que me cerro la sesión de todo así inicie con uno de una cierra todos eso esta super mal solo debe cerrar sesión de los que estan logueados con el mismos usuario si me explico. eso es un error garrafal. aparte tengo este problema y muestra offline activo no se y falla la sincronización osea no tienen sentido eso que esta pasando. ? analiza por favor esos cambios. me urge el de seguridad por usuario ."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Aislamiento de Terminación de Sesión por Usuario (`MainShellViewModel.cs`)**:
      - Se blindó `HandleRealtimeNotificationAsync` para que al recibir el evento SignalR `UserSessionTerminated`, se valide si `currentUser.ServerUserId == notification.UserId.Value`.
@@ -2255,9 +2377,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build`: **0 Errores**, 6 Warnings conocidas (6.16s).
 
 ### [2026-08-27 09:48:00] - [UI/UX] [SYNC] [OFFLINE] [WPF] - Indicador de Conexión en LoginWindow y Sincronización Visual Paso a Paso en Transición de Acceso
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"no entiendo por que no se pudo conectar, segundo esta mal osea a ver como me explico que es lo que quiero que hagas aparece el login bien le doy click me logueo y de una vez lo primeor que hace es realizar la sincronización osea deberia aparecer algo que muestre que esta sincronizando si me explico ya despues de sincronizar si entra al sistema si me explico ? si no tiene conexion a internet apenas estemos en el login no se donde pero coloca algo parecio pero mas pequeño hay te pase la segunda imagen donde uno sepa a si esta conectado a la red o si sale modo offline de una vez sabemos que esta offline sii me explico lo que se quiere. analiza eso."*
+  > _"no entiendo por que no se pudo conectar, segundo esta mal osea a ver como me explico que es lo que quiero que hagas aparece el login bien le doy click me logueo y de una vez lo primeor que hace es realizar la sincronización osea deberia aparecer algo que muestre que esta sincronizando si me explico ya despues de sincronizar si entra al sistema si me explico ? si no tiene conexion a internet apenas estemos en el login no se donde pero coloca algo parecio pero mas pequeño hay te pase la segunda imagen donde uno sepa a si esta conectado a la red o si sale modo offline de una vez sabemos que esta offline sii me explico lo que se quiere. analiza eso."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Píldora de Estado de Red en Pantalla de Login (`LoginWindow.xaml` & `LoginViewModel.cs`)**:
      - Se integró un badge moderno en la barra superior de `LoginWindow.xaml` con indicador circular de color:
@@ -2265,7 +2388,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
        - 🔵/🟠 Cian/Ámbar (`#06B6D4` / `#F59E0B`): `Modo Offline (Sin Conexión)`
      - Al instanciar `LoginViewModel`, se invoca `_apiClient.PingAsync()` para determinar de inmediato la disponibilidad del servidor central antes de que el cajero intente iniciar sesión.
   2. **Transición con Barra de Progreso de Sincronización Visual (0% - 100%)**:
-     - Al validar credenciales y seleccionar la sede, la pantalla de Login muestra una barra de progreso interactiva (`ProgressBar` con `SyncProgressPercentage`) y el detalle exacto de la operación (`SyncStepDescription`: *"Sincronizando Usuarios y Permisos..."*, *"Sincronizando Tarifas y Reglas..."*, *"Sincronizando Comercios y Convenios..."*, etc.).
+     - Al validar credenciales y seleccionar la sede, la pantalla de Login muestra una barra de progreso interactiva (`ProgressBar` con `SyncProgressPercentage`) y el detalle exacto de la operación (`SyncStepDescription`: _"Sincronizando Usuarios y Permisos..."_, _"Sincronizando Tarifas y Reglas..."_, _"Sincronizando Comercios y Convenios..."_, etc.).
      - Al culminar la sincronización exitosamente (o determinar el modo offline seguro sin excepciones), se abre la ventana principal `MainShellWindow` lista para operar.
   3. **Eliminación de Alertas de Error Duplicadas en `MainShellViewModel.cs`**:
      - Se eliminó el diálogo de advertencia intrusivo en `MainShellViewModel.InitializeAsync()`, dejando que la terminal refleje el estado dinámico en su barra de estado de manera limpia y natural.
@@ -2278,9 +2401,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build`: **0 Errores**, 6 Warnings conocidas (6.20s).
 
 ### [2026-08-27 09:07:00] - [FIX] [SYNC] [OFFLINE] [UI/UX] - Corrección de Sincronización de Tarifas, Auto-Sync al Login con Modo Offline Seguro y Homologación Tipográfica en Cierre de Turno
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"fallo la sincronización, que sucede, sabes otra cosa que si o si deberia pasar apenas se loguee se haga la sincronización con el api se que demora mas entrar pero es lo mejor así garantizamos que el sistema esta full y conectado, dado que no tenga internet y no sea posible por que no esta conectado a internet deberia salir que se iniciara en modo offline por que la wpf debe funcionar por completo en modo offline eso no se ha probador pero revisar para que eso este completo. otra cosa el tamaño de esa letra que dice Fecha Apertura, Fecha Cierre se le aplique a la ultima imagen si ves analiza todo eso."*
+  > _"fallo la sincronización, que sucede, sabes otra cosa que si o si deberia pasar apenas se loguee se haga la sincronización con el api se que demora mas entrar pero es lo mejor así garantizamos que el sistema esta full y conectado, dado que no tenga internet y no sea posible por que no esta conectado a internet deberia salir que se iniciara en modo offline por que la wpf debe funcionar por completo en modo offline eso no se ha probador pero revisar para que eso este completo. otra cosa el tamaño de esa letra que dice Fecha Apertura, Fecha Cierre se le aplique a la ultima imagen si ves analiza todo eso."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Corrección de Conflicto en Sincronización de Tarifas (`VehicleRateConfiguration.cs` & `SyncEngineService.cs`)**:
      - `VehicleRateConfiguration.cs`: Se corrigió el índice de `VehicleRates` reemplazando el índice único global por un índice compuesto por `(BranchId, VehicleType)`.
@@ -2301,9 +2425,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build`: **0 Errores**, 6 Warnings conocidas (7.30s).
 
 ### [2026-08-27 08:16:00] - [UI/UX] [BRANDING] [WPF] - Rediseño de Hero Banner en LoginWindow con Logotipo a Gran Escala y Fondo Homogéneo
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"yo creo que el logo deberia estar en toda esa parte gris o verde como sea si me explico no así de pequeño se ve super mal si me explico. analiza eso por que no se ve supremamente bien. [Captura señalando con círculo rojo todo el panel izquierdo para que el logo ocupe el espacio principal]"*
+  > _"yo creo que el logo deberia estar en toda esa parte gris o verde como sea si me explico no así de pequeño se ve super mal si me explico. analiza eso por que no se ve supremamente bien. [Captura señalando con círculo rojo todo el panel izquierdo para que el logo ocupe el espacio principal]"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Armonización Cromática del Fondo (`#111822`)**:
      - Se ajustó el fondo del panel izquierdo de `LoginWindow.xaml` a `#111822` (valor hexadecimal exacto del fondo de `logo.jpeg`), eliminando cortes y contornos rígidos y fusionando el arte de forma ininterrumpida.
@@ -2319,9 +2444,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build`: **0 Errores**, 6 Warnings conocidas (6.62s).
 
 ### [2026-08-27 07:59:00] - [ASSETS] [BRANDING] [WPF] - Integración del Logotipo Oficial (.jpeg) en Login, Barra de Título, Sidebar y Recibos
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"ya agrege pero es .jpg la imagen no png entonces analiza pero ya esta en la route que me dijhiste"*
+  > _"ya agrege pero es .jpg la imagen no png entonces analiza pero ya esta en la route que me dijhiste"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Configuración de Recurso Embebido (`Parking/Parking.csproj`)**:
      - Se vinculó `Resources\logo.jpeg` con Build Action `<Resource Include="Resources\logo.jpeg" />` para que el compilador de .NET empaquete el imagotipo de alta resolución dentro del ensamblado ejecutable.
@@ -2344,9 +2470,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build`: **0 Errores**, 6 Warnings conocidas de nulabilidad (6.56s).
 
 ### [2026-08-27 00:12:00] - [UI/UX] [PWA] [MOBILE] - Bloqueo de Desbordamiento Lateral (Anti-Horizontal Shift) y Ajuste de Encabezado de Métodos de Pago
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"cuando hago el gesto hacia la izquierda en la dashboard en la version mobile, me queda ese espacio que te señale, evitalo y corrigelo, adicional que recuadacion hoy en distribucion por meotodos por pago se ve muy juntos, separalos para version mobile [Captura mostrando espacio blanco a la derecha por desplazamiento horizontal y solapamiento del título de métodos de pago]"*
+  > _"cuando hago el gesto hacia la izquierda en la dashboard en la version mobile, me queda ese espacio que te señale, evitalo y corrigelo, adicional que recuadacion hoy en distribucion por meotodos por pago se ve muy juntos, separalos para version mobile [Captura mostrando espacio blanco a la derecha por desplazamiento horizontal y solapamiento del título de métodos de pago]"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Diagnóstico y Corrección del Desplazamiento Lateral (Espacio en Blanco a la Derecha)**:
      - Se identificó que en pantallas móviles pequeñas (< 400px), los elementos combinados de `.top-bar` (`mobile-brand` + `branch-selector-pill` + botón de refrescar) excedían el ancho del viewport (aprox. 404px de ancho), lo cual habilitaba el desplazamiento horizontal involuntario al hacer swipe a la izquierda.
@@ -2354,7 +2481,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - `DashboardLayout.css`: Se configuró `.top-bar` con `max-width: 100%; overflow: hidden; gap: 6px;` e hijos con `min-width: 0` y `flex-shrink: 1`, y `.main-content` con `overflow-x: hidden;`.
   2. **Separación y Ajuste en "Distribución por Métodos de Pago" (`Dashboard.css`)**:
      - Se dotó a `.pie-card-header` de `flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center;` con `min-width: 150px` y `flex: 1` para el título `<h3>`.
-     - Esto asegura que el título *"Distribución por Métodos de Pago"* y la insignia *"Recaudación hoy"* mantengan una separación limpia, sin amontonamiento ni superposición en resoluciones móviles.
+     - Esto asegura que el título _"Distribución por Métodos de Pago"_ y la insignia _"Recaudación hoy"_ mantengan una separación limpia, sin amontonamiento ni superposición en resoluciones móviles.
 - **📦 Componentes Modificados**:
   - `ParkingPwa/src/index.css`
   - `ParkingPwa/src/shared/ui/DashboardLayout.css`
@@ -2364,12 +2491,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `npm run build`: **0 Errores** (1.38s).
   - `oxlint`: **0 Errores**.
 
-
-
 ### [2026-08-27 00:07:00] - [ASSETS] [BRANDING] [PWA] - Integración del Imagotipo Oficial PNG en Login, Menú Lateral y Barra Superior
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"en el login y en el menu lateral hay un icono de un carro quiero que los reemplaces por el png que te pase [Imagen oficial PNG con fondo transparente]"*
+  > _"en el login y en el menu lateral hay un icono de un carro quiero que los reemplaces por el png que te pase [Imagen oficial PNG con fondo transparente]"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Procesamiento del Logo Maestro (`ParkingPwa/public/logo.png`)**:
      - Se procesó y exportó el logotipo oficial de alta resolución con canal alfa transparente (`/logo.png`) y se actualizaron las densidades de icono PWA (`pwa-512x512.png`, `pwa-192x192.png`, `apple-touch-icon.png`, `favicon.png`).
@@ -2391,12 +2517,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `npm run build`: **0 Errores** (1.29s).
   - `oxlint`: **0 Errores**.
 
-
-
 ### [2026-08-27 00:00:00] - [UI/UX] [PWA] [MOBILE] - Unificación de Scroll y Cabecera Sticky para Evitar Cortes Superiores en Móvil
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"volvi a notar que en la version mobile, cuando me logeo e ingreso, esto no muestra completo la pagina desde los elementos superiores, ajustalos para que se vean bien [Captura mostrando banner verde de dashboard cortado y top-bar oculto]"*
+  > _"volvi a notar que en la version mobile, cuando me logeo e ingreso, esto no muestra completo la pagina desde los elementos superiores, ajustalos para que se vean bien [Captura mostrando banner verde de dashboard cortado y top-bar oculto]"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Diagnóstico del Corte Superior en Móvil**:
      - Se identificó la existencia de doble scroll anidado (`.main-content` con `overflow-y: auto` y `.dashboard-container` / `.caja-container` con `height: 100%; overflow-y: auto;`).
@@ -2420,12 +2545,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `npm run build`: **0 Errores** (1.10s).
   - `oxlint`: **0 Errores**.
 
-
-
 ### [2026-08-26 23:56:00] - [BUGFIX] [AUTH] [PWA] - Cierre de Sesión Inmediato en Un Solo Clic sin Rebote de Navegación
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Cuando quiero cerrar sesion, no me lo hace hasta que le oprima 2 veces"*
+  > _"Cuando quiero cerrar sesion, no me lo hace hasta que le oprima 2 veces"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Diagnóstico del Rebote de Navegación**:
      - Al invocar `authService.logout()`, la función realizaba una llamada asíncrona de red (`apiClient.post('/Auth/logout')`) y borraba `auth_token` solo en el bloque `finally`.
@@ -2441,12 +2565,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `npm run build`: **0 Errores** (1.37s).
   - `oxlint`: **0 Errores**.
 
-
-
 ### [2026-08-26 23:46:00] - [ASSETS] [BRANDING] [PWA] [WPF] - Integración del Nuevo Logotipo Oficial de Parking Flow en PWA y Aplicación de Escritorio WPF
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"requiero que este logo sea el que que quede cuando el pwa y el wpf se instalen en el pc y en el cel o cuando quede con el acceso directo [Imagen oficial adjunta con imagotipo 'P' estilizada con carretera y vehículo en paleta verde, blanco y naranja sobre fondo oscuro]"*
+  > _"requiero que este logo sea el que que quede cuando el pwa y el wpf se instalen en el pc y en el cel o cuando quede con el acceso directo [Imagen oficial adjunta con imagotipo 'P' estilizada con carretera y vehículo en paleta verde, blanco y naranja sobre fondo oscuro]"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Generación de Assets de Alta Densidad para la PWA (`ParkingPwa/public/`)**:
      - Se procesó el logotipo maestro de alta resolución generando:
@@ -2473,15 +2596,14 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `npm run build` en ParkingPwa: **0 Errores** (1.40s).
   - `dotnet build` en ParkingWpf: **0 Errores** (compilación correcta).
 
-
-
 ### [2026-08-26 23:38:00] - [FEATURE] [UI/UX] [PWA] [CAJA] - Alineación de Estados, Cierre Dinámico de Cajas y Renombrado Oficial a Parking Flow
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"en el modulo de cajaas, los estanos no seven alineados con el titulo, adicional quiero que exista la opcion para cerrar cajas, otra cosa que requuiero y es que en vez de llamarse parkflow, llamalo parking flow, asi que reemplazalo en el pwa"*
+  > _"en el modulo de cajaas, los estanos no seven alineados con el titulo, adicional quiero que exista la opcion para cerrar cajas, otra cosa que requuiero y es que en vez de llamarse parkflow, llamalo parking flow, asi que reemplazalo en el pwa"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Alineación Visual de Estados en Módulo de Caja (`Caja.tsx`)**:
-     - Se ajustó el encabezado `<th className="text-center">ESTADO</th>` y el cuerpo `<td className="text-center">` para que los badges `Abierto` / `Cerrado` queden perfectamente alineados y centrados con su título de columna tanto en *Turno de Caja Activo* como en *Historial Consolidado de Cajas*.
+     - Se ajustó el encabezado `<th className="text-center">ESTADO</th>` y el cuerpo `<td className="text-center">` para que los badges `Abierto` / `Cerrado` queden perfectamente alineados y centrados con su título de columna tanto en _Turno de Caja Activo_ como en _Historial Consolidado de Cajas_.
   2. **Cierre Dinámico de Cajas Abiertas (`Caja.tsx`)**:
      - Se añadió la columna `<th className="text-right">ACCIONES</th>`.
      - Para cualquier turno en estado "Abierto" (`!isClosed`), se incorporó el botón **"🔴 Cerrar Caja"** en el historial y en la tarjeta de turno activo.
@@ -2503,12 +2625,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `npm run build`: **0 Errores** (compilación de producción exitosa en 1.13s).
   - `oxlint`: **0 Errores**.
 
-
-
 ### [2026-08-26 23:31:00] - [UI/UX] [PWA] [MOBILE] - Scroll Horizontal Táctil (table-responsive) en Todos los Módulos y Tablas de Configuración
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"sigo viendo estos errores en la version mobile [Captura 1: Tabla de Roles y Matriz de Permisos cortada en el extremo derecho sin scroll; Captura 2: Tabla de Convenios Comerciales cortada a la derecha]"*
+  > _"sigo viendo estos errores en la version mobile [Captura 1: Tabla de Roles y Matriz de Permisos cortada en el extremo derecho sin scroll; Captura 2: Tabla de Convenios Comerciales cortada a la derecha]"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Estandarización de Contenedores con Desplazamiento Horizontal (`table-responsive`)**:
      - Se envolvieron todas las tablas de datos que carecían de contenedor elástico con `<div className="table-responsive" style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>`.
@@ -2535,23 +2656,22 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `npm run build`: **0 Errores** (compilación de producción exitosa en 1.10s).
   - `oxlint`: **0 Errores**.
 
-
-
 ### [2026-08-26 23:17:00] - [UI/UX] [PWA] [MOBILE] - Adaptación de Grid de Tarifas 2x2 y Modal de Usuarios con Altura 100dvh
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ajustame el diseño mobile, para que en el cel se vea bien en los flujos y modulos que te pase en las imagenes [Captura 1: Formulario Nueva Tarifa para esta Sede con campos comprimidos; Captura 2: Modal Crear Nuevo Usuario con botones fuera del viewport]"*
+  > _"Ajustame el diseño mobile, para que en el cel se vea bien en los flujos y modulos que te pase en las imagenes [Captura 1: Formulario Nueva Tarifa para esta Sede con campos comprimidos; Captura 2: Modal Crear Nuevo Usuario con botones fuera del viewport]"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Formulario de Tarifas Vehiculares (`ParqueaderosTab.tsx` & `Settings.css`)**:
      - Se reemplazó la disposición forzada de 4 columnas en línea por la clase `.form-grid-rates`.
      - En pantallas móviles (`max-width: 640px`), se transforma en un **grid 2x2 equilibrado**:
-       - Fila 1: *Valor Hora ($)* y *Valor Minuto ($)*.
-       - Fila 2: *Máximo Día ($)* y *Gracia (min)*.
+       - Fila 1: _Valor Hora ($)_ y _Valor Minuto ($)_.
+       - Fila 2: _Máximo Día ($)_ y _Gracia (min)_.
      - Se eliminó el salto de línea en las etiquetas y los inputs cuentan con ancho suficiente para la digitación de montos monetarios.
   2. **Modal Crear / Editar Usuario (`UsuariosTab.tsx` & `Settings.css`)**:
      - Se configuró `.modal-content` con `max-height: calc(100dvh - 20px); display: flex; flex-direction: column; overflow: hidden;`.
      - El formulario y su cuerpo (`.modal-body`) tienen `flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;`.
-     - El pie de página (`.modal-footer`) quedó fijado como barra inferior estática (`flex-shrink: 0; background: #ffffff; border-top: 1px solid #e2e8f0;`), asegurando que los botones *"Cancelar"* y *"Crear Usuario / Guardar Cambios"* permanezcan 100% visibles y accesibles en cualquier tamaño de pantalla móvil.
+     - El pie de página (`.modal-footer`) quedó fijado como barra inferior estática (`flex-shrink: 0; background: #ffffff; border-top: 1px solid #e2e8f0;`), asegurando que los botones _"Cancelar"_ y _"Crear Usuario / Guardar Cambios"_ permanezcan 100% visibles y accesibles en cualquier tamaño de pantalla móvil.
 - **📦 Componentes Modificados**:
   - `ParkingPwa/src/features/settings/ui/ParqueaderosTab.tsx`
   - `ParkingPwa/src/features/settings/ui/UsuariosTab.tsx`
@@ -2561,12 +2681,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `npm run build`: **0 Errores** (compilación de producción exitosa en 1.16s).
   - `oxlint`: **0 Errores**.
 
-
-
 ### [2026-08-26 23:09:00] - [FEATURE] [PWA] [AUTH] - Opción 'Recordar Usuario' en Inicio de Sesión
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ayudame con agregarle al login una opcion para recordar el usuario"*
+  > _"Ayudame con agregarle al login una opcion para recordar el usuario"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Lógica de Persistencia y Estado (`Login.tsx`)**:
      - Se inicializan los estados `username` y `rememberUser` consultando de forma perezosa `localStorage.getItem('remembered_username')`.
@@ -2574,7 +2693,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - En el método `handleLogin`, tras un inicio de sesión exitoso con la API, se guarda el `username.trim()` si `rememberUser` está activo, o se purga de `localStorage` si está desmarcado.
      - Por estrictos estándares de seguridad y OWASP, nunca se almacena la contraseña del usuario.
   2. **Diseño y Estilos (`Login.tsx` & `Login.css`)**:
-     - Se añadió la fila `.login-options-row` con `.remember-user-label` y `.remember-user-checkbox` entre el campo de contraseña y el botón *"Ingresar"*.
+     - Se añadió la fila `.login-options-row` con `.remember-user-label` y `.remember-user-checkbox` entre el campo de contraseña y el botón _"Ingresar"_.
      - Se aplicó la paleta institucional (#07665e), tipografía limpia y soporte táctil óptimo para smartphones y desktop.
 - **📦 Componentes Modificados**:
   - `ParkingPwa/src/features/auth/ui/Login.tsx`
@@ -2584,12 +2703,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `npm run build`: **0 Errores** (build PWA generado en 1.47s).
   - `oxlint`: **0 Errores**.
 
-
-
 ### [2026-08-26 22:52:00] - [UI/UX] [PWA] [MOBILE] - Optimización de Diseño y Vistas Responsive Mobile (Navbar, Dashboard Hero, Slicers, Gestión de Usuarios y Modales)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ayudame ajustar en version mobile mi pwa en las imagenes que te anexe [5 capturas señalando: Top Navbar con selector de sede/refrescar, Dashboard Hero Banner & Slicers, Tabla de Usuarios con columnas cortadas, Sub-pestañas del Modal de Parametrización y Tabla de Tarifas Vehiculares en Modal]"*
+  > _"Ayudame ajustar en version mobile mi pwa en las imagenes que te anexe [5 capturas señalando: Top Navbar con selector de sede/refrescar, Dashboard Hero Banner & Slicers, Tabla de Usuarios con columnas cortadas, Sub-pestañas del Modal de Parametrización y Tabla de Tarifas Vehiculares en Modal]"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Top Navbar (`DashboardLayout.css`)**:
      - Se forzó `flex-wrap: nowrap` en `.header-actions` y `.top-bar` para evitar que el botón de actualizar quiebre a una segunda fila o se superponga flotando bajo la sede.
@@ -2600,7 +2718,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   3. **Gestión de Usuarios (`UsuariosTab.tsx` & `Settings.css`)**:
      - Se envolvió la tabla de usuarios en un contenedor `.table-responsive` con scroll horizontal y `min-width: 600px`, garantizando que las columnas de rol, estado y acciones se puedan visualizar y acceder cómodamente en smartphones.
   4. **Sub-pestañas del Modal de Parametrización por Sede (`Settings.css`)**:
-     - Se configuró `.modal-subtabs-nav` con `overflow-x: auto`, `flex-wrap: nowrap` y márgenes optimizados para mobile, permitiendo que las 3 pestañas (*Medios de Pago, Asignación de Usuarios, Tarifas Vehiculares*) se visualicen y deslicen sin salirse del modal.
+     - Se configuró `.modal-subtabs-nav` con `overflow-x: auto`, `flex-wrap: nowrap` y márgenes optimizados para mobile, permitiendo que las 3 pestañas (_Medios de Pago, Asignación de Usuarios, Tarifas Vehiculares_) se visualicen y deslicen sin salirse del modal.
   5. **Tabla de Tarifas Vehiculares en Modal (`ParqueaderosTab.tsx`)**:
      - Se envolvió la tabla de tarifas dentro del modal en un contenedor `.table-responsive` con scroll horizontal, garantizando la visibilidad completa de los valores de hora, minuto, día máximo y tiempo de gracia.
 - **📦 Componentes Modificados**:
@@ -2614,22 +2732,21 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `npm run build`: **0 Errores** (compilación de producción exitosa en 2.65s).
   - `oxlint`: **0 Errores** en todos los componentes.
 
-
-
 ### [2026-08-26 17:45:00] - [FEATURE] [WPF] [SHIFTS] [OPERATIONS] - Modo de 'Recepción y Toma de Relevo de Caja' para Operadores Entrantes
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"mira ya se tienen los permisos faltaba publicar el api listo ya lo hice, sabes que sucede explicame acá que deberia hacer en la vida real pues estaba abierto el turno lo tenia admin yo ingrese otro usuario que tiene acceso a esa sede, entonces me sale ese mensaje pero deberia decirme que tomar turno y decirme cuanto estaba en caja y yo recibirlo exactamente revelar el turno por que la otra persona no esta, pero hay no aparece esa opcion ese boton no existe. explicame ..."*
+  > _"mira ya se tienen los permisos faltaba publicar el api listo ya lo hice, sabes que sucede explicame acá que deberia hacer en la vida real pues estaba abierto el turno lo tenia admin yo ingrese otro usuario que tiene acceso a esa sede, entonces me sale ese mensaje pero deberia decirme que tomar turno y decirme cuanto estaba en caja y yo recibirlo exactamente revelar el turno por que la otra persona no esta, pero hay no aparece esa opcion ese boton no existe. explicame ..."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Detección Automática de Operador Titular vs Operador Entrante (`ShiftClosureViewModel.cs`)**:
      - Se incorporaron las propiedades `IsShiftOwner`, `ActiveShiftOperatorName` y `ActiveShiftStartTime`.
      - Si el operador conectado NO es el titular del turno abierto (`IsShiftOwner == false`), la interfaz no le exige entregar la caja a un tercero, sino que se adapta al modo **"Recepción y Toma de Caja"**.
   2. **Comando `TakeOverShiftCommand`**:
-     - Permite que el operador entrante cuente el dinero físico de la gaveta, verifique la diferencia de arqueo contra el saldo esperado del sistema, y presione *"Recibir Caja, Tomar Turno e Iniciar Operación"*.
+     - Permite que el operador entrante cuente el dinero físico de la gaveta, verifique la diferencia de arqueo contra el saldo esperado del sistema, y presione _"Recibir Caja, Tomar Turno e Iniciar Operación"_.
      - El comando cierra formalmente el turno del operador anterior (`activeShift`) con el dinero contado y abre de inmediato el nuevo turno a nombre del operador entrante con esa base, redirigiendo de inmediato a `CheckInViewModel` (Ingreso de Vehículos).
   3. **UI Adaptativa en XAML (`ShiftClosureView.xaml`)**:
      - Tarjeta de advertencia informativa indicando quién abrió el turno anterior y quién lo está asumiendo.
-     - Botón principal de acción `ModernButton`: *"🤝 Recibir Caja, Tomar Turno e Iniciar Operación"*.
+     - Botón principal de acción `ModernButton`: _"🤝 Recibir Caja, Tomar Turno e Iniciar Operación"_.
 - **📦 Componentes Modificados**:
   - `Parking\ViewModels\ShiftClosureViewModel.cs`
   - `Parking\Views\ShiftClosureView.xaml`
@@ -2638,7 +2755,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingWpf.slnx`: **0 Errores**.
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"mira esto corri el primer script me encanto ese script me faltaria complementarlo que funciones tengo dentro de hay para ver si de cada modulo pero entonces si sigue siendo error de la logica del wpf por que sigue saliendo que no tengo permisos, si me hago entender, no voy hacer el insert por que eso se hace desde la pwa y veo que lo hace bien el error esta en el wpf analiza bien eso por favor revisa detalladamente."*
+  > _"mira esto corri el primer script me encanto ese script me faltaria complementarlo que funciones tengo dentro de hay para ver si de cada modulo pero entonces si sigue siendo error de la logica del wpf por que sigue saliendo que no tengo permisos, si me hago entender, no voy hacer el insert por que eso se hace desde la pwa y veo que lo hace bien el error esta en el wpf analiza bien eso por favor revisa detalladamente."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Reactividad Total en `Parking.Security.Authorize.cs`**:
      - Se implementó suscripción en `element.Loaded` y `element.Unloaded` a los eventos `PermissionsChanged` tanto de la instancia DI como de `PermissionService.Current`.
@@ -2653,8 +2770,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingWpf.slnx`: **0 Errores**.
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"bueno tengo este problema con los permisos mira que si se asignaron permisos al usuario que tiene el rol 2 pero ingreso en el wpf y me dice que no cuento con los permisos me imagino por que solo ha tomado los datos de la sql lite nada mas pero no ya elimine la db la volvi a mandar a crear y no no sirvio entonces que sucede por que no esta tomando los permisos correctamente ? que sucede hay revisa eso por que administrador si funciona ."*
-  > *"eso esta gravisimo en el sistema no debe a ver nada quemado todo lo que traiga la base de datos si el quisiera crearlo como cajero o cajera o hasta colocar el rol que quisiera desde que tenga los permisos que es lo importante se deberia validar como se te ocurre eso . revisa eso que me acabas de decir esta supremamente mal y eso deberia ir en reglas del agent como colocar eso así eso no es una buena practica"*
+  > _"bueno tengo este problema con los permisos mira que si se asignaron permisos al usuario que tiene el rol 2 pero ingreso en el wpf y me dice que no cuento con los permisos me imagino por que solo ha tomado los datos de la sql lite nada mas pero no ya elimine la db la volvi a mandar a crear y no no sirvio entonces que sucede por que no esta tomando los permisos correctamente ? que sucede hay revisa eso por que administrador si funciona ."_
+  > _"eso esta gravisimo en el sistema no debe a ver nada quemado todo lo que traiga la base de datos si el quisiera crearlo como cajero o cajera o hasta colocar el rol que quisiera desde que tenga los permisos que es lo importante se deberia validar como se te ocurre eso . revisa eso que me acabas de decir esta supremamente mal y eso deberia ir en reglas del agent como colocar eso así eso no es una buena practica"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Incorporación de Regla de Oro en `AGENTS.md`**:
      - Se añadió la prohibición estricta de usar nombres de roles o listas de permisos quemados (`roleName.Contains(...)` o arrays fijos).
@@ -2679,7 +2796,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingWpf.slnx`: **0 Errores**.
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"necesito que el api tenga el swagger en produccion para validar si de verdad quedo bien desplegada. revisa que así este configurada."*
+  > _"necesito que el api tenga el swagger en produccion para validar si de verdad quedo bien desplegada. revisa que así este configurada."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Configuración del Middleware en `Program.cs` (`ParkingApi`)**:
      - Se removió la restricción `if (app.Environment.IsDevelopment())` que limitaba Swagger exclusivamente a entornos locales.
@@ -2693,10 +2810,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingApi.slnx`: **0 Errores**.
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"esta mal la sincro, por que esta sincronizando todo pero no esta filtrando por la sede especifica, osea ya estoy en una sede debe filtrar que eso que se creo sea para la sede especifica si me explico no que traiga todo el mundo si no solo lo que este asociado a la sede que estoy . analiza eso"*
+  > _"esta mal la sincro, por que esta sincronizando todo pero no esta filtrando por la sede especifica, osea ya estoy en una sede debe filtrar que eso que se creo sea para la sede especifica si me explico no que traiga todo el mundo si no solo lo que este asociado a la sede que estoy . analiza eso"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Backend Central (`ParkingApi`)**:
-     - **Endpoint `/api/sync/bootstrap?branchId={branchId}`**: `SyncController.cs` y `ISyncService` / `SyncService.cs` ahora reciben `[From     - **Filtrado 100% Estricto de Datos (Sin Fuga de Registros Null)**:
+     - **Endpoint `/api/sync/bootstrap?branchId={branchId}`**: `SyncController.cs` y `ISyncService` / `SyncService.cs` ahora reciben `[From - **Filtrado 100% Estricto de Datos (Sin Fuga de Registros Null)**:
        - `Branches`: Retorna la sede activa y su capacidad oficial configurada (`TotalCapacity`).
        - `Users`: Retorna únicamente usuarios asignados en `UserBranches` para esa sede + administradores globales.
        - `PaymentMethods`: Retorna los medios de pago configurados en `BranchPaymentMethods` para esa sede (o maestros activos si no hay parametrización exclusiva).
@@ -2723,12 +2840,12 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingWpf.slnx`: **0 Errores**.
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"tengo el siguiente caso, funciono perfecto cuando desde la pwa crearon la categoria y cuando sincronice genial la trajo y la mostro de una, pero cuando desde la pwa la volvieron a eliminar y le di sincronizar pues el sistema sincronizo pero no igualo la BD acá en local si me hago entender, por que si eliminan alguna tarifa, categoria, convenio, medio de pago, usuario entonces la sincronizacion debe ser bidireccional, lo unico que deberia subir el wpf a la bd por que es el modo offline son los ingresos y salidas y lo de los turnos pero todos los datos parametrizables que vienen de la BD esos siempre se deben sincronizar e estar igual a la bd online si me explico las dos diferencias ? analiza lo que te digo"*
+  > _"tengo el siguiente caso, funciono perfecto cuando desde la pwa crearon la categoria y cuando sincronice genial la trajo y la mostro de una, pero cuando desde la pwa la volvieron a eliminar y le di sincronizar pues el sistema sincronizo pero no igualo la BD acá en local si me hago entender, por que si eliminan alguna tarifa, categoria, convenio, medio de pago, usuario entonces la sincronizacion debe ser bidireccional, lo unico que deberia subir el wpf a la bd por que es el modo offline son los ingresos y salidas y lo de los turnos pero todos los datos parametrizables que vienen de la BD esos siempre se deben sincronizar e estar igual a la bd online si me explico las dos diferencias ? analiza lo que te digo"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Modelo de Sincronización Espejo (Master-Replica)**:
      - **Upstream (WPF -> API)**: Cola offline procesa y sube ingresos, cobros/salidas (`ParkingTickets`, `TicketDiscounts`) y arqueos de caja (`WorkShifts`).
      - **Downstream Mirror (API -> WPF)**: La base de datos central en MySQL es la **fuente absoluta de verdad** para los catálogos parametrizables.
-  2. **Poda (*Pruning*) en `SyncEngineService.cs`**:
+  2. **Poda (_Pruning_) en `SyncEngineService.cs`**:
      - **Tarifas (`VehicleRates`)**: Compara tipos de vehículos y IDs locales contra el conjunto remoto entregado en el bootstrap; cualquier tarifa que haya sido eliminada en la nube (o si no hay tarifas configuradas) es removida de SQLite (`db.VehicleRates.RemoveRange(...)`).
      - **Medios de Pago (`PaymentMethods`)**: Remueve medios de pago locales no presentes en el servidor.
      - **Comercios y Convenios (`Stores` / `CommercialAgreements`)**: Remueve convenios y comercios eliminados en la nube.
@@ -2744,14 +2861,15 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingWpf.slnx`: **0 Errores**.
 
 ### [2026-08-26 11:08:00] - [REFACTOR] [DB] [RBAC] - Reestructuración Oficial de Script RBAC Seed (Solo Rol Administrador, DDL para BD Vacía y 15 Módulos)
+
 - **Autor**: Antigravity AI Assistant & Database Architect
 - **💬 Prompt Original del Usuario**:
-  > *"no debes crear el rol operador esolo es el rol administrrador y todas las funciones para ese rol si me explico ? analiza eso nuevamente"*
+  > _"no debes crear el rol operador esolo es el rol administrrador y todas las funciones para ese rol si me explico ? analiza eso nuevamente"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Aprovisionamiento DDL Autónomo para BD Vacía**:
      - Se incorporaron las sentencias `CREATE TABLE IF NOT EXISTS` para todas las tablas requeridas por EF Core y la lógica de negocio (`IdentificationType`, `UserRole`, `User`, `Module`, `Operation`, `Action`, `RoleAction`, `UserRoleModule`, `PaymentMethod`, `Branches`, `UserBranches`, `BranchPaymentMethods`, `VehicleRates`, `Stores`, `CommercialAgreements`, `ParkingTickets`, `TicketDiscounts`, `WorkShifts`, `MonthlySubscriptions`, `BillingResolutions`, `VehicleIncidents`).
   2. **Exclusividad del Rol Administrador**:
-     - Se eliminó la creación estática de los roles *Operador* y *Supervisor*. Únicamente se crea el rol `Administrador` (Id 1) y el usuario inicial `admin`.
+     - Se eliminó la creación estática de los roles _Operador_ y _Supervisor_. Únicamente se crea el rol `Administrador` (Id 1) y el usuario inicial `admin`.
      - Todos los roles operativos adicionales serán creados y parametrizados dinámicamente por el Administrador desde la PWA.
   3. **Catálogo de 15 Módulos y 69 Acciones**:
      - Se removió por completo la acción obsoleta `system.theme`.
@@ -2768,7 +2886,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingApi.slnx`: **0 Errores**.
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Tengo una duda, es posible meter signal r al api y al wpf para que sea reactivo ? o eso no es posible ejemplo que me gustaria que si estoy en alguna sede y desde la pwa se le hacen algo a la sede ejemplo modifican los cupos o crean otra categoria y desde que este en linea osea con internet el wpf conectado al api pues deberia salir una alerta que diga es necesario sincronizar y que obligue a sincronizar si me explico ? eso sería posible ?"*
+  > _"Tengo una duda, es posible meter signal r al api y al wpf para que sea reactivo ? o eso no es posible ejemplo que me gustaria que si estoy en alguna sede y desde la pwa se le hacen algo a la sede ejemplo modifican los cupos o crean otra categoria y desde que este en linea osea con internet el wpf conectado al api pues deberia salir una alerta que diga es necesario sincronizar y que obligue a sincronizar si me explico ? eso sería posible ?"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Backend SignalR Central (`ParkingApi`)**:
      - **Hub Central (`ParkingHub.cs`)**: Creado en `/hubs/parking` con soporte para agrupación de terminales por sede (`JoinBranchGroup(branchId)`, `LeaveBranchGroup(branchId)`).
@@ -2777,7 +2895,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - **Pipeline**: Configurado `builder.Services.AddSignalR()` y `app.MapHub<ParkingHub>("/hubs/parking")`.
   2. **Escritorio Reactivo (`ParkingWpf`)**:
      - **Cliente SignalR (`SignalRClientService.cs`, `ISignalRClientService`)**: Integrado `Microsoft.AspNetCore.SignalR.Client` con estrategia de reconexión automática (`WithAutomaticReconnect`), suscripción dinámica a la sede activa (`SetCurrentBranchAsync`) y resiliencia transparente ante modo offline.
-     - **Modal Moderno de Sincronización Requerida (`SyncRequiredDialog.xaml/.cs`)**: Implementado diálogo modal con estilo `ModernButton`, paleta `BrushWarning` / `BrushPrimary`, que bloquea amigablemente la terminal informando el cambio recibido y permitiendo pulsar *"⚡ Sincronizar Ahora"*.
+     - **Modal Moderno de Sincronización Requerida (`SyncRequiredDialog.xaml/.cs`)**: Implementado diálogo modal con estilo `ModernButton`, paleta `BrushWarning` / `BrushPrimary`, que bloquea amigablemente la terminal informando el cambio recibido y permitiendo pulsar _"⚡ Sincronizar Ahora"_.
      - **Flujo Guiado**: Al pulsar sincronizar, invoca el orquestador visual `SyncProgressDialog.ShowSyncAsync()`, ejecuta la sincronización completa paso a paso, actualiza la capacidad en el TopBar y refresca la interfaz en caliente.
      - **Integración MVVM**: Conectado en `MainShellViewModel.cs` para escuchar `ConfigUpdateRequired` y gestionar cambios de sede activa.
   3. **Preservación PWA**: Se mantuvo la PWA 100% intacta sin requerir modificaciones.
@@ -2809,7 +2927,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingWpf.slnx`: **0 Errores**.
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"esto conectalo alas diferetntes resoluciones que tenga creada y se hayan usado desde el wpf cuando elijen una resolucion para dar salida a un vehiculo , recuerda no tocar aun wpf"*
+  > _"esto conectalo alas diferetntes resoluciones que tenga creada y se hayan usado desde el wpf cuando elijen una resolucion para dar salida a un vehiculo , recuerda no tocar aun wpf"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Backend y Base de Datos (`ParkingApi`)**:
      - **Modelo `ParkingTicket`**: Incorporados campos `ResolutionId` (`Guid?`), `ResolutionName` (`string?`), `InvoiceNumber` (`string?`) e `IsElectronicInvoice` (`bool`).
@@ -2820,7 +2938,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - **Vista (`Dashboard.tsx`)**:
        - Integrado `resolucionesService.getAllResolutions()` en la carga concurrente de `Promise.all`.
        - Reemplazada la tarjeta estática de facturación electrónica por la tarjeta interactiva **"Distribución por Resoluciones de Facturación"**.
-       - Mapeo dinámico de `resolutionsDonutData` iterando sobre todas las resoluciones activas en la BD (ej. *FACTURA POS, FV, FVM, Factura Electrónica*), mostrando el nombre de la resolución con su prefijo, la cantidad de documentos emitidos (`X doc(s)`) y el porcentaje de emisión sobre el total del día.
+       - Mapeo dinámico de `resolutionsDonutData` iterando sobre todas las resoluciones activas en la BD (ej. _FACTURA POS, FV, FVM, Factura Electrónica_), mostrando el nombre de la resolución con su prefijo, la cantidad de documentos emitidos (`X doc(s)`) y el porcentaje de emisión sobre el total del día.
   3. **WPF**: Se mantuvo 100% intacto sin modificaciones, quedando la API y la estructura de datos preparadas para recibir la selección de resolución al momento del checkout de vehículos.
 - **📦 Componentes Modificados**:
   - `ParkingApi/ParkingApi.Domain/Models/ParkingTicket.cs`
@@ -2836,12 +2954,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `oxlint src/features/dashboard/ui/Dashboard.tsx`: **0 Errores**.
   - Servidor `ParkingApi` en ejecución en `http://localhost:5135` con esquema actualizado.
 
-
-
 ### [2026-08-26 00:43:00] - [FEATURE] [API + PWA] - Módulo de Novedades, Incidencias y Bloqueo de Placas
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"en el modulo de novedades, quiero que exista un boton para argegar novedad, lacual me permitira agregar cualquier tipo de novedad, por ejemplo si tengo una placa la cual no me pago o note que roba en mi parking, me la permita bloquear para que el wpf no la pueda ingresar, de igual manera exponeel servicio api pero aun no toques el wpf"*
+  > _"en el modulo de novedades, quiero que exista un boton para argegar novedad, lacual me permitira agregar cualquier tipo de novedad, por ejemplo si tengo una placa la cual no me pago o note que roba en mi parking, me la permita bloquear para que el wpf no la pueda ingresar, de igual manera exponeel servicio api pero aun no toques el wpf"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Backend y Base de Datos (`ParkingApi`)**:
      - **Modelo y DTOs**: Creados `VehicleIncident.cs`, `VehicleIncidentDto.cs`, `SaveVehicleIncidentDto.cs`, `PlateCheckResultDto.cs` y `ResolveIncidentDto.cs`.
@@ -2858,7 +2975,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - **Servicio y Contratos**: `NovedadesContracts.ts` y `novedadesService.ts`.
      - **Interfaz Completa (`Novedades.tsx`)**:
        - Botón **`+ Agregar Novedad`** en la barra superior.
-       - Barra de herramientas con filtros rápidos (*Todas*, *⛔ Bloqueados*, *Activas*, *Resueltas*) y buscador en tiempo real.
+       - Barra de herramientas con filtros rápidos (_Todas_, _⛔ Bloqueados_, _Activas_, _Resueltas_) y buscador en tiempo real.
        - Tabla con badges visuales destacados de ⛔ `BLOQUEADO` en rojo para vehículos restringidos.
        - Modal para registrar/editar novedades con switch destacado de bloqueo, selección de sede, observaciones y contacto.
        - Modal para resolver novedades y documentar la justificación del desbloqueo.
@@ -2890,9 +3007,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Servidor API en ejecución en `http://localhost:5135` con endpoints probados exitosamente (HTTP 200/201).
 
 ### [2026-08-26 00:36:00] - [UI/UX] [PWA] - Organización de Encabezado en Módulo de Novedades (Remoción de Badge y Alineación)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Lo  amarilo quitalo, lo rojo organizalo mejor"*
+  > _"Lo amarilo quitalo, lo rojo organizalo mejor"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Ajuste en `Novedades.tsx` y `Novedades.css`**:
      - Se retiró el badge de sede redundante señalado en amarillo al lado del título.
@@ -2902,15 +3020,14 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `ParkingPwa/src/features/novedades/ui/Novedades.css`
   - `HISTORIAL_CAMBIOS.md`
 
-
-
 ### [2026-08-26 00:35:00] - [UI/UX] [PWA] - Remoción de Punto de Color Redundante en Leyenda de Métodos de Pago
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"en el dashboard , en Distribución por Métodos de Pago no quiero que muestre [captura señalando el punto verde junto al emoji]"*
+  > _"en el dashboard , en Distribución por Métodos de Pago no quiero que muestre [captura señalando el punto verde junto al emoji]"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Ajuste en `Dashboard.tsx`**:
-     - Se eliminó el elemento `<div className="pie-legend-dot" style={{ background: item.color }} />` de la leyenda de la tarjeta *"Distribución por Métodos de Pago"*.
+     - Se eliminó el elemento `<div className="pie-legend-dot" style={{ background: item.color }} />` de la leyenda de la tarjeta _"Distribución por Métodos de Pago"_.
      - Ahora la leyenda presenta directamente el ícono/emoji asignado seguido del nombre del medio de pago (ej. 🎟️ Nequi), logrando una apariencia más limpia y sin elementos duplicados.
 - **📦 Componentes Modificados**:
   - `ParkingPwa/src/features/dashboard/ui/Dashboard.tsx`
@@ -2919,12 +3036,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Linter PWA: 0 Errores.
   - Hot Module Replacement (HMR) activo en Vite Dev Server.
 
-
-
 ### [2026-08-26 00:32:00] - [FEATURE] [API + PWA] - Módulo de Resoluciones de Facturación (DIAN / POS / Factura Electrónica)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"En configuracion crea otra opcion que se llame resolucion y esta que tenga estas opciones, adicional crea una api que es la expondra toda info a mi wpf, pero aun no toques nada delwpf"*
+  > _"En configuracion crea otra opcion que se llame resolucion y esta que tenga estas opciones, adicional crea una api que es la expondra toda info a mi wpf, pero aun no toques nada delwpf"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Backend y Base de Datos (`ParkingApi`)**:
      - **Modelo y DTOs**: Creados `BillingResolution.cs`, `BillingResolutionDto.cs`, `SaveBillingResolutionDto.cs`.
@@ -2936,7 +3052,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - **Contratos y Servicio**: `ResolucionesContracts.ts` y `resolucionesService.ts`.
      - **Vista y Tabla de Resoluciones**: Creado `ResolucionesTab.tsx` replicando la interfaz solicitada:
        - Buscador en tiempo real por nombre, prefijo o número de resolución.
-       - Tabla con columnas: *Nombre Resolución, Tipo de Documento, Prefijo, Número, Desde, Hasta, Fecha Desde, Fecha Hasta, Estado, Acciones*.
+       - Tabla con columnas: _Nombre Resolución, Tipo de Documento, Prefijo, Número, Desde, Hasta, Fecha Desde, Fecha Hasta, Estado, Acciones_.
        - Modal para Crear y Editar con selector de tipos de documentos comunes o texto personalizado, rangos numéricos, fechas de vigencia y clave técnica DIAN.
      - **Integración de Menú**: Actualizado `Settings.tsx` con la nueva pestaña **Resoluciones** (`FileCheck`).
   3. **WPF**: Se preservó intacto sin modificaciones conforme a la instrucción.
@@ -2964,12 +3080,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `oxlint`: **0 Errores**.
   - Servidor API en ejecución en `http://localhost:5135` con endpoints probados exitosamente (HTTP 200/201).
 
-
-
 ### [2026-08-26 00:18:00] - [FEATURE] [PWA] - Conexión Dinámica de Medios de Pago en Dashboard (BD + API)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Conecta de la dashboard los medios de pago que se encuentran creados en la Bd y api"*
+  > _"Conecta de la dashboard los medios de pago que se encuentran creados en la Bd y api"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Integración con `mediosPagoService`**:
      - Se vinculó el llamado a `mediosPagoService.getPaymentMethods()` dentro de `Dashboard.tsx` (`Promise.all`), cargando en tiempo real todos los medios de pago activos parametrizados en la base de datos MySQL (`PaymentMethod`).
@@ -2984,12 +3099,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Linter PWA: 0 Errores.
   - Hot Module Replacement (HMR) activo en Vite Dev Server.
 
-
-
 ### [2026-08-26 00:13:00] - [UI/UX] [PWA] - Ajuste de Colores en Dashboard (Botón Actualizado Gris Oscuro y Filtros Activos en Negro)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"el boton de actualizado dejame en el gris oscuro y los botones de Punto / Parqueadero seleccionado dejamelos en negros"*
+  > _"el boton de actualizado dejame en el gris oscuro y los botones de Punto / Parqueadero seleccionado dejamelos en negros"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Ajuste en `Dashboard.css`**:
      - `.btn-glass` (Botón "Actualizado"): Configurado en gris oscuro ejecutivo (`#1e293b`, borde `#334155`, hover `#0f172a`).
@@ -3001,12 +3115,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Linter PWA: 0 Errores.
   - Hot Module Replacement (HMR) activo en Vite Dev Server.
 
-
-
 ### [2026-08-26 00:08:00] - [UI/UX] [PWA] - Realce y Contraste del Banner Ejecutivo en Dashboard (Fondo Corporativo y Letra Blanca en Negrita)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"En la dashboard, ese cuadro puedes ponerle letra blanca ngrilla para que resalte"*
+  > _"En la dashboard, ese cuadro puedes ponerle letra blanca ngrilla para que resalte"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Rediseño del Hero Header en `Dashboard.css` y `Dashboard.tsx`**:
      - Se reemplazó el fondo grisáceo por un degradado de alta gama con el color corporativo oficial (`linear-gradient(135deg, #07665e 0%, #054e48 100%)`).
@@ -3020,12 +3133,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Linter PWA: 0 Errores.
   - Hot Module Replacement (HMR) activo en Vite Dev Server.
 
-
-
 ### [2026-08-26 00:05:00] - [UI/UX] [PWA] - Remoción Global de Textos y Sufijos 'COP' en Toda la Aplicación Web
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"No me pongas COP en ninguna parte del pwa"*
+  > _"No me pongas COP en ninguna parte del pwa"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Limpieza Exhaustiva en Toda la PWA**:
      - Se auditaron y eliminaron todas las ocurrencias del sufijo/texto `"COP"` en la interfaz, etiquetas de formulario, títulos, tablas y exportaciones a Excel.
@@ -3049,17 +3161,16 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Linter PWA: 0 Errores.
   - Hot Module Replacement (HMR) activo en Vite Dev Server.
 
-
-
 ### [2026-08-26 00:02:00] - [UI/UX] [PWA] - Separación Limpia de Columnas en Medios de Pago (Nombre Puro y Columna Ícono Exclusiva)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"no quiero que el nombre me muestre con el icono, adicional no quiero que icono emoji, si no solo icono y me muestere el icono"*
+  > _"no quiero que el nombre me muestre con el icono, adicional no quiero que icono emoji, si no solo icono y me muestere el icono"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Ajuste de Columnas en `MediosPagoTab.tsx`**:
      - Columna `MEDIO DE PAGO`: Muestra únicamente el nombre textual limpio del medio de pago (sin duplicar el avatar/ícono al lado).
      - Columna `ÍCONO`: Encabezado renombrado a `ÍCONO` con visualización centrada y limpia del ícono seleccionado.
-     - Modal: Encabezado actualizado a *"Selecciona un Ícono Representativo"*.
+     - Modal: Encabezado actualizado a _"Selecciona un Ícono Representativo"_.
 - **📦 Componentes Modificados**:
   - `ParkingPwa/src/features/settings/ui/MediosPagoTab.tsx`
   - `HISTORIAL_CAMBIOS.md`
@@ -3067,12 +3178,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Linter PWA: 0 Errores.
   - Hot Module Replacement (HMR) activo en Vite Dev Server.
 
-
-
 ### [2026-08-26 00:00:00] - [FIX] [API] [DB] - Resolución de Error 500 en Creación de Convenios (Aprovisionamiento de Columna ImageUrl en MySQL)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"para crear un convenio me sale http://localhost:5135/api/Agreements error 500, porqu es"*
+  > _"para crear un convenio me sale http://localhost:5135/api/Agreements error 500, porqu es"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Causa Raíz Identificada**:
      - El log de la API arrojaba la excepción `MySqlException: Unknown column 'c.ImageUrl' in 'field list'` y `Unknown column 'ImageUrl' in 'field list'` al ejecutar las sentencias `INSERT/SELECT` contra la tabla `CommercialAgreements` en la base de datos MySQL remota (`db_acd7d6_parking`).
@@ -3087,12 +3197,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Verificación Endpoint: `GET /api/Agreements` ➡️ **200 OK**.
   - Servicio API activo en background en `http://localhost:5135`.
 
-
-
 ### [2026-08-25 23:58:00] - [UI/UX] [PWA] - Simplificación del Modal de Medios de Pago (Selector de Emojis Limpio y Exclusivo)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"eliminame esto, me gusta que hayan algunos emojjs y esos sean los seleccionables"*
+  > _"eliminame esto, me gusta que hayan algunos emojjs y esos sean los seleccionables"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Depuración de UI en `MediosPagoTab.tsx`**:
      - Se eliminó el campo de texto libre redundant (`<input placeholder="Pega un emoji o escribe un texto...">`).
@@ -3104,12 +3213,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Linter PWA: 0 Errores.
   - Hot Module Replacement (HMR) activo en Vite Dev Server.
 
-
-
 ### [2026-08-25 23:55:00] - [FEAT] [API] [PWA] [WPF] - Carga, Almacenamiento y Visualización de Imágenes/Logos en Convenios Comerciales
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Para los convenios, quiero que tenga la opcion de cargarle una imagen al crear los convenios"*
+  > _"Para los convenios, quiero que tenga la opcion de cargarle una imagen al crear los convenios"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Frontend PWA (`ConveniosTab.tsx` & `ConveniosContracts.ts`)**:
      - Se implementó una zona interactiva para subir o arrastrar imágenes (PNG, JPG, WebP, SVG) con previsualización en vivo, conversión automática a DataURL/Base64 (`FileReader`) y controles para cambiar o remover la imagen.
@@ -3134,12 +3242,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Linter PWA: 0 Errores.
   - Hot Module Replacement (HMR) activo en Vite Dev Server.
 
-
-
 ### [2026-08-25 23:45:00] - [FEAT] [UI/UX] [PWA] - Selector Interactivo de Emojis y Campos Abiertos para Medios de Pago
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"En la creacion de medio de pago no quiero que la categoria tenga ya una lista cargada, eso sera que el usuario la ingrese, y para la imagen que haya una seleccion de emojis"*
+  > _"En la creacion de medio de pago no quiero que la categoria tenga ya una lista cargada, eso sera que el usuario la ingrese, y para la imagen que haya una seleccion de emojis"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Selector de Emojis y Entrada Libre (`MediosPagoTab.tsx`)**:
      - Se eliminó el menú `<select>` de categorías predefinidas y se transformó en un selector visual interactivo en cuadrícula con emojis temáticos financieros y de pago (💵, 💳, 📱, 📲, 🏦, 💰, 🪙, 👛, 🧾, 💸, 🏧, 🎟️, 🏷️, ⚡, 💎, 💼).
@@ -3154,12 +3261,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Linter PWA: 0 Errores.
   - Hot Module Replacement (HMR) activo en Vite Dev Server.
 
-
-
 ### [2026-08-25 23:40:00] - [FIX] [UI/UX] [PWA] - Normalización y Corrección de Estilos en Botones de Cancelar en Modales de Roles y Permisos
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"el boton de cancelar de configuracion de permisos y el de crear rol no se ve con el estilo correcto"*
+  > _"el boton de cancelar de configuracion de permisos y el de crear rol no se ve con el estilo correcto"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Alineación de Estilos CSS (`Settings.css` & `index.css`)**:
      - Se unificó el selector `.btn-cancel` vinculándolo a las definiciones visuales de `.btn-secondary` (fondo `#f1f5f9`, borde `#e2e8f0`, radio de 10px, tipografía Inter con peso 600, sombra suave y transiciones de hover/active).
@@ -3174,18 +3280,17 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Linter PWA: 0 Errores.
   - Hot Module Replacement (HMR) activo en Vite Dev Server.
 
-
-
 ### [2026-08-25 23:35:00] - [FEAT] [UI/UX] [PWA] - Separación y Control Granular de Permisos por Plataforma (Escritorio WPF & Web PWA) con Protección Total para Administradores
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"perfecto, existe la manera que desde esa configuracion de permisos, se pueda controlar los permisos a los modulos de la web (pwa) y escritorio (wpf), los que ya existen creo que son del escritorio, sin embargo desarroolla y implementa los de la web y alli en esa configuracion se ven separados, deja que los administradores cuenten con todos los permisos de web y escritorio y los demas ahi si sean seleccionable"*
+  > _"perfecto, existe la manera que desde esa configuracion de permisos, se pueda controlar los permisos a los modulos de la web (pwa) y escritorio (wpf), los que ya existen creo que son del escritorio, sin embargo desarroolla y implementa los de la web y alli en esa configuracion se ven separados, deja que los administradores cuenten con todos los permisos de web y escritorio y los demas ahi si sean seleccionable"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Separación de Módulos por Plataforma en `RolesTab.tsx`**:
      - Se implementó un selector de pestañas para **🖥️ Módulos Escritorio (WPF)** y **🌐 Módulos Web (PWA)** dentro del modal de configuración de permisos por rol.
      - Clasificación inteligente y exhaustiva de módulos y acciones según su dominio operativo (WPF Terminal: CheckIn, CheckOut, Turnos/Caja, Patio, Sistema; PWA Cloud: Dashboard, Sedes, Tarifas, Medios de Pago, Convenios, Mensualidades, Usuarios, Roles y Permisos).
      - Contadores de permisos en tiempo real (`X / Y activos`) individuales por plataforma y global.
-     - Botones de acción rápida: *"Marcar Plataforma"*, *"Desmarcar Plataforma"*, *"Marcar Todo Global"* y *"Limpiar Todo"*.
+     - Botones de acción rápida: _"Marcar Plataforma"_, _"Desmarcar Plataforma"_, _"Marcar Todo Global"_ y _"Limpiar Todo"_.
      - Cada pestaña mantiene el comportamiento de acordeón exclusivo (primer módulo abierto inicialmente y cierre automático del anterior al expandir uno nuevo).
   2. **Protección Total y Automática para Administradores**:
      - El rol Administrador (ID 1 o nombre Administrador/Admin) cuenta con el 100% de los permisos (Web + Escritorio) protegidos contra desconfiguración o bloqueo accidental, mostrando una insignia dorada de "Full Access (WPF + PWA)".
@@ -3201,12 +3306,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Compilación WPF: `dotnet build` ➡️ 0 Errores.
   - Hot Module Replacement (HMR) activo en Vite Dev Server.
 
-
-
 ### [2026-08-25 23:15:00] - [UI/UX] [PWA] - Acordeón Exclusivo de Módulos en Matriz de Permisos de Roles (Apertura Única Inicial y Auto-Cierre)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Ayudame con organizar la configuracion de permisos deroles, ya que quisiera que filtrs de los modulos se ven desplegados al abrir, pero quisiera que solo se vea el primero desplegado y los demas no, que si desplego otro, se cierre el que este abierto, en este caso es el 1ro"*
+  > _"Ayudame con organizar la configuracion de permisos deroles, ya que quisiera que filtrs de los modulos se ven desplegados al abrir, pero quisiera que solo se vea el primero desplegado y los demas no, que si desplego otro, se cierre el que este abierto, en este caso es el 1ro"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Refactorización de Estado de Expansión en PWA (`RolesTab.tsx`)**:
      - Se transformó el estado `expandedModules: Record<number, boolean>` en `expandedModuleId: number | null`, centralizando el identificador del módulo actualmente expandido.
@@ -3220,12 +3324,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - Linter: 0 Errores.
   - Hot Module Replacement (HMR) activo en Vite Dev Server.
 
-
-
 ### [2026-08-25 23:55:00] - [FEAT] [FIX] [API] [PWA] - Auditoría y Conexión Total de Convenios y Comercios Aliados (CRUD 100% Real, Model Binding Fix y Soporte Dual)
+
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Revisa los convenios, que se encuentre correactmente conectado a la api, si las opciones que muestran alli son las correctas"*
+  > _"Revisa los convenios, que se encuentre correactmente conectado a la api, si las opciones que muestran alli son las correctas"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Auditoría y Corrección en Backend .NET 8 (ParkingApi)**:
      - En `CommercialAgreement.cs`, la propiedad de navegación `Store` estaba tipada como no-anulable obligatoria (`= null!`), lo que provocaba que ASP.NET Core model validation rechazara (`400 Bad Request`) las peticiones de creación y actualización que envían solo el `StoreId`. Se ajustó como `Store?` nullable.
@@ -3254,10 +3357,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - API Central (.NET 8): En ejecución y escuchando en `http://localhost:5135`.
 
 ### [2026-08-25 21:45:00] - [FIX] [PERF] [SYNC] - Protección contra Solapamiento de Sincronización Rápida en Background (15s) y Reutilización de Conexiones
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"excelente lo primero funciono perfecto lo de los turnos excelente, pero sabes que no funciono mira esto el tema de las conexión me preocupa eso por que veo que no estas cerrando conexiones estas dejando conexiones abiertas en el backend eso esta gravisimos cuando hace varias operaciones ojo con eso necesito que realices un analisis completo de eso de que sucede con las conexiones.*
-  > *pero eso es solo mientras tenemos el plan gratuito cierto ? pues ya cuando pasemos a un nivel diferente pues tendremos mas conexiones cierto ? ese limite ya no sería necesario por que pasar de 15 a 60 enserio coloca lento el sistema"*
+  > _"excelente lo primero funciono perfecto lo de los turnos excelente, pero sabes que no funciono mira esto el tema de las conexión me preocupa eso por que veo que no estas cerrando conexiones estas dejando conexiones abiertas en el backend eso esta gravisimos cuando hace varias operaciones ojo con eso necesito que realices un analisis completo de eso de que sucede con las conexiones._
+  > _pero eso es solo mientras tenemos el plan gratuito cierto ? pues ya cuando pasemos a un nivel diferente pues tendremos mas conexiones cierto ? ese limite ya no sería necesario por que pasar de 15 a 60 enserio coloca lento el sistema"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Preservación de Sincronización Rápida (15 Segundos)**:
      - Se mantuvo el temporizador de background sync en **15 segundos** (`TimeSpan.FromSeconds(15)`) para garantizar una experiencia en tiempo casi real de la terminal POS sin demoras.
@@ -3272,10 +3376,11 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build Parking\Parking.csproj` -> **0 Errores** (Compilación Correcta).
 
 ### [2026-08-25 21:30:00] - [FEAT] [FIX] [MULTI-BRANCH] [UI/UX] - Independencia Total Multi-Sede de Turnos (WorkShifts), Corrección de Binding TwoWay en Cierre y Rediseño Compacto del TopBar
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"mira como se ve de feo eso, segundo fui a cerrar turno en una sede yo como administrador y mira como salio el error y eso daño todo el sistema. analiza eso y revisa bien como funciona eso por que no esta funcionando completamente bien.*
-  > *tengo otra duda, se supone que los turnos son igual independientes de sedes claro ? eso espero sea claro si ? un turno pertenece a una sede especifica."*
+  > _"mira como se ve de feo eso, segundo fui a cerrar turno en una sede yo como administrador y mira como salio el error y eso daño todo el sistema. analiza eso y revisa bien como funciona eso por que no esta funcionando completamente bien._
+  > _tengo otra duda, se supone que los turnos son igual independientes de sedes claro ? eso espero sea claro si ? un turno pertenece a una sede especifica."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Aislamiento Multi-Sede Estricto de Turnos de Trabajo (`WorkShift`)**:
      - Se clarificó e implementó la regla de negocio: cada turno pertenece exclusiva y aisladamente a una sede (`BranchId`). El dinero en gaveta, arqueo, tickets calculados y retiros de caja corresponden únicamente a la sede activa.
@@ -3304,15 +3409,16 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build Parking\Parking.csproj` -> **0 Errores** (Compilación Correcta).
 
 ### [2026-08-25 21:00:00] - [FEAT] [UI/UX] [BRANDING] - TitleBar Moderno Personalizado, Icono de Aplicación (.ICO) PARK POINT y Soporte de Logo de Sede (Base64)
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"Mira en la primera imagen se ve supremamente mal el tema del diseño de la parte de arriba sigue siendo wpf pero sin diseño sin nada eso se ve mal si me explico.*
-  > *en la seguna imagen no tiene logo si revisas el codigo de la PWA ves que cuando crea las sedes debe subir el logo que deberia tener entonces usar un logo sii que sea configurable o que tengamos un logo en el sistema o no se si puedas usar un ico o algo dime que se puede hacer hay pues lo digo por que cada sede tiene un logo.*
-  > *y si ves la 3 imagen no tiene esa columna para el logo entonces eso como se va a subir donde se esta guardando eso deberia guardarse en base 64 comprimido para que se pueda leer desde la bd y sin generar tanto consumo de espacio si analiza eso recuerda que como regla de oro si no esta en el agent deberia estar no vas a tocar el pwa si mi autorizacion."*
+  > _"Mira en la primera imagen se ve supremamente mal el tema del diseño de la parte de arriba sigue siendo wpf pero sin diseño sin nada eso se ve mal si me explico._
+  > _en la seguna imagen no tiene logo si revisas el codigo de la PWA ves que cuando crea las sedes debe subir el logo que deberia tener entonces usar un logo sii que sea configurable o que tengamos un logo en el sistema o no se si puedas usar un ico o algo dime que se puede hacer hay pues lo digo por que cada sede tiene un logo._
+  > _y si ves la 3 imagen no tiene esa columna para el logo entonces eso como se va a subir donde se esta guardando eso deberia guardarse en base 64 comprimido para que se pueda leer desde la bd y sin generar tanto consumo de espacio si analiza eso recuerda que como regla de oro si no esta en el agent deberia estar no vas a tocar el pwa si mi autorizacion."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Barra de Título Moderna Personalizada (Custom TitleBar con WindowChrome)**:
      - En `MainShellWindow.xaml` se configuró `WindowChrome` con `CaptionHeight="38"`, `UseAeroCaptionButtons="False"`, eliminando el marco blanco/gris nativo de Windows.
-     - Se creó una barra de título integrada en color Grafito Carbón (`#152024` / `#1E2A2F`) que luce el isotipo PARK POINT en Verde Esmeralda (`#00867A`), el título del sistema (*"PARK POINT • Terminal POS de Control de Acceso y Caja"*) y botones estilizados de control de ventana (Minimizar `—`, Maximizar/Restaurar `▢` y Cerrar `✕` con efecto hover rojo `#DC2626`).
+     - Se creó una barra de título integrada en color Grafito Carbón (`#152024` / `#1E2A2F`) que luce el isotipo PARK POINT en Verde Esmeralda (`#00867A`), el título del sistema (_"PARK POINT • Terminal POS de Control de Acceso y Caja"_) y botones estilizados de control de ventana (Minimizar `—`, Maximizar/Restaurar `▢` y Cerrar `✕` con efecto hover rojo `#DC2626`).
      - Se mantuvo el soporte para arrastre suave de ventana (`DragMove`) y doble clic para maximizar/restaurar.
   2. **Icono Oficial de la Aplicación (.ICO Multi-Resolución)**:
      - Se generó el archivo de icono vectorial multi-resolución `parkpoint.ico` (16x16, 32x32, 48x48, 64x64, 128x128, 256x256) con la insignia oficial PARK POINT y se configuró como `<ApplicationIcon>` en `Parking.csproj`.
@@ -3340,9 +3446,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingApi.slnx` -> **0 Errores**.
 
 ### [2026-08-25 20:45:00] - [FEAT] [UI/UX] [MULTI-BRANCH] - Capacidad Real de Sede, Escalado Global de Tipografía (+2px), Remoción de Botón X y Banner Amarillo Informativo
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"mira que si esta la capacidad del parqueadero pero veo que el wpf no la trae dice sin configurar esas cosas no deberian salir así. aparte toda la letra del sistema necesito que me le subas 2 px mas a cada letra si alguna tiene 8 pues queda en 10 y la de 10 en 12 si me hago entender , este boton no deberia estar toca quitarlo, este mensaje no deberia ser así de ese color por que no es error es algo informativo deberia ser amarillo. ya con eso procede a crear el plan"*
+  > _"mira que si esta la capacidad del parqueadero pero veo que el wpf no la trae dice sin configurar esas cosas no deberian salir así. aparte toda la letra del sistema necesito que me le subas 2 px mas a cada letra si alguna tiene 8 pues queda en 10 y la de 10 en 12 si me hago entender , este boton no deberia estar toca quitarlo, este mensaje no deberia ser así de ese color por que no es error es algo informativo deberia ser amarillo. ya con eso procede a crear el plan"_
 - **🤖 Resumen Técnico para la IA**:
   1. **Capacidad de Parqueadero Multi-Sede y Ocupación en Tiempo Real**:
      - En `EfParkingTicketService.cs` se inyectó `ISessionService` y se implementó la obtención de la capacidad real desde la sede activa (`_sessionService.CurrentBranch?.TotalCapacity`) o la tabla local `Branches`, calculando los cupos disponibles (`TotalSpots - OccupiedSpots`).
@@ -3372,14 +3479,15 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingApi.slnx` -> **0 Errores**.
 
 ### [2026-08-25 20:15:00] - [FIX] [SYNC] [MULTI-PC] - Corrección de Fallo de Sincronización Bootstrap y Establecimiento de Protocolo de Contexto Multi-PC
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **💬 Prompt Original del Usuario**:
-  > *"oye por que sale que no se tiene el servidor no respondio, pues si arria dice, eso deberia ya estar claro osea que si esta conectada la api osea que paso ? eso lo probe y estaba funcionando ahorita pero ahora no funciona, que suecede sabes que otra 0cosa pasa es que como estoy trabajando en dos lugares entonces creo que se esta perdiendo el contexto y eso esta terrible no sirve necesito que se cree un archivo en ese agent que se creo que son reglas donde diga que cada cambio nuevo o realizado debe crear en un archivo de registros con el promp que se hizo o el resumen que la IA entienda y cuando yo me encuentre en otro pc pues le diga que lo lea y tenga todo entendido lo ultimo que realizamos eso aplica tanto para el wpf y el api si me explico, ya con esto crea un plan completo y detallado."*
+  > _"oye por que sale que no se tiene el servidor no respondio, pues si arria dice, eso deberia ya estar claro osea que si esta conectada la api osea que paso ? eso lo probe y estaba funcionando ahorita pero ahora no funciona, que suecede sabes que otra 0cosa pasa es que como estoy trabajando en dos lugares entonces creo que se esta perdiendo el contexto y eso esta terrible no sirve necesito que se cree un archivo en ese agent que se creo que son reglas donde diga que cada cambio nuevo o realizado debe crear en un archivo de registros con el promp que se hizo o el resumen que la IA entienda y cuando yo me encuentre en otro pc pues le diga que lo lea y tenga todo entendido lo ultimo que realizamos eso aplica tanto para el wpf y el api si me explico, ya con esto crea un plan completo y detallado."_
 - **🤖 Resumen Técnico para la IA**:
   1. **Causa del Fallo de Sincronización**:
-     - El indicador superior se mostraba *"API Central Online • Sincronizado"* porque `PingAsync()` contra `/api/health` respondía `200 OK`.
+     - El indicador superior se mostraba _"API Central Online • Sincronizado"_ porque `PingAsync()` contra `/api/health` respondía `200 OK`.
      - Sin embargo, la sincronización fallaba en el Paso 3 (`/api/sync/bootstrap`) debido a una excepción de deserialización JSON en WPF: la API serializaba `WorkShift.Status` como string (`"Open"`/`"Closed"`) mientras WPF lo esperaba como `int`, y enums como `PaymentMethod` tenían valores dispares (`Transfer` vs `DigitalTransfer`).
-     - `ParkingApiClient.GetBootstrapAsync()` capturaba silenciosamente la excepción devolviendo `null`, activando el mensaje *"Respuesta incompleta / El servidor no entregó los paquetes de sincronización requeridos"*.
+     - `ParkingApiClient.GetBootstrapAsync()` capturaba silenciosamente la excepción devolviendo `null`, activando el mensaje _"Respuesta incompleta / El servidor no entregó los paquetes de sincronización requeridos"_.
   2. **Arquitectura y Solución Aplicada**:
      - Se crearon DTOs dedicados y desacoplados en `BootstrapSyncResponse.cs` (`ApiBranchSyncDto`, `ApiUserSyncDto`, `ApiPaymentMethodSyncDto`, `ApiVehicleRateSyncDto`, `ApiStoreSyncDto`, `ApiCommercialAgreementSyncDto`, `ApiWorkShiftSyncDto`, `ApiMonthlySubscriptionSyncDto`, `ApiParkingTicketSyncDto`) con métodos normalizadores tolerantes a números, cadenas, nulos y conversiones de enum.
      - Se configuró `JsonSerializerOptions` con `JsonNumberHandling.AllowReadingFromString` y logging de excepciones de diagnóstico en `ParkingApiClient.cs`.
@@ -3397,6 +3505,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingApi.slnx` -> **0 Errores**.
 
 ### [2026-08-25 17:53:00] - [FIX] [WPF] [UI] - Corrección de XamlParseException en BranchSelectionDialog
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **Módulos Afectados**:
   - `Parking/Styles/Icons.xaml`: Inclusión del recurso vectorial `IconChevronRight`.
@@ -3406,6 +3515,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **Verificación**: `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
 
 ### [2026-08-25 17:34:00] - [FEAT] [MULTI-BRANCH] [AUTH] - Retorno Global de Sedes para Administradores y Filtrado de Operadores por Sede Activa
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **Módulos Afectados**:
   - `ParkingApi.Core`: `AuthService.cs`, `BranchService.cs`
@@ -3422,6 +3532,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
 
 ### [2026-08-25 17:19:00] - [FEAT] [AUTH] [SECURITY] - Sincronización Completa de Sesión en Relevo de Turno y Validación Estricta de Permisos de Operadores
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **Módulos Afectados**:
   - `Parking/Services/Implementations/AuthService.cs`: Sincronización total de sesión en `SwitchCurrentUser` y asignación de matriz de permisos operativos para el rol de Operador.
@@ -3434,16 +3545,18 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **Verificación**: `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
 
 ### [2026-08-25 16:03:00] - [FEAT] [WPF] [SECURITY] - Forzado Obligatorio de Apertura de Turno y Guardias de Navegación Operativa
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **Módulos Afectados**:
   - `Parking/ViewModels/MainShellViewModel.cs`: Validación estricta de turno en arranque (`InitializeAsync`) y guardias en `NavigateToCheckIn`, `NavigateToCheckOut`, `NavigateToMonthlySubscriptions`.
 - **Descripción**:
   1. **Arranque Guiado**: Al iniciar sesión en la terminal sin turno abierto, el sistema redirige automáticamente a la pantalla de **Control de Turnos** y emite la alerta solicitando ingresar la base inicial de caja.
-  2. **Bloqueo Estricto de Navegación Operativa**: Se bloquea el acceso a *Ingreso de Vehículos*, *Salida y Cobro* y *Mensualidades* si no hay un turno operativo abierto, manteniendo al operador en la pantalla de turnos hasta su apertura.
-  3. **Flujo Fluido**: Tras abrir el turno en `ShiftClosureViewModel`, la terminal redirige automáticamente a *Ingreso de Vehículos* lista para la operación.
+  2. **Bloqueo Estricto de Navegación Operativa**: Se bloquea el acceso a _Ingreso de Vehículos_, _Salida y Cobro_ y _Mensualidades_ si no hay un turno operativo abierto, manteniendo al operador en la pantalla de turnos hasta su apertura.
+  3. **Flujo Fluido**: Tras abrir el turno en `ShiftClosureViewModel`, la terminal redirige automáticamente a _Ingreso de Vehículos_ lista para la operación.
 - **Verificación**: `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
 
 ### [2026-08-25 15:53:00] - [FIX] [WPF] [UI] - Inclusión de Recurso Vectorial IconBuilding en Icons.xaml
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **Módulos Afectados**:
   - `Parking/Styles/Icons.xaml`: Geometría vectorial para `IconBuilding`.
@@ -3452,15 +3565,17 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **Verificación**: `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
 
 ### [2026-08-25 15:50:00] - [FIX] [WPF] [UI] - Corrección de XamlParseException por Recursos de Iconos Faltantes (IconCalendar, IconCashRegister)
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **Módulos Afectados**:
   - `Parking/Styles/Icons.xaml`: Inclusión de las geometrías vectoriales `IconCalendar` e `IconCashRegister`.
 - **Descripción**:
   - Se corrigió la excepción `System.Windows.Markup.XamlParseException` que se producía al abrir la ventana principal `MainShellWindow` luego del login.
-  - La excepción ocurría en la línea 111 de `MainShellWindow.xaml` porque los botones de navegación de *Mensualidades* y *Control de Turnos* hacían referencia estática a `IconCalendar` e `IconCashRegister` que no estaban definidos en el diccionario de recursos vectoriales.
+  - La excepción ocurría en la línea 111 de `MainShellWindow.xaml` porque los botones de navegación de _Mensualidades_ y _Control de Turnos_ hacían referencia estática a `IconCalendar` e `IconCashRegister` que no estaban definidos en el diccionario de recursos vectoriales.
 - **Verificación**: `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
 
 ### [2026-08-25 15:46:00] - [FEAT] [AUTH] [SECURITY] - Soporte de Autenticación Flexible Híbrida (Email o Username) y Unificación de DTOs
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **Módulos Afectados**:
   - `ParkingApi.Domain`: `IUserRepository.cs`
@@ -3475,6 +3590,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
 
 ### [2026-08-25 14:38:00] - [FIX] [API] - Corrección de Error 500 en Swagger / OpenAPI (/openapi/v1.json)
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **Módulos Afectados**:
   - `ParkingApi/Program.cs`: Configuración de `AddSwaggerGen` con `ResolveConflictingActions`, `CustomSchemaIds` y mapeo de endpoint `/swagger/v1/swagger.json`.
@@ -3484,6 +3600,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **Verificación**: `dotnet build ParkingApi.slnx` -> Compilación con **0 errores**.
 
 ### [2026-08-25 14:27:00] - [UI/UX] [BRANDING] [SECURITY] - Identidad Visual Oficial PARK POINT, Eliminación de Selector de Temas y Guardia de Login sin Sedes
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **Módulos Afectados**:
   - `Parking/Styles/Colors.xaml`: Reemplazo total con paleta oficial de PARK POINT (Verde `#00867A`, Grafito `#1E2A2F`, Gris Concreto `#B9B9B9`, Blanco `#FFFFFF`, Amarillo `#FFC107`, Fondo Neutro `#F4F6F7`).
@@ -3494,7 +3611,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `Parking/Views/MainShellWindow.xaml`: Actualización de títulos y banners a PARK POINT, remoción de combobox de temas, paleta en sidebar Grafito y acentos en Verde.
   - `Parking/Views/BranchSelectionDialog.xaml` y `ReceiptPreviewDialog.xaml`: Sombra Grafito y membrete oficial PARK POINT.
 - **Descripción**:
-  1. **Identidad Visual Corporativa**: Adoptada la marca oficial **PARK POINT** con el lema *"TU PUNTO DE LLEGADA"* y la paleta de materiales exacta.
+  1. **Identidad Visual Corporativa**: Adoptada la marca oficial **PARK POINT** con el lema _"TU PUNTO DE LLEGADA"_ y la paleta de materiales exacta.
   2. **Eliminación de Cambio de Temas**: Se eliminaron los selectores de temas en Login y MainShell para mantener una estética consistente y profesional.
   3. **Guardia de Login sin Sedes**: Al intentar loguearse sin sedes registradas, la terminal bloquea el acceso e instruye al usuario a crear la primera sede desde la PWA.
 - **Verificación**:
@@ -3502,6 +3619,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingApi.slnx` -> Compilación con **0 errores**.
 
 ### [2026-08-25 12:35:00] - [FEAT] [ARCH] [SECURITY] - Arquitectura Multi-Sede (Parqueaderos), Catálogo Maestro RBAC Real y Autorización Declarativa en WPF
+
 - **Autor**: Antigravity AI Assistant & .NET Software Architect
 - **Módulos Afectados**:
   - `ParkingApi.Domain`: `Branch.cs`, `UserBranch.cs`, `BranchPaymentMethod.cs`, `VehicleRate.cs`, `ParkingTicket.cs`, `WorkShift.cs`, `Store.cs`, `MonthlySubscription.cs`, `User.cs`
@@ -3530,6 +3648,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingWpf.slnx` -> Compilación exitosa con **0 errores**.
 
 ### [2026-08-25 11:32:00] - [FEAT] [FIX] [DATA] - Sincronización Total Universal de Todas las Tablas (100%), Corrección de WorkShift.EndTime y Arquitectura Online-First
+
 - **Autor**: Antigravity AI Assistant
 - **Módulos Afectados**:
   - `ParkingApi.Domain/Dtos/Sync/SyncDtos.cs` (`BootstrapSyncDto`)
@@ -3552,6 +3671,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build ParkingWpf.slnx` -> Compilación con **0 errores**.
 
 ---
+
 - **Autor**: Antigravity AI Assistant
 - **Módulos Afectados**:
   - `Parking/App.xaml.cs` (`DispatcherUnhandledException`, `TaskScheduler.UnobservedTaskException`, `AppDomain.UnhandledException`, `LogException`)
@@ -3566,6 +3686,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 ---
 
 ### [2026-08-24 16:38:00] - [FIX] [UI/UX] - Corrección de XamlParseException en CheckInView (Línea 411 IconAlertTriangle)
+
 - **Autor**: Antigravity AI Assistant
 - **Módulos Afectados**:
   - `Parking/Views/CheckInView.xaml`
@@ -3577,6 +3698,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 ---
 
 ### [2026-08-24 16:25:00] - [FIX] [PERF] [DATA] - Corrección de DbUpdateException en Sincronización Inicial (Transacciones Atómicas y Garantía de Roles)
+
 - **Autor**: Antigravity AI Assistant
 - **Módulos Afectados**:
   - `Parking/Services/Implementations/SyncEngineService.cs`
