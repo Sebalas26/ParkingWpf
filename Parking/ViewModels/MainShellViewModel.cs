@@ -265,6 +265,75 @@ public partial class MainShellViewModel : ViewModelBase
             return;
         }
 
+        // 3. Manejo reactivo de Cierre y Apertura de Turnos / Caja desde PWA
+        if (notification.EventType == "ShiftClosed" || notification.EventType == "ShiftOpened")
+        {
+            var branchId = _sessionService.CurrentBranch?.Id;
+            if (!notification.BranchId.HasValue || (branchId.HasValue && notification.BranchId.Value == branchId.Value))
+            {
+                try
+                {
+                    await _shiftService.RefreshCurrentShiftAsync();
+                    if (notification.EventType == "ShiftClosed")
+                    {
+                        SyncStatusText = $"Caja cerrada centralmente ({DateTime.Now:HH:mm})";
+                        await _dialogService.ShowAlertAsync(
+                            "Cierre de Caja Remoto",
+                            "El turno de caja de esta sede fue cerrado desde el panel administrativo central (PWA). La caja ha sido cerrada automáticamente en este terminal.",
+                            DialogNotificationType.Warning);
+                    }
+                    else
+                    {
+                        SyncStatusText = $"Turno de caja actualizado ({DateTime.Now:HH:mm})";
+                    }
+                }
+                catch { }
+            }
+            return;
+        }
+
+        // 4. Manejo reactivo de Modificación de Horarios de Atención en tiempo real
+        if (notification.EventType == "OperatingHoursChanged")
+        {
+            var branchId = _sessionService.CurrentBranch?.Id;
+            if (!notification.BranchId.HasValue || (branchId.HasValue && notification.BranchId.Value == branchId.Value))
+            {
+                try
+                {
+                    await _syncEngine.PerformFullSyncAsync();
+                    SyncStatusText = $"Horarios sincronizados ({DateTime.Now:HH:mm})";
+
+                    var branch = _sessionService.CurrentBranch;
+                    if (branch?.OperatingHours != null && branch.OperatingHours.Count > 0)
+                    {
+                        var today = DateTime.Now.DayOfWeek;
+                        var todaySchedule = branch.OperatingHours.FirstOrDefault(oh => oh.DayOfWeek == today);
+                        if (todaySchedule != null && !todaySchedule.IsOpen)
+                        {
+                            var cultureEs = new System.Globalization.CultureInfo("es-CO");
+                            var dayName = cultureEs.DateTimeFormat.GetDayName(today);
+                            if (!string.IsNullOrEmpty(dayName))
+                            {
+                                dayName = char.ToUpper(dayName[0]) + dayName.Substring(1);
+                            }
+
+                            await _dialogService.ShowAlertAsync(
+                                "Sede Cerrada",
+                                $"Se ha actualizado el horario central y la sede '{branch.Name}' ha sido configurada como CERRADA para el día de hoy ({dayName}). Por seguridad, la sesión en este terminal se cerrará.",
+                                DialogNotificationType.Warning);
+
+                            _sessionService.Clear();
+                            _apiClient.ClearAuthToken();
+                            LogoutRequested?.Invoke();
+                            return;
+                        }
+                    }
+                }
+                catch { }
+            }
+            return;
+        }
+
         if (_isSyncPromptOpen) return;
 
         // Validar si aplica a la sede activa o es global

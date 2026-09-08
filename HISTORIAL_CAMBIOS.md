@@ -13,6 +13,39 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 6. **Resultado de la Verificación** (estado de compilación y pruebas).
 
+### [2026-09-08 13:30:00] - [FEATURE / SIGNALR / SYNC / RBAC / PWA / WPF] - Restricciones Numéricas y Moneda en PWA, Validación Plena Cobertura > Rige, Desacoplamiento Total RBAC, Horario Sticky, Bloqueo de Login por Horario en WPF y Cierre Reactivo de Turno Remoto en Garita
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Agregar restrinccion pero los input de valores donde vayan datos numericos no debe permitir letras y donde sean datos numrico de precios debe ir en formato pesos analiza todo el pwa para eso, los campos de texto como deben tener limite de 50 max al seleccionar en la creación de sede la tarifa plena le pide desde que horas rige la plena y cuantas horas es la plena se hizo el ejemplo de colocar que rige desde la 3 hora y la plena es 1 hora eso esta mal la hora de tarifa plena debe ser superior a la hora desde que rige si me explico. al configurar permisos si marco todo los del wpf se marcan unos del pwa y viceversa eso nod eberia ser así son totalemnte independientes. el boton de guardar horario de atencion en parametrización de la sede deberia quedar estatico no que hasta que se baje el scrolll. se hizo la prueba del horario de atención estaba activo el día martes que es hoy se ignreso al wpf en la pwa se desactivo el martes y en el wpf se deslogueo normal yo y volvi a ingresar pensando que no me dejaria ingresar y me dejo ingresar eso deberia bloquear el ingreso al wpf ya que ese día no atiende. y la ultima prueba que se hizo fue que cerre el turno en la pwa fui al wpf y el turno seguia abierto en el wpf no se habia cerrado y al hacer sincronización manual en el wpf no se cerro tampoco seguia abierto y se realizo cobro y genero cobro normal."*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Sincronización Reactiva de Cierre de Turno Remoto (PWA -> API -> SignalR -> WPF)**:
+     - `ParkingApi`: En `ShiftsController.cs`, se inyectó `IRealtimeNotificationService` y se emiten los eventos `ShiftOpened` y `ShiftClosed` al grupo SignalR de la sede activa.
+     - `Parking WPF`: En `IShiftService` y `EfShiftService`, se añadió `Task RefreshCurrentShiftAsync()`. Cuando el API confirma que el turno se cerró remotamente, actualiza el registro local en SQLite (`Status = 1`), restablece `CurrentShift = null` y dispara `ShiftStateChanged`.
+     - `SyncEngineService.cs`: Al ejecutar la sincronización manual, invoca `await _shiftService.RefreshCurrentShiftAsync()` para reconciliar el estado en memoria de la garita con SQLite.
+     - `MainShellViewModel.cs`: Se suscribió al evento SignalR `ShiftClosed`, reconciliando el turno, alertando al operador en pantalla y bloqueando acciones de checkout.
+  2. **Bloqueo Operativo de Login en WPF por Horario de Atención (`LoginViewModel.cs`, `MainShellViewModel.cs`)**:
+     - Al iniciar sesión, `LoginViewModel` inspecciona `selectedBranch.OperatingHours` para el día actual (`DateTime.Now.DayOfWeek`). Si `IsOpen == false`, cancela el inicio de sesión, purga el token/sesión y muestra en rojo: *"La sede {branch.Name} se encuentra cerrada el día de hoy según el horario de atención configurado..."*.
+     - Al modificarse el horario mientras la sesión está abierta, `MainShellViewModel` recibe `OperatingHoursChanged`, sincroniza en segundo plano y cierra la sesión con diálogo explicativo si el día actual quedó desactivado.
+  3. **Certificación de Calidad y Pruebas Unitarias**:
+     - `dotnet test ParkingWpf.slnx`: **158 de 158 Pruebas Unitarias Superadas (0 Fallos)**.
+     - `dotnet test ParkingApi.slnx`: **475 de 475 Pruebas Unitarias Superadas (0 Fallos)**.
+     - Angular PWA: `npm run build` ejecutado exitosamente con **0 Errores**.
+
+- **📦 Componentes Modificados**:
+  - `ParkingApi/ParkingApi/Controllers/ShiftsController.cs`
+  - `ParkingApi/ParkingApi.UnitTests/Controllers/ShiftsControllerTests.cs`
+  - `Parking/Parking/Services/Contracts/IShiftService.cs`
+  - `Parking/Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Parking/ViewModels/LoginViewModel.cs`
+  - `Parking/Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking/Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
+
+---
+
 ### [2026-09-08 12:00:00] - [FEATURE / SQLITE / OFFLINE / RESILIENCE] [WPF] - Auto-Migración Dinámica de Esquema SQLite, Soporte Completo de Login Offline con BCrypt, Timeout Ágil de 12s y Botón de Restablecimiento Local para SuperAdmin
 
 - **Autor**: Antigravity AI Assistant & Software Architect

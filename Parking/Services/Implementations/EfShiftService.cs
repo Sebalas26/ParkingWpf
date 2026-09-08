@@ -113,7 +113,7 @@ public class EfShiftService : IShiftService
         return shift;
     }
 
-    public async Task<WorkShift?> GetActiveShiftAsync()
+    public async Task RefreshCurrentShiftAsync()
     {
         var branchId = CurrentBranchId;
         try
@@ -123,11 +123,35 @@ public class EfShiftService : IShiftService
             {
                 CurrentShift = apiShift;
                 ShiftStateChanged?.Invoke();
-                return apiShift;
+                return;
+            }
+            else
+            {
+                // El API respondió confirmando que no hay turno activo (cerrado centralmente desde PWA)
+                using var dbClose = _connectionManager.CreateDbContext();
+                if (branchId.HasValue && branchId.Value > 0)
+                {
+                    var openLocalShifts = await dbClose.WorkShifts
+                        .Where(s => s.BranchId == branchId.Value && s.Status == 0)
+                        .ToListAsync();
+                    foreach (var s in openLocalShifts)
+                    {
+                        s.Status = 1;
+                        s.EndTimeUtc ??= DateTime.UtcNow;
+                    }
+                    if (openLocalShifts.Count > 0)
+                    {
+                        await dbClose.SaveChangesAsync();
+                    }
+                }
+                CurrentShift = null;
+                ShiftStateChanged?.Invoke();
+                return;
             }
         }
         catch { }
 
+        // Si falló la consulta online o estamos en modo offline, resolver contra SQLite local
         using var db = _connectionManager.CreateDbContext();
         var query = db.WorkShifts.Where(s => s.Status == 0);
         if (branchId.HasValue && branchId.Value > 0)
@@ -141,7 +165,12 @@ public class EfShiftService : IShiftService
 
         CurrentShift = localShift;
         ShiftStateChanged?.Invoke();
-        return localShift;
+    }
+
+    public async Task<WorkShift?> GetActiveShiftAsync()
+    {
+        await RefreshCurrentShiftAsync();
+        return CurrentShift;
     }
 
     public async Task<ShiftSummaryModel> GetCurrentShiftSummaryAsync()

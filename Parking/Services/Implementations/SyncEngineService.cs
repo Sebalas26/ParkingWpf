@@ -18,6 +18,7 @@ public class SyncEngineService : ISyncEngineService
     private readonly IApiClientService _apiClient;
     private readonly IDbConnectionManager _dbManager;
     private readonly ISessionService _sessionService;
+    private readonly IShiftService? _shiftService;
     private bool _isOnline;
     private int _pendingItemsCount;
     private DateTime? _lastSyncTime;
@@ -38,11 +39,13 @@ public class SyncEngineService : ISyncEngineService
     public SyncEngineService(
         IApiClientService apiClient,
         IDbConnectionManager dbManager,
-        ISessionService sessionService)
+        ISessionService sessionService,
+        IShiftService? shiftService = null)
     {
         _apiClient = apiClient;
         _dbManager = dbManager;
         _sessionService = sessionService;
+        _shiftService = shiftService;
     }
 
     public async Task<bool> PerformFullSyncAsync()
@@ -950,6 +953,15 @@ public class SyncEngineService : ISyncEngineService
                 shiftsCount++;
             }
             await db.SaveChangesAsync(ct);
+
+            if (_shiftService != null)
+            {
+                try
+                {
+                    await _shiftService.RefreshCurrentShiftAsync();
+                }
+                catch { }
+            }
         }
         result.SyncedShiftsCount = shiftsCount;
         await Task.Delay(50, ct);

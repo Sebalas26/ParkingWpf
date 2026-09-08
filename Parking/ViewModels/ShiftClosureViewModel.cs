@@ -155,6 +155,14 @@ public partial class ShiftClosureViewModel : ViewModelBase
             await LoadShiftDataAsync();
         };
 
+        _shiftService.ShiftStateChanged += () =>
+        {
+            System.Windows.Application.Current?.Dispatcher.InvokeAsync(async () =>
+            {
+                await LoadShiftDataAsync();
+            });
+        };
+
         _syncEngine.SyncStatusChanged += (s, e) =>
         {
             System.Windows.Application.Current?.Dispatcher.Invoke(() =>

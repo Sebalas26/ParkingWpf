@@ -210,6 +210,29 @@ public partial class LoginViewModel : ViewModelBase
                 NetworkStatusText = "Modo Offline (Sin Conexión)";
             }
 
+            // Validar Horario de Atención de la Sede para el día de hoy
+            var activeBranch = _sessionService.CurrentBranch ?? selectedBranch;
+            if (activeBranch?.OperatingHours != null && activeBranch.OperatingHours.Count > 0)
+            {
+                var today = DateTime.Now.DayOfWeek;
+                var todaySchedule = activeBranch.OperatingHours.FirstOrDefault(oh => oh.DayOfWeek == today);
+                if (todaySchedule != null && !todaySchedule.IsOpen)
+                {
+                    var cultureEs = new System.Globalization.CultureInfo("es-CO");
+                    var dayName = cultureEs.DateTimeFormat.GetDayName(today);
+                    if (!string.IsNullOrEmpty(dayName))
+                    {
+                        dayName = char.ToUpper(dayName[0]) + dayName.Substring(1);
+                    }
+
+                    _sessionService.Clear();
+                    _apiClient.ClearAuthToken();
+                    HasError = true;
+                    ErrorMessage = $"La sede '{activeBranch.Name}' se encuentra cerrada el día de hoy ({dayName}) según el horario de atención configurado.";
+                    return;
+                }
+            }
+
             await Task.Delay(250);
             LoginSuccessful?.Invoke();
         }

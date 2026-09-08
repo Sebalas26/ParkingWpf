@@ -192,6 +192,30 @@ public class EfShiftServiceTests : IDisposable
         saved!.Amount.Should().Be(30000m);
     }
 
+    [Fact]
+    public async Task RefreshCurrentShiftAsync_WhenShiftClosedRemotely_SetsCurrentShiftToNullAndFiresEvent()
+    {
+        // Arrange
+        var service = CreateService();
+        await service.OpenShiftAsync(baseAmount: 50000m);
+        service.HasActiveShift.Should().BeTrue();
+
+        bool eventFired = false;
+        service.ShiftStateChanged += () => eventFired = true;
+
+        // Simular que el API retorna null porque se cerró desde PWA
+        _mockApiClient.Setup(a => a.GetActiveShiftAsync(It.IsAny<int?>(), It.IsAny<int?>()))
+            .ReturnsAsync((WorkShift?)null);
+
+        // Act
+        await service.RefreshCurrentShiftAsync();
+
+        // Assert
+        service.CurrentShift.Should().BeNull();
+        service.HasActiveShift.Should().BeFalse();
+        eventFired.Should().BeTrue();
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();
