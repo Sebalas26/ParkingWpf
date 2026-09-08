@@ -279,9 +279,19 @@ public partial class MainShellViewModel : ViewModelBase
                     if (notification.EventType == "ShiftClosed")
                     {
                         SyncStatusText = $"Caja cerrada centralmente ({DateTime.Now:HH:mm})";
+                        
+                        if (_permissionService.HasPermission("shifts.view_current"))
+                        {
+                            NavigateToShiftClosure();
+                        }
+                        else
+                        {
+                            NavigateToInitialAuthorizedView();
+                        }
+
                         await _dialogService.ShowAlertAsync(
                             "Cierre de Caja Remoto",
-                            "El turno de caja de esta sede fue cerrado desde el panel administrativo central (PWA). La caja ha sido cerrada automáticamente en este terminal.",
+                            "El turno de caja de esta sede fue cerrado desde el panel administrativo central (PWA). La caja ha sido cerrada automáticamente en este terminal.\n\nDebe registrar la apertura de un nuevo turno para continuar operando en la terminal.",
                             DialogNotificationType.Warning);
                     }
                     else

@@ -13,6 +13,27 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 6. **Resultado de la Verificación** (estado de compilación y pruebas).
 
+### [2026-09-08 17:50:00] - [FIX / NAVIGATION / SHIFTS / SIGNALR / REALTIME / WPF] - Redirección Obligatoria Inmediata a Apertura de Turno (ShiftClosureViewModel) tras Cierre Remoto de Caja desde PWA y Bloqueo de Operaciones
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"Listo el wpf ya sincroniza cuando desde la pwa cierra caja en el wpf sale el aviso pero lo deja en el modulo que esta deberia devolverlo a obligarlo a abrir turno nuevamente si me explico eso no lo esta haciendo otra cosa no esta siendo reactivo con la pwa cuando se abre el turno en el wpf por que en la pwa no se avisa estoy en el modulo caja y no aparece que se abrio caja y me toca darle actualizar para que se refresque si me explico."*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Redirección Obligatoria en Terminal WPF (`MainShellViewModel.cs`)**:
+     - Al recibir el evento SignalR `ShiftClosed` desde la nube, `MainShellViewModel` reconcilia el turno y limpia el estado local con `_shiftService.RefreshCurrentShiftAsync()`.
+     - Anteriormente, el sistema mostraba la alerta pero dejaba al operador en la pantalla en la que se encontraba (ej. `CheckInViewModel` o `CheckOutViewModel`), permitiendo ver formularios de cobro u operaciones huérfanas.
+     - Se implementó la navegación obligatoria inmediata: si el usuario cuenta con el permiso `shifts.view_current`, se ejecuta de forma síncrona `NavigateToShiftClosure()`, forzando la transición visual a la pantalla de Apertura de Turno (`ShiftClosureViewModel`), donde se exige ingresar la base inicial de caja y hacer clic en "Abrir Turno".
+     - Si el usuario no cuenta con dicho permiso, se redirige a `NavigateToInitialAuthorizedView()`, donde cualquier intento de navegar o registrar movimientos es rechazado de inmediato por `ValidateShiftAccess` con la advertencia *"Apertura de Turno Requerida"*, manteniendo el terminal completamente protegido.
+     - Se actualizó el diálogo interactivo para indicar con total claridad que la caja fue cerrada centralmente y que se debe abrir un nuevo turno para continuar operando.
+  2. **Verificación y Pruebas Unitarias**:
+     - `dotnet test ParkingWpf.slnx`: **165 de 165 pruebas superadas (0 fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Parking/ViewModels/MainShellViewModel.cs`
+
+---
+
 ### [2026-09-08 16:30:00] - [FIX / SYNC / SIGNALR / WORKSHIFT / DESERIALIZATION / WPF] - Corrección Definitiva de Sincronización en Tiempo Real de Cajas (PWA -> API -> WPF), Deserialización Resiliente de Status y Transición Automática desde ShiftClosureViewModel
 
 - **Autor**: Antigravity AI Assistant & Software Architect
