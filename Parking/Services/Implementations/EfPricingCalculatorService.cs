@@ -191,7 +191,8 @@ public class EfPricingCalculatorService : IPricingCalculatorService
             if (!isNightStay)
             {
                 var (fullDayApplies, triggerMinutes, coverageMinutes) = ResolveFullDayParameters(branch, rate, cotDayOfWeek);
-                bool fullDayConfigured = allowDay && rate.FullDayRate > 0 && triggerMinutes > 0;
+                decimal resolvedFullDayRate = ResolveFullDayRate(rate, cotDayOfWeek);
+                bool fullDayConfigured = allowDay && resolvedFullDayRate > 0 && triggerMinutes > 0;
 
                 if (fullDayConfigured && fullDayApplies && effectiveMinutes >= triggerMinutes)
                 {
@@ -204,7 +205,7 @@ public class EfPricingCalculatorService : IPricingCalculatorService
                         if (remMins >= triggerMinutes)
                         {
                             // El excedente superó el umbral de activación del nuevo ciclo -> cobra otra plena
-                            remFee = rate.FullDayRate;
+                            remFee = resolvedFullDayRate;
                         }
                         else
                         {
@@ -226,12 +227,12 @@ public class EfPricingCalculatorService : IPricingCalculatorService
                             }
                             else
                             {
-                                remFee = rate.FullDayRate;
+                                remFee = resolvedFullDayRate;
                             }
 
-                            if (remFee > rate.FullDayRate)
+                            if (remFee > resolvedFullDayRate)
                             {
-                                remFee = rate.FullDayRate;
+                                remFee = resolvedFullDayRate;
                             }
                         }
                     }
@@ -263,7 +264,7 @@ public class EfPricingCalculatorService : IPricingCalculatorService
                             }
                         }
 
-                        fee = (completeCycles * rate.FullDayRate) + remFee;
+                        fee = (completeCycles * resolvedFullDayRate) + remFee;
                     }
                 }
                 else
@@ -284,15 +285,15 @@ public class EfPricingCalculatorService : IPricingCalculatorService
                         var billableHours = (int)Math.Max(1, Math.Ceiling(effectiveMinutes / 60.0));
                         fee = billableHours * rate.HourRate;
                     }
-                    else if (allowDay && rate.FullDayRate > 0)
+                    else if (allowDay && resolvedFullDayRate > 0)
                     {
-                        fee = rate.FullDayRate;
+                        fee = resolvedFullDayRate;
                     }
 
                     // Tope de tarifa plena del día si aplica
-                    if (allowDay && fullDayApplies && rate.FullDayRate > 0 && fee > rate.FullDayRate)
+                    if (allowDay && fullDayApplies && resolvedFullDayRate > 0 && fee > resolvedFullDayRate)
                     {
-                        fee = rate.FullDayRate;
+                        fee = resolvedFullDayRate;
                     }
                 }
             }
@@ -410,4 +411,39 @@ public class EfPricingCalculatorService : IPricingCalculatorService
         [System.Text.Json.Serialization.JsonPropertyName("endTime")]
         public string? EndTime { get; set; }
     }
+
+    private static decimal ResolveFullDayRate(VehicleRate rate, DayOfWeek day)
+    {
+        if (!string.IsNullOrWhiteSpace(rate.FullDayRatesJson))
+        {
+            try
+            {
+                var items = System.Text.Json.JsonSerializer.Deserialize<List<FullDayRateItem>>(rate.FullDayRatesJson);
+                if (items != null && items.Count > 0)
+                {
+                    var match = items.FirstOrDefault(i => IsDayApplicable(i.Days, day) && i.Rate.HasValue && i.Rate.Value > 0);
+                    if (match != null && match.Rate.HasValue && match.Rate.Value > 0)
+                    {
+                        return match.Rate.Value;
+                    }
+                }
+            }
+            catch
+            {
+                // Fallback defensivo ante JSON malformado
+            }
+        }
+
+        return rate.FullDayRate;
+    }
+
+    private sealed class FullDayRateItem
+    {
+        [System.Text.Json.Serialization.JsonPropertyName("days")]
+        public string? Days { get; set; }
+
+        [System.Text.Json.Serialization.JsonPropertyName("rate")]
+        public decimal? Rate { get; set; }
+    }
 }
+

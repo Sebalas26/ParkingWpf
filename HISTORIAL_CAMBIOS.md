@@ -15,6 +15,40 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 ---
 
+### [2026-09-08 07:15:00] - [FEATURE / PRICING / DATA-DRIVEN] [WPF] - Soporte Completo para Tarifas Plenas Dinámicas por Bloques de Días (FullDayRatesJson) y Batería Masiva de Pruebas de Estrés
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > *"entonces revisa analiza y dame el plan completo ."*
+- **🤖 Resumen Técnico para la IA**:
+  1. **Modelo y Mapeo EF Core (`VehicleRate.cs`, `VehicleRateConfiguration.cs`)**:
+     - Agregada propiedad `FullDayRatesJson` (`string?`) a la entidad `VehicleRate` para almacenar los precios de tarifa plena específicos para cada bloque de días configurado en la sede.
+     - Mapeada en `VehicleRateConfiguration.cs` como columna opcional (`IsRequired(false)`).
+  2. **Motor de Cobro Desconectado (`EfPricingCalculatorService.cs`)**:
+     - Implementado método `ResolveFullDayRate(VehicleRate rate, DayOfWeek dayOfWeek)` para resolver dinámicamente el precio de tarifa plena aplicable al día de salida:
+       - Si existe `FullDayRatesJson`, se deserializa la lista `FullDayRateItem` y se busca el bloque coincidente con el día de la semana (`IsDayApplicable`).
+       - Si no se encuentra bloque o si la propiedad está vacía, se realiza fallback al valor base `rate.FullDayRate`.
+       - Si el JSON está truncado o malformado, captura defensiva `JsonException` retornando `rate.FullDayRate`.
+     - Actualizado el cálculo de tarifa plena cíclica para utilizar `resolvedFullDayRate` tanto en el bloque acumulado recurrente (`fullCycles * resolvedFullDayRate`) como en el remanente que alcanza el umbral.
+  3. **Batería Extensiva de Pruebas Unitarias (`EfPricingCalculatorServiceTests.cs`)**:
+     - Agregada prueba `CalculateFee_DynamicFullDayRatesJson_ResolvesExactRateByDayBlock` verificando resolución de tarifas diferenciadas (ej: Lunes-Viernes $15.000 vs Sábado-Domingo $25.000).
+     - Agregada prueba de resiliencia y fallback ante JSON corrupto/malformado.
+     - Incorporada prueba masiva parametrizada `CalculateFee_ExtensivePricingStressScenarios_CalculatesExactExpectedFee` con `[Theory]` y `[MemberData]` cubriendo períodos de gracia, cobro por minuto vs hora, umbrales de plena, tarifas nocturnas con permanencia y ciclos multi-día (24h, 48h, 72h, 120h).
+  4. **Verificación y Compilación**:
+     - Compilación: `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+     - Pruebas Unitarias: `dotnet test ParkingWpf.slnx` -> **154 de 154 Superadas (100% Éxito, 0 Fallos)**.
+
+- **Componentes Modificados**:
+  - `Parking/Entities/VehicleRate.cs`
+  - `Parking/Data/Configurations/VehicleRateConfiguration.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking.UnitTests/Pricing/EfPricingCalculatorServiceTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **Resultado**: Compilación limpia y 100% de pruebas superadas sin fallos.
+
+---
+
 ### [2026-09-07 22:25:00] - [CLEANUP / ARCHITECTURE / REFACTOR] [WPF] - Erradicación Total de Números y Horas Quemadas (100% Data-Driven) en EfPricingCalculatorService
 
 - **Autor**: Antigravity AI Assistant & Software Architect
