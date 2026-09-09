@@ -412,18 +412,32 @@ public partial class MainShellViewModel : ViewModelBase
                 if (_permissionService.HasPermission("shifts.view_current"))
                 {
                     NavigateToShiftClosure();
-                    _ = _dialogService.ShowAlertAsync(
-                        "Apertura de Turno Requerida",
-                        "No hay un turno operativo abierto. Debe ingresar la base inicial de caja y abrir el turno antes de operar en la terminal.",
-                        DialogNotificationType.Warning);
+                    Application.Current?.Dispatcher.InvokeAsync(async () =>
+                    {
+                        try
+                        {
+                            await _dialogService.ShowAlertAsync(
+                                "Apertura de Turno Requerida",
+                                "No hay un turno operativo abierto. Debe ingresar la base inicial de caja y abrir el turno antes de operar en la terminal.",
+                                DialogNotificationType.Warning);
+                        }
+                        catch { }
+                    });
                 }
                 else
                 {
                     NavigateToInitialAuthorizedView();
-                    _ = _dialogService.ShowAlertAsync(
-                        "Apertura de Turno Requerida",
-                        "No hay un turno operativo abierto actualmente. Un usuario con permisos de caja/turnos debe realizar la apertura antes de registrar movimientos.",
-                        DialogNotificationType.Warning);
+                    Application.Current?.Dispatcher.InvokeAsync(async () =>
+                    {
+                        try
+                        {
+                            await _dialogService.ShowAlertAsync(
+                                "Apertura de Turno Requerida",
+                                "No hay un turno operativo abierto actualmente. Un usuario con permisos de caja/turnos debe realizar la apertura antes de registrar movimientos.",
+                                DialogNotificationType.Warning);
+                        }
+                        catch { }
+                    });
                 }
             }
             else

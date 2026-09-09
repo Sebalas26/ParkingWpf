@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json.Serialization;
+using Parking.Core.Converters;
 using Parking.Entities;
 
 namespace Parking.Models;
@@ -68,9 +69,11 @@ public class BranchModel
     public string? FullDayApplicableDays { get; set; }
 
     [JsonPropertyName("fullDayStartTime")]
+    [JsonConverter(typeof(NullableFlexibleTimeSpanJsonConverter))]
     public TimeSpan? FullDayStartTime { get; set; }
 
     [JsonPropertyName("fullDayEndTime")]
+    [JsonConverter(typeof(NullableFlexibleTimeSpanJsonConverter))]
     public TimeSpan? FullDayEndTime { get; set; }
 
     [JsonPropertyName("fullDayRulesJson")]
@@ -80,9 +83,11 @@ public class BranchModel
     public string? NightApplicableDays { get; set; }
 
     [JsonPropertyName("nightStartTime")]
+    [JsonConverter(typeof(NullableFlexibleTimeSpanJsonConverter))]
     public TimeSpan? NightStartTime { get; set; }
 
     [JsonPropertyName("nightEndTime")]
+    [JsonConverter(typeof(NullableFlexibleTimeSpanJsonConverter))]
     public TimeSpan? NightEndTime { get; set; }
 
     [JsonPropertyName("nightStayMinMinutes")]

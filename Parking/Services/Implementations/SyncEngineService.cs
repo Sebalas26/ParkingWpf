@@ -1494,7 +1494,7 @@ public class SyncEngineService : ISyncEngineService
                 {
                     if (item.OperationType == "CheckIn")
                     {
-                        var req = JsonSerializer.Deserialize<CheckInApiRequest>(item.PayloadJson);
+                        var req = JsonSerializer.Deserialize<CheckInApiRequest>(item.PayloadJson, ParkingApiClient.JsonOptions);
                         if (req != null)
                         {
                             var result = await _apiClient.CheckInAsync(req);
@@ -1503,7 +1503,7 @@ public class SyncEngineService : ISyncEngineService
                     }
                     else if (item.OperationType == "CheckOut")
                     {
-                        var req = JsonSerializer.Deserialize<CheckOutApiRequest>(item.PayloadJson);
+                        var req = JsonSerializer.Deserialize<CheckOutApiRequest>(item.PayloadJson, ParkingApiClient.JsonOptions);
                         if (req != null)
                         {
                             var result = await _apiClient.CheckOutAsync(req);

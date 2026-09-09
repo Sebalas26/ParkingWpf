@@ -1,4 +1,6 @@
 using System;
+using System.Text.Json.Serialization;
+using Parking.Entities;
 
 namespace Parking.Models.ApiModels;
 
@@ -40,6 +42,7 @@ public class ShiftSummaryModel
     public decimal CashDifference { get; set; }
     public int TotalTicketsProcessed { get; set; }
     public int TotalVehiclesEntered { get; set; }
+    [JsonConverter(typeof(ShiftStatusJsonConverter))]
     public int Status { get; set; }
     public string? Notes { get; set; }
 

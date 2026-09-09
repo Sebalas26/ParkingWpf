@@ -6,6 +6,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Parking.Core.Converters;
 using Parking.Entities;
 using Parking.Models;
 using Parking.Models.ApiModels;
@@ -18,11 +19,16 @@ public class ParkingApiClient : IApiClientService
     public event Action<string>? SessionTerminated;
 
     private readonly HttpClient _httpClient;
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    public static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
         NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString,
-        Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() }
+        Converters =
+        {
+            new System.Text.Json.Serialization.JsonStringEnumConverter(),
+            new FlexibleTimeSpanJsonConverter(),
+            new NullableFlexibleTimeSpanJsonConverter()
+        }
     };
 
     public string BaseUrl { get; set; } = "https://localhost:7023";

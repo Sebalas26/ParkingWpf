@@ -56,6 +56,29 @@ public partial class ModernMessageDialog : Window
         }
     }
 
+    private static void SafelySetOwner(Window dialog, Window? candidateOwner)
+    {
+        try
+        {
+            var target = (candidateOwner != null && candidateOwner.IsVisible)
+                ? candidateOwner
+                : (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible ? Application.Current.MainWindow : null);
+
+            if (target != null && target != dialog)
+            {
+                var helper = new System.Windows.Interop.WindowInteropHelper(target);
+                if (helper.Handle != IntPtr.Zero)
+                {
+                    dialog.Owner = target;
+                }
+            }
+        }
+        catch
+        {
+            // Evitar fallos de Win32 si la ventana aún no tiene HWND o está en proceso de cierre
+        }
+    }
+
     public static void ShowAlert(
         Window? owner,
         string title,
@@ -64,14 +87,7 @@ public partial class ModernMessageDialog : Window
         string buttonText = "Entendido")
     {
         var dialog = new ModernMessageDialog();
-        if (owner != null && owner.IsVisible)
-        {
-            dialog.Owner = owner;
-        }
-        else if (Application.Current.MainWindow != null && Application.Current.MainWindow.IsVisible)
-        {
-            dialog.Owner = Application.Current.MainWindow;
-        }
+        SafelySetOwner(dialog, owner);
 
         dialog.Configure(title, message, type, isConfirmation: false, confirmText: buttonText, cancelText: string.Empty);
         dialog.ShowDialog();
@@ -86,14 +102,7 @@ public partial class ModernMessageDialog : Window
         string cancelText = "Cancelar")
     {
         var dialog = new ModernMessageDialog();
-        if (owner != null && owner.IsVisible)
-        {
-            dialog.Owner = owner;
-        }
-        else if (Application.Current.MainWindow != null && Application.Current.MainWindow.IsVisible)
-        {
-            dialog.Owner = Application.Current.MainWindow;
-        }
+        SafelySetOwner(dialog, owner);
 
         dialog.Configure(title, message, type, isConfirmation: true, confirmText: confirmText, cancelText: cancelText);
         dialog.ShowDialog();

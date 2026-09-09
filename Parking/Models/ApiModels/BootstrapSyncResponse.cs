@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Parking.Core.Converters;
 using Parking.Core.Enums;
 using Parking.Core.Helpers;
 
@@ -64,9 +65,11 @@ public class ApiBranchSyncDto
     public string? FullDayApplicableDays { get; set; }
 
     [JsonPropertyName("fullDayStartTime")]
+    [JsonConverter(typeof(NullableFlexibleTimeSpanJsonConverter))]
     public TimeSpan? FullDayStartTime { get; set; }
 
     [JsonPropertyName("fullDayEndTime")]
+    [JsonConverter(typeof(NullableFlexibleTimeSpanJsonConverter))]
     public TimeSpan? FullDayEndTime { get; set; }
 
     [JsonPropertyName("fullDayRulesJson")]
@@ -76,9 +79,11 @@ public class ApiBranchSyncDto
     public string? NightApplicableDays { get; set; }
 
     [JsonPropertyName("nightStartTime")]
+    [JsonConverter(typeof(NullableFlexibleTimeSpanJsonConverter))]
     public TimeSpan? NightStartTime { get; set; }
 
     [JsonPropertyName("nightEndTime")]
+    [JsonConverter(typeof(NullableFlexibleTimeSpanJsonConverter))]
     public TimeSpan? NightEndTime { get; set; }
 
     [JsonPropertyName("nightStayMinMinutes")]
@@ -112,9 +117,11 @@ public class ApiBranchOperatingHourSyncDto
     public bool IsOpen { get; set; }
 
     [JsonPropertyName("openingTime")]
+    [JsonConverter(typeof(FlexibleTimeSpanJsonConverter))]
     public TimeSpan OpeningTime { get; set; } = new TimeSpan(8, 0, 0);
 
     [JsonPropertyName("closingTime")]
+    [JsonConverter(typeof(FlexibleTimeSpanJsonConverter))]
     public TimeSpan ClosingTime { get; set; } = new TimeSpan(22, 0, 0);
 
     [JsonPropertyName("bufferMinutesBefore")]

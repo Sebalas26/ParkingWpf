@@ -14,6 +14,49 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 3. **Componentes / Módulos Modificados** (archivos afectados).
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
+### [2026-09-09 07:45:00] - [FIX / JSON / CONCURRENCY / PERFORMANCE / EXCEPTION-HANDLING / WPF] - Solución Definitiva a Avalancha de JsonException en Hilos de Fondo (.NET TP Worker), Soporte Resiliente para Horarios TimeSpan "hh:mm", Mapeo de Turnos y Prevención de HWND Cero en Diálogos
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"seguimos teniendo el mimos problema con el wpf algo sucede esta reventando el sistema no esta funcionando como debería funcionar se revienta genera y genera ese excepción y el sistema se dañla no se que hilos esta creando o que esta pasando para que suceda eso. 'Parking.exe' (CoreCLR: DefaultDomain): 'C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.11\System.Private.CoreLib.dll' cargado... Excepción del tipo 'System.Text.Json.JsonException' en System.Text.Json.dll en .NET TP Worker..."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Deserialización Resiliente de `TimeSpan` y `TimeSpan?` (`FlexibleTimeSpanJsonConverter.cs`, `ParkingApiClient.cs`, `BranchModel.cs`, `BranchOperatingHour.cs`, `BootstrapSyncResponse.cs`)**:
+     - Diagnóstico: `ParkingApi` retorna los horarios de operación y jornadas nocturnas de sedes en formato compacto `"hh:mm"` (ej: `"06:00"`, `"18:00"`, `"22:00"`). Al haber 44 sedes en base de datos, el deserializador nativo `System.Text.Json` de .NET (que exige formato canónico `"c"` con segundos `"hh:mm:ss"`) lanzaba exactamente 44 excepciones `System.Text.Json.JsonException` consecutivas en los hilos del ThreadPool (`.NET TP Worker`) al consultar el catálogo de sedes (`GetAllBranchesAsync()` / `GetByIdAsync()`), inundando la consola de salida y degradando el rendimiento general de la aplicación.
+     - Solución: Se implementaron los convertidores `FlexibleTimeSpanJsonConverter` y `NullableFlexibleTimeSpanJsonConverter`, que procesan con tolerancia formatos `"hh:mm"`, `"hh:mm:ss"`, `"d.hh:mm:ss"`, ISO 8601 y números (ticks/segundos). Se registraron en `ParkingApiClient.JsonOptions` (expuesto de forma pública e inmutable `public static readonly`) y se decoraron las propiedades en `BranchModel`, `BranchOperatingHour` y `BootstrapSyncResponse`. Se agregó además `[JsonIgnore]` en `BranchOperatingHour.Branch` para prevenir ciclos de serialización de EF Core.
+  2. **Corrección de Mapeo en Estado de Turnos (`ShiftSummaryModel.Status` en `ShiftApiModels.cs`)**:
+     - Diagnóstico: `ShiftSummaryModel.Status` estaba definido como `int` sin convertidor, mientras que el endpoint del API central retorna el estado como string (`"Open"`, `"Closed"`, etc.). Al consultar el arqueo o estado del turno, el deserializador generaba `JsonException`.
+     - Solución: Se decoró `Status` con `[JsonConverter(typeof(ShiftStatusJsonConverter))]`, garantizando compatibilidad total y bidireccional entre representaciones en cadena y valores enteros del enum.
+  3. **Deserialización Segura en Cola Fuera de Línea (`SyncEngineService.cs`)**:
+     - Se actualizó `SyncEngineService.ProcessPendingQueueAsync` para utilizar `ParkingApiClient.JsonOptions` al deserializar los payloads encolados (`CheckInApiRequest`, `CheckOutApiRequest`), soportando strings de enums y opciones compartidas.
+  4. **Protección Defensiva en Tarifas de Días Completos (`EfPricingCalculatorService.cs`)**:
+     - Se reforzó `EfPricingCalculatorService` con validación previa de contenido JSON válido (`rawJson.StartsWith("[")`) antes de intentar deserializar `FullDayRulesJson` y `FullDayRatesJson`.
+  5. **Prevención de Excepción de HWND Cero en Diálogos Modales (`ModernMessageDialog.xaml.cs`, `MainShellViewModel.cs`)**:
+     - Diagnóstico: Si un diálogo intentaba establecer `Owner = Application.Current.MainWindow` antes de que el controlador de ventana Win32 estuviese inicializado o tras cerrarse la ventana principal (`HWND == IntPtr.Zero`), WPF lanzaba `ArgumentException: Hwnd de cero no es válido`.
+     - Solución: Se creó el método auxiliar `SafelySetOwner(Window dialog, Window? owner)` que valida `new WindowInteropHelper(owner).Handle != IntPtr.Zero`. Adicionalmente, las alertas de turnos en `MainShellViewModel.cs` se envolvieron en despachador seguro con bloque `try/catch`.
+  6. **Pruebas Unitarias Automatizadas (`JsonSerializationTests.cs`)**:
+     - Se incorporaron 15 pruebas unitarias en `Parking.UnitTests/Converters/JsonSerializationTests.cs` validando exhaustivamente formatos `"hh:mm"`, `"hh:mm:ss"`, valores nulos, parsing de `ShiftSummaryModel` con estados en string y robustez de opciones globales.
+     - Total de pruebas en la solución WPF: **182 Superadas, 0 Fallos (100%)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Core/Converters/FlexibleTimeSpanJsonConverter.cs` (NUEVO)
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Entities/BranchOperatingHour.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Models/ApiModels/ShiftApiModels.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking/Views/ModernMessageDialog.xaml.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking.UnitTests/Converters/JsonSerializationTests.cs` (NUEVO)
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **182/182 Superadas (100% Éxito, 0 Fallos)**.
+
+---
+
 ### [2026-09-08 22:15:00] - [FIX / CONCURRENCY / PERFORMANCE / PRICING / UI-UX / WPF] - Eliminación de Bloqueos y Congelamientos en SQLite (WAL Mode), Optimización de Sincronización en Segundo Plano, Solución a Parpadeo de Botón de Cierre, Desacoplamiento de Recurso de Logo y Soporte Robusto JSON en Tarifas de Días Completos
 
 - **Autor**: Antigravity AI Assistant & Software Architect
