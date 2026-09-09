@@ -16,7 +16,33 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 6. **Resultado de la Verificación** (estado de compilación y pruebas).
 
-<<<<<<< HEAD
+### [2026-09-08 20:50:00] - [FIX / SHIFTS / RBAC / USERID / EXCEPTION-HANDLING / WPF] - Vinculación de Turno por UserId, Propagación de Errores de API en Apertura de Turno y Resiliencia en Memoria/SQLite
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"debes analiza completamente para saber que paso son a seguir... Yo entro al WPF y listo, me sale abrir turno. Él dice que abrió turno, pero NO está guardando en la base de datos. No lo está haciendo. Por ende, en el PWA no registra... Yo puedo abrir una caja a un usuario específico desde la PWA... cuando ingrese en WPF debe saber que ya tiene caja abierta... al cerrar caja en PWA debe devolverlo al módulo de abrir caja... al abrir caja en WPF debe aparecer en tiempo real en PWA... y en PWA en módulo de activos dice que la sede se encuentra configurada como cerrada..."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Propagación de Errores y Mapeo de `UserId` en Apertura de Turnos (`ShiftApiModels.cs`, `ParkingApiClient.cs`, `EfShiftService.cs`)**:
+     - Se añadió `UserId` a `OpenShiftApiRequest`, enviando el ID del usuario en sesión (`CurrentUser.ServerUserId`).
+     - En `ParkingApiClient.OpenShiftAsync`, se capturan los mensajes de rechazo o error del API y se lanzan vía `HttpRequestException`, evitando que la aplicación simule una apertura exitosa cuando el servidor la rechaza.
+     - En `EfShiftService.OpenShiftAsync`, ya no se tragan los errores del servidor central con bloques vacíos. Si el servidor confirma la apertura, se marca `IsSynchronized = true` y se guarda en SQLite. Si se opera en modo offline, se crea el turno local y `RefreshCurrentShiftAsync` respeta los turnos con `IsSynchronized == false` para no destruirlos.
+  2. **Reconocimiento Directo de Propiedad de Caja por `UserId` (`MainShellViewModel.cs`, `ShiftClosureViewModel.cs`)**:
+     - Se actualizó la verificación de propiedad del turno: si `activeShift.UserId == CurrentUser.ServerUserId`, el sistema reconoce al operador inmediatamente como dueño del turno (además de la comparación por nombre).
+     - Al iniciar sesión un operador al que se le abrió la caja desde la PWA, el sistema detecta su turno abierto y entra directamente a la operación (`CheckInViewModel`), sin exigir abrir caja nuevamente.
+  3. **Cierre de Caja Remoto y Bloqueo Operativo**:
+     - Al recibir SignalR `ShiftClosed`, se reconcilia el turno, se muestra el aviso *"Se ha cerrado la caja por orden del administrador desde el panel central (PWA)"* y se redirige a `ShiftClosureViewModel`, bloqueando las operaciones hasta una nueva apertura.
+  4. **Verificación y Pruebas Unitarias**:
+     - `dotnet test ParkingWpf.slnx`: 165 de 165 pruebas superadas (0 fallos).
+
+- **📦 Componentes Modificados**:
+  - `Parking/Models/ApiModels/ShiftApiModels.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+
+---
 
 ### [2026-09-08 17:50:00] - [FIX / NAVIGATION / SHIFTS / SIGNALR / REALTIME / WPF] - Redirección Obligatoria Inmediata a Apertura de Turno (ShiftClosureViewModel) tras Cierre Remoto de Caja desde PWA y Bloqueo de Operaciones
 
@@ -37,6 +63,8 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **📦 Componentes Modificados**:
   - `Parking/Parking/ViewModels/MainShellViewModel.cs`
+
+---
 
 ### [2026-09-08 17:50:00] - [UI / UX / CHECKIN / WPF] - Unificación de Fecha y Hora del Sistema en una Sola Línea con Tipografía Homogénea (CheckInView)
 
@@ -80,7 +108,6 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **📦 Componentes Modificados**:
   - `Parking/Views/CheckInView.xaml`
-    > > > > > > > f9ecec0cfe1a33197c80b419854d5e32c0087d9a
 
 ---
 

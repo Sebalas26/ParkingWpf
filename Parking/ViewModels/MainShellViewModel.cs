@@ -290,8 +290,8 @@ public partial class MainShellViewModel : ViewModelBase
                         }
 
                         await _dialogService.ShowAlertAsync(
-                            "Cierre de Caja Remoto",
-                            "El turno de caja de esta sede fue cerrado desde el panel administrativo central (PWA). La caja ha sido cerrada automáticamente en este terminal.\n\nDebe registrar la apertura de un nuevo turno para continuar operando en la terminal.",
+                            "Cierre de Caja",
+                            "Se ha cerrado la caja por orden del administrador desde el panel central (PWA).\n\nDebe registrar la apertura de un nuevo turno para continuar operando en este terminal.",
                             DialogNotificationType.Warning);
                     }
                     else
@@ -433,6 +433,7 @@ public partial class MainShellViewModel : ViewModelBase
             else
             {
                 var isCurrentShiftOwner = CurrentUser != null && (
+                    (activeShift.UserId > 0 && CurrentUser.ServerUserId.HasValue && activeShift.UserId == CurrentUser.ServerUserId.Value) ||
                     string.Equals(activeShift.OperatorName, CurrentUser.FullName, StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(activeShift.OperatorName, CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
 
@@ -689,6 +690,7 @@ public partial class MainShellViewModel : ViewModelBase
         if (activeShift == null) return true;
 
         var isCurrentShiftOwner = CurrentUser != null && (
+            (activeShift.UserId > 0 && CurrentUser.ServerUserId.HasValue && activeShift.UserId == CurrentUser.ServerUserId.Value) ||
             string.Equals(activeShift.OperatorName, CurrentUser.FullName, StringComparison.OrdinalIgnoreCase) ||
             string.Equals(activeShift.OperatorName, CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
 

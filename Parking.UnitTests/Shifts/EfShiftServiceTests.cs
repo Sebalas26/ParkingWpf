@@ -5,6 +5,7 @@ using Moq;
 using Parking.Core.Enums;
 using Parking.Entities;
 using Parking.Models;
+using Parking.Models.ApiModels;
 using Parking.Services.Contracts;
 using Parking.Services.Implementations;
 using Parking.UnitTests.Common;
@@ -271,6 +272,56 @@ public class EfShiftServiceTests : IDisposable
 
         shift.Should().NotBeNull();
         shift!.Status.Should().Be(expectedStatus);
+    }
+
+    [Fact]
+    public async Task OpenShiftAsync_WhenServerThrowsInvalidOperationException_PropagatesException()
+    {
+        // Arrange
+        var service = CreateService();
+        _mockApiClient.Setup(a => a.OpenShiftAsync(It.IsAny<OpenShiftApiRequest>()))
+            .ThrowsAsync(new InvalidOperationException("Monto base obligatorio"));
+
+        // Act
+        var act = async () => await service.OpenShiftAsync(50000m);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("Monto base obligatorio");
+        service.CurrentShift.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task OpenShiftAsync_WhenSuccessful_SendsUserIdAndSavesAsSynchronized()
+    {
+        // Arrange
+        var service = CreateService();
+        OpenShiftApiRequest? capturedRequest = null;
+        var remoteShift = new WorkShift
+        {
+            ShiftId = Guid.NewGuid(),
+            BranchId = 1,
+            CompanyId = 5,
+            UserId = 1,
+            OperatorName = "Operador de Prueba",
+            Status = 0,
+            BaseAmount = 70000m,
+            IsSynchronized = true
+        };
+
+        _mockApiClient.Setup(a => a.OpenShiftAsync(It.IsAny<OpenShiftApiRequest>()))
+            .Callback<OpenShiftApiRequest>(r => capturedRequest = r)
+            .ReturnsAsync(remoteShift);
+
+        // Act
+        var result = await service.OpenShiftAsync(70000m);
+
+        // Assert
+        result.Should().NotBeNull();
+        capturedRequest.Should().NotBeNull();
+        capturedRequest!.UserId.Should().Be(1); // ServerUserId from mockAuth
+        result.IsSynchronized.Should().BeTrue();
+        service.HasActiveShift.Should().BeTrue();
     }
 
     public void Dispose()

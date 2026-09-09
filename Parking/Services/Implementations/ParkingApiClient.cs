@@ -275,11 +275,39 @@ public class ParkingApiClient : IApiClientService
             {
                 return await response.Content.ReadFromJsonAsync<WorkShift>(JsonOptions, cts.Token);
             }
-            return null;
+
+            string errorMessage = $"Error del servidor al abrir turno ({response.StatusCode})";
+            try
+            {
+                var content = await response.Content.ReadAsStringAsync(cts.Token);
+                if (!string.IsNullOrWhiteSpace(content))
+                {
+                    using var doc = System.Text.Json.JsonDocument.Parse(content);
+                    if (doc.RootElement.TryGetProperty("message", out var msgProp) && !string.IsNullOrWhiteSpace(msgProp.GetString()))
+                    {
+                        errorMessage = msgProp.GetString()!;
+                    }
+                    else
+                    {
+                        errorMessage = content;
+                    }
+                }
+            }
+            catch { }
+
+            throw new InvalidOperationException(errorMessage);
         }
-        catch
+        catch (InvalidOperationException)
         {
-            return null;
+            throw;
+        }
+        catch (HttpRequestException)
+        {
+            throw;
+        }
+        catch (TaskCanceledException)
+        {
+            throw new HttpRequestException("Tiempo de espera agotado al comunicarse con el servidor central para abrir el turno.");
         }
     }
 

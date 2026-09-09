@@ -55,6 +55,7 @@ public class EfShiftService : IShiftService
         {
             BranchId = branchId.Value,
             CompanyId = companyId.Value,
+            UserId = _authService.CurrentUser?.ServerUserId,
             BaseAmount = baseAmount,
             Notes = notes
         };
@@ -64,8 +65,20 @@ public class EfShiftService : IShiftService
         try
         {
             shift = await _apiClient.OpenShiftAsync(request);
+            if (shift != null)
+            {
+                shift.IsSynchronized = true;
+            }
         }
-        catch { }
+        catch (InvalidOperationException)
+        {
+            // El servidor central rechazó activamente la apertura de turno (regla de negocio / validación)
+            throw;
+        }
+        catch
+        {
+            // Fallo de conectividad o modo offline: continuar con la apertura local en SQLite
+        }
 
         shift ??= new WorkShift
         {
@@ -105,6 +118,7 @@ public class EfShiftService : IShiftService
             existing.Status = 0;
             existing.BaseAmount = baseAmount;
             existing.Notes = notes;
+            existing.IsSynchronized = shift.IsSynchronized;
         }
         await db.SaveChangesAsync();
 

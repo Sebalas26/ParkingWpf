@@ -582,6 +582,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 ActiveShiftStartTime = active.StartTimeUtc.ToLocalTime();
 
                 IsShiftOwner = isAdmin ||
+                               (active.UserId > 0 && _authService.CurrentUser?.ServerUserId.HasValue == true && active.UserId == _authService.CurrentUser.ServerUserId.Value) ||
                                string.Equals(active.OperatorName, currentFullName, StringComparison.OrdinalIgnoreCase) ||
                                string.Equals(active.OperatorName, currentUsername, StringComparison.OrdinalIgnoreCase);
 
