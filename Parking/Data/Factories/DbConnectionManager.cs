@@ -26,7 +26,7 @@ public class DbConnectionManager : IDbConnectionManager
 
     public DbConnectionManager(string? sqliteConnectionString = null)
     {
-        _sqliteConnectionString = sqliteConnectionString ?? "Data Source=parkflow_local.db;";
+        _sqliteConnectionString = sqliteConnectionString ?? "Data Source=parkflow_local.db;Cache=Shared;Mode=ReadWriteCreate;Default Timeout=15;";
     }
 
     public ParkFlowDbContext CreateDbContext()
@@ -40,6 +40,13 @@ public class DbConnectionManager : IDbConnectionManager
     {
         using var context = CreateDbContext();
         await context.Database.EnsureCreatedAsync();
+
+        // Configuración de concurrencia y resiliencia SQLite (Write-Ahead Logging y timeout de bloqueo)
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA synchronous = NORMAL;");
+        }
+        catch { }
 
         // Asegurar que las tablas auxiliares y de turnos existan
         try

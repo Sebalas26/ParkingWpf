@@ -296,14 +296,10 @@ public partial class MainShellViewModel : ViewModelBase
                     }
                     else
                     {
-                        SyncStatusText = $"Turno de caja actualizado ({DateTime.Now:HH:mm})";
+                        SyncStatusText = $"Turno de caja activo ({DateTime.Now:HH:mm})";
                         if (ActiveView is ShiftClosureViewModel && HasActiveShift)
                         {
                             NavigateToInitialAuthorizedView();
-                            await _dialogService.ShowAlertAsync(
-                                "Turno Habilitado",
-                                "Se ha registrado la apertura de caja desde la administración. El terminal se encuentra habilitado para operar.",
-                                DialogNotificationType.Success);
                         }
                     }
                 }

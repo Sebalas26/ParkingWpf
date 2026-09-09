@@ -259,7 +259,7 @@
                                                                     Padding="8,4"
                                                                     SnapsToDevicePixels="True">
                                                                 <Grid>
-                                                                    <Image Source="{Binding ImageUrl, Converter={StaticResource Base64ToImageConv}, TargetNullValue='/Resources/logo.jpeg', FallbackValue='/Resources/logo.jpeg'}"
+                                                                    <Image Source="{Binding ImageUrl, Converter={StaticResource Base64ToImageConv}}"
                                                                            Stretch="Uniform"
                                                                            Height="36"
                                                                            RenderOptions.BitmapScalingMode="HighQuality"

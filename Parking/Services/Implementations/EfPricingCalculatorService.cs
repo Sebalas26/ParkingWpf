@@ -349,6 +349,12 @@ public class EfPricingCalculatorService : IPricingCalculatorService
         return false;
     }
 
+    private static readonly System.Text.Json.JsonSerializerOptions JsonOpts = new()
+    {
+        PropertyNameCaseInsensitive = true,
+        NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString
+    };
+
     private static (bool applies, int triggerMinutes, int coverageMinutes) ResolveFullDayParameters(
         BranchModel? branch, VehicleRate rate, DayOfWeek day)
     {
@@ -356,7 +362,7 @@ public class EfPricingCalculatorService : IPricingCalculatorService
         {
             try
             {
-                var rules = System.Text.Json.JsonSerializer.Deserialize<List<FullDayRuleItem>>(branch.FullDayRulesJson);
+                var rules = System.Text.Json.JsonSerializer.Deserialize<List<FullDayRuleItem>>(branch.FullDayRulesJson, JsonOpts);
                 if (rules != null && rules.Count > 0)
                 {
                     var matchingRule = rules.FirstOrDefault(r => IsDayApplicable(r.Days, day));
@@ -420,7 +426,7 @@ public class EfPricingCalculatorService : IPricingCalculatorService
         {
             try
             {
-                var items = System.Text.Json.JsonSerializer.Deserialize<List<FullDayRateItem>>(rate.FullDayRatesJson);
+                var items = System.Text.Json.JsonSerializer.Deserialize<List<FullDayRateItem>>(rate.FullDayRatesJson, JsonOpts);
                 if (items != null && items.Count > 0)
                 {
                     var match = items.FirstOrDefault(i => IsDayApplicable(i.Days, day) && i.Rate.HasValue && i.Rate.Value > 0);

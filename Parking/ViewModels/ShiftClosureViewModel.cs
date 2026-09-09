@@ -152,14 +152,14 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
         _syncEngine.DataSynchronized += async () =>
         {
-            await LoadShiftDataAsync();
+            await LoadShiftDataAsync(isSilent: true);
         };
 
         _shiftService.ShiftStateChanged += () =>
         {
             System.Windows.Application.Current?.Dispatcher.InvokeAsync(async () =>
             {
-                await LoadShiftDataAsync();
+                await LoadShiftDataAsync(isSilent: true);
             });
         };
 
@@ -561,10 +561,13 @@ public partial class ShiftClosureViewModel : ViewModelBase
         }
     }
 
-    private async Task LoadShiftDataAsync()
+    private async Task LoadShiftDataAsync(bool isSilent = false)
     {
-        IsBusy = true;
-        BusyMessage = "Consultando balance y arqueo de caja...";
+        if (!isSilent)
+        {
+            IsBusy = true;
+            BusyMessage = "Consultando balance y arqueo de caja...";
+        }
 
         try
         {
@@ -705,8 +708,11 @@ public partial class ShiftClosureViewModel : ViewModelBase
         }
         finally
         {
-            IsBusy = false;
-            BusyMessage = null;
+            if (!isSilent)
+            {
+                IsBusy = false;
+                BusyMessage = null;
+            }
         }
     }
 }

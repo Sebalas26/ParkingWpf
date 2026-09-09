@@ -11,20 +11,43 @@ namespace Parking.Core.Converters;
 /// </summary>
 public class Base64ToImageConverter : IValueConverter
 {
+    private static BitmapImage? _fallbackImage;
+
+    private static BitmapImage? GetFallbackImage()
+    {
+        if (_fallbackImage == null)
+        {
+            try
+            {
+                var bmp = new BitmapImage();
+                bmp.BeginInit();
+                bmp.UriSource = new Uri("pack://application:,,,/Parking;component/Resources/logo.jpeg", UriKind.Absolute);
+                bmp.CacheOption = BitmapCacheOption.OnLoad;
+                bmp.EndInit();
+                bmp.Freeze();
+                _fallbackImage = bmp;
+            }
+            catch
+            {
+                // Fallback silencioso si no se encuentra el recurso
+            }
+        }
+        return _fallbackImage;
+    }
+
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is not string base64Str || string.IsNullOrWhiteSpace(base64Str))
-            return null;
+            return GetFallbackImage();
 
         try
         {
             var trimmed = base64Str.Trim();
             if (trimmed.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.StartsWith("pack://", StringComparison.OrdinalIgnoreCase) ||
-                trimmed.StartsWith("/", StringComparison.OrdinalIgnoreCase))
+                trimmed.StartsWith("pack://", StringComparison.OrdinalIgnoreCase))
             {
-                var uriSource = trimmed.StartsWith("/") ? new Uri(trimmed, UriKind.Relative) : new Uri(trimmed, UriKind.Absolute);
+                var uriSource = new Uri(trimmed, UriKind.Absolute);
                 var uriBitmap = new BitmapImage();
                 uriBitmap.BeginInit();
                 uriBitmap.UriSource = uriSource;
@@ -32,6 +55,11 @@ public class Base64ToImageConverter : IValueConverter
                 uriBitmap.EndInit();
                 uriBitmap.Freeze();
                 return uriBitmap;
+            }
+
+            if (trimmed.StartsWith("/", StringComparison.OrdinalIgnoreCase))
+            {
+                return GetFallbackImage();
             }
 
             // Remover prefijo data:image/...;base64, si viene incluido
@@ -56,7 +84,7 @@ public class Base64ToImageConverter : IValueConverter
         }
         catch
         {
-            return null;
+            return GetFallbackImage();
         }
     }
 

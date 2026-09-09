@@ -14,7 +14,42 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 3. **Componentes / Módulos Modificados** (archivos afectados).
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
-6. **Resultado de la Verificación** (estado de compilación y pruebas).
+### [2026-09-08 22:15:00] - [FIX / CONCURRENCY / PERFORMANCE / PRICING / UI-UX / WPF] - Eliminación de Bloqueos y Congelamientos en SQLite (WAL Mode), Optimización de Sincronización en Segundo Plano, Solución a Parpadeo de Botón de Cierre, Desacoplamiento de Recurso de Logo y Soporte Robusto JSON en Tarifas de Días Completos
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"esto no deberia ir para que se avisa a si mismo que se le aviso al administrador no tiene sentido eso eso debe ser transparente para el colaborador. mira como se ve esta modal esta supremamente mal eso no deberia verse así no se por que se ve tan grande. se cierra el turno desde la pwa y salio el mensaje y se trabo el wpf hay que sucede ? este boton titilea todo feo ese verde. el wpf se esta trabando se esta quedando bloqueado le iba a dar salida a un vehiculo y se bloque inmediatamente no se que sucedio hay quedo muerto se trabo ahora que pasa ya me ha pasado varias veces no se si intenta hacer algo o algo y se muere crea hilos o algo no entiendo que sucede. genero esto en la salida del visual studio System.Windows.Data Error: 12 : TargetNullValue '/Resources/logo.jpeg' (type 'String') cannot be converted for use in 'Source' (type 'ImageSource'). BindingExpression:Path=ImageUrl; DataItem=null; target element is 'Image' (Name=''); target property is 'Source' (type 'ImageSource') DirectoryNotFound. el cobro por dias enteros no me funciono"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Solución a Bloqueos Concurrenciales en SQLite y Frecuencia de Sincronización (`DbConnectionManager.cs`, `BackgroundSyncScheduler.cs`)**:
+     - Diagnóstico: El scheduler ejecutaba sincronización pesada cada 15 segundos (`Interval = 15s`). Con SQLite en modo de journal por defecto (`DELETE`), las transacciones de escritura concurrentes del hilo de fondo bloqueaban el archivo completo de base de datos, provocando `SqliteException: SQLite Error 5: 'database is locked'` y dejando congelado el hilo principal de la UI de WPF al intentar registrar salidas o entradas.
+     - Solución: En `DbConnectionManager.cs`, se configuró la cadena de conexión con `Cache=Shared;Mode=ReadWriteCreate;Default Timeout=15;`. En `InitializeDatabaseAsync()`, se habilitó el modo WAL (`PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA synchronous = NORMAL;`), permitiendo lecturas concurrentes sin bloqueo mutuo. En `BackgroundSyncScheduler.cs`, se incrementó el intervalo a 5 minutos (`TimeSpan.FromMinutes(5)`), eliminando la sobrecarga innecesaria.
+  2. **Eliminación del Parpadeo en el Botón "Realizar Cierre de Caja" (`ShiftClosureViewModel.cs`)**:
+     - Diagnóstico: `ShiftClosureViewModel` reaccionaba a los eventos `DataSynchronized` y `ShiftStateChanged` invocando `LoadShiftDataAsync()`, el cual encendía y apagaba `IsBusy = true/false`. Dado que el botón `ModernButton` tenía enlazado `IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"`, el botón cambiaba su opacidad (0.45 ↔ 1.0) continuamente.
+     - Solución: Se sobrecargó `LoadShiftDataAsync(bool isSilent = false)`. Los refrescos automáticos en segundo plano pasan `isSilent: true`, actualizando los datos de arqueo sin alterar `IsBusy` y erradicando el parpadeo verde.
+  3. **Eliminación de la Alerta Redundante "Turno Habilitado" (`MainShellViewModel.cs`)**:
+     - Al recibir el evento de turno abierto (`ShiftOpened`), se eliminó el modal interactivo `ShowAlertAsync("Turno Habilitado", ...)` que notificaba innecesariamente al colaborador sobre una acción administrativa ya ejecutada o auto-solicitada. Ahora navega directamente y de forma transparente a la vista autorizada (`NavigateToInitialAuthorizedView()`).
+  4. **Corrección de Excepción de Archivo de Logo en Salida de Vehículos (`Base64ToImageConverter.cs`, `CheckOutDialog.xaml`)**:
+     - Diagnóstico: `CheckOutDialog.xaml` utilizaba strings relativos `TargetNullValue='/Resources/logo.jpeg'` y `FallbackValue='/Resources/logo.jpeg'`, provocando que el convertidor de WPF intentara resolver la ruta física en disco `C:\Resources\logo.jpeg`, lanzando `DirectoryNotFoundException` y errores de enlace de datos.
+     - Solución: Se eliminaron los valores `TargetNullValue` y `FallbackValue` relativos en `CheckOutDialog.xaml`. En `Base64ToImageConverter.cs`, se implementó `GetFallbackImage()`, que carga el recurso incrustado en el ensamblado mediante la URI pack canónica `pack://application:,,,/Parking;component/Resources/logo.jpeg` y congela el mapa de bits (`bitmap.Freeze()`), garantizando seguridad entre hilos y previniendo fallos en la modal de cobro.
+  5. **Soporte Resiliente JSON para Tarifas de Días Completos (`EfPricingCalculatorService.cs`)**:
+     - Se reforzó la deserialización de `FullDayRatesJson` y `FullDayRulesJson` en `EfPricingCalculatorService` agregando `JsonSerializerOptions` con `PropertyNameCaseInsensitive = true` y `NumberHandling = JsonNumberHandling.AllowReadingFromString`, evitando excepciones cuando los valores numéricos llegan serializados como cadenas desde la API o esquemas de base de datos.
+  6. **Verificación y Pruebas Unitarias**:
+     - `dotnet test ParkingWpf.slnx`: 167 de 167 pruebas superadas (**0 Fallos, 0 Errores**).
+
+- **📦 Componentes Modificados**:
+  - `Parking/Core/Converters/Base64ToImageConverter.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Services/Implementations/BackgroundSyncScheduler.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet test ParkingWpf.slnx` -> **167/167 Pasadas (0 Errores, 0 Fallos)**.
+
+---
 
 ### [2026-09-08 20:50:00] - [FIX / SHIFTS / RBAC / USERID / EXCEPTION-HANDLING / WPF] - Vinculación de Turno por UserId, Propagación de Errores de API en Apertura de Turno y Resiliencia en Memoria/SQLite
 
