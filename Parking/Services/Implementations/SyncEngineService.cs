@@ -19,16 +19,66 @@ public class SyncEngineService : ISyncEngineService
     private readonly IDbConnectionManager _dbManager;
     private readonly ISessionService _sessionService;
     private readonly IShiftService? _shiftService;
+    private readonly ISignalRClientService? _signalRClient;
     private bool _isOnline;
     private int _pendingItemsCount;
     private DateTime? _lastSyncTime;
     private CancellationTokenSource? _offlineProbeCts;
     private readonly object _offlineProbeLock = new();
+    private readonly SemaphoreSlim _pendingQueueLock = new(1, 1);
     private int _offlineAttemptCount = 0;
 
     public event EventHandler<string>? SyncStatusChanged;
     public event Action<int>? TotalCapacityChanged;
     public event Action? DataSynchronized;
+
+    private void NotifyDataSynchronized()
+    {
+        var app = System.Windows.Application.Current;
+        if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
+        {
+            app.Dispatcher.InvokeAsync(() =>
+            {
+                try { DataSynchronized?.Invoke(); } catch { }
+            });
+        }
+        else
+        {
+            try { DataSynchronized?.Invoke(); } catch { }
+        }
+    }
+
+    private void NotifySyncStatusChanged(string status)
+    {
+        var app = System.Windows.Application.Current;
+        if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
+        {
+            app.Dispatcher.InvokeAsync(() =>
+            {
+                try { SyncStatusChanged?.Invoke(this, status); } catch { }
+            });
+        }
+        else
+        {
+            try { SyncStatusChanged?.Invoke(this, status); } catch { }
+        }
+    }
+
+    private void NotifyTotalCapacityChanged(int capacity)
+    {
+        var app = System.Windows.Application.Current;
+        if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
+        {
+            app.Dispatcher.InvokeAsync(() =>
+            {
+                try { TotalCapacityChanged?.Invoke(capacity); } catch { }
+            });
+        }
+        else
+        {
+            try { TotalCapacityChanged?.Invoke(capacity); } catch { }
+        }
+    }
 
     public bool IsOnline => _isOnline;
     public int PendingItemsCount => _pendingItemsCount;
@@ -50,6 +100,7 @@ public class SyncEngineService : ISyncEngineService
         _dbManager = dbManager;
         _sessionService = sessionService;
         _shiftService = shiftService;
+        _signalRClient = signalRClient;
 
         _apiClient.ConnectionStateChanged += isOnline =>
         {
@@ -131,7 +182,7 @@ public class SyncEngineService : ISyncEngineService
             });
             result.Success = false;
             result.Message = "No se pudo conectar con el servidor central. Se conservarán los datos locales.";
-            SyncStatusChanged?.Invoke(this, SyncStatusDescription);
+            NotifySyncStatusChanged(SyncStatusDescription);
             return result;
         }
 
@@ -199,7 +250,19 @@ public class SyncEngineService : ISyncEngineService
             {
                 _sessionService.UpdateCurrentBranch(b => b.TotalCapacity = bootstrap.TotalCapacity);
             }
-            TotalCapacityChanged?.Invoke(bootstrap.TotalCapacity);
+            NotifyTotalCapacityChanged(bootstrap.TotalCapacity);
+        }
+
+        if (bootstrap.CompanyId.HasValue && bootstrap.CompanyId.Value > 0)
+        {
+            if (_sessionService.CurrentUser != null && (!_sessionService.CurrentUser.CompanyId.HasValue || _sessionService.CurrentUser.CompanyId.Value <= 0))
+            {
+                _sessionService.CurrentUser.CompanyId = bootstrap.CompanyId.Value;
+            }
+            if (_sessionService.CurrentBranch != null && (!_sessionService.CurrentBranch.CompanyId.HasValue || _sessionService.CurrentBranch.CompanyId.Value <= 0))
+            {
+                _sessionService.UpdateCurrentBranch(b => b.CompanyId = bootstrap.CompanyId.Value);
+            }
         }
 
         if (_sessionService.CurrentUser != null)
@@ -385,6 +448,10 @@ public class SyncEngineService : ISyncEngineService
                 {
                     existing.FullName = fullName;
                     existing.Email = apiUser.Email;
+                    if (apiUser.CompanyId.HasValue && apiUser.CompanyId.Value > 0)
+                    {
+                        existing.CompanyId = apiUser.CompanyId;
+                    }
                     existing.PasswordHash = apiUser.Password;
                     existing.RoleId = targetRoleId;
                     existing.IsActive = apiUser.IsActive;
@@ -397,6 +464,7 @@ public class SyncEngineService : ISyncEngineService
                         Username = apiUser.Username,
                         FullName = fullName,
                         Email = apiUser.Email,
+                        CompanyId = apiUser.CompanyId,
                         PasswordHash = apiUser.Password,
                         RoleId = targetRoleId,
                         IsActive = apiUser.IsActive,
@@ -434,6 +502,10 @@ public class SyncEngineService : ISyncEngineService
                 var existingBranch = localBranches.FirstOrDefault(b => b.Id == br.Id);
                 if (existingBranch != null)
                 {
+                    if (br.CompanyId.HasValue && br.CompanyId.Value > 0)
+                    {
+                        existingBranch.CompanyId = br.CompanyId.Value;
+                    }
                     existingBranch.Code = br.Code;
                     existingBranch.Name = br.Name;
                     existingBranch.Address = br.Address;
@@ -467,6 +539,7 @@ public class SyncEngineService : ISyncEngineService
                     db.Branches.Add(new Branch
                     {
                         Id = br.Id,
+                        CompanyId = br.CompanyId,
                         Code = br.Code,
                         Name = br.Name,
                         Address = br.Address,
@@ -524,6 +597,10 @@ public class SyncEngineService : ISyncEngineService
                         b.NightStayMinMinutes = br.NightStayMinMinutes;
                         b.EntryGracePeriodMinutes = br.EntryGracePeriodMinutes;
                         b.ExitGracePeriodMinutes = br.ExitGracePeriodMinutes;
+                        if (br.CompanyId.HasValue && br.CompanyId.Value > 0)
+                        {
+                            b.CompanyId = br.CompanyId.Value;
+                        }
                     });
                 }
             }
@@ -1307,10 +1384,10 @@ public class SyncEngineService : ISyncEngineService
         result.TotalCapacity = effectiveCapacity;
         result.BranchName = branchName;
         result.Message = $"Sincronización total exitosa en '{branchName}' ({effectiveCapacity} cupos configurados): {usersCount} usuarios, {paymentMethodsCount} medios de pago, {ratesCount} tarifas, {agCount} convenios, {subsCount} mensualidades, {shiftsCount} turnos y {ticketsCount} tiquetes actualizados.";
-        TotalCapacityChanged?.Invoke(effectiveCapacity);
+        NotifyTotalCapacityChanged(effectiveCapacity);
 
         // Notificar a todos los módulos y viewmodels para actualización reactiva en memoria
-        DataSynchronized?.Invoke();
+        NotifyDataSynchronized();
 
         // Paso 9: Finalizado (100%)
         progress.Report(new SyncProgressReport
@@ -1322,7 +1399,7 @@ public class SyncEngineService : ISyncEngineService
             IsSuccessStep = true
         });
 
-        SyncStatusChanged?.Invoke(this, SyncStatusDescription);
+        NotifySyncStatusChanged(SyncStatusDescription);
         return result;
         }
         catch (Exception ex)
@@ -1338,7 +1415,7 @@ public class SyncEngineService : ISyncEngineService
             });
             result.Success = false;
             result.Message = $"Error durante la sincronización: {detailedError}";
-            SyncStatusChanged?.Invoke(this, SyncStatusDescription);
+            NotifySyncStatusChanged(SyncStatusDescription);
             return result;
         }
     }
@@ -1465,7 +1542,7 @@ public class SyncEngineService : ISyncEngineService
         await db.SaveChangesAsync();
 
         await RefreshPendingCountAsync();
-        SyncStatusChanged?.Invoke(this, SyncStatusDescription);
+        NotifySyncStatusChanged(SyncStatusDescription);
     }
 
     public async Task ClearLocalTicketsMemoryAsync()
@@ -1479,7 +1556,7 @@ public class SyncEngineService : ISyncEngineService
             await db.SaveChangesAsync();
 
             await RefreshPendingCountAsync();
-            SyncStatusChanged?.Invoke(this, SyncStatusDescription);
+            NotifySyncStatusChanged(SyncStatusDescription);
         }
         catch { }
     }
@@ -1519,12 +1596,17 @@ public class SyncEngineService : ISyncEngineService
         await db.SaveChangesAsync();
 
         await RefreshPendingCountAsync();
-        SyncStatusChanged?.Invoke(this, SyncStatusDescription);
+        NotifySyncStatusChanged(SyncStatusDescription);
     }
 
     public async Task ProcessPendingQueueAsync()
     {
         if (!_isOnline) return;
+
+        if (!await _pendingQueueLock.WaitAsync(0))
+        {
+            return; // Ya hay un procesamiento de cola en curso
+        }
 
         try
         {
@@ -1533,6 +1615,8 @@ public class SyncEngineService : ISyncEngineService
                 .Where(p => !p.IsProcessed)
                 .OrderBy(p => p.CreatedAtUtc)
                 .ToListAsync();
+
+            if (items.Count == 0) return;
 
             foreach (var item in items)
             {
@@ -1553,7 +1637,22 @@ public class SyncEngineService : ISyncEngineService
                         if (req != null)
                         {
                             var result = await _apiClient.CheckOutAsync(req);
-                            if (result != null) item.IsProcessed = true;
+                            if (result != null)
+                            {
+                                item.IsProcessed = true;
+
+                                // Bajar la data de la nube a tierra: conciliar SQLite local con la verdad canónica del servidor
+                                var localTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == result.TicketId);
+                                if (localTicket != null)
+                                {
+                                    localTicket.Status = TicketStatus.Completed;
+                                    if (result.ExitTimeUtc.HasValue) localTicket.ExitTimeUtc = result.ExitTimeUtc.Value;
+                                    localTicket.GrossAmount = result.GrossAmount;
+                                    localTicket.NetAmount = result.NetAmount;
+                                    localTicket.PaymentMethod = result.PaymentMethod;
+                                    localTicket.IsSynchronized = true;
+                                }
+                            }
                         }
                     }
                 }
@@ -1564,15 +1663,23 @@ public class SyncEngineService : ISyncEngineService
                 }
             }
 
-            db.PendingSyncItems.RemoveRange(db.PendingSyncItems.Where(p => p.IsProcessed));
-            await db.SaveChangesAsync();
+            var processed = items.Where(p => p.IsProcessed).ToList();
+            if (processed.Count > 0)
+            {
+                db.PendingSyncItems.RemoveRange(processed);
+                await db.SaveChangesAsync();
+            }
 
             await RefreshPendingCountAsync();
-            SyncStatusChanged?.Invoke(this, SyncStatusDescription);
+            NotifySyncStatusChanged(SyncStatusDescription);
         }
         catch
         {
             // Protección contra tablas desincronizadas en SQLite
+        }
+        finally
+        {
+            _pendingQueueLock.Release();
         }
     }
 
@@ -1601,8 +1708,22 @@ public class SyncEngineService : ISyncEngineService
             if (changed)
             {
                 _lastSyncTime = DateTime.UtcNow;
-                _ = ProcessPendingQueueAsync();
-                DataSynchronized?.Invoke();
+                _ = Task.Run(async () =>
+                {
+                    if (_signalRClient != null)
+                    {
+                        try
+                        {
+                            await _signalRClient.EnsureConnectedAsync(
+                                _sessionService.CurrentBranch?.Id,
+                                _sessionService.CurrentUser?.CompanyId);
+                        }
+                        catch { }
+                    }
+
+                    await ProcessPendingQueueAsync();
+                    NotifyDataSynchronized();
+                });
             }
         }
         else
@@ -1610,7 +1731,7 @@ public class SyncEngineService : ISyncEngineService
             StartOfflineReconnectionProbe();
         }
 
-        SyncStatusChanged?.Invoke(this, SyncStatusDescription);
+        NotifySyncStatusChanged(SyncStatusDescription);
     }
 
     private void StartOfflineReconnectionProbe()

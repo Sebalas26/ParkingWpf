@@ -13,6 +13,9 @@ public class ApiBranchSyncDto
     [JsonPropertyName("id")]
     public int Id { get; set; }
 
+    [JsonPropertyName("companyId")]
+    public int? CompanyId { get; set; }
+
     [JsonPropertyName("code")]
     public string Code { get; set; } = string.Empty;
 
@@ -135,6 +138,9 @@ public class ApiUserSyncDto
 {
     [JsonPropertyName("id")]
     public int Id { get; set; }
+
+    [JsonPropertyName("companyId")]
+    public int? CompanyId { get; set; }
 
     [JsonPropertyName("userRoleId")]
     public int UserRoleId { get; set; }
@@ -675,6 +681,9 @@ public class ApiParkingTicketSyncDto
     [JsonPropertyName("branchId")]
     public int? BranchId { get; set; }
 
+    [JsonPropertyName("companyId")]
+    public int? CompanyId { get; set; }
+
     [JsonPropertyName("branch_id")]
     public int? BranchIdSnake { set => BranchId ??= value; }
 
@@ -878,6 +887,9 @@ public class BootstrapSyncResponse
 {
     [JsonPropertyName("serverTimeUtc")]
     public DateTime ServerTimeUtc { get; set; } = DateTime.UtcNow;
+
+    [JsonPropertyName("companyId")]
+    public int? CompanyId { get; set; }
 
     [JsonPropertyName("totalCapacity")]
     public int TotalCapacity { get; set; } = 120;

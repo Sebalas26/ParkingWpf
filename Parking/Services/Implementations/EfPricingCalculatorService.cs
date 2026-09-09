@@ -35,11 +35,11 @@ public class EfPricingCalculatorService : IPricingCalculatorService
 
         syncEngine.DataSynchronized += async () =>
         {
-            await ReloadRatesAsync();
+            try { await ReloadRatesAsync(); } catch { }
         };
         _sessionService.ActiveBranchChanged += async _ =>
         {
-            await ReloadRatesAsync();
+            try { await ReloadRatesAsync(); } catch { }
         };
     }
 

@@ -210,6 +210,24 @@ public class DbConnectionManager : IDbConnectionManager
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"VehicleType\" = 4 WHERE LOWER(\"DisplayName\") LIKE '%bici%' OR LOWER(\"DisplayName\") LIKE '%bike%';"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"VehicleType\" = 2 WHERE LOWER(\"DisplayName\") LIKE '%camion%' OR LOWER(\"DisplayName\") LIKE '%pesado%';"); } catch { }
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"VehicleType\" = 5 WHERE LOWER(\"DisplayName\") LIKE '%suv%' OR LOWER(\"DisplayName\") LIKE '%camioneta%';"); } catch { }
+
+            // 3. Auto-sanación defensiva de CompanyId en Branches si alguna quedó huérfana en SQLite
+            try
+            {
+                await context.Database.ExecuteSqlRawAsync(@"
+                    UPDATE ""Branches""
+                    SET ""CompanyId"" = (
+                        SELECT COALESCE(
+                            (SELECT ""CompanyId"" FROM ""WorkShifts"" WHERE ""CompanyId"" IS NOT NULL AND ""CompanyId"" > 0 LIMIT 1),
+                            (SELECT ""CompanyId"" FROM ""ParkingTickets"" WHERE ""CompanyId"" IS NOT NULL AND ""CompanyId"" > 0 LIMIT 1),
+                            (SELECT ""CompanyId"" FROM ""BillingResolutions"" WHERE ""CompanyId"" IS NOT NULL AND ""CompanyId"" > 0 LIMIT 1),
+                            1
+                        )
+                    )
+                    WHERE ""CompanyId"" IS NULL OR ""CompanyId"" <= 0;
+                ");
+            }
+            catch { }
         }
         catch { }
 

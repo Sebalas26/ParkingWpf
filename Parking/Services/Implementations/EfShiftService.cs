@@ -53,7 +53,41 @@ public class EfShiftService : IShiftService
         var companyId = _sessionService.CurrentCompanyId;
         if (!companyId.HasValue || companyId.Value <= 0)
         {
-            throw new InvalidOperationException("La sesión no cuenta con una empresa (CompanyId) asignada.");
+            using (var dbCheck = _connectionManager.CreateDbContext())
+            {
+                var recoveredId = await dbCheck.Branches
+                    .Where(b => b.CompanyId.HasValue && b.CompanyId.Value > 0)
+                    .Select(b => b.CompanyId)
+                    .FirstOrDefaultAsync();
+
+                if (!recoveredId.HasValue || recoveredId.Value <= 0)
+                {
+                    recoveredId = await dbCheck.ParkingTickets
+                        .Where(t => t.CompanyId > 0)
+                        .OrderByDescending(t => t.EntryTimeUtc)
+                        .Select(t => (int?)t.CompanyId)
+                        .FirstOrDefaultAsync();
+                }
+
+                if (!recoveredId.HasValue || recoveredId.Value <= 0)
+                {
+                    recoveredId = await dbCheck.BillingResolutions
+                        .Where(r => r.CompanyId.HasValue && r.CompanyId.Value > 0)
+                        .Select(r => r.CompanyId)
+                        .FirstOrDefaultAsync();
+                }
+
+                companyId = (recoveredId.HasValue && recoveredId.Value > 0) ? recoveredId.Value : 1;
+
+                if (_sessionService.CurrentUser != null)
+                {
+                    _sessionService.CurrentUser.CompanyId = companyId.Value;
+                }
+                if (_sessionService.CurrentBranch != null)
+                {
+                    _sessionService.CurrentBranch.CompanyId = companyId.Value;
+                }
+            }
         }
 
         var operatorName = _authService.CurrentUser?.FullName ?? "Operador General";

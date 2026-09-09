@@ -12,10 +12,12 @@ public interface IApiClientService
     event Action<string>? SessionTerminated;
     event Action<bool>? ConnectionStateChanged;
     string BaseUrl { get; set; }
+    string? AuthToken { get; }
     Task<bool> PingAsync();
     Task<BootstrapSyncResponse?> GetBootstrapAsync(int? branchId = null);
     Task<ParkingTicket?> CheckInAsync(CheckInApiRequest request);
     Task<ParkingTicket?> CheckOutAsync(CheckOutApiRequest request);
+    Task<ParkingTicket?> GetTicketByIdAsync(Guid id);
     Task<FinancialSummary?> GetFinancialSummaryAsync();
     Task<LoginApiResponse?> LoginAsync(string username, string password);
     Task LogoutAsync();

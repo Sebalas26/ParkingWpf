@@ -290,6 +290,202 @@ public class OfflineResilienceTests : IDisposable
         actStop.Should().NotThrow();
     }
 
+    [Fact]
+    public async Task SyncEngineService_ProcessPendingQueueAsync_DispatchesAndDeletesFromLocalDb()
+    {
+        // Arrange
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        syncEngine.SetOnlineStatus(false);
+
+        // Insertar item offline pendiente
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.PendingSyncItems.Add(new PendingSyncItem
+            {
+                PendingSyncItemId = Guid.NewGuid(),
+                OperationType = "CheckIn",
+                PayloadJson = System.Text.Json.JsonSerializer.Serialize(new CheckInApiRequest
+                {
+                    TicketId = Guid.NewGuid(),
+                    BranchId = 1,
+                    CompanyId = 1,
+                    TicketNumber = "T-001",
+                    PlateNumber = "ABC123",
+                    VehicleType = VehicleType.Car,
+                    HourlyRate = 2000m,
+                    EntryTimeUtc = DateTime.UtcNow
+                }),
+                CreatedAtUtc = DateTime.UtcNow,
+                IsProcessed = false
+            });
+            await db.SaveChangesAsync();
+        }
+
+        _mockApiClient.Setup(a => a.CheckInAsync(It.IsAny<CheckInApiRequest>()))
+            .ReturnsAsync(new ParkingTicket { TicketId = Guid.NewGuid(), PlateNumber = "ABC123" });
+
+        // Act - Conectar y despachar
+        syncEngine.SetOnlineStatus(true);
+        await syncEngine.ProcessPendingQueueAsync();
+
+        // Assert - El item procesado debe ser eliminado de SQLite
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            var remaining = await db.PendingSyncItems.CountAsync();
+            remaining.Should().Be(0);
+        }
+
+        _mockApiClient.Verify(a => a.CheckInAsync(It.IsAny<CheckInApiRequest>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SyncEngineService_ProcessPendingQueueAsync_WhenOffline_DoesNotDispatch()
+    {
+        // Arrange
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        syncEngine.SetOnlineStatus(false);
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.PendingSyncItems.Add(new PendingSyncItem
+            {
+                PendingSyncItemId = Guid.NewGuid(),
+                OperationType = "CheckIn",
+                PayloadJson = "{}",
+                CreatedAtUtc = DateTime.UtcNow,
+                IsProcessed = false
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // Act
+        await syncEngine.ProcessPendingQueueAsync();
+
+        // Assert
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            var remaining = await db.PendingSyncItems.CountAsync();
+            remaining.Should().Be(1);
+        }
+
+        _mockApiClient.Verify(a => a.CheckInAsync(It.IsAny<CheckInApiRequest>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessPendingQueueAsync_WhenCheckOutReturnedFromCloud_RemovesFromQueueAndReconcilesCanonicalDataToSqlite()
+    {
+        // Arrange
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        syncEngine.SetOnlineStatus(true);
+
+        var ticketId = Guid.NewGuid();
+        var localTicket = new ParkingTicket
+        {
+            TicketId = ticketId,
+            PlateNumber = "OFF123",
+            Status = TicketStatus.Active,
+            GrossAmount = 2000,
+            NetAmount = 2000,
+            EntryTimeUtc = DateTime.UtcNow.AddHours(-2)
+        };
+
+        var pendingItem = new PendingSyncItem
+        {
+            PendingSyncItemId = Guid.NewGuid(),
+            OperationType = "CheckOut",
+            PayloadJson = System.Text.Json.JsonSerializer.Serialize(new CheckOutApiRequest
+            {
+                TicketId = ticketId,
+                GrossAmount = 2000,
+                NetAmount = 2000
+            }, ParkingApiClient.JsonOptions),
+            CreatedAtUtc = DateTime.UtcNow,
+            IsProcessed = false
+        };
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.ParkingTickets.Add(localTicket);
+            db.PendingSyncItems.Add(pendingItem);
+            await db.SaveChangesAsync();
+        }
+
+        var cloudCanonicalTicket = new ParkingTicket
+        {
+            TicketId = ticketId,
+            PlateNumber = "OFF123",
+            Status = TicketStatus.Completed,
+            GrossAmount = 8500, // Data real de la nube
+            NetAmount = 8500,
+            ExitTimeUtc = DateTime.UtcNow.AddMinutes(-30),
+            PaymentMethod = PaymentMethod.CreditCard
+        };
+
+        _mockApiClient.Setup(a => a.CheckOutAsync(It.IsAny<CheckOutApiRequest>()))
+            .ReturnsAsync(cloudCanonicalTicket);
+
+        // Act
+        await syncEngine.ProcessPendingQueueAsync();
+
+        // Assert: El ítem pendiente debe haber sido eliminado de la cola (0 pendientes)
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            var remainingPending = await db.PendingSyncItems.CountAsync();
+            remainingPending.Should().Be(0);
+
+            // La data de la nube debe haber bajado a tierra en SQLite
+            var updatedLocal = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == ticketId);
+            updatedLocal.Should().NotBeNull();
+            updatedLocal!.Status.Should().Be(TicketStatus.Completed);
+            updatedLocal.GrossAmount.Should().Be(8500);
+            updatedLocal.NetAmount.Should().Be(8500);
+            updatedLocal.PaymentMethod.Should().Be(PaymentMethod.CreditCard);
+            updatedLocal.IsSynchronized.Should().BeTrue();
+        }
+    }
+
+    [Fact]
+    public async Task SyncEngineService_WhenSetOnlineStatusTrue_InvokesEnsureConnectedAsyncOnSignalR()
+    {
+        // Arrange
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = 5 });
+        _mockSessionService.Setup(s => s.CurrentUser).Returns(new UserSessionModel { CompanyId = 2 });
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        syncEngine.SetOnlineStatus(false);
+
+        // Act
+        syncEngine.SetOnlineStatus(true);
+        await Task.Delay(100); // Pequeña pausa para que Task.Run ejecute
+
+        // Assert
+        _mockSignalRClient.Verify(s => s.EnsureConnectedAsync(5, 2), Times.Once);
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

@@ -248,6 +248,37 @@ public class CheckOutViewModelTests : IDisposable
         vm.SelectedResolution.Should().Be(fvmRes);
     }
 
+    [Fact]
+    public void TicketCompleted_WhenMatchingSelectedTicket_ClearsSelectedTicketAndSetsFeedback()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var ticketId = Guid.NewGuid();
+        var selected = new ParkingTicket
+        {
+            TicketId = ticketId,
+            PlateNumber = "REM123",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-30)
+        };
+        vm.SelectedTicket = selected;
+
+        var completedRemote = new ParkingTicket
+        {
+            TicketId = ticketId,
+            PlateNumber = "REM123",
+            Status = TicketStatus.Completed
+        };
+
+        // Act - Simular evento TicketCompleted emitido por EfParkingTicketService ante notificación SignalR
+        _mockTicketService.Raise(s => s.TicketCompleted += null, this, completedRemote);
+
+        // Assert
+        vm.SelectedTicket.Should().BeNull();
+        vm.HasFeedback.Should().BeTrue();
+        vm.FeedbackMessage.Should().Contain("REM123");
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

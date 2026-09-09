@@ -170,14 +170,25 @@ public partial class CheckInViewModel : ViewModelBase
             }
         };
 
-        syncEngine.DataSynchronized += async () =>
+        syncEngine.DataSynchronized += () =>
         {
-            await InitializeAsync();
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(async () =>
+                {
+                    try { await InitializeAsync(); } catch { }
+                });
+            }
+            else
+            {
+                _ = InitializeAsync();
+            }
         };
 
         _sessionService.ActiveBranchChanged += async _ =>
         {
-            await InitializeAsync();
+            try { await InitializeAsync(); } catch { }
         };
 
         _feedbackTimer = new DispatcherTimer

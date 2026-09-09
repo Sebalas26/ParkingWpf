@@ -244,6 +244,129 @@ public class EfParkingTicketServiceTests : IDisposable
         completed.NetAmount.Should().Be(20000m);
     }
 
+    [Fact]
+    public async Task RegisterEntryAsync_WhenSessionCompanyIdIsNull_SelfHealsFromWorkShift()
+    {
+        // Arrange
+        _mockSessionService.Setup(s => s.CurrentCompanyId).Returns((int?)null);
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = 1, CompanyId = null });
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.WorkShifts.Add(new WorkShift
+            {
+                ShiftId = Guid.NewGuid(),
+                BranchId = 1,
+                CompanyId = 5,
+                UserId = 1,
+                OperatorName = "Operador Test",
+                StartTimeUtc = DateTime.UtcNow,
+                Status = 0
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var service = CreateService();
+        _mockPricingCalculator.Setup(p => p.GetRate(VehicleType.Car, null))
+            .Returns(new VehicleRate { HourRate = 3000m });
+
+        // Act
+        var ticket = await service.RegisterEntryAsync(
+            plateNumber: "HEAL99",
+            vehicleType: VehicleType.Car,
+            phoneNumber: null,
+            notes: null,
+            operatorName: "Operador Test");
+
+        // Assert
+        ticket.Should().NotBeNull();
+        ticket.CompanyId.Should().Be(5);
+        ticket.TicketNumber.Should().Contain("PKF-C5");
+    }
+
+    [Fact]
+    public async Task HandleRemoteTicketCheckOutAsync_WhenTicketActive_MarksCompletedAndTriggersEvent()
+    {
+        // Arrange
+        var ticketId = Guid.NewGuid();
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.ParkingTickets.Add(new ParkingTicket
+            {
+                TicketId = ticketId,
+                BranchId = 1,
+                CompanyId = 10,
+                TicketNumber = "PKF-C10-001",
+                PlateNumber = "PWA123",
+                VehicleType = VehicleType.Car,
+                Status = TicketStatus.Active,
+                EntryTimeUtc = DateTime.UtcNow.AddHours(-1)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var service = CreateService();
+        ParkingTicket? completedTicket = null;
+        service.TicketCompleted += (s, t) => completedTicket = t;
+
+        // Act - Simular salida remota emitida desde la PWA
+        await service.HandleRemoteTicketCheckOutAsync(ticketId, "PWA123", 1);
+
+        // Assert
+        completedTicket.Should().NotBeNull();
+        completedTicket!.TicketId.Should().Be(ticketId);
+        completedTicket.Status.Should().Be(TicketStatus.Completed);
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            var inDb = await db.ParkingTickets.FindAsync(ticketId);
+            inDb.Should().NotBeNull();
+            inDb!.Status.Should().Be(TicketStatus.Completed);
+            inDb.ExitTimeUtc.Should().NotBeNull();
+        }
+    }
+
+    [Fact]
+    public async Task HandleRemoteTicketCheckOutAsync_WhenTicketMatchesOnlyByPlate_MarksCompletedAndTriggersEvent()
+    {
+        // Arrange
+        var ticketId = Guid.NewGuid();
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.ParkingTickets.Add(new ParkingTicket
+            {
+                TicketId = ticketId,
+                BranchId = 1,
+                CompanyId = 10,
+                TicketNumber = "PKF-C10-002",
+                PlateNumber = "REMOTE99",
+                VehicleType = VehicleType.Car,
+                Status = TicketStatus.Active,
+                EntryTimeUtc = DateTime.UtcNow.AddHours(-2)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var service = CreateService();
+        ParkingTicket? completedTicket = null;
+        service.TicketCompleted += (s, t) => completedTicket = t;
+
+        // Act - Simular salida pasando solo placa (o ticketId nulo)
+        await service.HandleRemoteTicketCheckOutAsync(null, "REMOTE99", 1);
+
+        // Assert
+        completedTicket.Should().NotBeNull();
+        completedTicket!.PlateNumber.Should().Be("REMOTE99");
+        completedTicket.Status.Should().Be(TicketStatus.Completed);
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            var inDb = await db.ParkingTickets.FindAsync(ticketId);
+            inDb.Should().NotBeNull();
+            inDb!.Status.Should().Be(TicketStatus.Completed);
+        }
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();
