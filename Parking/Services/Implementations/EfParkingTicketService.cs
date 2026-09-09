@@ -103,14 +103,6 @@ public class EfParkingTicketService : IParkingTicketService
             throw new InvalidOperationException($"Capacidad máxima de la sede alcanzada ({occupancy.TotalCapacity} cupos). No hay cupos disponibles para registrar nuevos ingresos.");
         }
 
-        // Asegurar columnas requeridas en SQLite antes de insertar
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"OperatorEntryId\" TEXT NULL;"); } catch { }
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"OperatorExitId\" TEXT NULL;"); } catch { }
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"BayNumber\" TEXT NULL;"); } catch { }
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"ParkingTickets\" ADD COLUMN \"CreatedAtUtc\" TEXT DEFAULT '';"); } catch { }
-
         var todayStart = DateTime.UtcNow.Date;
         var todayEnd = todayStart.AddDays(1);
         var baseCount = await db.ParkingTickets.CountAsync(t => t.CompanyId == companyId.Value && t.EntryTimeUtc >= todayStart && t.EntryTimeUtc < todayEnd);
@@ -181,6 +173,7 @@ public class EfParkingTicketService : IParkingTicketService
             }
             catch
             {
+                _syncEngine.SetOnlineStatus(false);
                 await _syncEngine.EnqueueOfflineCheckInAsync(ticket);
             }
         }
@@ -341,6 +334,7 @@ public class EfParkingTicketService : IParkingTicketService
             }
             catch
             {
+                _syncEngine.SetOnlineStatus(false);
                 await _syncEngine.EnqueueOfflineCheckOutAsync(ticket);
             }
         }

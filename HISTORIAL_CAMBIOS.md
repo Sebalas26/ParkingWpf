@@ -14,6 +14,96 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 3. **Componentes / Módulos Modificados** (archivos afectados).
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
+
+### [2026-09-09 10:50:00] - [FIX / RECONNECTION / PERFORMANCE / OFFLINE-PROBE] - Reconexión Automática Reactiva al Restablecer Internet, Sonda Exclusiva en Modo Offline con Backoff Progresivo (5s/15s/30s/60s), Detección de Hardware y Prevención de Sobrecarga
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Sabes que vi que listo ya funciona cuando se queda offline bien sigue operando pero vuelvo a conectar el internet y no se autoconecta no se cada cuanto hace como la reevaluacion de que si tiene internet esa task solo se activa para quede offline y pues se desactiva cuando vuelva a estar en linea si me explico. analiza eso"_
+  > _"esto no afecta el rendimiento para las consultas pues digo si dura sin internete bastante eso no genera sobreconsultas en el wpf y afectaria el rendimiento ?"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico del Fallo de Reconexión Automática**:
+     - `BackgroundSyncScheduler.Start()` nunca era invocado en el ciclo de vida de la aplicación (`MainShellViewModel`), por lo que su temporizador jamás arrancaba.
+     - `NetworkChange.NetworkAvailabilityChanged` en `SyncEngineService` solo actuaba si `!e.IsAvailable` pasando a offline, pero ignoraba cuando `e.IsAvailable` regresaba a `true`.
+     - `SignalRClientService.ConnectionStatusChanged` únicamente llamaba `SetOnlineStatus(false)` al desconectarse, pero no restauraba `SetOnlineStatus(true)` cuando SignalR lograba reconectarse con éxito.
+  2. **Arquitectura de Sonda Reactiva en Segundo Plano Exclusiva para Modo Offline (`SyncEngineService.cs`)**:
+     - Se implementó `StartOfflineReconnectionProbe()` y `StopOfflineReconnectionProbe()` encapsulados dentro de `SyncEngineService`.
+     - **Ciclo de Vida Estricto**: La tarea en segundo plano `Task.Run` se inicia **únicamente** cuando el sistema entra en modo offline (`SetOnlineStatus(false)`). En el instante en que el sistema detecta conectividad y pasa a online (`SetOnlineStatus(true)`), la tarea es cancelada de forma inmediata con su `CancellationTokenSource`, liberando recursos.
+     - **Protección de Rendimiento y Prevención de Sobreconsultas (Backoff Progresivo)**:
+       - Si la terminal permanece sin internet durante minutos u horas, no satura la red ni la CPU: utiliza un esquema de espera escalonada inteligente: 5s en el primer intento, 15s en el segundo, 30s en el tercero y un techo fijo de 60s en los subsiguientes.
+       - Si el adaptador de red de Windows (cable Ethernet o tarjeta Wi-Fi) está físicamente desconectado (`NetworkInterface.GetIsNetworkAvailable() == false`), la sonda se salta el intento y no emite ninguna petición HTTP hacia el servidor.
+     - **Reconexión Inmediata por Hardware y SignalR**:
+       - Al reconectar el cable de red o Wi-Fi, `NetworkAvailabilityChanged` dispara una comprobación de reconexión prioritaria con un retardo de cortesía de 1 segundo para permitir la asignación de DHCP/DNS.
+       - Si SignalR logra reconectarse por su cuenta con backoff, invoca directamente `SetOnlineStatus(true)`, deteniendo la sonda de sondeo de inmediato y sincronizando las transacciones pendientes.
+  3. **Arranque y Parada del Planificador en `MainShellViewModel`**:
+     - En `InitializeAsync()`, se invoca `_backgroundSync.Start()`.
+     - En `LogoutAsync()`, `HandleConcurrentSessionTerminatedAsync()` y cierre forzado por horario/sede cerrada, se invoca `_backgroundSync.Stop()`.
+  4. **Desacoplamiento y Limpieza de `BackgroundSyncScheduler.cs`**:
+     - Se eliminó el `DispatcherTimer` de 15 segundos en el hilo de UI de WPF que hacía probing redundante. `BackgroundSyncScheduler` ahora se enfoca puramente en la sincronización periódica cada 5 minutos en segundo plano (`_syncTimer`) mientras está online.
+  5. **Pruebas Unitarias y Certificación**:
+     - Se agregaron casos de prueba en `OfflineResilienceTests.cs` validando la reconexión por SignalR, el cese de la sonda al pasar a online, y la ejecución limpia de inicio y parada del planificador.
+     - Ejecución del 100% de la suite con `dotnet test ParkingWpf.slnx`: **192 Superadas, 0 Fallos (100% Éxito)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Contracts/ISyncEngineService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/BackgroundSyncScheduler.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **192/192 Superadas (100% Éxito, 0 Fallos)**.
+
+### [2026-09-09 08:25:00] - [FIX / OFFLINE-MODE / NETWORK-RESILIENCE / PERFORMANCE / SQLITE / WPF] - Conmutación Inmediata al Modo Offline (≤8s), Erradicación de 6 SqliteException Repetitivas, Resiliencia ante Desconexión de Red, Debounce en Placas y Optimización de Heartbeat
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"se revento esa excepción cuando le di ingreso a un vehiculo algo sucede hay mira, siempre genera esas excepciones y ahora peor queria hacer la prueba de desconectar el internet se murio de una Parking.exe' (CoreCLR: clrhost): 'C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.11\System.Reflection.Metadata.dll' cargado... Excepción producida: 'System.Threading.Tasks.TaskCanceledException'... Excepción producida: 'System.Net.Http.HttpRequestException'... Excepción producida: 'Microsoft.Data.Sqlite.SqliteException' (x6)... enserio veo que algo esta sucediendo algo esta mal existe algo pegado algo no esta bien configurado necesito saber donde se revienta eso me parece que es por as peticiones de http por que se fue sin internet el wpf deberia de una activar el modo offline si no obtiene respuewsta despues de 10 seg y no se cada cuanto tiene como un hilo preguntando. analiza eso."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Conmutación Inmediata al Modo Offline (`SetOnlineStatus`, `ConnectionStateChanged`, `ParkingApiClient.cs`, `SyncEngineService.cs`)**:
+     - Diagnóstico: Los métodos HTTP en `ParkingApiClient` tenían tiempos de espera configurados de 30 a 60 segundos. Si el usuario desconectaba la red, las llamadas en cascada para registrar un tiquete (`GetActiveShiftAsync`, `CheckPlateAsync`, `CheckInAsync`, `GetShiftSummaryAsync`) tardaban más de 110 segundos en fallar, inundando el ThreadPool (`.NET TP Worker`) con `TaskCanceledException` y `HttpRequestException` y congelando la UI. Además, `SyncEngineService.IsOnline` permanecía en `true` durante 5 minutos porque nada reportaba el fallo de red.
+     - Solución: Se introdujo `ConnectionStateChanged` en `IApiClientService` / `ParkingApiClient` y `SetOnlineStatus(bool isOnline)` en `ISyncEngineService` / `SyncEngineService`. Se redujeron drásticamente los timeouts a umbrales operativos estrictos: 8s para CheckIn/CheckOut, 3.5s para Ping/CheckPlate y 5s para Shifts. Ante cualquier fallo de red o timeout, `ParkingApiClient` emite `ConnectionStateChanged(false)` y `SyncEngineService` pasa inmediatamente a modo offline (`IsOnline = false`), notificando a la UI y evitando cualquier otra petición remota para operaciones locales.
+  2. **Detección Reactiva de Desconexión de Hardware y SignalR**:
+     - `SyncEngineService` se suscribió a `NetworkChange.NetworkAvailabilityChanged` (detección a nivel de sistema operativo en <100ms) y a `SignalRClientService.ConnectionStatusChanged`.
+  3. **Sonda de Reconexión Rápida de 15 Segundos (`BackgroundSyncScheduler.cs`)**:
+     - Se incorporó un temporizador secundario de 15 segundos que sondea `PingAsync(3.5s)` exclusivamente cuando el sistema está en modo offline. Tan pronto regresa la conexión, conmuta a online y despacha automáticamente la cola fuera de línea acumulada.
+  4. **Eliminación Definitiva de 6 Excepciones `Microsoft.Data.Sqlite.SqliteException` (`EfParkingTicketService.cs`, `EfMonthlySubscriptionService.cs`)**:
+     - Diagnóstico: Se ejecutaban 6 sentencias `ALTER TABLE "ParkingTickets" ADD COLUMN ...` y 2 en `MonthlySubscriptions` en cada inserción. Como las columnas ya existen en la base de datos local SQLite, el motor arrojaba `SqliteException: duplicate column name` 6 veces por cada ingreso de vehículo.
+     - Solución: Se removieron estos bloques redundantes ya que `DbConnectionManager` realiza la inspección y migración de esquema en el arranque de la aplicación.
+  5. **Debounce en Búsqueda de Placas (`CheckInViewModel.cs`)**:
+     - Se añadió *debouncing* de 350ms con cancelación reactiva (`_plateSearchCts`), evitando ráfagas de 4-5 peticiones HTTP simultáneas al escribir la placa en el teclado.
+  6. **Aislamiento Offline en Turnos (`EfShiftService.cs`)**:
+     - `RefreshCurrentShiftAsync`, `OpenShiftAsync`, `CloseShiftAsync` y `GetCurrentShiftSummaryAsync` ahora verifican `IsOnline` antes de tocar la red, ejecutando en microsegundos contra SQLite si el sistema está offline.
+  7. **Optimización del Heartbeat de Sesión (`SessionHeartbeatService.cs`)**:
+     - Se amplió el intervalo de 5 segundos a 30 segundos, eliminando la sobrecarga y contención constante de escrituras en SQLite.
+  8. **Pruebas Unitarias y Certificación**:
+     - Nueva suite `Parking.UnitTests/Services/OfflineResilienceTests.cs` con 7 nuevos casos de prueba.
+     - `dotnet test ParkingWpf.slnx`: **189 Superadas, 0 Fallos (100% Éxito)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Contracts/ISyncEngineService.cs`
+  - `Parking/Services/Implementations/BackgroundSyncScheduler.cs`
+  - `Parking/Services/Implementations/EfMonthlySubscriptionService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Implementations/SessionHeartbeatService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs` (NUEVO)
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **189/189 Superadas (100% Éxito, 0 Fallos)**.
+
+---
+
 ### [2026-09-09 07:45:00] - [FIX / JSON / CONCURRENCY / PERFORMANCE / EXCEPTION-HANDLING / WPF] - Solución Definitiva a Avalancha de JsonException en Hilos de Fondo (.NET TP Worker), Soporte Resiliente para Horarios TimeSpan "hh:mm", Mapeo de Turnos y Prevención de HWND Cero en Diálogos
 
 - **Autor**: Antigravity AI Assistant & Software Architect

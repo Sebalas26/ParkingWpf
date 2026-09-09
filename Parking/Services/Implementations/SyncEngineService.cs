@@ -22,6 +22,9 @@ public class SyncEngineService : ISyncEngineService
     private bool _isOnline;
     private int _pendingItemsCount;
     private DateTime? _lastSyncTime;
+    private CancellationTokenSource? _offlineProbeCts;
+    private readonly object _offlineProbeLock = new();
+    private int _offlineAttemptCount = 0;
 
     public event EventHandler<string>? SyncStatusChanged;
     public event Action<int>? TotalCapacityChanged;
@@ -40,12 +43,55 @@ public class SyncEngineService : ISyncEngineService
         IApiClientService apiClient,
         IDbConnectionManager dbManager,
         ISessionService sessionService,
-        IShiftService? shiftService = null)
+        IShiftService? shiftService = null,
+        ISignalRClientService? signalRClient = null)
     {
         _apiClient = apiClient;
         _dbManager = dbManager;
         _sessionService = sessionService;
         _shiftService = shiftService;
+
+        _apiClient.ConnectionStateChanged += isOnline =>
+        {
+            SetOnlineStatus(isOnline);
+        };
+
+        if (signalRClient != null)
+        {
+            signalRClient.ConnectionStatusChanged += isConnected =>
+            {
+                SetOnlineStatus(isConnected);
+            };
+        }
+
+        try
+        {
+            System.Net.NetworkInformation.NetworkChange.NetworkAvailabilityChanged += (s, e) =>
+            {
+                if (!e.IsAvailable)
+                {
+                    SetOnlineStatus(false);
+                }
+                else
+                {
+                    // Enlace de hardware restaurado (cable de red o Wi-Fi activo en Windows)
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await Task.Delay(1000); // Pausa de 1s para negociación de IP/DNS
+                            var isAlive = await _apiClient.PingAsync();
+                            if (isAlive)
+                            {
+                                SetOnlineStatus(true);
+                            }
+                        }
+                        catch { }
+                    });
+                }
+            };
+        }
+        catch { }
     }
 
     public async Task<bool> PerformFullSyncAsync()
@@ -1540,6 +1586,109 @@ public class SyncEngineService : ISyncEngineService
         catch
         {
             _pendingItemsCount = 0;
+        }
+    }
+
+    public void SetOnlineStatus(bool isOnline)
+    {
+        bool changed = _isOnline != isOnline;
+        _isOnline = isOnline;
+
+        if (isOnline)
+        {
+            StopOfflineReconnectionProbe();
+
+            if (changed)
+            {
+                _lastSyncTime = DateTime.UtcNow;
+                _ = ProcessPendingQueueAsync();
+                DataSynchronized?.Invoke();
+            }
+        }
+        else
+        {
+            StartOfflineReconnectionProbe();
+        }
+
+        SyncStatusChanged?.Invoke(this, SyncStatusDescription);
+    }
+
+    private void StartOfflineReconnectionProbe()
+    {
+        lock (_offlineProbeLock)
+        {
+            if (_offlineProbeCts != null && !_offlineProbeCts.IsCancellationRequested)
+            {
+                return; // Tarea de sondeo ya activa
+            }
+
+            _offlineProbeCts?.Cancel();
+            _offlineProbeCts?.Dispose();
+            _offlineProbeCts = new CancellationTokenSource();
+            var ct = _offlineProbeCts.Token;
+            _offlineAttemptCount = 0;
+
+            _ = Task.Run(async () =>
+            {
+                while (!ct.IsCancellationRequested && !_isOnline)
+                {
+                    try
+                    {
+                        // Backoff progresivo inteligente: 5s, 15s, 30s, luego techo en 60s
+                        int delaySeconds = _offlineAttemptCount switch
+                        {
+                            0 => 5,
+                            1 => 15,
+                            2 => 30,
+                            _ => 60
+                        };
+
+                        await Task.Delay(TimeSpan.FromSeconds(delaySeconds), ct);
+                        if (ct.IsCancellationRequested || _isOnline) break;
+
+                        _offlineAttemptCount++;
+
+                        // Si Windows indica que no hay enlace de red disponible, no gastar peticiones HTTP
+                        if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+                        {
+                            continue;
+                        }
+
+                        var isAlive = await _apiClient.PingAsync();
+                        if (isAlive)
+                        {
+                            SetOnlineStatus(true);
+                            break;
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch
+                    {
+                        // Falló intento de conexión, continuará en el siguiente ciclo
+                    }
+                }
+            }, ct);
+        }
+    }
+
+    private void StopOfflineReconnectionProbe()
+    {
+        lock (_offlineProbeLock)
+        {
+            _offlineAttemptCount = 0;
+            if (_offlineProbeCts != null)
+            {
+                try
+                {
+                    _offlineProbeCts.Cancel();
+                    _offlineProbeCts.Dispose();
+                }
+                catch { }
+                _offlineProbeCts = null;
+            }
         }
     }
 }

@@ -51,4 +51,5 @@ public interface ISyncEngineService
     Task EnqueueOfflineCheckOutAsync(ParkingTicket ticket);
     Task ProcessPendingQueueAsync();
     Task ClearLocalTicketsMemoryAsync();
+    void SetOnlineStatus(bool isOnline);
 }

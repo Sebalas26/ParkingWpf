@@ -17,21 +17,27 @@ public class EfShiftService : IShiftService
     private readonly IApiClientService _apiClient;
     private readonly IAuthService _authService;
     private readonly ISessionService _sessionService;
+    private readonly IServiceProvider? _serviceProvider;
 
     public WorkShift? CurrentShift { get; private set; }
     public bool HasActiveShift => CurrentShift != null && CurrentShift.Status == 0;
     public event Action? ShiftStateChanged;
 
+    private ISyncEngineService? SyncEngine => _serviceProvider?.GetService(typeof(ISyncEngineService)) as ISyncEngineService;
+    private bool IsOnline => SyncEngine?.IsOnline ?? true;
+
     public EfShiftService(
         IDbConnectionManager connectionManager,
         IApiClientService apiClient,
         IAuthService authService,
-        ISessionService sessionService)
+        ISessionService sessionService,
+        IServiceProvider? serviceProvider = null)
     {
         _connectionManager = connectionManager;
         _apiClient = apiClient;
         _authService = authService;
         _sessionService = sessionService;
+        _serviceProvider = serviceProvider;
     }
 
     private int? CurrentBranchId => _sessionService.CurrentBranch?.Id ?? _sessionService.CurrentBranchId;
@@ -62,22 +68,25 @@ public class EfShiftService : IShiftService
 
         WorkShift? shift = null;
 
-        try
+        if (IsOnline)
         {
-            shift = await _apiClient.OpenShiftAsync(request);
-            if (shift != null)
+            try
             {
-                shift.IsSynchronized = true;
+                shift = await _apiClient.OpenShiftAsync(request);
+                if (shift != null)
+                {
+                    shift.IsSynchronized = true;
+                }
             }
-        }
-        catch (InvalidOperationException)
-        {
-            // El servidor central rechazó activamente la apertura de turno (regla de negocio / validación)
-            throw;
-        }
-        catch
-        {
-            // Fallo de conectividad o modo offline: continuar con la apertura local en SQLite
+            catch (InvalidOperationException)
+            {
+                // El servidor central rechazó activamente la apertura de turno (regla de negocio / validación)
+                throw;
+            }
+            catch
+            {
+                // Fallo de conectividad o modo offline: continuar con la apertura local en SQLite
+            }
         }
 
         shift ??= new WorkShift
@@ -135,63 +144,66 @@ public class EfShiftService : IShiftService
             ? currentUser.ServerUserId.Value
             : null;
 
-        try
+        if (IsOnline)
         {
-            var apiShift = await _apiClient.GetActiveShiftAsync(userId: queryUserId, branchId: branchId);
-            if (apiShift != null)
+            try
             {
-                using var dbPersist = _connectionManager.CreateDbContext();
-                var local = await dbPersist.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == apiShift.ShiftId);
-                if (local == null)
+                var apiShift = await _apiClient.GetActiveShiftAsync(userId: queryUserId, branchId: branchId);
+                if (apiShift != null)
                 {
-                    apiShift.IsSynchronized = true;
-                    dbPersist.WorkShifts.Add(apiShift);
+                    using var dbPersist = _connectionManager.CreateDbContext();
+                    var local = await dbPersist.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == apiShift.ShiftId);
+                    if (local == null)
+                    {
+                        apiShift.IsSynchronized = true;
+                        dbPersist.WorkShifts.Add(apiShift);
+                    }
+                    else
+                    {
+                        local.Status = apiShift.Status;
+                        local.BaseAmount = apiShift.BaseAmount;
+                        local.StartTimeUtc = apiShift.StartTimeUtc;
+                        local.EndTimeUtc = apiShift.EndTimeUtc;
+                        local.OperatorName = apiShift.OperatorName;
+                        local.UserId = apiShift.UserId;
+                        local.BranchId = apiShift.BranchId;
+                        local.CompanyId = apiShift.CompanyId;
+                        local.CashRegisterName = apiShift.CashRegisterName;
+                        local.Notes = apiShift.Notes;
+                        local.IsSynchronized = true;
+                    }
+                    await dbPersist.SaveChangesAsync();
+
+                    CurrentShift = apiShift;
+                    ShiftStateChanged?.Invoke();
+                    return;
                 }
                 else
                 {
-                    local.Status = apiShift.Status;
-                    local.BaseAmount = apiShift.BaseAmount;
-                    local.StartTimeUtc = apiShift.StartTimeUtc;
-                    local.EndTimeUtc = apiShift.EndTimeUtc;
-                    local.OperatorName = apiShift.OperatorName;
-                    local.UserId = apiShift.UserId;
-                    local.BranchId = apiShift.BranchId;
-                    local.CompanyId = apiShift.CompanyId;
-                    local.CashRegisterName = apiShift.CashRegisterName;
-                    local.Notes = apiShift.Notes;
-                    local.IsSynchronized = true;
-                }
-                await dbPersist.SaveChangesAsync();
-
-                CurrentShift = apiShift;
-                ShiftStateChanged?.Invoke();
-                return;
-            }
-            else
-            {
-                // El API respondió confirmando que no hay turno activo (cerrado centralmente desde PWA)
-                using var dbClose = _connectionManager.CreateDbContext();
-                if (branchId.HasValue && branchId.Value > 0)
-                {
-                    var openLocalShifts = await dbClose.WorkShifts
-                        .Where(s => s.BranchId == branchId.Value && s.Status == 0)
-                        .ToListAsync();
-                    foreach (var s in openLocalShifts)
+                    // El API respondió confirmando que no hay turno activo (cerrado centralmente desde PWA)
+                    using var dbClose = _connectionManager.CreateDbContext();
+                    if (branchId.HasValue && branchId.Value > 0)
                     {
-                        s.Status = 1;
-                        s.EndTimeUtc ??= DateTime.UtcNow;
+                        var openLocalShifts = await dbClose.WorkShifts
+                            .Where(s => s.BranchId == branchId.Value && s.Status == 0)
+                            .ToListAsync();
+                        foreach (var s in openLocalShifts)
+                        {
+                            s.Status = 1;
+                            s.EndTimeUtc ??= DateTime.UtcNow;
+                        }
+                        if (openLocalShifts.Count > 0)
+                        {
+                            await dbClose.SaveChangesAsync();
+                        }
                     }
-                    if (openLocalShifts.Count > 0)
-                    {
-                        await dbClose.SaveChangesAsync();
-                    }
+                    CurrentShift = null;
+                    ShiftStateChanged?.Invoke();
+                    return;
                 }
-                CurrentShift = null;
-                ShiftStateChanged?.Invoke();
-                return;
             }
+            catch { }
         }
-        catch { }
 
         // Si falló la consulta online o estamos en modo offline, resolver contra SQLite local
         using var db = _connectionManager.CreateDbContext();
@@ -224,7 +236,7 @@ public class EfShiftService : IShiftService
         var shiftId = activeShift?.ShiftId ?? Guid.Empty;
         var operatorName = activeShift?.OperatorName ?? (_authService.CurrentUser?.FullName ?? "Operador General");
 
-        if (shiftId != Guid.Empty)
+        if (IsOnline && shiftId != Guid.Empty)
         {
             try
             {
@@ -325,11 +337,14 @@ public class EfShiftService : IShiftService
         };
 
         WorkShift? closedShift = null;
-        try
+        if (IsOnline)
         {
-            closedShift = await _apiClient.CloseShiftAsync(request);
+            try
+            {
+                closedShift = await _apiClient.CloseShiftAsync(request);
+            }
+            catch { }
         }
-        catch { }
 
         var summary = await GetCurrentShiftSummaryAsync();
         var endTime = DateTime.UtcNow;

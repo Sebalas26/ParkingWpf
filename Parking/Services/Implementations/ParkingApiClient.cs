@@ -17,6 +17,7 @@ namespace Parking.Services.Implementations;
 public class ParkingApiClient : IApiClientService
 {
     public event Action<string>? SessionTerminated;
+    public event Action<bool>? ConnectionStateChanged;
 
     private readonly HttpClient _httpClient;
     public static readonly JsonSerializerOptions JsonOptions = new()
@@ -36,7 +37,12 @@ public class ParkingApiClient : IApiClientService
     public ParkingApiClient(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _httpClient.Timeout = TimeSpan.FromSeconds(60);
+        _httpClient.Timeout = TimeSpan.FromSeconds(30);
+    }
+
+    private void ReportConnectionState(bool isOnline)
+    {
+        ConnectionStateChanged?.Invoke(isOnline);
     }
 
     private void CheckUnauthorized(HttpResponseMessage response)
@@ -62,27 +68,37 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<bool> PingAsync()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3.5));
         try
         {
             var response = await _httpClient.GetAsync($"{BaseUrl}/api/health", cts.Token);
-            if (response.IsSuccessStatusCode) return true;
-        }
-        catch { }
-
-        var fallbackUrl = BaseUrl.Contains("7023") ? "http://localhost:5135" : "https://localhost:7023";
-        try
-        {
-            using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-            var response = await _httpClient.GetAsync($"{fallbackUrl}/api/health", ctsFallback.Token);
             if (response.IsSuccessStatusCode)
             {
-                BaseUrl = fallbackUrl;
+                ReportConnectionState(true);
                 return true;
             }
         }
         catch { }
 
+        // Solo intentar fallback a localhost si la URL base configurada es de desarrollo local
+        if (BaseUrl.Contains("localhost"))
+        {
+            var fallbackUrl = BaseUrl.Contains("7023") ? "http://localhost:5135" : "https://localhost:7023";
+            try
+            {
+                using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(2.5));
+                var response = await _httpClient.GetAsync($"{fallbackUrl}/api/health", ctsFallback.Token);
+                if (response.IsSuccessStatusCode)
+                {
+                    BaseUrl = fallbackUrl;
+                    ReportConnectionState(true);
+                    return true;
+                }
+            }
+            catch { }
+        }
+
+        ReportConnectionState(false);
         return false;
     }
 
@@ -114,18 +130,20 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<ParkingTicket?> CheckInAsync(CheckInApiRequest request)
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
         try
         {
             var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/tickets/check-in", request, cts.Token);
             CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
+                ReportConnectionState(true);
                 return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions, cts.Token);
             }
 
             if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
             {
+                ReportConnectionState(true);
                 try
                 {
                     var errorObj = await response.Content.ReadFromJsonAsync<JsonElement>(cancellationToken: cts.Token);
@@ -154,6 +172,11 @@ public class ParkingApiClient : IApiClientService
         {
             throw;
         }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
+            return null;
+        }
         catch
         {
             return null;
@@ -162,15 +185,21 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<ParkingTicket?> CheckOutAsync(CheckOutApiRequest request)
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
         try
         {
             var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/tickets/check-out", request, cts.Token);
             CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
+                ReportConnectionState(true);
                 return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions, cts.Token);
             }
+            return null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
             return null;
         }
         catch
@@ -181,15 +210,21 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<FinancialSummary?> GetFinancialSummaryAsync()
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
         try
         {
             var response = await _httpClient.GetAsync($"{BaseUrl}/api/analytics/daily-summary", cts.Token);
             CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
+                ReportConnectionState(true);
                 return await response.Content.ReadFromJsonAsync<FinancialSummary>(JsonOptions, cts.Token);
             }
+            return null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
             return null;
         }
         catch
@@ -272,16 +307,18 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<WorkShift?> OpenShiftAsync(OpenShiftApiRequest request)
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
         try
         {
             var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/shifts/open", request, cts.Token);
             CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
+                ReportConnectionState(true);
                 return await response.Content.ReadFromJsonAsync<WorkShift>(JsonOptions, cts.Token);
             }
 
+            ReportConnectionState(true);
             string errorMessage = $"Error del servidor al abrir turno ({response.StatusCode})";
             try
             {
@@ -307,19 +344,16 @@ public class ParkingApiClient : IApiClientService
         {
             throw;
         }
-        catch (HttpRequestException)
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
         {
-            throw;
-        }
-        catch (TaskCanceledException)
-        {
-            throw new HttpRequestException("Tiempo de espera agotado al comunicarse con el servidor central para abrir el turno.");
+            ReportConnectionState(false);
+            throw new HttpRequestException("No fue posible comunicarse con el servidor central. Se continuará en modo offline.");
         }
     }
 
     public async Task<WorkShift?> GetActiveShiftAsync(int? userId = null, int? branchId = null)
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try
         {
             var queryParams = new List<string>();
@@ -332,23 +366,23 @@ public class ParkingApiClient : IApiClientService
             CheckUnauthorized(response);
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
+                ReportConnectionState(true);
                 return null; // Confirmación explícita del API de que NO hay turno activo
             }
 
             if (response.IsSuccessStatusCode)
             {
+                ReportConnectionState(true);
                 return await response.Content.ReadFromJsonAsync<WorkShift>(JsonOptions, cts.Token);
             }
 
-            throw new HttpRequestException($"Error del servidor al consultar turno activo: {response.StatusCode}");
+            ReportConnectionState(true);
+            return null;
         }
-        catch (HttpRequestException)
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
         {
-            throw;
-        }
-        catch (TaskCanceledException)
-        {
-            throw new HttpRequestException("Tiempo de espera agotado al consultar turno activo central.");
+            ReportConnectionState(false);
+            return null;
         }
         catch
         {
@@ -358,15 +392,22 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<ShiftSummaryModel?> GetShiftSummaryAsync(Guid shiftId)
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
         try
         {
             var response = await _httpClient.GetAsync($"{BaseUrl}/api/shifts/summary/{shiftId}", cts.Token);
             CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
+                ReportConnectionState(true);
                 return await response.Content.ReadFromJsonAsync<ShiftSummaryModel>(JsonOptions, cts.Token);
             }
+            ReportConnectionState(true);
+            return null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
             return null;
         }
         catch
@@ -377,15 +418,22 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<WorkShift?> CloseShiftAsync(CloseShiftApiRequest request)
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
         try
         {
             var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/shifts/close", request, cts.Token);
             CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
+                ReportConnectionState(true);
                 return await response.Content.ReadFromJsonAsync<WorkShift>(JsonOptions, cts.Token);
             }
+            ReportConnectionState(true);
+            return null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
             return null;
         }
         catch
@@ -470,7 +518,7 @@ public class ParkingApiClient : IApiClientService
     public async Task<PlateCheckResultDto?> CheckPlateAsync(string plateNumber, int? branchId = null)
     {
         if (string.IsNullOrWhiteSpace(plateNumber)) return null;
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3.5));
         try
         {
             var url = branchId.HasValue
@@ -481,8 +529,14 @@ public class ParkingApiClient : IApiClientService
             CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {
+                ReportConnectionState(true);
                 return await response.Content.ReadFromJsonAsync<PlateCheckResultDto>(JsonOptions, cts.Token);
             }
+            return null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
             return null;
         }
         catch

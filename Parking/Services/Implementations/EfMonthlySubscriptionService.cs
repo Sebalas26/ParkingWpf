@@ -78,9 +78,6 @@ public class EfMonthlySubscriptionService : IMonthlySubscriptionService
         subscription.IsActive = true;
 
         using var db = _connectionManager.CreateDbContext();
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"MonthlySubscriptions\" ADD COLUMN \"CompanyId\" INTEGER NULL;"); } catch { }
-        try { await db.Database.ExecuteSqlRawAsync("ALTER TABLE \"MonthlySubscriptions\" ADD COLUMN \"BranchId\" INTEGER NULL;"); } catch { }
-
         db.MonthlySubscriptions.Add(subscription);
         await db.SaveChangesAsync();
 

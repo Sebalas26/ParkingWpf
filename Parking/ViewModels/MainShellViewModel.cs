@@ -183,6 +183,7 @@ public partial class MainShellViewModel : ViewModelBase
         try
         {
             _clockTimer.Stop();
+            _backgroundSync.Stop();
             await _dialogService.ShowAlertAsync(
                 "Sesión Cerrada en Otro Dispositivo",
                 string.IsNullOrWhiteSpace(message)
@@ -196,6 +197,8 @@ public partial class MainShellViewModel : ViewModelBase
         }
         catch
         {
+            _clockTimer.Stop();
+            _backgroundSync.Stop();
             _sessionService.Clear();
             _apiClient.ClearAuthToken();
             LogoutRequested?.Invoke();
@@ -338,6 +341,8 @@ public partial class MainShellViewModel : ViewModelBase
                                 $"Se ha actualizado el horario central y la sede '{branch.Name}' ha sido configurada como CERRADA para el día de hoy ({dayName}). Por seguridad, la sesión en este terminal se cerrará.",
                                 DialogNotificationType.Warning);
 
+                            _clockTimer.Stop();
+                            _backgroundSync.Stop();
                             _sessionService.Clear();
                             _apiClient.ClearAuthToken();
                             LogoutRequested?.Invoke();
@@ -391,6 +396,8 @@ public partial class MainShellViewModel : ViewModelBase
         {
             _ = _signalRClient.SetCurrentBranchAsync(CurrentBranch.Id);
         }
+
+        _backgroundSync.Start();
 
         IsOnlineMode = _syncEngine.IsOnline;
         SyncStatusText = _syncEngine.SyncStatusDescription;
@@ -675,6 +682,7 @@ public partial class MainShellViewModel : ViewModelBase
         if (confirmed)
         {
             _clockTimer.Stop();
+            _backgroundSync.Stop();
             _sessionService.Clear();
             LogoutRequested?.Invoke();
         }

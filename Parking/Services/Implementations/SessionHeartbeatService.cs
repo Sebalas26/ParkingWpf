@@ -23,7 +23,7 @@ public class SessionHeartbeatService : ISessionHeartbeatService
 
         _timer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromSeconds(5)
+            Interval = TimeSpan.FromSeconds(30)
         };
         _timer.Tick += async (s, e) => await CheckSessionHeartbeatAsync();
     }

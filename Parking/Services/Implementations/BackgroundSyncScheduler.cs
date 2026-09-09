@@ -8,22 +8,24 @@ namespace Parking.Services.Implementations;
 public class BackgroundSyncScheduler : IBackgroundSyncScheduler
 {
     private readonly ISyncEngineService _syncEngine;
-    private readonly DispatcherTimer _hourlyTimer;
+    private readonly IApiClientService? _apiClient;
+    private readonly DispatcherTimer _syncTimer;
     private bool _isSyncInProgress;
 
     public event EventHandler? SyncTriggered;
 
-    public BackgroundSyncScheduler(ISyncEngineService syncEngine)
+    public BackgroundSyncScheduler(ISyncEngineService syncEngine, IApiClientService? apiClient = null)
     {
         _syncEngine = syncEngine;
+        _apiClient = apiClient;
 
-        _hourlyTimer = new DispatcherTimer
+        _syncTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMinutes(5)
         };
-        _hourlyTimer.Tick += async (s, e) =>
+        _syncTimer.Tick += async (s, e) =>
         {
-            if (_isSyncInProgress) return;
+            if (_isSyncInProgress || !_syncEngine.IsOnline) return;
             try
             {
                 _isSyncInProgress = true;
@@ -39,13 +41,13 @@ public class BackgroundSyncScheduler : IBackgroundSyncScheduler
 
     public void Start()
     {
-        _hourlyTimer.Start();
+        _syncTimer.Start();
         _ = TriggerManualSyncAsync();
     }
 
     public void Stop()
     {
-        _hourlyTimer.Stop();
+        _syncTimer.Stop();
     }
 
     public async Task TriggerManualSyncAsync()

@@ -30,6 +30,7 @@ public partial class CheckInViewModel : ViewModelBase
     private readonly DispatcherTimer _clockTimer;
     private static readonly CultureInfo SpanishCulture = new("es-ES");
     private bool _isSyncingSelection;
+    private CancellationTokenSource? _plateSearchCts;
 
     [ObservableProperty]
     private string _currentDateString = string.Empty;
@@ -264,6 +265,11 @@ public partial class CheckInViewModel : ViewModelBase
 
     async partial void OnPlateNumberChanged(string value)
     {
+        _plateSearchCts?.Cancel();
+        _plateSearchCts?.Dispose();
+        _plateSearchCts = new CancellationTokenSource();
+        var cts = _plateSearchCts;
+
         if (string.IsNullOrWhiteSpace(value) || value.Trim().Length < 3)
         {
             ActiveSubscription = null;
@@ -275,11 +281,24 @@ public partial class CheckInViewModel : ViewModelBase
             return;
         }
 
+        try
+        {
+            await Task.Delay(350, cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (cts.IsCancellationRequested) return;
+
         var normalizedPlate = value.Trim().ToUpperInvariant();
 
         try
         {
             var localBlock = await _ticketService.GetActiveBlockAsync(normalizedPlate);
+            if (cts.IsCancellationRequested) return;
+
             if (localBlock != null)
             {
                 IsPlateBlocked = true;
@@ -304,6 +323,8 @@ public partial class CheckInViewModel : ViewModelBase
         try
         {
             var sub = await _monthlySubscriptionService.GetActiveSubscriptionByPlateAsync(normalizedPlate);
+            if (cts.IsCancellationRequested) return;
+
             if (sub != null)
             {
                 ActiveSubscription = sub;
