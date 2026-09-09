@@ -112,8 +112,8 @@ public partial class LoginViewModel : ViewModelBase
                 await _authService.LogoutAsync();
                 ModernMessageDialog.ShowAlert(
                     Application.Current?.MainWindow,
-                    "Plan Sin Acceso de Garita (Solo PWA)",
-                    "El plan contratado para su empresa no incluye acceso a la estación de garita de escritorio (WPF).\n\nPara habilitar la operación en terminales de garita física, amplíe su plan de suscripción a Garita o Híbrido desde la administración web.",
+                    "Plan Sin Acceso de Garita (Solo WEB)",
+                    "El plan contratado para su empresa no incluye acceso a la estación de garita de escritorio.\n\nPara habilitar la operación en terminales de garita física, amplíe su plan de suscripción a Garita o Híbrido desde la administración web.",
                     DialogNotificationType.Warning,
                     "Entendido");
                 HasError = true;
