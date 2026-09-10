@@ -522,7 +522,7 @@ public partial class CheckInViewModel : ViewModelBase
         try
         {
             var operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
-            decimal? customRate = IsMonthlySubscriber ? 0m : null;
+            decimal? customRate = IsMonthlySubscriber ? 0m : SelectedRate?.HourRate;
             var ticketNotes = IsMonthlySubscriber && ActiveSubscription != null
                 ? $"Mensualidad Activa: {ActiveSubscription.CustomerName} (Vence: {ActiveSubscription.EndDate:yyyy-MM-dd})"
                 : Notes;
@@ -597,7 +597,7 @@ public partial class CheckInViewModel : ViewModelBase
         var now = DateTime.Now;
         var rawDate = now.ToString("dddd, dd 'de' MMMM 'de' yyyy", SpanishCulture);
         CurrentDateString = char.ToUpper(rawDate[0], SpanishCulture) + rawDate[1..];
-        CurrentTimeString = now.ToString("HH:mm:ss");
+        CurrentTimeString = now.ToString("hh:mm:ss tt", CultureInfo.InvariantCulture);
 
         CheckOperatingHoursPreClosingAlert(now);
     }

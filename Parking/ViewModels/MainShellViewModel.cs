@@ -60,7 +60,7 @@ public partial class MainShellViewModel : ViewModelBase
     private bool _isOnlineMode;
 
     [ObservableProperty]
-    private string _syncStatusText = "Conectando al API Central...";
+    private string _syncStatusText = "Sincronizando...";
 
     [ObservableProperty]
     private bool _isSyncing;
@@ -248,7 +248,7 @@ public partial class MainShellViewModel : ViewModelBase
                     {
                         user.GrantedPermissions = new HashSet<string>(updatedPermissions, StringComparer.OrdinalIgnoreCase);
                         _permissionService.LoadPermissions(updatedPermissions, user.IsAdmin);
-                        SyncStatusText = $"Permisos actualizados en tiempo real ({DateTime.Now:HH:mm})";
+                        SyncStatusText = $"Permisos actualizados en tiempo real ({DateTime.Now.ToString("hh:mm tt", CultureInfo.InvariantCulture)})";
                     }
                 }
                 catch { }
@@ -262,7 +262,7 @@ public partial class MainShellViewModel : ViewModelBase
             try
             {
                 await _syncEngine.PerformFullSyncAsync();
-                SyncStatusText = $"Novedades sincronizadas ({DateTime.Now:HH:mm})";
+                SyncStatusText = $"Novedades sincronizadas ({DateTime.Now.ToString("hh:mm tt", CultureInfo.InvariantCulture)})";
             }
             catch { }
             return;
@@ -281,7 +281,7 @@ public partial class MainShellViewModel : ViewModelBase
 
                     if (notification.EventType == "ShiftClosed")
                     {
-                        SyncStatusText = $"Caja cerrada centralmente ({DateTime.Now:HH:mm})";
+                        SyncStatusText = $"Caja cerrada centralmente ({DateTime.Now.ToString("hh:mm tt", CultureInfo.InvariantCulture)})";
                         
                         if (_permissionService.HasPermission("shifts.view_current"))
                         {
@@ -299,7 +299,7 @@ public partial class MainShellViewModel : ViewModelBase
                     }
                     else
                     {
-                        SyncStatusText = $"Turno de caja activo ({DateTime.Now:HH:mm})";
+                        SyncStatusText = $"Turno de caja activo ({DateTime.Now.ToString("hh:mm tt", CultureInfo.InvariantCulture)})";
                         if (ActiveView is ShiftClosureViewModel && HasActiveShift)
                         {
                             NavigateToInitialAuthorizedView();
@@ -320,7 +320,7 @@ public partial class MainShellViewModel : ViewModelBase
                 try
                 {
                     await _syncEngine.PerformFullSyncAsync();
-                    SyncStatusText = $"Horarios sincronizados ({DateTime.Now:HH:mm})";
+                    SyncStatusText = $"Horarios sincronizados ({DateTime.Now.ToString("hh:mm tt", CultureInfo.InvariantCulture)})";
 
                     var branch = _sessionService.CurrentBranch;
                     if (branch?.OperatingHours != null && branch.OperatingHours.Count > 0)
@@ -588,7 +588,7 @@ public partial class MainShellViewModel : ViewModelBase
         if (IsSyncing) return;
 
         IsSyncing = true;
-        SyncStatusText = "Sincronizando con API Central...";
+        SyncStatusText = "Sincronizando...";
 
         try
         {
@@ -602,7 +602,7 @@ public partial class MainShellViewModel : ViewModelBase
                 NavigateToInitialAuthorizedView();
             }
 
-            SyncStatusText = success ? "Sincronización completada" : "Sincronización finalizada con advertencias";
+            SyncStatusText = _syncEngine.SyncStatusDescription;
         }
         catch (Exception ex)
         {
@@ -643,7 +643,7 @@ public partial class MainShellViewModel : ViewModelBase
             if (result.Success)
             {
                 await RefreshOccupancyAsync();
-                SyncStatusText = $"Base local reconstruida con éxito ({DateTime.Now:HH:mm})";
+                SyncStatusText = $"Base local reconstruida con éxito ({DateTime.Now.ToString("hh:mm tt", CultureInfo.InvariantCulture)})";
                 await _dialogService.ShowAlertAsync(
                     "Restablecimiento Exitoso",
                     $"La base de datos local SQLite ha sido purgada y reconstruida con éxito desde la Nube.\n\n• Usuarios: {result.SyncedUsersCount}\n• Sedes: 1\n• Tarifas: {result.SyncedRatesCount}\n• Tiquetes activos: {result.SyncedTicketsCount}",
@@ -860,6 +860,9 @@ public partial class MainShellViewModel : ViewModelBase
 
     private void UpdateClock()
     {
-        CurrentTimeString = DateTime.Now.ToString("dddd, dd MMMM yyyy  •  HH:mm:ss", SpanishCulture);
+        var now = DateTime.Now;
+        var datePart = now.ToString("dddd, dd MMMM yyyy", SpanishCulture);
+        var timePart = now.ToString("hh:mm:ss tt", CultureInfo.InvariantCulture);
+        CurrentTimeString = $"{datePart}  •  {timePart}";
     }
 }

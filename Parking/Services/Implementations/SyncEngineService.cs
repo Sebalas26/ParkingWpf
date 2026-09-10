@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text.Json;
 using System.Threading;
@@ -36,8 +37,14 @@ public class SyncEngineService : ISyncEngineService
     public int ServerConfiguredCapacity { get; private set; } = 100;
 
     public string SyncStatusDescription => _isOnline
-        ? (_lastSyncTime.HasValue ? $"API Central Online • Sincronizado ({_lastSyncTime.Value:HH:mm})" : "API Central Online • Sincronizado")
+        ? (_lastSyncTime.HasValue ? $"Sincronizado ({FormatSyncTime(_lastSyncTime.Value)})" : "Sincronizado")
         : (_pendingItemsCount > 0 ? $"Modo Offline Local • {_pendingItemsCount} pendientes" : "Modo Offline Local (Sin Conexión)");
+
+    private static string FormatSyncTime(DateTime time)
+    {
+        var localTime = time.Kind == DateTimeKind.Utc ? time.ToLocalTime() : time;
+        return localTime.ToString("hh:mm tt", CultureInfo.InvariantCulture);
+    }
 
     public SyncEngineService(
         IApiClientService apiClient,
@@ -672,10 +679,10 @@ public class SyncEngineService : ISyncEngineService
             var incomingVehicleTypes = bootstrap.Rates.Select(r => r.GetVehicleType()).ToHashSet();
             var localRates = await db.VehicleRates.ToListAsync(ct);
 
-            // 1. Eliminar tarifas obsoletas que ya no existan en el backend
+            // 1. Eliminar tarifas obsoletas que ya no existan en el backend (estrictamente por RateId)
             var ratesToDelete = currentBranchId.HasValue
-                ? localRates.Where(r => (r.BranchId == currentBranchId.Value || r.BranchId == null) && !incomingRateIds.Contains(r.RateId) && !incomingVehicleTypes.Contains(r.VehicleType)).ToList()
-                : localRates.Where(r => !incomingRateIds.Contains(r.RateId) && !incomingVehicleTypes.Contains(r.VehicleType)).ToList();
+                ? localRates.Where(r => (r.BranchId == currentBranchId.Value || r.BranchId == null) && !incomingRateIds.Contains(r.RateId)).ToList()
+                : localRates.Where(r => !incomingRateIds.Contains(r.RateId)).ToList();
 
             if (ratesToDelete.Count > 0)
             {
@@ -684,7 +691,7 @@ public class SyncEngineService : ISyncEngineService
                 localRates = await db.VehicleRates.ToListAsync(ct);
             }
 
-            // 2. Upsert por RateId o combinación (BranchId + VehicleType)
+            // 2. Upsert por RateId canónico (evitando colisiones por VehicleType compartido)
             foreach (var rate in bootstrap.Rates)
             {
                 var rateId = rate.GetRateId();
@@ -706,8 +713,11 @@ public class SyncEngineService : ISyncEngineService
                 var iconKey = rate.GetIconKey();
                 var isActive = rate.GetEffectiveActive();
 
-                var existing = localRates.FirstOrDefault(r => r.RateId == rateId)
-                            ?? localRates.FirstOrDefault(r => r.BranchId == targetBranchId && r.VehicleType == vehicleType && r.DayOfWeek == rate.DayOfWeek);
+                var existing = localRates.FirstOrDefault(r => r.RateId == rateId);
+                if (existing == null && rateId == Guid.Empty)
+                {
+                    existing = localRates.FirstOrDefault(r => r.BranchId == targetBranchId && r.VehicleType == vehicleType && r.DayOfWeek == rate.DayOfWeek);
+                }
 
                 if (existing != null)
                 {
@@ -733,7 +743,7 @@ public class SyncEngineService : ISyncEngineService
                 }
                 else
                 {
-                    db.VehicleRates.Add(new VehicleRate
+                    var newRate = new VehicleRate
                     {
                         RateId = rateId,
                         BranchId = targetBranchId,
@@ -755,7 +765,9 @@ public class SyncEngineService : ISyncEngineService
                         IconKey = string.IsNullOrWhiteSpace(iconKey) ? "IconCar" : iconKey,
                         IsActive = isActive,
                         UpdatedAtUtc = rate.UpdatedAtUtc ?? DateTime.UtcNow
-                    });
+                    };
+                    db.VehicleRates.Add(newRate);
+                    localRates.Add(newRate);
                 }
                 ratesCount++;
             }
@@ -1295,7 +1307,7 @@ public class SyncEngineService : ISyncEngineService
         result.SyncedTicketsCount = ticketsCount;
 
         await db.SaveChangesAsync(ct);
-        _lastSyncTime = DateTime.UtcNow;
+        _lastSyncTime = DateTime.Now;
         _isOnline = true;
         result.Success = true;
 
@@ -1600,7 +1612,7 @@ public class SyncEngineService : ISyncEngineService
 
             if (changed)
             {
-                _lastSyncTime = DateTime.UtcNow;
+                _lastSyncTime = DateTime.Now;
                 _ = ProcessPendingQueueAsync();
                 DataSynchronized?.Invoke();
             }

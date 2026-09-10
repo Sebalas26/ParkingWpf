@@ -236,15 +236,12 @@ public class EfShiftService : IShiftService
         var shiftId = activeShift?.ShiftId ?? Guid.Empty;
         var operatorName = activeShift?.OperatorName ?? (_authService.CurrentUser?.FullName ?? "Operador General");
 
+        ShiftSummaryModel? remoteSummary = null;
         if (IsOnline && shiftId != Guid.Empty)
         {
             try
             {
-                var apiSummary = await _apiClient.GetShiftSummaryAsync(shiftId);
-                if (apiSummary != null)
-                {
-                    return apiSummary;
-                }
+                remoteSummary = await _apiClient.GetShiftSummaryAsync(shiftId);
             }
             catch { }
         }
@@ -266,24 +263,115 @@ public class EfShiftService : IShiftService
         var enteredTicketsCount = allTickets
             .Count(t => activeShift == null || t.EntryTimeUtc >= startTime);
 
+        // Medios de pago configurados en base de datos para la sede
+        var branchPmIds = branchId.HasValue
+            ? await db.BranchPaymentMethods
+                .Where(bpm => bpm.BranchId == branchId.Value && bpm.IsActive)
+                .Select(bpm => bpm.PaymentMethodId)
+                .ToListAsync()
+            : new List<int>();
+
+        var paymentMethods = await db.PaymentMethods
+            .Where(pm => pm.State && (branchPmIds.Count == 0 || branchPmIds.Contains(pm.Id)))
+            .ToListAsync();
+
+        if (paymentMethods.Count == 0)
+        {
+            paymentMethods = await db.PaymentMethods.Where(pm => pm.State).ToListAsync();
+        }
+
+        var breakdown = new List<ShiftPaymentMethodItem>();
         decimal cash = 0m;
         decimal card = 0m;
         decimal transfer = 0m;
         decimal discounts = completedTickets.Sum(t => t.DiscountAmount);
 
-        foreach (var t in completedTickets)
+        // Agrupar tiquetes por PaymentMethodId
+        var ticketsByPmId = completedTickets
+            .Where(t => t.PaymentMethodId.HasValue && t.PaymentMethodId.Value > 0)
+            .GroupBy(t => t.PaymentMethodId!.Value)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var unassignedTickets = completedTickets
+            .Where(t => !t.PaymentMethodId.HasValue || t.PaymentMethodId.Value <= 0)
+            .ToList();
+
+        foreach (var pm in paymentMethods)
         {
-            if (t.PaymentMethod == PaymentMethod.DebitCard || t.PaymentMethod == PaymentMethod.CreditCard)
+            ticketsByPmId.TryGetValue(pm.Id, out var pmTickets);
+            pmTickets ??= new List<ParkingTicket>();
+
+            var isCash = pm.RequiresCashTender || pm.Name.ToLowerInvariant().Contains("efectivo");
+            var isCard = pm.Name.ToLowerInvariant().Contains("tarjeta") || pm.Name.ToLowerInvariant().Contains("card") || pm.Name.ToLowerInvariant().Contains("credito") || pm.Name.ToLowerInvariant().Contains("debito");
+            var isTransfer = pm.Name.ToLowerInvariant().Contains("nequi") || pm.Name.ToLowerInvariant().Contains("transfer") || pm.Name.ToLowerInvariant().Contains("qr") || pm.Name.ToLowerInvariant().Contains("davi");
+
+            // Si hay tiquetes sin PaymentMethodId, asignar por fallback
+            if (unassignedTickets.Count > 0)
             {
-                card += t.NetAmount;
+                var matched = unassignedTickets.Where(t =>
+                    (isCash && (!t.PaymentMethod.HasValue || t.PaymentMethod == PaymentMethod.Cash)) ||
+                    (isCard && (t.PaymentMethod == PaymentMethod.CreditCard || t.PaymentMethod == PaymentMethod.DebitCard)) ||
+                    (isTransfer && t.PaymentMethod == PaymentMethod.DigitalTransfer)
+                ).ToList();
+
+                if (matched.Count > 0)
+                {
+                    pmTickets = pmTickets.Concat(matched).ToList();
+                    foreach (var m in matched) unassignedTickets.Remove(m);
+                }
             }
-            else if (t.PaymentMethod == PaymentMethod.DigitalTransfer)
+
+            var totalAmount = pmTickets.Sum(t => t.NetAmount);
+            var txCount = pmTickets.Count;
+
+            if (isCash)
             {
-                transfer += t.NetAmount;
+                cash += totalAmount;
+            }
+            else if (isCard)
+            {
+                card += totalAmount;
+            }
+            else if (isTransfer)
+            {
+                transfer += totalAmount;
             }
             else
             {
-                cash += t.NetAmount;
+                cash += totalAmount;
+            }
+
+            string iconKey = isCash ? "IconCash" : (isTransfer ? "IconQr" : (isCard ? "IconCard" : "IconCash"));
+            string iconBg = isCash ? "#E0F2F1" : (isTransfer ? "#E0F7FA" : (isCard ? "#E0F2F1" : "#F1F5F9"));
+            string iconBrush = isCash ? "BrushPrimary" : (isTransfer ? "BrushCyan" : (isCard ? "BrushPrimary" : "BrushTextSecondary"));
+            string amountBrush = isCash ? "BrushPrimary" : (isTransfer ? "BrushCyan" : (isCard ? "BrushPrimary" : "BrushTextPrimary"));
+
+            breakdown.Add(new ShiftPaymentMethodItem
+            {
+                PaymentMethodId = pm.Id,
+                Name = pm.Name,
+                IconKey = iconKey,
+                IconBg = iconBg,
+                IconBrushKey = iconBrush,
+                AmountBrushKey = amountBrush,
+                TotalCollected = totalAmount,
+                TransactionCount = txCount,
+                Subtitle = txCount == 0 ? "Sin cobros registrados" : (txCount == 1 ? "1 tiquete cobrado" : $"{txCount} tiquetes cobrados"),
+                RequiresCashTender = isCash
+            });
+        }
+
+        // Tiquetes restantes que no encajaron
+        if (unassignedTickets.Count > 0)
+        {
+            var extraAmount = unassignedTickets.Sum(t => t.NetAmount);
+            cash += extraAmount;
+            var cashItem = breakdown.FirstOrDefault(b => b.RequiresCashTender);
+            if (cashItem != null)
+            {
+                cashItem.TotalCollected += extraAmount;
+                cashItem.TransactionCount += unassignedTickets.Count;
+                cashItem.Subtitle = $"{cashItem.TransactionCount} tiquetes cobrados";
             }
         }
 
@@ -295,6 +383,21 @@ public class EfShiftService : IShiftService
                 .Where(w => w.ShiftId == shiftId)
                 .ToListAsync();
             withdrawals = shiftWithdrawals.Sum(w => w.Amount);
+        }
+
+        // Si el remoto respondió pero no tenía el desglose por medio de pago, enriquecerlo
+        if (remoteSummary != null)
+        {
+            remoteSummary.PaymentMethodsBreakdown = breakdown;
+            if (breakdown.Count > 0)
+            {
+                remoteSummary.TotalCashCollected = cash;
+                remoteSummary.TotalCardCollected = card;
+                remoteSummary.TotalTransferCollected = transfer;
+                remoteSummary.ExpectedCash = remoteSummary.BaseAmount + cash - (remoteSummary.TotalCashWithdrawals > 0 ? remoteSummary.TotalCashWithdrawals : withdrawals);
+                remoteSummary.CashDifference = remoteSummary.ActualCashCounted - remoteSummary.ExpectedCash;
+            }
+            return remoteSummary;
         }
 
         var expectedCash = baseAmount + cash - withdrawals;
@@ -318,7 +421,8 @@ public class EfShiftService : IShiftService
             TotalTicketsProcessed = completedTickets.Count,
             TotalVehiclesEntered = enteredTicketsCount,
             Status = 0,
-            Notes = activeShift?.Notes
+            Notes = activeShift?.Notes,
+            PaymentMethodsBreakdown = breakdown
         };
     }
 

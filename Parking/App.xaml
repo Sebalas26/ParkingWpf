@@ -36,6 +36,7 @@
             <conv:ConnectionStatusToColorConverter x:Key="ConnColorConv"/>
             <conv:EqualityToBooleanConverter x:Key="EqualityConv"/>
             <conv:Base64ToImageConverter x:Key="Base64ToImageConv"/>
+            <conv:IconKeyToGeometryConverter x:Key="IconKeyConv"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

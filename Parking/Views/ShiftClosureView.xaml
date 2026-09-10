@@ -108,10 +108,10 @@
                     <ColumnDefinition Width="1*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Left: 4 Horizontal Payment Method Cards -->
-                <Grid Grid.Column="0">
-                    <Grid.Style>
-                        <Style TargetType="Grid">
+                <!-- Left: Dynamic Payment Method Cards from Active Branch Database -->
+                <ItemsControl Grid.Column="0" ItemsSource="{Binding PaymentMethodCards}">
+                    <ItemsControl.Style>
+                        <Style TargetType="ItemsControl">
                             <Setter Property="Opacity" Value="1"/>
                             <Setter Property="IsEnabled" Value="True"/>
                             <Style.Triggers>
@@ -121,109 +121,51 @@
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>
-                    </Grid.Style>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="12"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- Card 1: Efectivo Cobrado -->
-                    <Border Grid.Column="0"
-                            Background="{DynamicResource BrushSurfaceBackground}"
-                            BorderBrush="{DynamicResource BrushBorderSubtle}"
-                            BorderThickness="1"
-                            CornerRadius="14"
-                            Padding="16,14">
-                        <StackPanel VerticalAlignment="Center">
-                            <Grid>
-                                <TextBlock Text="EFECTIVO COBRADO" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
-                                <Border HorizontalAlignment="Right" Width="26" Height="26" CornerRadius="13" Background="#E0F2F1">
-                                    <Path Data="{StaticResource IconCash}" Fill="{DynamicResource BrushPrimary}" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                            </Grid>
-                            <TextBlock Text="{Binding Summary.TotalCashCollected, Converter={StaticResource CurrencyConv}}"
-                                       FontSize="20"
-                                       FontWeight="Black"
-                                       Foreground="{DynamicResource BrushPrimary}"
-                                       Margin="0,8,0,0"/>
-                            <TextBlock Text="Ingresos por tiquetes en efectivo" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Card 2: Tarjetas Débito / Crédito -->
-                    <Border Grid.Column="2"
-                            Background="{DynamicResource BrushSurfaceBackground}"
-                            BorderBrush="{DynamicResource BrushBorderSubtle}"
-                            BorderThickness="1"
-                            CornerRadius="14"
-                            Padding="16,14">
-                        <StackPanel VerticalAlignment="Center">
-                            <Grid>
-                                <TextBlock Text="TARJETAS DÉBITO / CRÉDITO" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                <Border HorizontalAlignment="Right" Width="26" Height="26" CornerRadius="13" Background="#E0F2F1">
-                                    <Path Data="{StaticResource IconCard}" Fill="{DynamicResource BrushPrimary}" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                            </Grid>
-                            <TextBlock Text="{Binding Summary.TotalCardCollected, Converter={StaticResource CurrencyConv}}"
-                                       FontSize="20"
-                                       FontWeight="Black"
-                                       Foreground="{DynamicResource BrushPrimary}"
-                                       Margin="0,8,0,0"/>
-                            <TextBlock Text="Cobros procesados por datáfono" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Card 3: Transferencias / QR -->
-                    <Border Grid.Column="4"
-                            Background="{DynamicResource BrushSurfaceBackground}"
-                            BorderBrush="{DynamicResource BrushBorderSubtle}"
-                            BorderThickness="1"
-                            CornerRadius="14"
-                            Padding="16,14">
-                        <StackPanel VerticalAlignment="Center">
-                            <Grid>
-                                <TextBlock Text="TRANSFERENCIAS / QR" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
-                                <Border HorizontalAlignment="Right" Width="26" Height="26" CornerRadius="13" Background="#E0F7FA">
-                                    <Path Data="{StaticResource IconQr}" Fill="{DynamicResource BrushCyan}" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                            </Grid>
-                            <TextBlock Text="{Binding Summary.TotalTransferCollected, Converter={StaticResource CurrencyConv}}"
-                                       FontSize="20"
-                                       FontWeight="Black"
-                                       Foreground="{DynamicResource BrushCyan}"
-                                       Margin="0,8,0,0"/>
-                            <TextBlock Text="Transferencias directas verificadas" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Card 4: Descuentos por Convenios -->
-                    <Border Grid.Column="6"
-                            Background="{DynamicResource BrushSurfaceBackground}"
-                            BorderBrush="{DynamicResource BrushBorderSubtle}"
-                            BorderThickness="1"
-                            CornerRadius="14"
-                            Padding="16,14">
-                        <StackPanel VerticalAlignment="Center">
-                            <Grid>
-                                <TextBlock Text="DESCUENTOS POR CONVEN..." FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="Descuentos por Convenios"/>
-                                <Border HorizontalAlignment="Right" Width="26" Height="26" CornerRadius="13" Background="#FFF8E1">
-                                    <Path Data="{StaticResource IconDiscount}" Fill="{DynamicResource BrushWarning}" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </Border>
-                            </Grid>
-                            <TextBlock Text="{Binding Summary.TotalDiscounts, Converter={StaticResource CurrencyConv}}"
-                                       FontSize="20"
-                                       FontWeight="Black"
-                                       Foreground="{DynamicResource BrushWarningText}"
-                                       Margin="0,8,0,0"/>
-                            <TextBlock Text="Deducciones aplicadas por convenios" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
+                    </ItemsControl.Style>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="4" Rows="1"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{DynamicResource BrushSurfaceBackground}"
+                                    BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                    BorderThickness="1"
+                                    CornerRadius="14"
+                                    Padding="16,14"
+                                    Margin="0,0,12,0">
+                                <StackPanel VerticalAlignment="Center">
+                                    <Grid>
+                                        <TextBlock Text="{Binding DisplayName}"
+                                                   FontSize="11"
+                                                   FontWeight="Bold"
+                                                   Foreground="{DynamicResource BrushTextSecondary}"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <Border HorizontalAlignment="Right" Width="26" Height="26" CornerRadius="13" Background="{Binding IconBg}">
+                                            <Path Data="{Binding IconKey, Converter={StaticResource IconKeyConv}}"
+                                                  Fill="{DynamicResource BrushPrimary}"
+                                                  Width="13" Height="13"
+                                                  Stretch="Uniform"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </Grid>
+                                    <TextBlock Text="{Binding TotalCollected, Converter={StaticResource CurrencyConv}}"
+                                               FontSize="20"
+                                               FontWeight="Black"
+                                               Foreground="{DynamicResource BrushPrimary}"
+                                               Margin="0,8,0,0"/>
+                                    <TextBlock Text="{Binding Subtitle}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource BrushTextMuted}"
+                                               Margin="0,2,0,0"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <!-- Right: 2 Stacked Volume Cards -->
                 <Grid Grid.Column="2">
@@ -420,9 +362,10 @@
 
                         <!-- Owner Buttons Section -->
                         <StackPanel Visibility="{Binding IsShiftOwner, Converter={StaticResource BoolToVis}}">
-                            <!-- Main Action Button: Realizar Cierre de Caja -->
+                            <!-- Main Action Button: Realizar Cierre de Caja (Rojo Claro) -->
                             <Button Command="{Binding CloseShiftDirectCommand}"
-                                    Style="{StaticResource ModernButton}"
+                                    Style="{StaticResource DangerButton}"
+                                    Background="{DynamicResource BrushDangerSoft}"
                                     Height="44"
                                     IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
                                     Margin="0,0,0,8">

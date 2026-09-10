@@ -50,4 +50,21 @@ public class ShiftSummaryModel
     public bool IsBalanced => Math.Abs(CashDifference) < 0.01m;
     public bool IsSurplus => CashDifference > 0.01m;
     public bool IsDeficit => CashDifference < -0.01m;
+
+    public List<ShiftPaymentMethodItem> PaymentMethodsBreakdown { get; set; } = new();
+}
+
+public class ShiftPaymentMethodItem
+{
+    public int PaymentMethodId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string DisplayName => Name.ToUpperInvariant();
+    public string IconKey { get; set; } = "IconCash";
+    public string IconBg { get; set; } = "#E0F2F1";
+    public string IconBrushKey { get; set; } = "BrushPrimary";
+    public string AmountBrushKey { get; set; } = "BrushPrimary";
+    public decimal TotalCollected { get; set; }
+    public int TransactionCount { get; set; }
+    public string Subtitle { get; set; } = string.Empty;
+    public bool RequiresCashTender { get; set; }
 }

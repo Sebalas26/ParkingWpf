@@ -54,6 +54,8 @@
     <Color x:Key="ColorDangerHover">#B91C1C</Color>
     <Color x:Key="ColorDangerBg">#FEE2E2</Color>
     <Color x:Key="ColorDangerText">#991B1B</Color>
+    <Color x:Key="ColorDangerSoft">#EF4444</Color>
+    <Color x:Key="ColorDangerSoftHover">#DC2626</Color>
 
     <!-- Acentos Secundarios -->
     <Color x:Key="ColorCyan">#00A896</Color>
@@ -104,6 +106,8 @@
     <SolidColorBrush x:Key="BrushDangerHover" Color="{StaticResource ColorDangerHover}"/>
     <SolidColorBrush x:Key="BrushDangerBg" Color="{StaticResource ColorDangerBg}"/>
     <SolidColorBrush x:Key="BrushDangerText" Color="{StaticResource ColorDangerText}"/>
+    <SolidColorBrush x:Key="BrushDangerSoft" Color="{StaticResource ColorDangerSoft}"/>
+    <SolidColorBrush x:Key="BrushDangerSoftHover" Color="{StaticResource ColorDangerSoftHover}"/>
 
     <SolidColorBrush x:Key="BrushCyan" Color="{StaticResource ColorCyan}"/>
     <SolidColorBrush x:Key="BrushViolet" Color="{StaticResource ColorViolet}"/>

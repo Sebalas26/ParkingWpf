@@ -114,7 +114,7 @@ public class OfflineResilienceTests : IDisposable
 
         // Assert
         syncEngine.IsOnline.Should().BeTrue();
-        syncEngine.SyncStatusDescription.Should().Contain("API Central Online");
+        syncEngine.SyncStatusDescription.Should().Contain("Sincronizado");
     }
 
     [Fact]
@@ -249,7 +249,7 @@ public class OfflineResilienceTests : IDisposable
 
         // Assert
         syncEngine.IsOnline.Should().BeTrue();
-        syncEngine.SyncStatusDescription.Should().Contain("API Central Online");
+        syncEngine.SyncStatusDescription.Should().Contain("Sincronizado");
     }
 
     [Fact]
@@ -271,7 +271,7 @@ public class OfflineResilienceTests : IDisposable
 
         // Assert
         syncEngine.IsOnline.Should().BeTrue();
-        syncEngine.SyncStatusDescription.Should().Contain("API Central Online");
+        syncEngine.SyncStatusDescription.Should().Contain("Sincronizado");
     }
 
     [Fact]
@@ -288,6 +288,49 @@ public class OfflineResilienceTests : IDisposable
 
         var actStop = () => scheduler.Stop();
         actStop.Should().NotThrow();
+    }
+
+    [Fact]
+    public async Task SyncEngineService_SyncRates_SavesMultipleCategoriesWithoutCollision()
+    {
+        // Arrange
+        _mockSessionService.Setup(s => s.CurrentBranchId).Returns(1);
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = 1, Name = "Sede 236" });
+
+        var bootstrap = new BootstrapSyncResponse
+        {
+            Branches = new List<ApiBranchSyncDto>
+            {
+                new() { Id = 1, Name = "Sede 236" }
+            },
+            Rates = new List<ApiVehicleRateSyncDto>
+            {
+                new() { RawRateId = Guid.NewGuid(), BranchId = 1, DisplayName = "Carro", VehicleType = "Car", HourRate = 5000m, MinuteRate = 250m, IsActive = true },
+                new() { RawRateId = Guid.NewGuid(), BranchId = 1, DisplayName = "Patineta", VehicleType = "Bicycle", HourRate = 3800m, MinuteRate = 28m, IsActive = true },
+                new() { RawRateId = Guid.NewGuid(), BranchId = 1, DisplayName = "Moto", VehicleType = "Motorcycle", HourRate = 2000m, MinuteRate = 160m, IsActive = true },
+                new() { RawRateId = Guid.NewGuid(), BranchId = 1, DisplayName = "Bicicleta", VehicleType = "Bicycle", HourRate = 1500m, MinuteRate = 60m, IsActive = true }
+            }
+        };
+
+        _mockApiClient.Setup(a => a.PingAsync()).ReturnsAsync(true);
+        _mockApiClient.Setup(a => a.GetBootstrapAsync(1)).ReturnsAsync(bootstrap);
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        // Act
+        var result = await syncEngine.PerformFullSyncAsync();
+
+        // Assert
+        result.Should().BeTrue();
+        using var db = _connectionManager.CreateDbContext();
+        var localRates = await db.VehicleRates.Where(r => r.BranchId == 1).ToListAsync();
+        localRates.Should().HaveCount(4);
+        localRates.Select(r => r.DisplayName).Should().Contain(new[] { "Carro", "Patineta", "Moto", "Bicicleta" });
     }
 
     public void Dispose()

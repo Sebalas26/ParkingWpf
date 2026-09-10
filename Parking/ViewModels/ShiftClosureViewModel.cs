@@ -37,10 +37,13 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private bool _isOnlineMode = true;
 
     [ObservableProperty]
-    private string _syncStatusText = "API Central Online - Sincronizado";
+    private string _syncStatusText = "Sincronizado";
 
     [ObservableProperty]
     private ShiftSummaryModel _summary = new();
+
+    [ObservableProperty]
+    private ObservableCollection<ShiftPaymentMethodItem> _paymentMethodCards = new();
 
     [ObservableProperty]
     private decimal _actualCashCounted;
@@ -142,7 +145,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
         _operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
         _branchName = _sessionService.CurrentBranch?.Name ?? "Sede Principal";
         _isOnlineMode = _syncEngine.IsOnline;
-        _syncStatusText = _isOnlineMode ? "API Central Online - Sincronizado" : "Modo Local / Desconectado";
+        _syncStatusText = _isOnlineMode ? "Sincronizado" : "Modo Local";
 
         _permissionService.PermissionsChanged += () =>
         {
@@ -168,7 +171,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
             System.Windows.Application.Current?.Dispatcher.Invoke(() =>
             {
                 IsOnlineMode = _syncEngine.IsOnline;
-                SyncStatusText = IsOnlineMode ? "API Central Online - Sincronizado" : "Modo Local / Desconectado";
+                SyncStatusText = IsOnlineMode ? "Sincronizado" : "Modo Local";
             });
         };
 
@@ -184,7 +187,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
         OperatorName = _authService.CurrentUser?.FullName ?? "Operador General";
         BranchName = _sessionService.CurrentBranch?.Name ?? "Sede Principal";
         IsOnlineMode = _syncEngine.IsOnline;
-        SyncStatusText = IsOnlineMode ? "API Central Online - Sincronizado" : "Modo Local / Desconectado";
+        SyncStatusText = IsOnlineMode ? "Sincronizado" : "Modo Local";
         UpdatePermissions();
         await LoadShiftDataAsync();
     }
@@ -593,6 +596,28 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 ActualCashCounted = Summary.ExpectedCash;
                 RecalculateDifference();
                 CurrentShiftWithdrawals = await _shiftService.GetShiftCashWithdrawalsAsync(active!.ShiftId);
+
+                // Poblar dinámicamente las tarjetas con los medios de pago reales de la sede
+                PaymentMethodCards.Clear();
+                foreach (var pm in Summary.PaymentMethodsBreakdown)
+                {
+                    PaymentMethodCards.Add(pm);
+                }
+
+                // Agregar la tarjeta de Descuentos por Convenios para completar la cuadrícula oficial
+                PaymentMethodCards.Add(new ShiftPaymentMethodItem
+                {
+                    PaymentMethodId = -1,
+                    Name = "Descuentos por Convenios",
+                    IconKey = "IconDiscount",
+                    IconBg = "#FFF8E1",
+                    IconBrushKey = "BrushWarning",
+                    AmountBrushKey = "BrushWarningText",
+                    TotalCollected = Summary.TotalDiscounts,
+                    TransactionCount = 0,
+                    Subtitle = "Deducciones por convenios",
+                    RequiresCashTender = false
+                });
             }
             else
             {
@@ -628,6 +653,59 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 {
                     NewShiftBaseAmount = 0m;
                 }
+
+                // Cargar medios de pago reales inactivos para proyectar estructura limpia
+                PaymentMethodCards.Clear();
+                var branchPmIds = currentBranchId.HasValue
+                    ? await dbCheck.BranchPaymentMethods
+                        .Where(bpm => bpm.BranchId == currentBranchId.Value && bpm.IsActive)
+                        .Select(bpm => bpm.PaymentMethodId)
+                        .ToListAsync()
+                    : new List<int>();
+
+                var inactiveMethods = await dbCheck.PaymentMethods
+                    .Where(pm => pm.State && (branchPmIds.Count == 0 || branchPmIds.Contains(pm.Id)))
+                    .ToListAsync();
+
+                if (inactiveMethods.Count == 0)
+                {
+                    inactiveMethods = await dbCheck.PaymentMethods.Where(pm => pm.State).ToListAsync();
+                }
+
+                foreach (var pm in inactiveMethods)
+                {
+                    var isCash = pm.RequiresCashTender || pm.Name.ToLowerInvariant().Contains("efectivo");
+                    var isTransfer = pm.Name.ToLowerInvariant().Contains("nequi") || pm.Name.ToLowerInvariant().Contains("transfer") || pm.Name.ToLowerInvariant().Contains("qr") || pm.Name.ToLowerInvariant().Contains("davi");
+                    var isCard = pm.Name.ToLowerInvariant().Contains("tarjeta") || pm.Name.ToLowerInvariant().Contains("card") || pm.Name.ToLowerInvariant().Contains("credito") || pm.Name.ToLowerInvariant().Contains("debito");
+
+                    PaymentMethodCards.Add(new ShiftPaymentMethodItem
+                    {
+                        PaymentMethodId = pm.Id,
+                        Name = pm.Name,
+                        IconKey = isCash ? "IconCash" : (isTransfer ? "IconQr" : (isCard ? "IconCard" : "IconCash")),
+                        IconBg = isCash ? "#E0F2F1" : (isTransfer ? "#E0F7FA" : (isCard ? "#E0F2F1" : "#F1F5F9")),
+                        IconBrushKey = isCash ? "BrushPrimary" : (isTransfer ? "BrushCyan" : (isCard ? "BrushPrimary" : "BrushTextSecondary")),
+                        AmountBrushKey = isCash ? "BrushPrimary" : (isTransfer ? "BrushCyan" : (isCard ? "BrushPrimary" : "BrushTextPrimary")),
+                        TotalCollected = 0m,
+                        TransactionCount = 0,
+                        Subtitle = "Sin turno activo",
+                        RequiresCashTender = isCash
+                    });
+                }
+
+                PaymentMethodCards.Add(new ShiftPaymentMethodItem
+                {
+                    PaymentMethodId = -1,
+                    Name = "Descuentos por Convenios",
+                    IconKey = "IconDiscount",
+                    IconBg = "#FFF8E1",
+                    IconBrushKey = "BrushWarning",
+                    AmountBrushKey = "BrushWarningText",
+                    TotalCollected = 0m,
+                    TransactionCount = 0,
+                    Subtitle = "Deducciones por convenios",
+                    RequiresCashTender = false
+                });
             }
 
             // Cargar usuarios reales asignados a la sede activa con rol operativo para entrega de turno
