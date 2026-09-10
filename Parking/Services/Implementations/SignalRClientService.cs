@@ -40,17 +40,25 @@ public class SignalRClientService : ISignalRClientService, IAsyncDisposable
             var apiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5135";
             var hubUrl = $"{apiBaseUrl.TrimEnd('/')}/hubs/parking";
 
+            var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Development";
+            var isLocalOrDev = environment.Equals("Development", StringComparison.OrdinalIgnoreCase) ||
+                               apiBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
+                               apiBaseUrl.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase);
+
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl(hubUrl, options =>
                 {
-                    options.HttpMessageHandlerFactory = handler =>
+                    if (isLocalOrDev)
                     {
-                        if (handler is System.Net.Http.HttpClientHandler clientHandler)
+                        options.HttpMessageHandlerFactory = handler =>
                         {
-                            clientHandler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
-                        }
-                        return handler;
-                    };
+                            if (handler is System.Net.Http.HttpClientHandler clientHandler)
+                            {
+                                clientHandler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+                            }
+                            return handler;
+                        };
+                    }
                 })
                 .WithAutomaticReconnect(new[]
                 {
