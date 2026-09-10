@@ -103,6 +103,7 @@ public class AuthService : IAuthService
                             localUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11);
                         }
                         localUser.FullName = apiLogin.FullName;
+                        localUser.CompanyId = apiLogin.CompanyId;
                         localUser.IsActive = true;
                         await localDb.SaveChangesAsync();
                     }
@@ -231,7 +232,65 @@ public class AuthService : IAuthService
             IsActive = b.IsActive
         }).ToList();
 
-        localUserModel.CompanyId = branchesList.FirstOrDefault(b => b.CompanyId.HasValue)?.CompanyId;
+        int? resolvedCompanyId = user.CompanyId ?? branchesList.FirstOrDefault(b => b.CompanyId.HasValue && b.CompanyId.Value > 0)?.CompanyId;
+        if (!resolvedCompanyId.HasValue || resolvedCompanyId.Value <= 0)
+        {
+            // Auto-recuperar CompanyId desde tablas operativas locales (Turnos, Tiquetes, Resoluciones)
+            resolvedCompanyId = await db.WorkShifts
+                .Where(s => s.CompanyId.HasValue && s.CompanyId.Value > 0)
+                .OrderByDescending(s => s.StartTimeUtc)
+                .Select(s => s.CompanyId)
+                .FirstOrDefaultAsync();
+
+            if (!resolvedCompanyId.HasValue || resolvedCompanyId.Value <= 0)
+            {
+                resolvedCompanyId = await db.ParkingTickets
+                    .Where(t => t.CompanyId > 0)
+                    .OrderByDescending(t => t.EntryTimeUtc)
+                    .Select(t => (int?)t.CompanyId)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (!resolvedCompanyId.HasValue || resolvedCompanyId.Value <= 0)
+            {
+                resolvedCompanyId = await db.BillingResolutions
+                    .Where(r => r.CompanyId.HasValue && r.CompanyId.Value > 0)
+                    .Select(r => r.CompanyId)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (!resolvedCompanyId.HasValue || resolvedCompanyId.Value <= 0)
+            {
+                resolvedCompanyId = 1;
+            }
+
+            // Auto-sanar entidades locales en memoria y SQLite
+            foreach (var b in localBranches)
+            {
+                if (!b.CompanyId.HasValue || b.CompanyId.Value <= 0)
+                {
+                    b.CompanyId = resolvedCompanyId.Value;
+                }
+            }
+            foreach (var b in branchesList)
+            {
+                if (!b.CompanyId.HasValue || b.CompanyId.Value <= 0)
+                {
+                    b.CompanyId = resolvedCompanyId.Value;
+                }
+            }
+            if (user.CompanyId != resolvedCompanyId)
+            {
+                user.CompanyId = resolvedCompanyId;
+            }
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch { }
+        }
+
+        localUserModel.CompanyId = resolvedCompanyId;
 
         var localPermissions = isLocalAdmin
             ? new List<string>()

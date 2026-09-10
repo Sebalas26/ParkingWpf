@@ -53,8 +53,11 @@ public class ParkingApiClient : IApiClientService
         }
     }
 
+    public string? AuthToken { get; private set; }
+
     public void SetAuthToken(string token)
     {
+        AuthToken = token;
         if (!string.IsNullOrEmpty(token))
         {
             _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
@@ -63,6 +66,7 @@ public class ParkingApiClient : IApiClientService
 
     public void ClearAuthToken()
     {
+        AuthToken = null;
         _httpClient.DefaultRequestHeaders.Authorization = null;
     }
 
@@ -189,6 +193,31 @@ public class ParkingApiClient : IApiClientService
         try
         {
             var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/tickets/check-out", request, cts.Token);
+            CheckUnauthorized(response);
+            if (response.IsSuccessStatusCode)
+            {
+                ReportConnectionState(true);
+                return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions, cts.Token);
+            }
+            return null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<ParkingTicket?> GetTicketByIdAsync(Guid id)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            var response = await _httpClient.GetAsync($"{BaseUrl}/api/tickets/{id}", cts.Token);
             CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {

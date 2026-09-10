@@ -25,6 +25,8 @@ public partial class CheckOutViewModel : ViewModelBase
     private readonly ISessionService _sessionService;
     private readonly IDialogService _dialogService;
     private readonly IDbConnectionManager _connectionManager;
+    private readonly ISyncEngineService? _syncEngine;
+    private readonly IApiClientService? _apiClient;
     private readonly DispatcherTimer _liveCalculationTimer;
     private DateTime _ticketSelectionTimeUtc;
     private DateTime _frozenExitTimeUtc;
@@ -170,7 +172,8 @@ public partial class CheckOutViewModel : ViewModelBase
         ISessionService sessionService,
         IDialogService dialogService,
         IDbConnectionManager connectionManager,
-        ISyncEngineService syncEngine)
+        ISyncEngineService syncEngine,
+        IApiClientService? apiClient = null)
     {
         _ticketService = ticketService;
         _pricingCalculator = pricingCalculator;
@@ -181,15 +184,28 @@ public partial class CheckOutViewModel : ViewModelBase
         _sessionService = sessionService;
         _dialogService = dialogService;
         _connectionManager = connectionManager;
+        _syncEngine = syncEngine;
+        _apiClient = apiClient;
 
-        syncEngine.DataSynchronized += async () =>
+        syncEngine.DataSynchronized += () =>
         {
-            await InitializeAsync();
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(async () =>
+                {
+                    try { await InitializeAsync(); } catch { }
+                });
+            }
+            else
+            {
+                _ = InitializeAsync();
+            }
         };
 
         _sessionService.ActiveBranchChanged += async _ =>
         {
-            await InitializeAsync();
+            try { await InitializeAsync(); } catch { }
         };
 
         _liveCalculationTimer = new DispatcherTimer
@@ -209,7 +225,43 @@ public partial class CheckOutViewModel : ViewModelBase
         };
 
         _ticketService.TicketRegistered += (s, t) => _ = LoadActiveVehiclesAsync();
-        _ticketService.TicketCompleted += (s, t) => _ = LoadActiveVehiclesAsync();
+        _ticketService.TicketCompleted += (s, t) =>
+        {
+            var app = System.Windows.Application.Current;
+            if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
+            {
+                app.Dispatcher.InvokeAsync(async () =>
+                {
+                    HandleRemoteCheckOutEvent(t);
+                    await LoadActiveVehiclesAsync();
+                });
+            }
+            else
+            {
+                HandleRemoteCheckOutEvent(t);
+                _ = LoadActiveVehiclesAsync();
+            }
+        };
+    }
+
+    private void HandleRemoteCheckOutEvent(ParkingTicket? ticket)
+    {
+        if (ticket == null || SelectedTicket == null) return;
+
+        bool matchesId = ticket.TicketId != Guid.Empty && SelectedTicket.TicketId == ticket.TicketId;
+        bool matchesPlate = !string.IsNullOrWhiteSpace(ticket.PlateNumber) &&
+                            string.Equals(SelectedTicket.PlateNumber?.Trim(), ticket.PlateNumber.Trim(), StringComparison.OrdinalIgnoreCase);
+
+        if (matchesId || matchesPlate)
+        {
+            var plate = SelectedTicket.PlateNumber;
+            SelectedTicket = null;
+            IsAgreementPopupOpen = false;
+            SearchQuery = string.Empty;
+            HasFeedback = true;
+            IsSuccessFeedback = false;
+            FeedbackMessage = $"El vehículo con placa '{plate}' ya fue liquidado centralmente (desde PWA).";
+        }
     }
 
     public override async Task InitializeAsync()
@@ -981,6 +1033,30 @@ public partial class CheckOutViewModel : ViewModelBase
             IsSuccessFeedback = false;
             FeedbackMessage = "Debe seleccionar un vehículo activo para liquidar.";
             return;
+        }
+
+        // Validación preventiva en línea: si el vehículo ya fue liquidado centralmente desde PWA
+        if (_syncEngine != null && _syncEngine.IsOnline && _apiClient != null)
+        {
+            try
+            {
+                var remoteCheck = await _apiClient.GetTicketByIdAsync(SelectedTicket.TicketId);
+                if (remoteCheck != null && remoteCheck.Status == TicketStatus.Completed)
+                {
+                    var plate = SelectedTicket.PlateNumber;
+                    SelectedTicket = null;
+                    IsAgreementPopupOpen = false;
+                    await _ticketService.HandleRemoteTicketCheckOutAsync(remoteCheck.TicketId, remoteCheck.PlateNumber, remoteCheck.BranchId);
+                    await LoadActiveVehiclesAsync();
+
+                    await _dialogService.ShowAlertAsync(
+                        "Vehículo Ya Liquidado",
+                        $"El vehículo con placa '{plate}' ya fue liquidado centralmente desde el panel central (PWA).\n\nSe ha actualizado el terminal con la información canónica para evitar un doble cobro.",
+                        DialogNotificationType.Warning);
+                    return;
+                }
+            }
+            catch { }
         }
 
         if (HasAgreementDiscount && !IsMonthlyTicket)

@@ -11,5 +11,7 @@ public class ConfigNotificationDto
     public string? SessionToken { get; set; }
     public string Title { get; set; } = "Actualización de Configuración";
     public string Message { get; set; } = "Se han modificado parámetros en el servidor central.";
+    public Guid? EntityId { get; set; }
+    public string? EntityIdentifier { get; set; }
     public DateTime TimestampUtc { get; set; } = DateTime.UtcNow;
 }

@@ -73,7 +73,51 @@ public class EfParkingTicketService : IParkingTicketService
         var companyId = _sessionService.CurrentCompanyId;
         if (!companyId.HasValue || companyId.Value <= 0)
         {
-            throw new InvalidOperationException("La sesión no cuenta con una empresa (CompanyId) asignada.");
+            // Auto-recuperación en caliente para sesiones activas que no tenían CompanyId en memoria
+            using (var dbCheck = _connectionManager.CreateDbContext())
+            {
+                var recoveredId = await dbCheck.WorkShifts
+                    .Where(s => s.CompanyId.HasValue && s.CompanyId.Value > 0)
+                    .OrderByDescending(s => s.StartTimeUtc)
+                    .Select(s => s.CompanyId)
+                    .FirstOrDefaultAsync();
+
+                if (!recoveredId.HasValue || recoveredId.Value <= 0)
+                {
+                    recoveredId = await dbCheck.ParkingTickets
+                        .Where(t => t.CompanyId > 0)
+                        .OrderByDescending(t => t.EntryTimeUtc)
+                        .Select(t => (int?)t.CompanyId)
+                        .FirstOrDefaultAsync();
+                }
+
+                if (!recoveredId.HasValue || recoveredId.Value <= 0)
+                {
+                    recoveredId = await dbCheck.Branches
+                        .Where(b => b.CompanyId.HasValue && b.CompanyId.Value > 0)
+                        .Select(b => b.CompanyId)
+                        .FirstOrDefaultAsync();
+                }
+
+                if (!recoveredId.HasValue || recoveredId.Value <= 0)
+                {
+                    recoveredId = await dbCheck.BillingResolutions
+                        .Where(r => r.CompanyId.HasValue && r.CompanyId.Value > 0)
+                        .Select(r => r.CompanyId)
+                        .FirstOrDefaultAsync();
+                }
+
+                companyId = (recoveredId.HasValue && recoveredId.Value > 0) ? recoveredId.Value : 1;
+
+                if (_sessionService.CurrentUser != null)
+                {
+                    _sessionService.CurrentUser.CompanyId = companyId.Value;
+                }
+                if (_sessionService.CurrentBranch != null)
+                {
+                    _sessionService.CurrentBranch.CompanyId = companyId.Value;
+                }
+            }
         }
 
         var normalizedPlate = plateNumber.Trim().ToUpperInvariant();
@@ -274,6 +318,10 @@ public class EfParkingTicketService : IParkingTicketService
         {
             ticket.CompanyId = currentCompanyId.Value;
         }
+        else if (!ticket.CompanyId.HasValue || ticket.CompanyId.Value <= 0)
+        {
+            ticket.CompanyId = 1;
+        }
 
         ticket.ExitTimeUtc = exitTime;
         ticket.TotalDurationMinutes = (int)Math.Max(0, (exitTime - ticket.EntryTimeUtc).TotalMinutes);
@@ -326,6 +374,10 @@ public class EfParkingTicketService : IParkingTicketService
                 if (apiResponse != null)
                 {
                     ticket.IsSynchronized = true;
+                    if (apiResponse.ExitTimeUtc.HasValue) ticket.ExitTimeUtc = apiResponse.ExitTimeUtc.Value;
+                    ticket.GrossAmount = apiResponse.GrossAmount;
+                    ticket.NetAmount = apiResponse.NetAmount;
+                    ticket.PaymentMethod = apiResponse.PaymentMethod;
                 }
                 else
                 {
@@ -578,5 +630,154 @@ public class EfParkingTicketService : IParkingTicketService
         {
             return null;
         }
+    }
+
+    public async Task HandleRemoteTicketCheckOutAsync(Guid? ticketId, string? plateNumber, int? branchId)
+    {
+        try
+        {
+            using var db = _connectionManager.CreateDbContext();
+            var currentBranchId = branchId ?? _sessionService.CurrentBranch?.Id;
+
+            ParkingTicket? localTicket = null;
+            if (ticketId.HasValue && ticketId.Value != Guid.Empty)
+            {
+                localTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == ticketId.Value);
+            }
+
+            if (localTicket == null && !string.IsNullOrWhiteSpace(plateNumber))
+            {
+                var cleanPlate = plateNumber.Trim().ToUpperInvariant();
+                localTicket = await db.ParkingTickets
+                    .Where(t => t.Status == TicketStatus.Active &&
+                                (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value) &&
+                                t.PlateNumber.Trim().ToUpper() == cleanPlate)
+                    .OrderByDescending(t => t.EntryTimeUtc)
+                    .FirstOrDefaultAsync();
+            }
+
+            if (localTicket != null)
+            {
+                localTicket.Status = TicketStatus.Completed;
+                localTicket.ExitTimeUtc ??= DateTime.UtcNow;
+                localTicket.IsSynchronized = true;
+                await db.SaveChangesAsync();
+            }
+            else if (!string.IsNullOrWhiteSpace(plateNumber) || ticketId.HasValue)
+            {
+                // Si el tiquete no estaba en SQLite (ej: ingresó desde PWA mientras WPF estuvo apagado),
+                // crear un objeto de notificación sintético para que la UI pueda removerlo de la pantalla inmediatamente.
+                localTicket = new ParkingTicket
+                {
+                    TicketId = ticketId ?? Guid.NewGuid(),
+                    PlateNumber = !string.IsNullOrWhiteSpace(plateNumber) ? plateNumber.Trim().ToUpperInvariant() : "DESCONOCIDO",
+                    Status = TicketStatus.Completed,
+                    ExitTimeUtc = DateTime.UtcNow
+                };
+            }
+
+            var stats = await GetOccupancyStatsAsync();
+            var app = System.Windows.Application.Current;
+            if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
+            {
+                await app.Dispatcher.InvokeAsync(async () =>
+                {
+                    try
+                    {
+                        if (localTicket != null) TicketCompleted?.Invoke(this, localTicket);
+                        OccupancyChanged?.Invoke(this, stats);
+                    }
+                    catch { }
+                });
+            }
+            else
+            {
+                if (localTicket != null) TicketCompleted?.Invoke(this, localTicket);
+                OccupancyChanged?.Invoke(this, stats);
+            }
+        }
+        catch { }
+    }
+
+    public async Task HandleRemoteTicketCheckInAsync(Guid? ticketId, string? plateNumber, int? branchId)
+    {
+        try
+        {
+            using var db = _connectionManager.CreateDbContext();
+            var currentBranchId = branchId ?? _sessionService.CurrentBranch?.Id;
+
+            if (_syncEngine.IsOnline)
+            {
+                var bootstrap = await _apiClient.GetBootstrapAsync(currentBranchId);
+                if (bootstrap?.ActiveTickets != null)
+                {
+                    var apiTicket = bootstrap.ActiveTickets.FirstOrDefault(t => t.TicketId == ticketId)
+                                 ?? (!string.IsNullOrWhiteSpace(plateNumber) ? bootstrap.ActiveTickets.FirstOrDefault(t => string.Equals(t.PlateNumber.Trim(), plateNumber.Trim(), StringComparison.OrdinalIgnoreCase)) : null);
+
+                    if (apiTicket != null)
+                    {
+                        var entity = new ParkingTicket
+                        {
+                            TicketId = apiTicket.TicketId,
+                            BranchId = apiTicket.BranchId ?? currentBranchId,
+                            CompanyId = apiTicket.CompanyId,
+                            TicketNumber = apiTicket.TicketNumber,
+                            PlateNumber = apiTicket.PlateNumber,
+                            VehicleType = apiTicket.GetVehicleType(),
+                            CustomerPhone = apiTicket.CustomerPhone,
+                            Notes = apiTicket.Notes,
+                            OperatorName = apiTicket.OperatorName,
+                            HourlyRate = apiTicket.HourlyRate,
+                            EntryTimeUtc = apiTicket.EntryTimeUtc,
+                            Status = TicketStatus.Active,
+                            IsSynchronized = true
+                        };
+
+                        var existing = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == entity.TicketId);
+                        if (existing == null)
+                        {
+                            db.ParkingTickets.Add(entity);
+                            await db.SaveChangesAsync();
+                            existing = entity;
+                        }
+
+                        var app = System.Windows.Application.Current;
+                        if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
+                        {
+                            await app.Dispatcher.InvokeAsync(async () =>
+                            {
+                                try
+                                {
+                                    TicketRegistered?.Invoke(this, existing);
+                                    OccupancyChanged?.Invoke(this, await GetOccupancyStatsAsync());
+                                }
+                                catch { }
+                            });
+                        }
+                        else
+                        {
+                            TicketRegistered?.Invoke(this, existing);
+                            OccupancyChanged?.Invoke(this, await GetOccupancyStatsAsync());
+                        }
+                        return;
+                    }
+                }
+            }
+
+            var stats = await GetOccupancyStatsAsync();
+            var appFallback = System.Windows.Application.Current;
+            if (appFallback?.Dispatcher != null && !appFallback.Dispatcher.CheckAccess())
+            {
+                await appFallback.Dispatcher.InvokeAsync(() =>
+                {
+                    try { OccupancyChanged?.Invoke(this, stats); } catch { }
+                });
+            }
+            else
+            {
+                OccupancyChanged?.Invoke(this, stats);
+            }
+        }
+        catch { }
     }
 }

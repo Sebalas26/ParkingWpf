@@ -39,4 +39,6 @@ public interface IParkingTicketService
     Task<VehicleIncident?> GetActiveBlockAsync(string plateNumber);
     Task<OccupancyStats> GetOccupancyStatsAsync();
     void UpdateTotalCapacity(int newCapacity);
+    Task HandleRemoteTicketCheckOutAsync(Guid? ticketId, string? plateNumber, int? branchId);
+    Task HandleRemoteTicketCheckInAsync(Guid? ticketId, string? plateNumber, int? branchId);
 }

@@ -29,7 +29,6 @@ public partial class MainShellViewModel : ViewModelBase
     private readonly IShiftService _shiftService;
     private readonly ISignalRClientService _signalRClient;
     private readonly DispatcherTimer _clockTimer;
-    private bool _isSyncPromptOpen;
 
     [ObservableProperty]
     private ViewModelBase? _activeView;
@@ -64,6 +63,12 @@ public partial class MainShellViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isSyncing;
+
+    [ObservableProperty]
+    private bool _isRealtimeSyncing;
+
+    [ObservableProperty]
+    private string _realtimeSyncMessage = string.Empty;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanOperateTerminal))]
@@ -106,45 +111,136 @@ public partial class MainShellViewModel : ViewModelBase
 
         _ticketService.OccupancyChanged += (s, stats) =>
         {
-            Occupancy = stats;
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(() => Occupancy = stats);
+            }
+            else
+            {
+                Occupancy = stats;
+            }
         };
 
         _syncEngine.SyncStatusChanged += (s, status) =>
         {
-            IsOnlineMode = _syncEngine.IsOnline;
-            SyncStatusText = status;
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(() =>
+                {
+                    try
+                    {
+                        IsOnlineMode = _syncEngine.IsOnline;
+                        SyncStatusText = status;
+                    }
+                    catch { }
+                });
+            }
+            else
+            {
+                IsOnlineMode = _syncEngine.IsOnline;
+                SyncStatusText = status;
+            }
         };
 
         _sessionService.UserSessionChanged += user =>
         {
-            CurrentUser = user;
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(() => CurrentUser = user);
+            }
+            else
+            {
+                CurrentUser = user;
+            }
         };
 
         _sessionService.ActiveBranchChanged += branch =>
         {
-            CurrentBranch = branch;
-            HasMultipleBranches = _sessionService.HasMultipleBranches;
-            if (branch != null)
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
             {
-                _ = _signalRClient.SetCurrentBranchAsync(branch.Id);
+                dispatcher.InvokeAsync(async () =>
+                {
+                    try
+                    {
+                        CurrentBranch = branch;
+                        HasMultipleBranches = _sessionService.HasMultipleBranches;
+                        if (branch != null)
+                        {
+                            _ = _signalRClient.EnsureConnectedAsync(branch.Id, CurrentUser?.CompanyId);
+                        }
+                        await RefreshOccupancyAsync();
+                    }
+                    catch { }
+                });
             }
-            _ = RefreshOccupancyAsync();
+            else
+            {
+                CurrentBranch = branch;
+                HasMultipleBranches = _sessionService.HasMultipleBranches;
+                if (branch != null)
+                {
+                    _ = _signalRClient.EnsureConnectedAsync(branch.Id, CurrentUser?.CompanyId);
+                }
+                _ = RefreshOccupancyAsync();
+            }
         };
 
-        _syncEngine.DataSynchronized += async () =>
+        _syncEngine.DataSynchronized += () =>
         {
-            await RefreshOccupancyAsync();
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(async () =>
+                {
+                    try { await RefreshOccupancyAsync(); } catch { }
+                });
+            }
+            else
+            {
+                _ = RefreshOccupancyAsync();
+            }
         };
 
-        _syncEngine.TotalCapacityChanged += async _ =>
+        _syncEngine.TotalCapacityChanged += newCap =>
         {
-            await RefreshOccupancyAsync();
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(async () =>
+                {
+                    try { await RefreshOccupancyAsync(); } catch { }
+                });
+            }
+            else
+            {
+                _ = RefreshOccupancyAsync();
+            }
         };
 
         _shiftService.ShiftStateChanged += () =>
         {
-            HasActiveShift = _shiftService.HasActiveShift;
-            _ = RefreshOccupancyAsync();
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(async () =>
+                {
+                    try
+                    {
+                        HasActiveShift = _shiftService.HasActiveShift;
+                        await RefreshOccupancyAsync();
+                    }
+                    catch { }
+                });
+            }
+            else
+            {
+                HasActiveShift = _shiftService.HasActiveShift;
+                _ = RefreshOccupancyAsync();
+            }
         };
 
         _signalRClient.ConfigUpdateRequired += notification =>
@@ -355,7 +451,65 @@ public partial class MainShellViewModel : ViewModelBase
             return;
         }
 
-        if (_isSyncPromptOpen) return;
+        // 5. Manejo reactivo de Salida de Vehículos (Check-Out) desde PWA u otra terminal
+        if (notification.EventType == "TicketCheckedOut")
+        {
+            var branchId = _sessionService.CurrentBranch?.Id;
+            if (!notification.BranchId.HasValue || (branchId.HasValue && notification.BranchId.Value == branchId.Value))
+            {
+                try
+                {
+                    IsRealtimeSyncing = true;
+                    RealtimeSyncMessage = !string.IsNullOrWhiteSpace(notification.EntityIdentifier)
+                        ? $"Salida {notification.EntityIdentifier}..."
+                        : "Actualizando salida de vehículo...";
+
+                    await _ticketService.HandleRemoteTicketCheckOutAsync(notification.EntityId, notification.EntityIdentifier, notification.BranchId);
+                    await RefreshOccupancyAsync();
+                    SyncStatusText = !string.IsNullOrWhiteSpace(notification.EntityIdentifier)
+                        ? $"Salida {notification.EntityIdentifier} ({DateTime.Now:HH:mm})"
+                        : $"Vehículo liquidado ({DateTime.Now:HH:mm})";
+                }
+                catch { }
+                finally
+                {
+                    IsRealtimeSyncing = false;
+                    RealtimeSyncMessage = string.Empty;
+                }
+            }
+            return;
+        }
+
+        // 6. Manejo reactivo de Ingreso de Vehículos (Check-In) desde PWA u otra terminal
+        if (notification.EventType == "TicketCheckedIn")
+        {
+            var branchId = _sessionService.CurrentBranch?.Id;
+            if (!notification.BranchId.HasValue || (branchId.HasValue && notification.BranchId.Value == branchId.Value))
+            {
+                try
+                {
+                    IsRealtimeSyncing = true;
+                    RealtimeSyncMessage = !string.IsNullOrWhiteSpace(notification.EntityIdentifier)
+                        ? $"Ingreso {notification.EntityIdentifier}..."
+                        : "Actualizando nuevo vehículo...";
+
+                    await _ticketService.HandleRemoteTicketCheckInAsync(notification.EntityId, notification.EntityIdentifier, notification.BranchId);
+                    await RefreshOccupancyAsync();
+                    SyncStatusText = !string.IsNullOrWhiteSpace(notification.EntityIdentifier)
+                        ? $"Ingreso {notification.EntityIdentifier} ({DateTime.Now:HH:mm})"
+                        : $"Vehículo ingresado ({DateTime.Now:HH:mm})";
+                }
+                catch { }
+                finally
+                {
+                    IsRealtimeSyncing = false;
+                    RealtimeSyncMessage = string.Empty;
+                }
+            }
+            return;
+        }
+
+        if (IsRealtimeSyncing || IsSyncing) return;
 
         // Validar si aplica a la sede activa o es global
         var currentBranchId = _sessionService.CurrentBranch?.Id;
@@ -372,16 +526,22 @@ public partial class MainShellViewModel : ViewModelBase
 
         try
         {
-            _isSyncPromptOpen = true;
-            await _dialogService.ShowSyncRequiredModalAsync(notification, _syncEngine);
+            IsRealtimeSyncing = true;
+            RealtimeSyncMessage = !string.IsNullOrWhiteSpace(notification.Title)
+                ? $"Actualizando {notification.Title}..."
+                : "Actualizando cambios en vivo...";
+
+            await _syncEngine.PerformFullSyncAsync();
             await RefreshOccupancyAsync();
+            SyncStatusText = $"Actualizado ({DateTime.Now:HH:mm})";
         }
         catch (Exception)
         {
         }
         finally
         {
-            _isSyncPromptOpen = false;
+            IsRealtimeSyncing = false;
+            RealtimeSyncMessage = string.Empty;
         }
     }
 
@@ -391,11 +551,7 @@ public partial class MainShellViewModel : ViewModelBase
         CurrentBranch = _sessionService.CurrentBranch;
         HasMultipleBranches = _sessionService.HasMultipleBranches;
 
-        _ = _signalRClient.StartAsync();
-        if (CurrentBranch != null)
-        {
-            _ = _signalRClient.SetCurrentBranchAsync(CurrentBranch.Id);
-        }
+        _ = _signalRClient.EnsureConnectedAsync(CurrentBranch?.Id, CurrentUser?.CompanyId);
 
         _backgroundSync.Start();
 

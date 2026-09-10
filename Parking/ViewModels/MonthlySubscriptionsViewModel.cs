@@ -94,12 +94,37 @@ public partial class MonthlySubscriptionsViewModel : ViewModelBase
         _subscriptionService = subscriptionService;
         _dialogService = dialogService;
 
-        syncEngine.DataSynchronized += async () =>
+        syncEngine.DataSynchronized += () =>
         {
-            await LoadSubscriptionsAsync();
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(async () =>
+                {
+                    try { await LoadSubscriptionsAsync(); } catch { }
+                });
+            }
+            else
+            {
+                _ = LoadSubscriptionsAsync();
+            }
         };
 
-        _subscriptionService.SubscriptionsChanged += (s, e) => _ = LoadSubscriptionsAsync();
+        _subscriptionService.SubscriptionsChanged += (s, e) =>
+        {
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(async () =>
+                {
+                    try { await LoadSubscriptionsAsync(); } catch { }
+                });
+            }
+            else
+            {
+                _ = LoadSubscriptionsAsync();
+            }
+        };
     }
 
     public override async Task InitializeAsync()

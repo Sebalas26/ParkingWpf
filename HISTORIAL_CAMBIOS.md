@@ -15,6 +15,200 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+<<<<<<< HEAD
+### [2026-09-09 13:00:00] - [FEAT / CONCURRENCY / SIGNALR / REACTIVITY / OFFLINE-SYNC / CANONICAL-DATA] - Reactividad Garantizada de Salidas PWA en WPF, Cero Consultas Recurrentes (Event-Driven) y Resolución Canónica de Conflictos Offline (La Nube Manda)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"No paila ya estaba en modo activo bien pero saque un vehiculo desde la pwa y en el wpf que si estaba online no se quito el vehjiculo entonces daria doble salida eso no deberia permitirlo si me explico ... y segundo como sería el caso que el wpf este offline y pues el administrador le de saliida desde la pwa y por error el colaborador vuelva y le de salida al vehiculo como no ha sincronizado se lo va a dejar entonces cuando sincronice que pasaria el sitema esta adaptado para decir no esto no se sincroniza por que en la nube ya esta la data real entonces antes la data se baja desde la nube a tierra diciendole no ese vehjiculo ya tuvo slida esta es la data real. si me explico ? pero bueno analiza y dame el plan ."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Reactividad Total en Tiempo Real (SignalR) con Cero Consultas en Bucle (Cero Polling)**:
+     - **Problema corregido**: La condición de carrera entre `StartAsync()` y `SetCurrentBranchAsync()` dejaba al cliente WPF sin unirse a los grupos de sede en el hub. Si la app arrancaba offline, `WithAutomaticReconnect` no actuaba y SignalR quedaba inactivo para siempre.
+     - **Solución implementada**:
+       - En `ISignalRClientService` y `SignalRClientService.cs`, se implementó `EnsureConnectedAsync(branchId, companyId)` protegido por `SemaphoreSlim(1, 1)` thread-safe.
+       - Se configuró transporte híbrido `HttpTransportType.WebSockets | HttpTransportType.LongPolling` y se integró `AccessTokenProvider` con el JWT de sesión del usuario.
+       - Se unifica la suscripción a `Branch_{branchId}` y `Company_{companyId}`.
+       - En `SyncEngineService.cs`: En el momento exacto en que Windows detecta red (`NetworkChange.NetworkAvailabilityChanged`) y `SetOnlineStatus` pasa a `true`, se dispara **una única llamada puntual** en segundo plano a `EnsureConnectedAsync`. Cero timers, cero bucles, 0% CPU en reposo.
+  2. **Limpieza Inmediata de Pantalla en `CheckOutViewModel` para Evitar Doble Salida**:
+     - Al dispararse `TicketCompleted` (sea local o remoto por SignalR):
+       - Se ejecuta en el `Dispatcher` de forma no bloqueante.
+       - Si `SelectedTicket` coincide con el vehículo liquidado (por `TicketId` o `PlateNumber`), **se limpia inmediatamente la selección** (`SelectedTicket = null;`), se cierran popups y se muestra banner amigable: *"El vehículo con placa {Placa} fue liquidado centralmente (desde PWA)."*.
+       - Se remueve quirúrgicamente de la colección visual `ActiveVehicles` sin recargar toda la base de datos a 60 FPS.
+     - En `ProcessPaymentAsync`: Antes de cobrar, si el terminal está online, se verifica el estado central con `GetTicketByIdAsync(ticketId)`. Si la API informa que el vehículo ya salió, frena el cobro, actualiza SQLite y notifica al operador, eliminando al 100% el riesgo de doble facturación.
+  3. **Resolución Canónica de Conflictos Offline ("La Nube Manda / Bajar Data de Nube a Tierra")**:
+     - **Problema corregido**: Cuando WPF offline daba salida a un vehículo ya liquidado en PWA, la cola de sincronización llamaba a `CheckOutAsync` y la API respondía `404 NotFound ("Tiquete no encontrado o ya liquidado")`. El item quedaba en `IsProcessed = false` atascado eternamente en SQLite.
+     - **Solución implementada**:
+       - En `ParkingTicketService.cs` y `TicketsController.cs` (API): Si el ticket ya tiene `Status == TicketStatus.Completed`, retorna el ticket canónico con `200 OK` (idempotencia) y omite re-emitir evento SignalR duplicado.
+       - En `SyncEngineService.ProcessPendingQueueAsync` (WPF): Al recibir el ticket completado de la nube, marca `item.IsProcessed = true` (se elimina definitivamente de `PendingSyncItems`, 0 atascos).
+       - **Bajar data de nube a tierra**: Actualiza `localTicket` en SQLite con la verdad canónica del servidor (`Status = Completed`, `ExitTimeUtc`, `GrossAmount`, `NetAmount`, `PaymentMethod`, `IsSynchronized = true`).
+  4. **Pruebas Unitarias Automatizadas**:
+     - `TicketsControllerTests.cs` (API): Prueba `CheckOut_WhenAlreadyCompleted_ShouldReturnOkWithCanonicalTicketAndNotReemitSignalR`.
+     - `OfflineResilienceTests.cs` (WPF): Pruebas `ProcessPendingQueueAsync_WhenCheckOutReturnedFromCloud_RemovesFromQueueAndReconcilesCanonicalDataToSqlite` y `SyncEngineService_WhenSetOnlineStatusTrue_InvokesEnsureConnectedAsyncOnSignalR`.
+     - `CheckOutViewModelTests.cs` (WPF): Prueba `TicketCompleted_WhenMatchingSelectedTicket_ClearsSelectedTicketAndSetsFeedback`.
+     - Total: **495 pruebas en API (100% éxito)** y **200 pruebas en WPF (100% éxito)**.
+
+- **📦 Componentes Modificados**:
+  - `ParkingApi.Core/Services/Tickets/ParkingTicketService.cs`
+  - `ParkingApi/Controllers/TicketsController.cs`
+  - `ParkingApi.UnitTests/Controllers/TicketsControllerTests.cs`
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Contracts/ISignalRClientService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Implementations/SignalRClientService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet test ParkingApi.slnx` -> **495 Superadas, 0 Fallos** (100% exitoso).
+  - `dotnet test ParkingWpf.slnx` -> **200 Superadas, 0 Fallos** (100% exitoso).
+  - `dotnet build ParkingApi.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores**.
+
+---
+
+### [2026-09-09 12:00:00] - [FEAT / UI/UX / REALTIME / REACTIVITY / SIGNALR / WPF / API] - Reactividad en Tiempo Real de Salidas (CheckOut) e Ingresos (CheckIn) desde PWA en WPF, Eliminación de Modal Invasiva de Sincronización y Nuevo Indicador Sutil en el Header
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Listo ya funciono, bien pero tenemos otra cosa si estoy en modo online en el wpf, y desde la pwa le doy salida a un vehiculo de la sede eso deberia ser reactivo para el wpf y que se quite por que aun se queda solo se quita cuando sincroniza manual otra cosa es que quremos quitar lo que cualquier cambio aparezca esa modal de sincronización en vivo quiero cambiarla por algo arriba hay donde esta el estado de la sincronizacion al lado del izquierdo quiero algo mas bonito sii , así sera no tan basta para el usuario colaborador si me explico necesito que analices y me des el plan claro esa modal de sincronización solo va aparecer cuando se le de click manual al boton sincronizar hay si se muestra me explico. has el plan"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Reactividad Inmediata en Salidas y Entradas PWA (CheckOut / CheckIn)**:
+     - En `ParkingApi`, se actualizó `TicketsController.cs` inyectando `IRealtimeNotificationService _realtimeNotifier`.
+     - Al procesar `CheckOut`, se emite la notificación `TicketCheckedOut` hacia el grupo de SignalR de la sede (`Branch_{branchId}`) conteniendo `TicketId` y `PlateNumber`.
+     - Al procesar `CheckIn`, se emite `TicketCheckedIn` para notificar ingresos en tiempo real.
+     - Se enriqueció `ConfigNotificationDto` con `EntityId` y `EntityIdentifier` en backend y cliente de escritorio.
+     - En `IParkingTicketService` y `EfParkingTicketService.cs` de WPF, se implementaron `HandleRemoteTicketCheckOutAsync` y `HandleRemoteTicketCheckInAsync`.
+     - Al recibir `TicketCheckedOut`, el tiquete local en SQLite se actualiza a `TicketStatus.Completed`, se fija `ExitTimeUtc` y se dispara `TicketCompleted?.Invoke(...)` y `OccupancyChanged`.
+     - Por consiguiente, `CheckOutViewModel` invoca `LoadActiveVehiclesAsync()` y el vehículo **desaparece instantáneamente de la cuadrícula de vehículos activos para cobro**, `CheckInViewModel` refresca entradas recientes y el contador de cupos/ocupación en el header se actualiza al instante.
+  2. **Erradicación de la Modal Emergente Invasiva en Tiempo Real**:
+     - En `MainShellViewModel.cs`, se removió la llamada a `_dialogService.ShowSyncRequiredModalAsync` ante eventos de SignalR.
+     - Los cambios centrales recibidos en tiempo real ahora se sincronizan de forma silenciosa en segundo plano (`await _syncEngine.PerformFullSyncAsync();`), eliminando bloqueos e interrupciones visuales en pantalla para el cajero.
+     - La modal de progreso con porcentajes (`SyncProgressDialog`) queda **preservada exclusivamente para la acción manual de clic en el botón "Sincronizar"** (`ForceSyncAsync`).
+  3. **Nuevo Indicador Sutil y Moderno en Header (`MainShellWindow.xaml`)**:
+     - Se implementó un pill/cápsula visual sutil al lado izquierdo del estado de sincronización.
+     - Se activa con `IsRealtimeSyncing == true`, utilizando `BrushPrimaryLight` (`#E0F2F1`), borde `BrushPrimary` (`#00867A`), el ícono vectorial oficial `IconSync` con animación continua de rotación suave a 360° y el mensaje observable `RealtimeSyncMessage`.
+     - Al finalizar la sincronización en segundo plano, se oculta suavemente (`Visibility="Collapsed"`) y actualiza el texto de estado a `Actualizado (HH:mm)`.
+  4. **Pruebas Unitarias y Certificación**:
+     - `TicketsControllerTests.cs` (`ParkingApi.UnitTests`): Se verificó la emisión de notificaciones SignalR en CheckIn y CheckOut (**494 Superadas, 0 Fallos**).
+     - `EfParkingTicketServiceTests.cs` (`Parking.UnitTests`): Se validó la actualización a `Completed`, disparo de `TicketCompleted` y recálculo de ocupación (**197 Superadas, 0 Fallos**).
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet build ParkingApi.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `ParkingApi/Controllers/TicketsController.cs`
+  - `ParkingApi.Domain/Dtos/Realtime/ConfigNotificationDto.cs`
+  - `ParkingApi.UnitTests/Controllers/TicketsControllerTests.cs`
+  - `Parking/Models/ApiModels/ConfigNotificationDto.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Contracts/IParkingTicketService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `Parking.UnitTests/Tickets/EfParkingTicketServiceTests.cs`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **197/197 Superadas (100% Éxito, 0 Fallos)**.
+  - `dotnet build ParkingApi.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingApi.slnx` -> **494/494 Superadas (100% Éxito, 0 Fallos)**.
+
+### [2026-09-09 11:25:00] - [FIX / CROSS-THREAD-DISPATCHER / CRASH-PREVENTION / RESILIENCE / WPF] - Erradicación de Crash Silencioso en Reconexión Online: Despacho a Hilo de Interfaz de Usuario (UI Dispatcher), Manejo Defensivo de Excepciones, Protección contra Concurrencia de Cola y Purga Correcta de SQLite
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Listo ya hice la prueba pero encontre este error y eso me preocuopa por que en los mosktest que estas ahciendo no se por que eso no sale, ingrese modo offiline bien y le conecte internet y si sincronizo por que en la pwa aparecio la nueva darta pero se bloqueo el wpf no dijo nada y se murio el wpf y ya nada mas eso no debería pasar. analisa eso."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Causa Raíz del Cierre Abrupto (Crash Silencioso) de WPF**:
+     - Al reconectar internet, `SyncEngineService.SetOnlineStatus(true)` se disparó desde un subproceso de fondo (proveniente de `NetworkChange.NetworkAvailabilityChanged`, `Task.Run` de reconexión o eventos de SignalR).
+     - Invocaba directamente los eventos `DataSynchronized?.Invoke()` y `SyncStatusChanged?.Invoke()` en ese hilo secundario del ThreadPool.
+     - Múltiples ViewModels (`CheckInViewModel`, `CheckOutViewModel`, `MainShellViewModel`, `ShiftClosureViewModel`, `MonthlySubscriptionsViewModel`) estaban suscritos con delegados anónimos `async void` (ej: `syncEngine.DataSynchronized += async () => await InitializeAsync();`).
+     - Al ejecutarse `InitializeAsync()`, se manipulaban colecciones observables (`ObservableCollection.Clear()`, `.Add()`) y propiedades reactivas directamente ligadas a la interfaz visual (tales como `AvailableRates`, `RecentEntries`, `AvailableResolutions`, `Subscriptions`, `AvailablePaymentMethods`, etc.).
+     - En WPF, alterar una colección enlazada (`ItemsSource`) fuera del hilo de la interfaz gráfica (`Dispatcher`) dispara inmediatamente una excepción de subproceso cruzado (`System.NotSupportedException` o `System.InvalidOperationException: The calling thread cannot access this object because a different thread owns it`).
+     - Al ocurrir dentro de un delegado `async void` en el ThreadPool, la excepción queda no controlada y el runtime de .NET termina el proceso de manera fulminante e instantánea (`Environment.FailFast`) sin desplegar cuadro de error ni registrar en consolas estándar.
+  2. **Por qué las Pruebas Unitarias (Mock Tests de xUnit) no lo Detectaron**:
+     - xUnit es un ejecutor de consola "headless" que carece de bucle de mensajes de interfaz gráfica (`WPF Dispatcher`) y del motor de databinding XAML.
+     - En el entorno de tests unitarios, `Application.Current` es nulo, las colecciones se comportan como listas en memoria comunes sin restricciones de afinidad de hilo, y los observadores visuales de WPF no existen.
+  3. **Solución Arquitectural en Dos Capas (Doble Blindaje)**:
+     - **Capa 1 - Emisión Segura en el Servicio (`SyncEngineService.cs`)**:
+       - Se introdujeron métodos de notificación con chequeo de afinidad de hilo: `NotifyDataSynchronized()`, `NotifySyncStatusChanged(string status)` y `NotifyTotalCapacityChanged(int capacity)`.
+       - Cada método verifica si `Application.Current?.Dispatcher` existe y si `!dispatcher.CheckAccess()`. De ser así, despacha la invocación al hilo de UI mediante `dispatcher.InvokeAsync(...)` envuelto en `try/catch` defensivo. Si no hay dispatcher (como en xUnit), se ejecuta de inmediato.
+       - En `SetOnlineStatus`, se garantizó la ejecución ordenada: primero se despachan los ítems pendientes con `await ProcessPendingQueueAsync()` y solo cuando culmina el vaciado se notifica `NotifyDataSynchronized()`.
+       - Se protegió `ProcessPendingQueueAsync` con un candado no bloqueante `SemaphoreSlim _pendingQueueLock = new(1, 1)` para evitar carreras y ejecuciones superpuestas de vaciado.
+       - Se corrigió la eliminación de elementos procesados en SQLite: se toman las instancias marcadas `items.Where(p => p.IsProcessed)` y se remueven con `db.PendingSyncItems.RemoveRange(processed)`, eliminando consultas erróneas a SQLite y asegurando la limpieza real de la base local.
+     - **Capa 2 - Consumo Defensivo en ViewModels**:
+       - En `CheckInViewModel.cs`, `CheckOutViewModel.cs`, `ShiftClosureViewModel.cs`, `MonthlySubscriptionsViewModel.cs` y `MainShellViewModel.cs`, se actualizaron los manejadores de `DataSynchronized`, `SyncStatusChanged` y `TotalCapacityChanged` para validar `Dispatcher.CheckAccess()`, invocar mediante `InvokeAsync` y capturar cualquier excepción con `try/catch`.
+       - En `EfPricingCalculatorService.cs`, se blindaron con `try/catch` las llamadas a `ReloadRatesAsync`.
+  4. **Nuevas Pruebas Unitarias Certificadas (`OfflineResilienceTests.cs`)**:
+     - `SyncEngineService_ProcessPendingQueueAsync_DispatchesAndDeletesFromLocalDb`: certifica el despacho de peticiones pendientes y su posterior eliminación de SQLite.
+     - `SyncEngineService_ProcessPendingQueueAsync_WhenOffline_DoesNotDispatch`: valida que en modo desconectado no se envíen peticiones innecesarias.
+  5. **Verificación y Pruebas**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **195 Superadas, 0 Fallos (100% Éxito)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking/ViewModels/MonthlySubscriptionsViewModel.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **195/195 Superadas (100% Éxito, 0 Fallos)**.
+
+### [2026-09-09 11:05:00] - [FIX / OFFLINE-RESILIENCE / COMPANY-ID / SELF-HEALING / SQLITE] - Auto-Recuperación Defensiva (Self-Healing) de CompanyId en Modo Offline, Erradicación de Excepción en Registro de Entrada, Auto-Sanación de Sedes Huérfanas y Persistencia en DTOs
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"tengo otro error sucede que tengo internet pero como esta bloqueada las salidas a otras rutas pues no va a conectar a la api el sisitema lo detecta e inicia en modo offiline pero genera este error de entrada hay que por que si la ultima vez estaba bien que sucede hay ? analiza eso."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico del Error de Empresa No Asignada**:
+     - Al tener internet pero sin salida hacia la API externa (puertos bloqueados, proxy o caídas de enrutamiento), el sistema conmutó correctamente a modo offline e inició sesión mediante la caché local de SQLite.
+     - Sin embargo, `ApiBranchSyncDto` en `BootstrapSyncResponse.cs` no disponía de la propiedad `CompanyId`, por lo cual en sincronizaciones previas la columna `CompanyId` de la tabla `Branches` en SQLite local se almacenaba como `NULL`.
+     - Al autenticarse offline en `AuthService.cs`, la sesión (`CurrentUser.CompanyId` y `CurrentBranch.CompanyId`) quedaba nula.
+     - En `EfParkingTicketService.RegisterEntryAsync`, `EfShiftService.OpenShiftAsync` y `EfMonthlySubscriptionService.CreateSubscriptionAsync`, al validar `_sessionService.CurrentCompanyId`, se lanzaba la excepción `"La sesión no cuenta con una empresa (CompanyId) asignada."`, bloqueando la operación a pesar de que en la base de datos local existían registros con empresa válida (turnos activos, tiquetes previos `PKF-C1-...`).
+  2. **Auto-Recuperación en Caliente (Self-Healing)**:
+     - En `EfParkingTicketService.cs` (métodos `RegisterEntryAsync` y `ProcessPaymentAsync`), `EfShiftService.cs` (`OpenShiftAsync`) y `EfMonthlySubscriptionService.cs` (`CreateSubscriptionAsync`), si `CurrentCompanyId` en memoria es nulo o $\le 0$, el sistema consulta de inmediato en SQLite el `CompanyId` desde el turno activo (`WorkShifts`), tiquetes previos (`ParkingTickets`), sedes (`Branches`) o resoluciones (`BillingResolutions`), asignándolo dinámicamente en caliente a `CurrentUser.CompanyId` y `CurrentBranch.CompanyId`. Si la terminal ya estaba abierta, se auto-recupera de inmediato sin requerir relogueo ni reinicio.
+  3. **Auto-Sanación en Base de Datos Local (`DbConnectionManager.cs`)**:
+     - Se añadió una consulta SQL defensiva en `InitializeDatabaseAsync()` que actualiza cualquier sede en SQLite con `CompanyId IS NULL OR CompanyId <= 0` tomando el `CompanyId` existente en turnos o tiquetes.
+  4. **Persistencia y Respaldo en Autenticación Offline (`AuthService.cs`)**:
+     - Al autenticarse offline, si las sedes locales no tienen `CompanyId`, se auto-recupera desde las demás tablas locales, actualizando `db.Branches` y `localUserModel.CompanyId`.
+     - En login online exitoso, se persiste `localUser.CompanyId` en la tabla `Users` de SQLite.
+  5. **Corrección Definitiva en DTOs y Sincronizador**:
+     - Se incorporó `[JsonPropertyName("companyId")] public int? CompanyId { get; set; }` en `ApiBranchSyncDto`, `ApiUserSyncDto` y `BootstrapSyncResponse`.
+     - Se agregó la propiedad `CompanyId` a la entidad `User` en SQLite.
+     - En `SyncEngineService.cs`, se mapeó `CompanyId` en la actualización de sedes locales, creación de nuevas sedes y en `UpdateCurrentBranch`.
+  6. **Pruebas Unitarias y Certificación**:
+     - Se agregó una nueva prueba unitaria `RegisterEntryAsync_WhenSessionCompanyIdIsNull_SelfHealsFromWorkShift` en `EfParkingTicketServiceTests.cs`.
+     - Ejecución del 100% de la suite con `dotnet test ParkingWpf.slnx`: **193 Superadas, 0 Fallos (100% Éxito)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Entities/User.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/Services/Implementations/EfMonthlySubscriptionService.cs`
+  - `Parking.UnitTests/Tickets/EfParkingTicketServiceTests.cs`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **193/193 Superadas (100% Éxito, 0 Fallos)**.
+=======
 ### [2026-09-09 23:20:00] - [UI/UX / PRIVACY / SECURITY / WPF] - Ocultamiento Total del Código / Identificador Privado de Sedes en Diálogo de Selección
 
 - **Autor**: Antigravity AI Assistant & Software Architect
@@ -71,6 +265,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **✅ Verificación y Compilación**:
   - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
   - `dotnet test ParkingWpf.slnx` -> **201/201 Superadas (100% Éxito, 0 Fallos)**.
+>>>>>>> e083ad41fee04a12e9e6e3803eecd20fb75dff30
 
 ### [2026-09-09 10:50:00] - [FIX / RECONNECTION / PERFORMANCE / OFFLINE-PROBE] - Reconexión Automática Reactiva al Restablecer Internet, Sonda Exclusiva en Modo Offline con Backoff Progresivo (5s/15s/30s/60s), Detección de Hardware y Prevención de Sobrecarga
 

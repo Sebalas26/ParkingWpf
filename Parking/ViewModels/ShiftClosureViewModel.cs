@@ -153,32 +153,56 @@ public partial class ShiftClosureViewModel : ViewModelBase
         };
         UpdatePermissions();
 
-        _syncEngine.DataSynchronized += async () =>
+        _syncEngine.DataSynchronized += () =>
         {
-            await LoadShiftDataAsync(isSilent: true);
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(async () =>
+                {
+                    try { await LoadShiftDataAsync(isSilent: true); } catch { }
+                });
+            }
+            else
+            {
+                _ = LoadShiftDataAsync(isSilent: true);
+            }
         };
 
         _shiftService.ShiftStateChanged += () =>
         {
             System.Windows.Application.Current?.Dispatcher.InvokeAsync(async () =>
             {
-                await LoadShiftDataAsync(isSilent: true);
+                try { await LoadShiftDataAsync(isSilent: true); } catch { }
             });
         };
 
         _syncEngine.SyncStatusChanged += (s, e) =>
         {
-            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(() =>
+                {
+                    try
+                    {
+                        IsOnlineMode = _syncEngine.IsOnline;
+                        SyncStatusText = IsOnlineMode ? "API Central Online - Sincronizado" : "Modo Local / Desconectado";
+                    }
+                    catch { }
+                });
+            }
+            else
             {
                 IsOnlineMode = _syncEngine.IsOnline;
                 SyncStatusText = IsOnlineMode ? "Sincronizado" : "Modo Local";
-            });
+            }
         };
 
         _sessionService.ActiveBranchChanged += async branch =>
         {
             BranchName = branch?.Name ?? _sessionService.CurrentBranch?.Name ?? "Sede Principal";
-            await LoadShiftDataAsync();
+            try { await LoadShiftDataAsync(); } catch { }
         };
     }
 

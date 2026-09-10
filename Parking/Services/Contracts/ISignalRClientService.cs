@@ -10,6 +10,7 @@ public interface ISignalRClientService
     Task StartAsync();
     Task StopAsync();
     Task SetCurrentBranchAsync(int branchId);
+    Task EnsureConnectedAsync(int? branchId = null, int? companyId = null);
     event Action<ConfigNotificationDto>? ConfigUpdateRequired;
     event Action<bool>? ConnectionStatusChanged;
 }
