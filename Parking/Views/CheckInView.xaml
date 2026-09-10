@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:conv="clr-namespace:Parking.Core.Converters"
              xmlns:enums="clr-namespace:Parking.Core.Enums"
+             xmlns:helpers="clr-namespace:Parking.Core.Helpers"
              mc:Ignorable="d"
              d:DesignHeight="900" d:DesignWidth="1280"
              UseLayoutRounding="True"
@@ -327,6 +328,9 @@
 
                             <!-- Input Masivo de Placa -->
                             <TextBox x:Name="PlateTextBox"
+                                     helpers:AutoShrinkFontHelper.IsEnabled="True"
+                                     helpers:AutoShrinkFontHelper.MaxFontSize="84"
+                                     helpers:AutoShrinkFontHelper.MinFontSize="28"
                                      Text="{Binding PlateNumber, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource PlateInputTextBox}"
                                      Height="145"

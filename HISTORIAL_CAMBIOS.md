@@ -15,6 +15,63 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-09 23:20:00] - [UI/UX / PRIVACY / SECURITY / WPF] - Ocultamiento Total del Código / Identificador Privado de Sedes en Diálogo de Selección
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Ayudame para en el wpf y ni el pwa, se vea el id de las sedes, este dato es privado de BD y no debe mostrarse a usuaro"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Privacidad de Identificadores de Base de Datos / Códigos de Sede en WPF**:
+     - Diagnóstico: En el diálogo de inicio y cambio de estación (`BranchSelectionDialog.xaml`), las tarjetas de sedes renderizaban una píldora visual con `{Binding Code}` (ej: `SEDE-PKG-06`), exponiendo códigos internos técnicos al usuario final.
+     - Solución: Se removió el `<Border>` con `{Binding Code}` de la plantilla de tarjeta, manteniendo visible únicamente el nombre comercial de la sede (`Name`), su dirección física (`Address`) y su aforo total (`TotalCapacity`).
+  2. **Verificación y Certificación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **201/201 Superadas (100% Éxito, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/BranchSelectionDialog.xaml`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **201/201 Superadas (100% Éxito, 0 Fallos)**.
+
+### [2026-09-09 22:45:00] - [UI/UX / FEAT / RESPONSIVENESS / ACCESSIBILITY / WPF] - Ajuste Dinámico y Reducción Automática de Fuente (Auto-Shrink FontSize) en Campo de Placa ante Textos Largos o Pantallas de Baja Resolución
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Ajustame esto, cuando escribo un texto largo en el campo de la placa y mi resolucion de pantalla es pequeño, el texto se corta , deberia tener la accion de que si es largo, se achique la letra para que pueda ver todo el campo"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico del Desbordamiento y Recorte de Texto en Placas Largas**:
+     - En `CheckInView.xaml`, el control `PlateTextBox` utilizaba un tamaño fijo de `FontSize="84"` (con estilo base `PlateInputTextBox` en `Controls.xaml`). Con fuente monoespaciada `Consolas`, cadenas de 9 caracteres (como `343423323` evidenciado en la captura del usuario) o códigos de 10–12 caracteres superaban los 470px–550px de ancho necesario.
+     - En monitores con resolución estándar o reducida (ej: 1366x768, 1280x720) o cuando la ventana no está maximizada, el ancho disponible de la columna del formulario se contrae, causando que los caracteres extremos se recorten o queden ocultos fuera de la vista.
+  2. **Diseño e Implementación de `AutoShrinkFontHelper.cs` (`Parking.Core.Helpers`)**:
+     - Se creó un *Attached Property* de alto rendimiento (`AutoShrinkFontHelper`) que expone `IsEnabled`, `MaxFontSize` y `MinFontSize`.
+     - Se suscribe reactivamente a los eventos `TextChanged`, `SizeChanged` y `Loaded` del `TextBox`.
+     - Mide el ancho disponible real descontando `Padding`, `BorderThickness` y un margen defensivo de 24px para acomodar el cursor (`caret`) y sombras estéticas.
+     - Implementa `CalculateFittingFontSize(...)` como método puro testeable que evalúa la métrica tipográfica con `FormattedText` y DPI nativo (`VisualTreeHelper.GetDpi`).
+     - Si el texto excede el ancho disponible, calcula la relación proporcional y reduce el tamaño de fuente de manera fluida hasta el límite seguro `MinFontSize` (28.0), garantizando que todo el texto sea 100% visible.
+     - Si el usuario borra caracteres o se expande la ventana, la fuente recupera su tamaño original (`MaxFontSize = 84.0`).
+     - Al redimensionar, ejecuta `ScrollToHome()` para asegurar que el texto no quede desplazado horizontalmente y se visualice completo y centrado.
+  3. **Integración Quirúrgica en Vistas XAML**:
+     - `CheckInView.xaml`: Vinculado a `PlateTextBox` (`MaxFontSize="84"`, `MinFontSize="28"`).
+     - `CheckOutView.xaml`: Vinculado a `SearchTextBox` (`MaxFontSize="90"`, `MinFontSize="28"`).
+  4. **Pruebas Unitarias y Certificación**:
+     - Se creó la suite `AutoShrinkFontHelperTests.cs` en `Parking.UnitTests/Helpers/` con 8 pruebas unitarias cubriendo: textos nulos/vacíos, textos cortos que mantienen tamaño máximo, textos largos que reducen proporcionalmente la fuente, textos masivos que respetan el piso mínimo, comparación entre resoluciones estrechas vs amplias, y verificación de rangos invertidos.
+     - Ejecución del 100% de la suite con `dotnet test ParkingWpf.slnx`: **201 Superadas, 0 Fallos (100% Éxito)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Core/Helpers/AutoShrinkFontHelper.cs` (NUEVO)
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking/Views/CheckOutView.xaml`
+  - `Parking.UnitTests/Helpers/AutoShrinkFontHelperTests.cs` (NUEVO)
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **201/201 Superadas (100% Éxito, 0 Fallos)**.
+
 ### [2026-09-09 10:50:00] - [FIX / RECONNECTION / PERFORMANCE / OFFLINE-PROBE] - Reconexión Automática Reactiva al Restablecer Internet, Sonda Exclusiva en Modo Offline con Backoff Progresivo (5s/15s/30s/60s), Detección de Hardware y Prevención de Sobrecarga
 
 - **Autor**: Antigravity AI Assistant & Software Architect
