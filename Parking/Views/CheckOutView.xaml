@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:conv="clr-namespace:Parking.Core.Converters"
              xmlns:enums="clr-namespace:Parking.Core.Enums"
+             xmlns:helpers="clr-namespace:Parking.Core.Helpers"
              mc:Ignorable="d"
              d:DesignHeight="850" d:DesignWidth="1180">
 
@@ -116,6 +117,9 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBox x:Name="SearchTextBox"
+                             helpers:AutoShrinkFontHelper.IsEnabled="True"
+                             helpers:AutoShrinkFontHelper.MaxFontSize="90"
+                             helpers:AutoShrinkFontHelper.MinFontSize="28"
                              Grid.Column="0"
                              Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
                              Style="{StaticResource CheckoutSearchTextBox}"

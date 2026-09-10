@@ -56,10 +56,44 @@ public class SignalRClientService : ISignalRClientService, IAsyncDisposable
         await _connectionLock.WaitAsync();
         try
         {
-            if (_hubConnection == null)
+            var apiBaseUrl = _configuration["ApiSettings:BaseUrl"] ?? "http://localhost:5135";
+            var hubUrl = $"{apiBaseUrl.TrimEnd('/')}/hubs/parking";
+
+            var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Development";
+            var isLocalOrDev = environment.Equals("Development", StringComparison.OrdinalIgnoreCase) ||
+                               apiBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
+                               apiBaseUrl.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase);
+
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(hubUrl, options =>
+                {
+                    if (isLocalOrDev)
+                    {
+                        options.HttpMessageHandlerFactory = handler =>
+                        {
+                            if (handler is System.Net.Http.HttpClientHandler clientHandler)
+                            {
+                                clientHandler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+                            }
+                            return handler;
+                        };
+                    }
+                })
+                .WithAutomaticReconnect(new[]
+                {
+                    TimeSpan.Zero,
+                    TimeSpan.FromSeconds(2),
+                    TimeSpan.FromSeconds(5),
+                    TimeSpan.FromSeconds(10),
+                    TimeSpan.FromSeconds(20),
+                    TimeSpan.FromSeconds(30)
+                })
+                .Build();
+
+            _hubConnection.On<ConfigNotificationDto>("OnConfigUpdateRequired", notification =>
             {
                 BuildHubConnection();
-            }
+            });
 
             if (_hubConnection != null && _hubConnection.State == HubConnectionState.Disconnected)
             {

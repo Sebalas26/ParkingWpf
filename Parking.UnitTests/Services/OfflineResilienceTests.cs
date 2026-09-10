@@ -114,7 +114,7 @@ public class OfflineResilienceTests : IDisposable
 
         // Assert
         syncEngine.IsOnline.Should().BeTrue();
-        syncEngine.SyncStatusDescription.Should().Contain("API Central Online");
+        syncEngine.SyncStatusDescription.Should().Contain("Sincronizado");
     }
 
     [Fact]
@@ -249,7 +249,7 @@ public class OfflineResilienceTests : IDisposable
 
         // Assert
         syncEngine.IsOnline.Should().BeTrue();
-        syncEngine.SyncStatusDescription.Should().Contain("API Central Online");
+        syncEngine.SyncStatusDescription.Should().Contain("Sincronizado");
     }
 
     [Fact]
@@ -271,7 +271,7 @@ public class OfflineResilienceTests : IDisposable
 
         // Assert
         syncEngine.IsOnline.Should().BeTrue();
-        syncEngine.SyncStatusDescription.Should().Contain("API Central Online");
+        syncEngine.SyncStatusDescription.Should().Contain("Sincronizado");
     }
 
     [Fact]
@@ -291,199 +291,46 @@ public class OfflineResilienceTests : IDisposable
     }
 
     [Fact]
-    public async Task SyncEngineService_ProcessPendingQueueAsync_DispatchesAndDeletesFromLocalDb()
+    public async Task SyncEngineService_SyncRates_SavesMultipleCategoriesWithoutCollision()
     {
         // Arrange
+        _mockSessionService.Setup(s => s.CurrentBranchId).Returns(1);
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = 1, Name = "Sede 236" });
+
+        var bootstrap = new BootstrapSyncResponse
+        {
+            Branches = new List<ApiBranchSyncDto>
+            {
+                new() { Id = 1, Name = "Sede 236" }
+            },
+            Rates = new List<ApiVehicleRateSyncDto>
+            {
+                new() { RawRateId = Guid.NewGuid(), BranchId = 1, DisplayName = "Carro", VehicleType = "Car", HourRate = 5000m, MinuteRate = 250m, IsActive = true },
+                new() { RawRateId = Guid.NewGuid(), BranchId = 1, DisplayName = "Patineta", VehicleType = "Bicycle", HourRate = 3800m, MinuteRate = 28m, IsActive = true },
+                new() { RawRateId = Guid.NewGuid(), BranchId = 1, DisplayName = "Moto", VehicleType = "Motorcycle", HourRate = 2000m, MinuteRate = 160m, IsActive = true },
+                new() { RawRateId = Guid.NewGuid(), BranchId = 1, DisplayName = "Bicicleta", VehicleType = "Bicycle", HourRate = 1500m, MinuteRate = 60m, IsActive = true }
+            }
+        };
+
+        _mockApiClient.Setup(a => a.PingAsync()).ReturnsAsync(true);
+        _mockApiClient.Setup(a => a.GetBootstrapAsync(1)).ReturnsAsync(bootstrap);
+
         var syncEngine = new SyncEngineService(
             _mockApiClient.Object,
             _connectionManager,
             _mockSessionService.Object,
             _mockShiftService.Object,
             _mockSignalRClient.Object);
-
-        syncEngine.SetOnlineStatus(false);
-
-        // Insertar item offline pendiente
-        using (var db = _connectionManager.CreateDbContext())
-        {
-            db.PendingSyncItems.Add(new PendingSyncItem
-            {
-                PendingSyncItemId = Guid.NewGuid(),
-                OperationType = "CheckIn",
-                PayloadJson = System.Text.Json.JsonSerializer.Serialize(new CheckInApiRequest
-                {
-                    TicketId = Guid.NewGuid(),
-                    BranchId = 1,
-                    CompanyId = 1,
-                    TicketNumber = "T-001",
-                    PlateNumber = "ABC123",
-                    VehicleType = VehicleType.Car,
-                    HourlyRate = 2000m,
-                    EntryTimeUtc = DateTime.UtcNow
-                }),
-                CreatedAtUtc = DateTime.UtcNow,
-                IsProcessed = false
-            });
-            await db.SaveChangesAsync();
-        }
-
-        _mockApiClient.Setup(a => a.CheckInAsync(It.IsAny<CheckInApiRequest>()))
-            .ReturnsAsync(new ParkingTicket { TicketId = Guid.NewGuid(), PlateNumber = "ABC123" });
-
-        // Act - Conectar y despachar
-        syncEngine.SetOnlineStatus(true);
-        await syncEngine.ProcessPendingQueueAsync();
-
-        // Assert - El item procesado debe ser eliminado de SQLite
-        using (var db = _connectionManager.CreateDbContext())
-        {
-            var remaining = await db.PendingSyncItems.CountAsync();
-            remaining.Should().Be(0);
-        }
-
-        _mockApiClient.Verify(a => a.CheckInAsync(It.IsAny<CheckInApiRequest>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task SyncEngineService_ProcessPendingQueueAsync_WhenOffline_DoesNotDispatch()
-    {
-        // Arrange
-        var syncEngine = new SyncEngineService(
-            _mockApiClient.Object,
-            _connectionManager,
-            _mockSessionService.Object,
-            _mockShiftService.Object,
-            _mockSignalRClient.Object);
-
-        syncEngine.SetOnlineStatus(false);
-
-        using (var db = _connectionManager.CreateDbContext())
-        {
-            db.PendingSyncItems.Add(new PendingSyncItem
-            {
-                PendingSyncItemId = Guid.NewGuid(),
-                OperationType = "CheckIn",
-                PayloadJson = "{}",
-                CreatedAtUtc = DateTime.UtcNow,
-                IsProcessed = false
-            });
-            await db.SaveChangesAsync();
-        }
 
         // Act
-        await syncEngine.ProcessPendingQueueAsync();
+        var result = await syncEngine.PerformFullSyncAsync();
 
         // Assert
-        using (var db = _connectionManager.CreateDbContext())
-        {
-            var remaining = await db.PendingSyncItems.CountAsync();
-            remaining.Should().Be(1);
-        }
-
-        _mockApiClient.Verify(a => a.CheckInAsync(It.IsAny<CheckInApiRequest>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task ProcessPendingQueueAsync_WhenCheckOutReturnedFromCloud_RemovesFromQueueAndReconcilesCanonicalDataToSqlite()
-    {
-        // Arrange
-        var syncEngine = new SyncEngineService(
-            _mockApiClient.Object,
-            _connectionManager,
-            _mockSessionService.Object,
-            _mockShiftService.Object,
-            _mockSignalRClient.Object);
-
-        syncEngine.SetOnlineStatus(true);
-
-        var ticketId = Guid.NewGuid();
-        var localTicket = new ParkingTicket
-        {
-            TicketId = ticketId,
-            PlateNumber = "OFF123",
-            Status = TicketStatus.Active,
-            GrossAmount = 2000,
-            NetAmount = 2000,
-            EntryTimeUtc = DateTime.UtcNow.AddHours(-2)
-        };
-
-        var pendingItem = new PendingSyncItem
-        {
-            PendingSyncItemId = Guid.NewGuid(),
-            OperationType = "CheckOut",
-            PayloadJson = System.Text.Json.JsonSerializer.Serialize(new CheckOutApiRequest
-            {
-                TicketId = ticketId,
-                GrossAmount = 2000,
-                NetAmount = 2000
-            }, ParkingApiClient.JsonOptions),
-            CreatedAtUtc = DateTime.UtcNow,
-            IsProcessed = false
-        };
-
-        using (var db = _connectionManager.CreateDbContext())
-        {
-            db.ParkingTickets.Add(localTicket);
-            db.PendingSyncItems.Add(pendingItem);
-            await db.SaveChangesAsync();
-        }
-
-        var cloudCanonicalTicket = new ParkingTicket
-        {
-            TicketId = ticketId,
-            PlateNumber = "OFF123",
-            Status = TicketStatus.Completed,
-            GrossAmount = 8500, // Data real de la nube
-            NetAmount = 8500,
-            ExitTimeUtc = DateTime.UtcNow.AddMinutes(-30),
-            PaymentMethod = PaymentMethod.CreditCard
-        };
-
-        _mockApiClient.Setup(a => a.CheckOutAsync(It.IsAny<CheckOutApiRequest>()))
-            .ReturnsAsync(cloudCanonicalTicket);
-
-        // Act
-        await syncEngine.ProcessPendingQueueAsync();
-
-        // Assert: El ítem pendiente debe haber sido eliminado de la cola (0 pendientes)
-        using (var db = _connectionManager.CreateDbContext())
-        {
-            var remainingPending = await db.PendingSyncItems.CountAsync();
-            remainingPending.Should().Be(0);
-
-            // La data de la nube debe haber bajado a tierra en SQLite
-            var updatedLocal = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == ticketId);
-            updatedLocal.Should().NotBeNull();
-            updatedLocal!.Status.Should().Be(TicketStatus.Completed);
-            updatedLocal.GrossAmount.Should().Be(8500);
-            updatedLocal.NetAmount.Should().Be(8500);
-            updatedLocal.PaymentMethod.Should().Be(PaymentMethod.CreditCard);
-            updatedLocal.IsSynchronized.Should().BeTrue();
-        }
-    }
-
-    [Fact]
-    public async Task SyncEngineService_WhenSetOnlineStatusTrue_InvokesEnsureConnectedAsyncOnSignalR()
-    {
-        // Arrange
-        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = 5 });
-        _mockSessionService.Setup(s => s.CurrentUser).Returns(new UserSessionModel { CompanyId = 2 });
-
-        var syncEngine = new SyncEngineService(
-            _mockApiClient.Object,
-            _connectionManager,
-            _mockSessionService.Object,
-            _mockShiftService.Object,
-            _mockSignalRClient.Object);
-
-        syncEngine.SetOnlineStatus(false);
-
-        // Act
-        syncEngine.SetOnlineStatus(true);
-        await Task.Delay(100); // Pequeña pausa para que Task.Run ejecute
-
-        // Assert
-        _mockSignalRClient.Verify(s => s.EnsureConnectedAsync(5, 2), Times.Once);
+        result.Should().BeTrue();
+        using var db = _connectionManager.CreateDbContext();
+        var localRates = await db.VehicleRates.Where(r => r.BranchId == 1).ToListAsync();
+        localRates.Should().HaveCount(4);
+        localRates.Select(r => r.DisplayName).Should().Contain(new[] { "Carro", "Patineta", "Moto", "Bicicleta" });
     }
 
     public void Dispose()

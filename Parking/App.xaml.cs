@@ -81,10 +81,17 @@ public partial class App : Application
 
         services.AddSingleton(sp =>
         {
-            var handler = new HttpClientHandler
+            var handler = new HttpClientHandler();
+            var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Development";
+
+            // En entorno de desarrollo o servidores localhost, permitir certificados locales auto-firmados
+            if (environment.Equals("Development", StringComparison.OrdinalIgnoreCase) ||
+                apiBaseUrl.Contains("localhost", StringComparison.OrdinalIgnoreCase) ||
+                apiBaseUrl.Contains("127.0.0.1", StringComparison.OrdinalIgnoreCase))
             {
-                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true
-            };
+                handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
+            }
+
             return new HttpClient(handler)
             {
                 Timeout = TimeSpan.FromSeconds(30)

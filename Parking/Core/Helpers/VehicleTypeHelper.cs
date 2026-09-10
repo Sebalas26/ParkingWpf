@@ -8,6 +8,33 @@ public static class VehicleTypeHelper
 {
     public static VehicleType Parse(object? rawVehicleType, string? fallbackName = null)
     {
+        // 0. Si el nombre descriptivo (fallbackName) especifica explícitamente una categoría (ej: Patineta, Moto, etc.),
+        // priorizarlo para evitar que un valor 0 (Car) por defecto del backend lo reclasifique erróneamente como automóvil.
+        if (!string.IsNullOrWhiteSpace(fallbackName))
+        {
+            var cleanFallback = fallbackName.Trim().ToLowerInvariant();
+            if (cleanFallback.Contains("patin") || cleanFallback.Contains("scooter") || cleanFallback.Contains("monopatin") || cleanFallback.Contains("monopatín") || cleanFallback.Contains("bici") || cleanFallback.Contains("cicla") || cleanFallback.Contains("bike"))
+            {
+                return VehicleType.Bicycle;
+            }
+            if (cleanFallback.Contains("moto") || cleanFallback.Contains("moped") || cleanFallback.Contains("cuatri") || cleanFallback.Contains("mototaxi") || cleanFallback.Contains("ciclomotor"))
+            {
+                return VehicleType.Motorcycle;
+            }
+            if (cleanFallback.Contains("camion") || cleanFallback.Contains("camión") || cleanFallback.Contains("truck") || cleanFallback.Contains("pesado") || cleanFallback.Contains("mula") || cleanFallback.Contains("volqueta") || cleanFallback.Contains("bus") || cleanFallback.Contains("trailer") || cleanFallback.Contains("tráiler"))
+            {
+                return VehicleType.HeavyTruck;
+            }
+            if (cleanFallback.Contains("suv") || cleanFallback.Contains("camioneta") || cleanFallback.Contains("campero") || cleanFallback.Contains("4x4") || cleanFallback.Contains("pickup"))
+            {
+                return VehicleType.Suv;
+            }
+            if (cleanFallback.Contains("van") || cleanFallback.Contains("furgon") || cleanFallback.Contains("furgón") || cleanFallback.Contains("micro") || cleanFallback.Contains("combi"))
+            {
+                return VehicleType.Van;
+            }
+        }
+
         // 1. Direct Integer / Numeric evaluation
         if (rawVehicleType is int intVal && Enum.IsDefined(typeof(VehicleType), intVal))
         {
