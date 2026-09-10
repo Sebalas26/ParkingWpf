@@ -15,6 +15,34 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-09 21:40:00] - [SECURITY / SSL-HARDENING / UPDATER-SPEC] - Validación SSL Adaptativa Anti-MITM y Protocolo Oficial de Instalación, Licenciamiento y Actualizaciones Remotas
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"El tema de las contraseñas, total, eso se debería también quitar. Esas cosas se pueden hacer de una vez y pues no va a romper el sistema, sí? Vamos a ir mitigando eso. Pero necesito saber qué más cosas podemos hacer tú, qué se puede hacer y qué no, y qué puedo hacer yo, y que no vaya a dañar hasta el sistema como lo tenemos... crealo en el WPF como proceso de instalación y actualización... ve almacenando todo esto que te voy diciendo"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Validación SSL Adaptativa contra Ataques Man-In-The-Middle (`App.xaml.cs` & `SignalRClientService.cs`)**:
+     - Se eliminó el bypass global incondicional `ServerCertificateCustomValidationCallback = true`.
+     - Se implementó discriminación por entorno y destino: en desarrollo (`DOTNET_ENVIRONMENT == "Development"`) o en servidores locales (`localhost`, `127.0.0.1`), se permite la depuración con certificados autofirmados. Al conectarse a entornos de producción o internet, se exige validación estricta de certificados SSL emitidos por entidades certificadoras raíz válidas.
+  2. **Documento Oficial de Instalación, Licenciamiento y Actualización (`PROCESO_INSTALACION_Y_ACTUALIZACION.md`)**:
+     - Se elaboró la especificación técnica completa cubriendo:
+       - Hardware Binding (enlace a motherboard UUID y CPU ID contra piratería).
+       - Seguridad del endpoint de descargas (autenticación con DeviceToken y One-Time Signed URLs).
+       - Flujo del micro-updater (`ParkFlow.Updater.exe`) con protección de `parkflow_local.db` y `appsettings.Production.json`.
+  3. **Pruebas y Verificación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **192/192 Superadas (100% Éxito, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/App.xaml.cs`
+  - `Parking/Services/Implementations/SignalRClientService.cs`
+  - `PROCESO_INSTALACION_Y_ACTUALIZACION.md` (NUEVO)
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **192/192 Superadas (100% Éxito, 0 Fallos)**.
+
 ### [2026-09-09 10:50:00] - [FIX / RECONNECTION / PERFORMANCE / OFFLINE-PROBE] - Reconexión Automática Reactiva al Restablecer Internet, Sonda Exclusiva en Modo Offline con Backoff Progresivo (5s/15s/30s/60s), Detección de Hardware y Prevención de Sobrecarga
 
 - **Autor**: Antigravity AI Assistant & Software Architect
