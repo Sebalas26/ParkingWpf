@@ -428,7 +428,13 @@ public class SyncEngineService : ISyncEngineService
             {
                 var incomingUsernames = bootstrap.Users.Select(u => u.Username.ToLowerInvariant()).ToHashSet();
                 var localUsers = await db.Users.ToListAsync(ct);
-                var usersToDelete = localUsers.Where(u => !incomingUsernames.Contains(u.Username.ToLowerInvariant()) && u.Username != "admin").ToList();
+                var currentUsername = _sessionService.CurrentUser?.Username?.ToLowerInvariant();
+                var usersToDelete = localUsers.Where(u => 
+                    !incomingUsernames.Contains(u.Username.ToLowerInvariant()) 
+                    && u.Username != "admin" 
+                    && (string.IsNullOrEmpty(currentUsername) || u.Username.ToLowerInvariant() != currentUsername)
+                    && string.IsNullOrWhiteSpace(u.PasswordHash)
+                ).ToList();
                 if (usersToDelete.Count > 0)
                 {
                     db.Users.RemoveRange(usersToDelete);

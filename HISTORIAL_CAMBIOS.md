@@ -15,7 +15,40 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
-<<<<<<< HEAD
+### [2026-09-11 19:35:00] - [FIX / AUTH / OFFLINE / RESILIENCE / RBAC] - Persistencia Integral y Resiliente de Credenciales, Roles y Sedes en SQLite para Operación Offline Confiable
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"valida porque si ya estuve logeado online con un usuario, no me permite logearme sin internet, si ese deberia ser el funcionamiento correcto para trabajar offlie"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Persistencia Completa de Nuevos Usuarios en SQLite al Iniciar Sesión Online (`AuthService.cs`)**:
+     - **Problema corregido**: En `AuthService.AuthenticateAsync`, tras una autenticación exitosa contra el API Central, se buscaba el usuario en SQLite (`localDb.Users.FirstOrDefaultAsync(...)`) y solo se actualizaba si ya existía (`if (localUser != null)`). Al no existir un bloque `else`, los usuarios creados en la nube o que ingresaban por primera vez en esa terminal física (como `admin.parkgo`) **nunca eran insertados en la base SQLite local**. Al cortar el internet o iniciar en modo offline, la consulta arrojaba `user == null` y rechazaba el acceso con *"Usuario o contraseña incorrectos"*.
+     - **Solución implementada**:
+       - Se agregó la creación e inserción del nuevo usuario en `localDb.Users` cuando `localUser == null`, guardando su `PasswordHash` (BCrypt workFactor 11), `Username`, `FullName`, `Email`, `CompanyId` y asociándole un `RoleId` válido.
+       - Si el rol asignado no existe en SQLite, se asegura su creación o vinculación con los roles canónicos.
+       - Se garantiza la persistencia/actualización de las sedes autorizadas (`apiLogin.Branches`) en `localDb.Branches` para que el selector de sedes y los parámetros operativos estén disponibles en modo offline.
+  2. **Protección Contra Purga de Usuarios en Sincronización (`SyncEngineService.cs`)**:
+     - **Problema corregido**: `SyncEngineService` eliminaba indiscriminadamente de SQLite (`db.Users.RemoveRange(usersToDelete)`) a cualquier usuario cuyo username no estuviera en el paquete `bootstrap.Users` de la sede actual (excepto `"admin"`). Si un usuario con credenciales locales válidas no pertenecía a esa sede específica o era un administrador corporate, era purgado de la base local.
+     - **Solución implementada**: Se protegió al usuario actualmente en sesión (`CurrentUser.Username`) y a todo usuario con `PasswordHash` activo en SQLite, evitando que se borren usuarios con credenciales cacheadas para trabajo offline.
+  3. **Resolución de Roles Administrativos y Filtrado de Sedes en Modo Offline**:
+     - En `AuthService.AuthenticateAsync` (bloque offline), se actualizó la detección de `isLocalAdmin` para soportar variantes compuestas (`Administrador Cadena`, `Administrador Empresa`), otorgando los permisos administrativos o cargando los permisos de terminal sin bloquear al operador.
+     - Se ajustó la carga de sedes en modo offline para filtrar prioritariamente por el `CompanyId` del usuario si existen sedes locales de su empresa.
+  4. **Pruebas y Verificación**:
+     - `dotnet test ParkingWpf.slnx` -> **205/205 Superadas (100% Éxito, 0 Fallos)**.
+     - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet test ParkingWpf.slnx` -> **205 Superadas / 0 Fallos (100% Éxito)**.
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+
+---
+
 ### [2026-09-09 13:00:00] - [FEAT / CONCURRENCY / SIGNALR / REACTIVITY / OFFLINE-SYNC / CANONICAL-DATA] - Reactividad Garantizada de Salidas PWA en WPF, Cero Consultas Recurrentes (Event-Driven) y Resolución Canónica de Conflictos Offline (La Nube Manda)
 
 - **Autor**: Antigravity AI Assistant & Software Architect
