@@ -756,6 +756,33 @@ public class ApiParkingTicketSyncDto
     [JsonPropertyName("isSynchronized")]
     public bool IsSynchronized { get; set; } = true;
 
+    [JsonPropertyName("customerId")]
+    public Guid? CustomerId { get; set; }
+
+    [JsonPropertyName("cufe")]
+    public string? Cufe { get; set; }
+
+    [JsonPropertyName("qrCodeData")]
+    public string? QrCodeData { get; set; }
+
+    [JsonPropertyName("dianStatus")]
+    public object? DianStatus { get; set; }
+
+    [JsonPropertyName("creditNoteNumber")]
+    public string? CreditNoteNumber { get; set; }
+
+    [JsonPropertyName("creditNoteCufe")]
+    public string? CreditNoteCufe { get; set; }
+
+    [JsonPropertyName("isPosConvertedToInvoice")]
+    public bool IsPosConvertedToInvoice { get; set; } = false;
+
+    [JsonPropertyName("posConvertedAtUtc")]
+    public DateTime? PosConvertedAtUtc { get; set; }
+
+    [JsonPropertyName("posConvertedByUserId")]
+    public int? PosConvertedByUserId { get; set; }
+
     [JsonPropertyName("createdAtUtc")]
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
@@ -805,6 +832,26 @@ public class ApiParkingTicketSyncDto
             return (PaymentMethod)i;
         }
         return null;
+    }
+
+    public Parking.Core.Enums.DianStatus GetDianStatus()
+    {
+        if (DianStatus is JsonElement elem)
+        {
+            if (elem.ValueKind == JsonValueKind.Number && Enum.IsDefined(typeof(Parking.Core.Enums.DianStatus), elem.GetInt32()))
+                return (Parking.Core.Enums.DianStatus)elem.GetInt32();
+            if (elem.ValueKind == JsonValueKind.String && Enum.TryParse<Parking.Core.Enums.DianStatus>(elem.GetString(), true, out var ds))
+                return ds;
+        }
+        else if (DianStatus is string s && Enum.TryParse<Parking.Core.Enums.DianStatus>(s, true, out var ds))
+        {
+            return ds;
+        }
+        else if (DianStatus is int i && Enum.IsDefined(typeof(Parking.Core.Enums.DianStatus), i))
+        {
+            return (Parking.Core.Enums.DianStatus)i;
+        }
+        return Parking.Core.Enums.DianStatus.None;
     }
 }
 
@@ -912,6 +959,27 @@ public class BootstrapSyncResponse
     [JsonPropertyName("maxOpenShiftsPerUser")]
     public int MaxOpenShiftsPerUser { get; set; } = 1;
 
+    [JsonPropertyName("hasElectronicInvoicingEnabled")]
+    public bool HasElectronicInvoicingEnabled { get; set; } = false;
+
+    [JsonPropertyName("allowPosToInvoiceConversion")]
+    public bool AllowPosToInvoiceConversion { get; set; } = false;
+
+    [JsonPropertyName("allowCreditNotes")]
+    public bool AllowCreditNotes { get; set; } = false;
+
+    [JsonPropertyName("allowSubscriptionInvoicing")]
+    public bool AllowSubscriptionInvoicing { get; set; } = false;
+
+    [JsonPropertyName("forceElectronicInvoiceOnCheckout")]
+    public bool ForceElectronicInvoiceOnCheckout { get; set; } = false;
+
+    [JsonPropertyName("customers")]
+    public List<ApiCustomerSyncDto> Customers { get; set; } = new();
+
+    [JsonPropertyName("daneMunicipalities")]
+    public List<ApiDaneMunicipalitySyncDto> DaneMunicipalities { get; set; } = new();
+
     [JsonPropertyName("branches")]
     public List<ApiBranchSyncDto> Branches { get; set; } = new();
 
@@ -989,4 +1057,79 @@ public class PlateCheckResultDto
 
     [JsonPropertyName("incidentId")]
     public Guid? IncidentId { get; set; }
+}
+
+public class ApiCustomerSyncDto
+{
+    [JsonPropertyName("customerId")]
+    public Guid CustomerId { get; set; }
+
+    [JsonPropertyName("companyId")]
+    public int? CompanyId { get; set; }
+
+    [JsonPropertyName("identificationTypeId")]
+    public int IdentificationTypeId { get; set; }
+
+    [JsonPropertyName("identificationTypeCode")]
+    public string IdentificationTypeCode { get; set; } = string.Empty;
+
+    [JsonPropertyName("documentNumber")]
+    public string DocumentNumber { get; set; } = string.Empty;
+
+    [JsonPropertyName("checkDigit")]
+    public string? CheckDigit { get; set; }
+
+    [JsonPropertyName("personType")]
+    public string PersonType { get; set; } = "Person";
+
+    [JsonPropertyName("fullName")]
+    public string FullName { get; set; } = string.Empty;
+
+    [JsonPropertyName("tradeName")]
+    public string? TradeName { get; set; }
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("phone")]
+    public string? Phone { get; set; }
+
+    [JsonPropertyName("address")]
+    public string? Address { get; set; }
+
+    [JsonPropertyName("cityCode")]
+    public string? CityCode { get; set; }
+
+    [JsonPropertyName("stateCode")]
+    public string? StateCode { get; set; }
+
+    [JsonPropertyName("fiscalResponsibilities")]
+    public string FiscalResponsibilities { get; set; } = "R-99-PN";
+
+    [JsonPropertyName("siigoCustomerId")]
+    public Guid? SiigoCustomerId { get; set; }
+
+    [JsonPropertyName("isActive")]
+    public bool IsActive { get; set; } = true;
+
+    [JsonPropertyName("plateNumbers")]
+    public List<string> PlateNumbers { get; set; } = new();
+
+    [JsonPropertyName("createdAtUtc")]
+    public DateTime CreatedAtUtc { get; set; }
+}
+
+public class ApiDaneMunicipalitySyncDto
+{
+    [JsonPropertyName("code")]
+    public string Code { get; set; } = string.Empty;
+
+    [JsonPropertyName("departmentCode")]
+    public string DepartmentCode { get; set; } = string.Empty;
+
+    [JsonPropertyName("departmentName")]
+    public string DepartmentName { get; set; } = string.Empty;
+
+    [JsonPropertyName("municipalityName")]
+    public string MunicipalityName { get; set; } = string.Empty;
 }

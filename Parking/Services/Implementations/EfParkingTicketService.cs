@@ -293,7 +293,9 @@ public class EfParkingTicketService : IParkingTicketService
         string? resolutionName = null,
         string? fiscalInvoiceNumber = null,
         bool isLostTicket = false,
-        decimal lostTicketFee = 0m)
+        decimal lostTicketFee = 0m,
+        bool requestElectronicInvoice = false,
+        Guid? customerId = null)
     {
         using var db = _connectionManager.CreateDbContext();
         var ticket = await db.ParkingTickets.FindAsync(ticketId);
@@ -336,7 +338,8 @@ public class EfParkingTicketService : IParkingTicketService
         ticket.ResolutionId = resolutionId;
         ticket.ResolutionName = resolutionName;
         ticket.InvoiceNumber = fiscalInvoiceNumber;
-        ticket.IsElectronicInvoice = !string.IsNullOrWhiteSpace(fiscalInvoiceNumber);
+        ticket.IsElectronicInvoice = requestElectronicInvoice || !string.IsNullOrWhiteSpace(fiscalInvoiceNumber);
+        ticket.CustomerId = customerId ?? ticket.CustomerId;
         ticket.IsLostTicket = isLostTicket;
         ticket.LostTicketFee = lostTicketFee;
         ticket.Status = TicketStatus.Completed;
@@ -366,6 +369,8 @@ public class EfParkingTicketService : IParkingTicketService
                     ResolutionId = resolutionId,
                     ResolutionName = resolutionName,
                     FiscalInvoiceNumber = fiscalInvoiceNumber,
+                    RequestElectronicInvoice = requestElectronicInvoice,
+                    CustomerId = customerId,
                     IsLostTicket = isLostTicket,
                     LostTicketFee = lostTicketFee,
                     ExitTimeUtc = exitTime
@@ -378,6 +383,11 @@ public class EfParkingTicketService : IParkingTicketService
                     ticket.GrossAmount = apiResponse.GrossAmount;
                     ticket.NetAmount = apiResponse.NetAmount;
                     ticket.PaymentMethod = apiResponse.PaymentMethod;
+                    if (!string.IsNullOrWhiteSpace(apiResponse.InvoiceNumber)) ticket.InvoiceNumber = apiResponse.InvoiceNumber;
+                    if (!string.IsNullOrWhiteSpace(apiResponse.Cufe)) ticket.Cufe = apiResponse.Cufe;
+                    if (!string.IsNullOrWhiteSpace(apiResponse.QrCodeData)) ticket.QrCodeData = apiResponse.QrCodeData;
+                    if (apiResponse.DianStatus != DianStatus.None) ticket.DianStatus = apiResponse.DianStatus;
+                    ticket.IsElectronicInvoice = apiResponse.IsElectronicInvoice;
                 }
                 else
                 {

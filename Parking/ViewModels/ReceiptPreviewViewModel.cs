@@ -392,9 +392,29 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             CustomerNit = "22222222";
             CustomerAddress = "CR 38 19 55 BRR CAMOA";
 
-            if (IsFvmInvoice)
+            if (ticket.CustomerId.HasValue)
             {
-                InvoicePrefix = !string.IsNullOrWhiteSpace(resolution?.Prefix) ? resolution.Prefix : "FVM";
+                try
+                {
+                    using var db = _connectionManager.CreateDbContext();
+                    var cust = db.Customers.FirstOrDefault(c => c.CustomerId == ticket.CustomerId.Value);
+                    if (cust != null)
+                    {
+                        CustomerName = cust.FullName.ToUpperInvariant();
+                        CustomerDocument = $"{cust.DocumentNumber}{(string.IsNullOrWhiteSpace(cust.CheckDigit) ? "" : "-" + cust.CheckDigit)}";
+                        CustomerNit = cust.DocumentNumber;
+                        CustomerAddress = !string.IsNullOrWhiteSpace(cust.Address) ? cust.Address.ToUpperInvariant() : "NO REGISTRADA";
+                    }
+                }
+                catch { }
+            }
+
+            if (ticket.IsElectronicInvoice || isFvm)
+            {
+                IsFvmInvoice = true;
+                IsStandardExitReceipt = false;
+
+                InvoicePrefix = !string.IsNullOrWhiteSpace(resolution?.Prefix) ? resolution.Prefix : (!string.IsNullOrWhiteSpace(ticket.InvoiceNumber) && ticket.InvoiceNumber.Contains('-') ? ticket.InvoiceNumber.Split('-')[0] : "FE");
                 var currentNum = resolution != null ? resolution.CurrentNumber.ToString() : (!string.IsNullOrWhiteSpace(ticket.InvoiceNumber) ? ticket.InvoiceNumber : ticket.TicketNumber);
                 InvoiceNumberStr = currentNum.PadLeft(8, '0');
                 InvoiceNumberText = $"{InvoicePrefix}- {InvoiceNumberStr}";
@@ -402,7 +422,9 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 InvoiceDateStr = exitTime.ToString("dd/MM/yy");
                 InvoiceTimeStr = exitTime.ToString("HH:mm:ss");
 
-                Cufe = GenerateCufe($"{InvoicePrefix}{InvoiceNumberStr}", exitTime, totalPaid, BranchNit);
+                Cufe = !string.IsNullOrWhiteSpace(ticket.Cufe)
+                    ? ticket.Cufe
+                    : GenerateCufe($"{InvoicePrefix}{InvoiceNumberStr}", exitTime, totalPaid, BranchNit);
 
                 var resNum = !string.IsNullOrWhiteSpace(resolution?.ResolutionNumber) ? resolution.ResolutionNumber : "18764000000";
                 var validFromStr = resolution != null ? resolution.ValidFrom.ToString("yyyy/MM/dd") : "2024/06/18";

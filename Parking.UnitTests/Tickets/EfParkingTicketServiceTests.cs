@@ -367,6 +367,68 @@ public class EfParkingTicketServiceTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task ProcessExitAsync_WhenRequestElectronicInvoice_MarksIsElectronicInvoiceAndSetsCustomerId()
+    {
+        // Arrange
+        var ticketId = Guid.NewGuid();
+        var customerId = Guid.NewGuid();
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.Customers.Add(new Customer
+            {
+                CustomerId = customerId,
+                DocumentNumber = "12345",
+                FullName = "Cliente FE",
+                Email = "fe@test.com",
+                IsActive = true
+            });
+            db.ParkingTickets.Add(new ParkingTicket
+            {
+                TicketId = ticketId,
+                BranchId = 1,
+                CompanyId = 10,
+                TicketNumber = "PKF-C10-FE01",
+                PlateNumber = "FE123",
+                VehicleType = VehicleType.Car,
+                Status = TicketStatus.Active,
+                EntryTimeUtc = DateTime.UtcNow.AddMinutes(-60)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        _mockPricingCalculator
+            .Setup(p => p.CalculateFee(It.IsAny<VehicleType>(), It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<int>(), It.IsAny<bool>()))
+            .Returns(5000m);
+
+        var service = CreateService();
+
+        // Act
+        var result = await service.ProcessExitAsync(
+            ticketId,
+            PaymentMethod.Cash,
+            5000m,
+            null, null, null, null, 0m,
+            1, "Salida con FE", null, null, null, null, false, 0m,
+            requestElectronicInvoice: true,
+            customerId: customerId);
+
+        // Assert
+        result.Should().NotBeNull();
+        result!.IsElectronicInvoice.Should().BeTrue();
+        result.CustomerId.Should().Be(customerId);
+        result.Status.Should().Be(TicketStatus.Completed);
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            var inDb = await db.ParkingTickets.FindAsync(ticketId);
+            inDb.Should().NotBeNull();
+            inDb!.IsElectronicInvoice.Should().BeTrue();
+            inDb.CustomerId.Should().Be(customerId);
+            inDb.Status.Should().Be(TicketStatus.Completed);
+        }
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

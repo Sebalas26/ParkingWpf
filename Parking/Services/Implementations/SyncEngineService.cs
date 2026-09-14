@@ -280,6 +280,13 @@ public class SyncEngineService : ISyncEngineService
                 _sessionService.CurrentUser.MaxActiveSessionsPerUser = bootstrap.MaxActiveSessionsPerUser;
                 _sessionService.CurrentUser.AllowMultipleOpenShifts = bootstrap.AllowMultipleOpenShifts;
                 _sessionService.CurrentUser.MaxOpenShiftsPerUser = bootstrap.MaxOpenShiftsPerUser;
+
+                // Facturación Electrónica DIAN / Siigo
+                _sessionService.CurrentUser.HasElectronicInvoicingEnabled = bootstrap.HasElectronicInvoicingEnabled;
+                _sessionService.CurrentUser.AllowPosToInvoiceConversion = bootstrap.AllowPosToInvoiceConversion;
+                _sessionService.CurrentUser.AllowCreditNotes = bootstrap.AllowCreditNotes;
+                _sessionService.CurrentUser.AllowSubscriptionInvoicing = bootstrap.AllowSubscriptionInvoicing;
+                _sessionService.CurrentUser.ForceElectronicInvoiceOnCheckout = bootstrap.ForceElectronicInvoiceOnCheckout;
             }
 
             using var db = _dbManager.CreateDbContext();
@@ -1253,6 +1260,120 @@ public class SyncEngineService : ISyncEngineService
                 await db.SaveChangesAsync(ct);
             }
 
+            // 8.8 Sincronizar Municipios DANE
+            if (bootstrap.DaneMunicipalities != null && bootstrap.DaneMunicipalities.Count > 0)
+            {
+                var existingDane = await db.DaneMunicipalities.ToDictionaryAsync(d => d.Code, ct);
+                foreach (var d in bootstrap.DaneMunicipalities)
+                {
+                    if (existingDane.TryGetValue(d.Code, out var existing))
+                    {
+                        existing.DepartmentCode = d.DepartmentCode;
+                        existing.DepartmentName = d.DepartmentName;
+                        existing.MunicipalityName = d.MunicipalityName;
+                    }
+                    else
+                    {
+                        db.DaneMunicipalities.Add(new DaneMunicipality
+                        {
+                            Code = d.Code,
+                            DepartmentCode = d.DepartmentCode,
+                            DepartmentName = d.DepartmentName,
+                            MunicipalityName = d.MunicipalityName
+                        });
+                    }
+                }
+                await db.SaveChangesAsync(ct);
+            }
+
+            // 8.9 Sincronizar Clientes y Vehículos Vinculados
+            if (bootstrap.Customers != null && bootstrap.Customers.Count > 0)
+            {
+                var existingCustomers = await db.Customers.Include(c => c.Vehicles).ToDictionaryAsync(c => c.CustomerId, ct);
+                foreach (var custDto in bootstrap.Customers)
+                {
+                    if (existingCustomers.TryGetValue(custDto.CustomerId, out var existing))
+                    {
+                        existing.CompanyId = custDto.CompanyId;
+                        existing.IdentificationTypeId = custDto.IdentificationTypeId;
+                        existing.DocumentNumber = custDto.DocumentNumber;
+                        existing.CheckDigit = custDto.CheckDigit;
+                        existing.PersonType = custDto.PersonType;
+                        existing.FullName = custDto.FullName;
+                        existing.TradeName = custDto.TradeName;
+                        existing.Email = custDto.Email;
+                        existing.Phone = custDto.Phone;
+                        existing.Address = custDto.Address;
+                        existing.CityCode = custDto.CityCode;
+                        existing.StateCode = custDto.StateCode;
+                        existing.FiscalResponsibilities = custDto.FiscalResponsibilities;
+                        existing.SiigoCustomerId = custDto.SiigoCustomerId;
+                        existing.IsActive = custDto.IsActive;
+
+                        if (custDto.PlateNumbers != null)
+                        {
+                            var existingPlates = existing.Vehicles.Select(v => v.PlateNumber.Trim().ToUpperInvariant()).ToHashSet();
+                            foreach (var plate in custDto.PlateNumbers)
+                            {
+                                var normPlate = plate.Trim().ToUpperInvariant();
+                                if (!string.IsNullOrEmpty(normPlate) && !existingPlates.Contains(normPlate))
+                                {
+                                    existing.Vehicles.Add(new CustomerVehicle
+                                    {
+                                        CustomerId = existing.CustomerId,
+                                        PlateNumber = normPlate,
+                                        CreatedAtUtc = DateTime.UtcNow
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var newCust = new Customer
+                        {
+                            CustomerId = custDto.CustomerId,
+                            CompanyId = custDto.CompanyId,
+                            IdentificationTypeId = custDto.IdentificationTypeId,
+                            DocumentNumber = custDto.DocumentNumber,
+                            CheckDigit = custDto.CheckDigit,
+                            PersonType = custDto.PersonType,
+                            FullName = custDto.FullName,
+                            TradeName = custDto.TradeName,
+                            Email = custDto.Email,
+                            Phone = custDto.Phone,
+                            Address = custDto.Address,
+                            CityCode = custDto.CityCode,
+                            StateCode = custDto.StateCode,
+                            FiscalResponsibilities = custDto.FiscalResponsibilities,
+                            SiigoCustomerId = custDto.SiigoCustomerId,
+                            IsActive = custDto.IsActive,
+                            CreatedAtUtc = custDto.CreatedAtUtc != default ? custDto.CreatedAtUtc : DateTime.UtcNow
+                        };
+
+                        if (custDto.PlateNumbers != null)
+                        {
+                            foreach (var plate in custDto.PlateNumbers)
+                            {
+                                var normPlate = plate.Trim().ToUpperInvariant();
+                                if (!string.IsNullOrEmpty(normPlate))
+                                {
+                                    newCust.Vehicles.Add(new CustomerVehicle
+                                    {
+                                        CustomerId = newCust.CustomerId,
+                                        PlateNumber = normPlate,
+                                        CreatedAtUtc = DateTime.UtcNow
+                                    });
+                                }
+                            }
+                        }
+
+                        db.Customers.Add(newCust);
+                    }
+                }
+                await db.SaveChangesAsync(ct);
+            }
+
             // 9. Paso 8: Sincronizar Tiquetes y Consolidar (98%)
             progress.Report(new SyncProgressReport
             {
@@ -1347,6 +1468,18 @@ public class SyncEngineService : ISyncEngineService
                     existing.PaymentMethodId = ticket.PaymentMethodId;
                     existing.ExitNotes = ticket.ExitNotes;
                     existing.IsSynchronized = true;
+                    existing.CustomerId = ticket.CustomerId ?? existing.CustomerId;
+                    existing.Cufe = ticket.Cufe ?? existing.Cufe;
+                    existing.QrCodeData = ticket.QrCodeData ?? existing.QrCodeData;
+                    if (ticket.DianStatus != null)
+                    {
+                        existing.DianStatus = ticket.GetDianStatus();
+                    }
+                    existing.CreditNoteNumber = ticket.CreditNoteNumber ?? existing.CreditNoteNumber;
+                    existing.CreditNoteCufe = ticket.CreditNoteCufe ?? existing.CreditNoteCufe;
+                    existing.IsPosConvertedToInvoice = ticket.IsPosConvertedToInvoice;
+                    existing.PosConvertedAtUtc = ticket.PosConvertedAtUtc ?? existing.PosConvertedAtUtc;
+                    existing.PosConvertedByUserId = ticket.PosConvertedByUserId ?? existing.PosConvertedByUserId;
 
                     localByTicketId[existing.TicketId] = existing;
                     localByTicketNumber[normalizedTicketNumber] = existing;
@@ -1378,6 +1511,15 @@ public class SyncEngineService : ISyncEngineService
                         Status = status,
                         OperatorName = !string.IsNullOrWhiteSpace(ticket.OperatorName) ? ticket.OperatorName : "Operador General",
                         IsSynchronized = true,
+                        CustomerId = ticket.CustomerId,
+                        Cufe = ticket.Cufe,
+                        QrCodeData = ticket.QrCodeData,
+                        DianStatus = ticket.GetDianStatus(),
+                        CreditNoteNumber = ticket.CreditNoteNumber,
+                        CreditNoteCufe = ticket.CreditNoteCufe,
+                        IsPosConvertedToInvoice = ticket.IsPosConvertedToInvoice,
+                        PosConvertedAtUtc = ticket.PosConvertedAtUtc,
+                        PosConvertedByUserId = ticket.PosConvertedByUserId,
                         CreatedAtUtc = ticket.CreatedAtUtc
                     };
 
@@ -1602,6 +1744,8 @@ public class SyncEngineService : ISyncEngineService
                 ResolutionId = ticket.ResolutionId,
                 ResolutionName = ticket.ResolutionName,
                 FiscalInvoiceNumber = ticket.InvoiceNumber,
+                RequestElectronicInvoice = ticket.IsElectronicInvoice,
+                CustomerId = ticket.CustomerId,
                 IsLostTicket = ticket.IsLostTicket,
                 LostTicketFee = ticket.LostTicketFee,
                 ExitTimeUtc = ticket.ExitTimeUtc ?? DateTime.UtcNow
@@ -1669,6 +1813,11 @@ public class SyncEngineService : ISyncEngineService
                                     localTicket.NetAmount = result.NetAmount;
                                     localTicket.PaymentMethod = result.PaymentMethod;
                                     localTicket.IsSynchronized = true;
+                                    if (!string.IsNullOrWhiteSpace(result.InvoiceNumber)) localTicket.InvoiceNumber = result.InvoiceNumber;
+                                    if (!string.IsNullOrWhiteSpace(result.Cufe)) localTicket.Cufe = result.Cufe;
+                                    if (!string.IsNullOrWhiteSpace(result.QrCodeData)) localTicket.QrCodeData = result.QrCodeData;
+                                    if (result.DianStatus != DianStatus.None) localTicket.DianStatus = result.DianStatus;
+                                    localTicket.IsElectronicInvoice = result.IsElectronicInvoice;
                                 }
                             }
                         }

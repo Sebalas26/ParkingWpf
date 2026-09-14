@@ -30,6 +30,7 @@ public class CheckOutViewModelTests : IDisposable
     {
         _connectionManager = new TestDbConnectionManager();
         _mockTicketService = new Mock<IParkingTicketService>();
+        _mockTicketService.Setup(s => s.GetActiveTicketsAsync()).ReturnsAsync(new List<ParkingTicket>());
         _mockPricingCalculator = new Mock<IPricingCalculatorService>();
         _mockSubscriptionService = new Mock<IMonthlySubscriptionService>();
         _mockStoreService = new Mock<IStoreService>();
@@ -277,6 +278,199 @@ public class CheckOutViewModelTests : IDisposable
         vm.SelectedTicket.Should().BeNull();
         vm.HasFeedback.Should().BeTrue();
         vm.FeedbackMessage.Should().Contain("REM123");
+    }
+
+    [Fact]
+    public async Task InitializeAsync_WhenElectronicInvoicingEnabled_LoadsCustomersAndSetsFlags()
+    {
+        // Arrange
+        var userSession = new UserSessionModel
+        {
+            UserId = Guid.NewGuid(),
+            Username = "cajero",
+            HasElectronicInvoicingEnabled = true,
+            ForceElectronicInvoiceOnCheckout = false
+        };
+        _mockSessionService.Setup(s => s.CurrentUser).Returns(userSession);
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.Customers.Add(new Customer
+            {
+                CustomerId = Guid.NewGuid(),
+                DocumentNumber = "12345678",
+                FullName = "Empresa Test SAS",
+                Email = "test@empresa.com",
+                IsActive = true
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var vm = CreateViewModel();
+
+        // Act
+        await vm.InitializeAsync();
+
+        // Assert
+        vm.HasElectronicInvoicingEnabled.Should().BeTrue();
+        vm.ForceElectronicInvoiceOnCheckout.Should().BeFalse();
+        vm.AvailableCustomers.Should().HaveCount(1);
+        vm.AvailableCustomers[0].FullName.Should().Be("Empresa Test SAS");
+    }
+
+    [Fact]
+    public async Task OnSelectedTicketChanged_WhenForceElectronicInvoiceOnCheckout_ForcesEmitElectronicInvoice()
+    {
+        // Arrange
+        var userSession = new UserSessionModel
+        {
+            UserId = Guid.NewGuid(),
+            Username = "cajero",
+            HasElectronicInvoicingEnabled = true,
+            ForceElectronicInvoiceOnCheckout = true
+        };
+        _mockSessionService.Setup(s => s.CurrentUser).Returns(userSession);
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "XYZ789",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-45)
+        };
+
+        // Act
+        vm.SelectedTicket = ticket;
+
+        // Assert
+        vm.EmitElectronicInvoice.Should().BeTrue();
+        vm.CanToggleElectronicInvoice.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task OnSelectedTicketChanged_WhenCustomerVehicleMatchesPlate_AutoSelectsCustomer()
+    {
+        // Arrange
+        var customerId = Guid.NewGuid();
+        var userSession = new UserSessionModel
+        {
+            UserId = Guid.NewGuid(),
+            Username = "cajero",
+            HasElectronicInvoicingEnabled = true
+        };
+        _mockSessionService.Setup(s => s.CurrentUser).Returns(userSession);
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            var cust = new Customer
+            {
+                CustomerId = customerId,
+                DocumentNumber = "900123456",
+                FullName = "Inversiones ABC",
+                Email = "contacto@abc.com",
+                IsActive = true
+            };
+            cust.Vehicles.Add(new CustomerVehicle
+            {
+                CustomerId = customerId,
+                PlateNumber = "ABC123"
+            });
+            db.Customers.Add(cust);
+            await db.SaveChangesAsync();
+        }
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "ABC123",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-30)
+        };
+
+        // Act
+        vm.SelectedTicket = ticket;
+
+        // Assert
+        vm.SelectedCustomer.Should().NotBeNull();
+        vm.SelectedCustomer!.CustomerId.Should().Be(customerId);
+        vm.SelectedCustomer!.FullName.Should().Be("Inversiones ABC");
+    }
+
+    [Fact]
+    public async Task ProcessPaymentAsync_WhenEmitElectronicInvoiceAndNoCustomerSelected_ShowsAlertAndBlocksPayment()
+    {
+        // Arrange
+        var userSession = new UserSessionModel
+        {
+            UserId = Guid.NewGuid(),
+            Username = "cajero",
+            HasElectronicInvoicingEnabled = true,
+            ForceElectronicInvoiceOnCheckout = false
+        };
+        _mockSessionService.Setup(s => s.CurrentUser).Returns(userSession);
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "TEST01",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-20)
+        };
+        vm.SelectedTicket = ticket;
+        vm.SelectedResolution = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", IsActive = true };
+        vm.EmitElectronicInvoice = true;
+        vm.SelectedCustomer = null;
+
+        // Act
+        await vm.ProcessPaymentCommand.ExecuteAsync(null);
+
+        // Assert
+        vm.ShowCustomerWarning.Should().BeTrue();
+        vm.HasFeedback.Should().BeTrue();
+        _mockTicketService.Verify(s => s.ProcessExitAsync(
+            It.IsAny<Guid>(), It.IsAny<PaymentMethod>(), It.IsAny<decimal>(),
+            It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<string?>(),
+            It.IsAny<decimal?>(), It.IsAny<decimal>(), It.IsAny<int?>(),
+            It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<Guid?>(),
+            It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool>(),
+            It.IsAny<decimal>(), It.IsAny<bool>(), It.IsAny<Guid?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SaveQuickCustomerCommand_WhenValid_SavesCustomerToDbAndSelectsIt()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        vm.ToggleQuickRegisterCustomerCommand.Execute(null);
+
+        vm.NewCustomerDocumentNumber = "1098765432";
+        vm.NewCustomerFullName = "Cliente Rápido";
+        vm.NewCustomerEmail = "cliente@rapido.com";
+        vm.NewCustomerPhone = "3109998877";
+
+        // Act
+        await vm.SaveQuickCustomerCommand.ExecuteAsync(null);
+
+        // Assert
+        vm.SelectedCustomer.Should().NotBeNull();
+        vm.SelectedCustomer!.DocumentNumber.Should().Be("1098765432");
+        vm.SelectedCustomer.FullName.Should().Be("Cliente Rápido");
+        vm.IsQuickRegisterCustomerOpen.Should().BeFalse();
+
+        using var db = _connectionManager.CreateDbContext();
+        var savedInDb = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(
+            db.Customers, c => c.DocumentNumber == "1098765432");
+        savedInDb.Should().NotBeNull();
     }
 
     public void Dispose()

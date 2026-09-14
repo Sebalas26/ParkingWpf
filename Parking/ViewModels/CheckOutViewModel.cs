@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.EntityFrameworkCore;
 using Parking.Core.Enums;
 using Parking.Core.Security;
 using Parking.Data.Factories;
@@ -12,6 +13,12 @@ using Parking.Entities;
 using Parking.Services.Contracts;
 
 namespace Parking.ViewModels;
+
+public class IdentificationTypeOption
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
 
 [RequirePermission("checkout.view", "Salida y Cobro / Caja")]
 public partial class CheckOutViewModel : ViewModelBase
@@ -161,6 +168,56 @@ public partial class CheckOutViewModel : ViewModelBase
     public ObservableCollection<CommercialAgreement> BranchAgreements { get; } = new();
     public ObservableCollection<PaymentMethodEntity> AvailablePaymentMethods { get; } = new();
     public ObservableCollection<BillingResolution> AvailableResolutions { get; } = new();
+    public ObservableCollection<Customer> AvailableCustomers { get; } = new();
+    public List<IdentificationTypeOption> IdentificationTypeOptions { get; } = new()
+    {
+        new() { Id = 13, Name = "Cédula de Ciudadanía (CC)" },
+        new() { Id = 31, Name = "NIT (Empresas / Jurídicas)" },
+        new() { Id = 22, Name = "Cédula de Extranjería (CE)" },
+        new() { Id = 41, Name = "Pasaporte (PP)" }
+    };
+
+    [ObservableProperty]
+    private bool _hasElectronicInvoicingEnabled;
+
+    [ObservableProperty]
+    private bool _forceElectronicInvoiceOnCheckout;
+
+    [ObservableProperty]
+    private bool _emitElectronicInvoice;
+
+    [ObservableProperty]
+    private bool _canToggleElectronicInvoice = true;
+
+    [ObservableProperty]
+    private Customer? _selectedCustomer;
+
+    [ObservableProperty]
+    private bool _showCustomerWarning;
+
+    [ObservableProperty]
+    private bool _isQuickRegisterCustomerOpen;
+
+    [ObservableProperty]
+    private IdentificationTypeOption? _selectedIdentificationTypeOption;
+
+    [ObservableProperty]
+    private string _newCustomerDocumentNumber = string.Empty;
+
+    [ObservableProperty]
+    private string? _newCustomerCheckDigit;
+
+    [ObservableProperty]
+    private string _newCustomerFullName = string.Empty;
+
+    [ObservableProperty]
+    private string _newCustomerEmail = string.Empty;
+
+    [ObservableProperty]
+    private string? _newCustomerPhone;
+
+    [ObservableProperty]
+    private string? _quickCustomerFeedback;
 
     public CheckOutViewModel(
         IParkingTicketService ticketService,
@@ -186,6 +243,7 @@ public partial class CheckOutViewModel : ViewModelBase
         _connectionManager = connectionManager;
         _syncEngine = syncEngine;
         _apiClient = apiClient;
+        SelectedIdentificationTypeOption = IdentificationTypeOptions.FirstOrDefault();
 
         syncEngine.DataSynchronized += () =>
         {
@@ -266,10 +324,39 @@ public partial class CheckOutViewModel : ViewModelBase
 
     public override async Task InitializeAsync()
     {
+        HasElectronicInvoicingEnabled = _sessionService.CurrentUser?.HasElectronicInvoicingEnabled ?? false;
+        ForceElectronicInvoiceOnCheckout = _sessionService.CurrentUser?.ForceElectronicInvoiceOnCheckout ?? false;
+        CanToggleElectronicInvoice = !ForceElectronicInvoiceOnCheckout;
+        EmitElectronicInvoice = ForceElectronicInvoiceOnCheckout;
+
         await LoadPaymentMethodsAsync();
         await LoadActiveVehiclesAsync();
         await LoadStoresAsync();
         await LoadResolutionsAsync();
+        if (HasElectronicInvoicingEnabled)
+        {
+            await LoadCustomersAsync();
+        }
+    }
+
+    private async Task LoadCustomersAsync()
+    {
+        try
+        {
+            using var db = _connectionManager.CreateDbContext();
+            var customers = await db.Customers
+                .Include(c => c.Vehicles)
+                .Where(c => c.IsActive)
+                .OrderBy(c => c.FullName)
+                .ToListAsync();
+
+            AvailableCustomers.Clear();
+            foreach (var c in customers)
+            {
+                AvailableCustomers.Add(c);
+            }
+        }
+        catch { }
     }
 
     private async Task LoadResolutionsAsync()
@@ -805,6 +892,33 @@ public partial class CheckOutViewModel : ViewModelBase
             ShowPaymentMethodWarning = false;
             ShowResolutionWarning = false;
 
+            HasElectronicInvoicingEnabled = _sessionService.CurrentUser?.HasElectronicInvoicingEnabled ?? false;
+            ForceElectronicInvoiceOnCheckout = _sessionService.CurrentUser?.ForceElectronicInvoiceOnCheckout ?? false;
+            CanToggleElectronicInvoice = !ForceElectronicInvoiceOnCheckout;
+            EmitElectronicInvoice = ForceElectronicInvoiceOnCheckout;
+            ShowCustomerWarning = false;
+            IsQuickRegisterCustomerOpen = false;
+            QuickCustomerFeedback = null;
+
+            if (HasElectronicInvoicingEnabled)
+            {
+                await LoadCustomersAsync();
+                if (!string.IsNullOrWhiteSpace(value.PlateNumber))
+                {
+                    var cleanPlate = value.PlateNumber.Trim().ToUpperInvariant();
+                    var match = AvailableCustomers.FirstOrDefault(c => c.Vehicles.Any(v => v.PlateNumber.Trim().ToUpperInvariant() == cleanPlate));
+                    SelectedCustomer = match;
+                }
+                else
+                {
+                    SelectedCustomer = null;
+                }
+            }
+            else
+            {
+                SelectedCustomer = null;
+            }
+
             var dialogResult = await _dialogService.ShowCheckOutDialogAsync(this);
             if (SelectedTicket != null && !dialogResult)
             {
@@ -832,12 +946,134 @@ public partial class CheckOutViewModel : ViewModelBase
             AmountTendered = 0m;
             ChangeDue = 0m;
             HasAgreementDiscount = false;
+            SelectedCustomer = null;
+            EmitElectronicInvoice = false;
+            ShowCustomerWarning = false;
+            IsQuickRegisterCustomerOpen = false;
+            QuickCustomerFeedback = null;
         }
     }
 
     partial void OnAmountTenderedChanged(decimal value) => CalculateChange();
     partial void OnCalculatedFeeChanged(decimal value) => CalculateChange();
     partial void OnIsLostTicketChanged(bool value) => RecalculateLiveFee();
+
+    partial void OnEmitElectronicInvoiceChanged(bool value)
+    {
+        if (!value)
+        {
+            ShowCustomerWarning = false;
+            IsQuickRegisterCustomerOpen = false;
+        }
+    }
+
+    partial void OnSelectedCustomerChanged(Customer? value)
+    {
+        if (value != null)
+        {
+            ShowCustomerWarning = false;
+        }
+    }
+
+    partial void OnForceElectronicInvoiceOnCheckoutChanged(bool value)
+    {
+        CanToggleElectronicInvoice = !value;
+        if (value)
+        {
+            EmitElectronicInvoice = true;
+        }
+    }
+
+    [RelayCommand]
+    private void ToggleQuickRegisterCustomer()
+    {
+        IsQuickRegisterCustomerOpen = !IsQuickRegisterCustomerOpen;
+        QuickCustomerFeedback = null;
+        if (IsQuickRegisterCustomerOpen)
+        {
+            SelectedIdentificationTypeOption = IdentificationTypeOptions.FirstOrDefault();
+            NewCustomerDocumentNumber = string.Empty;
+            NewCustomerCheckDigit = null;
+            NewCustomerFullName = string.Empty;
+            NewCustomerEmail = string.Empty;
+            NewCustomerPhone = string.Empty;
+        }
+    }
+
+    [RelayCommand]
+    private async Task SaveQuickCustomerAsync()
+    {
+        if (string.IsNullOrWhiteSpace(NewCustomerDocumentNumber))
+        {
+            QuickCustomerFeedback = "El número de documento es obligatorio.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(NewCustomerFullName))
+        {
+            QuickCustomerFeedback = "El nombre o razón social es obligatorio.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(NewCustomerEmail) || !NewCustomerEmail.Contains('@'))
+        {
+            QuickCustomerFeedback = "Un correo electrónico válido es obligatorio para la DIAN.";
+            return;
+        }
+
+        try
+        {
+            using var db = _connectionManager.CreateDbContext();
+            var docClean = NewCustomerDocumentNumber.Trim();
+            var existing = await db.Customers.Include(c => c.Vehicles).FirstOrDefaultAsync(c => c.DocumentNumber == docClean);
+            if (existing != null)
+            {
+                SelectedCustomer = existing;
+                IsQuickRegisterCustomerOpen = false;
+                QuickCustomerFeedback = null;
+                ShowCustomerWarning = false;
+                return;
+            }
+
+            var idType = SelectedIdentificationTypeOption?.Id ?? 13;
+            var newCustomer = new Customer
+            {
+                CustomerId = Guid.NewGuid(),
+                CompanyId = _sessionService.CurrentUser?.CompanyId ?? 1,
+                IdentificationTypeId = idType,
+                DocumentNumber = docClean,
+                CheckDigit = NewCustomerCheckDigit?.Trim(),
+                PersonType = idType == 31 ? "Company" : "Person",
+                FullName = NewCustomerFullName.Trim(),
+                Email = NewCustomerEmail.Trim(),
+                Phone = string.IsNullOrWhiteSpace(NewCustomerPhone) ? null : NewCustomerPhone.Trim(),
+                FiscalResponsibilities = "R-99-PN",
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+
+            if (SelectedTicket != null && !string.IsNullOrWhiteSpace(SelectedTicket.PlateNumber))
+            {
+                newCustomer.Vehicles.Add(new CustomerVehicle
+                {
+                    CustomerId = newCustomer.CustomerId,
+                    PlateNumber = SelectedTicket.PlateNumber.Trim().ToUpperInvariant(),
+                    CreatedAtUtc = DateTime.UtcNow
+                });
+            }
+
+            db.Customers.Add(newCustomer);
+            await db.SaveChangesAsync();
+
+            AvailableCustomers.Add(newCustomer);
+            SelectedCustomer = newCustomer;
+            IsQuickRegisterCustomerOpen = false;
+            QuickCustomerFeedback = null;
+            ShowCustomerWarning = false;
+        }
+        catch (Exception ex)
+        {
+            QuickCustomerFeedback = $"Error al guardar cliente: {ex.Message}";
+        }
+    }
 
     private void CalculateChange()
     {
@@ -1120,11 +1356,31 @@ public partial class CheckOutViewModel : ViewModelBase
                 ShowResolutionWarning = false;
             }
 
+            if (EmitElectronicInvoice && SelectedCustomer == null)
+            {
+                ShowCustomerWarning = true;
+                hasValidationError = true;
+            }
+            else
+            {
+                ShowCustomerWarning = false;
+            }
+
             if (hasValidationError)
             {
                 HasFeedback = true;
                 IsSuccessFeedback = false;
-                FeedbackMessage = "Por favor seleccione el método de pago y la resolución requeridos.";
+                FeedbackMessage = (EmitElectronicInvoice && SelectedCustomer == null)
+                    ? "Debe seleccionar un cliente / adquirente para emitir la Factura Electrónica."
+                    : "Por favor seleccione el método de pago y la resolución requeridos.";
+
+                if (EmitElectronicInvoice && SelectedCustomer == null)
+                {
+                    await _dialogService.ShowAlertAsync(
+                        "Adquirente Requerido",
+                        "Ha seleccionado emitir Factura Electrónica (DIAN / Siigo), pero no ha seleccionado ningún cliente. Por favor seleccione o registre uno.",
+                        DialogNotificationType.Warning);
+                }
                 return;
             }
         }
@@ -1174,7 +1430,9 @@ public partial class CheckOutViewModel : ViewModelBase
                 SelectedResolution?.Name ?? SelectedResolution?.DocumentType,
                 generatedInvoiceNumber,
                 IsLostTicket,
-                IsLostTicket ? LostTicketFee : 0m);
+                IsLostTicket ? LostTicketFee : 0m,
+                EmitElectronicInvoice,
+                SelectedCustomer?.CustomerId);
 
             if (completedTicket != null)
             {
@@ -1190,6 +1448,11 @@ public partial class CheckOutViewModel : ViewModelBase
                 ExitNotes = string.Empty;
                 HasAgreementDiscount = false;
                 IsLostTicket = false;
+                SelectedCustomer = null;
+                EmitElectronicInvoice = ForceElectronicInvoiceOnCheckout;
+                ShowCustomerWarning = false;
+                IsQuickRegisterCustomerOpen = false;
+                QuickCustomerFeedback = null;
 
                 HasFeedback = true;
                 IsSuccessFeedback = true;
@@ -1253,5 +1516,10 @@ public partial class CheckOutViewModel : ViewModelBase
         HasAgreementDiscount = false;
         HasFeedback = false;
         FeedbackMessage = null;
+        SelectedCustomer = null;
+        EmitElectronicInvoice = ForceElectronicInvoiceOnCheckout;
+        ShowCustomerWarning = false;
+        IsQuickRegisterCustomerOpen = false;
+        QuickCustomerFeedback = null;
     }
 }

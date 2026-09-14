@@ -15,6 +15,64 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-14 15:00:00] - [FEAT / DIAN / SIIGO / FACTURACIÓN ELECTRÓNICA / CLIENTES / SYNC / UI] - Integración Integral de Facturación Electrónica DIAN / Siigo en ParkFlow Desktop (WPF)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+
+  > _"Listo ya con estas actualziaciones procede a realizar el plan completo de una completo bien realizsado con todas las pruebas completas"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Modelos de Dominio y Persistencia Local SQLite**:
+     - Se crearon las entidades canónicas `Customer`, `CustomerVehicle`, `DaneMunicipality` y el enumerador `DianStatus` (`None`, `Pending`, `Issued`, `Rejected`, `Cancelled`).
+     - Se agregaron a `ParkingTicket` las propiedades fiscales: `CustomerId`, `Cufe`, `QrCodeData`, `DianStatus`, `CreditNoteNumber`, `CreditNoteCufe`, `IsPosConvertedToInvoice`, `PosConvertedAtUtc`, `PosConvertedByUserId` y navegación a `Customer`.
+     - Configuraciones de EF Core (`CustomerConfiguration`, `CustomerVehicleConfiguration`, `DaneMunicipalityConfiguration`) registradas en `ParkFlowDbContext`. Auto-migración SQLite mediante `DbConnectionManager` crea tablas y añade columnas dinámicamente sin regresiones.
+  2. **Contratos DTO y Motor de Sincronización (`SyncEngineService.cs`)**:
+     - Mapeo reactivo de las 5 banderas corporativas (`HasElectronicInvoicingEnabled`, `AllowPosToInvoiceConversion`, `AllowCreditNotes`, `AllowSubscriptionInvoicing`, `ForceElectronicInvoiceOnCheckout`) a la sesión del usuario.
+     - Sincronización en SQLite local de catálogos `daneMunicipalities` y `customers` (con sus placas vinculadas).
+     - Sincronización bidireccional y encolamiento offline (`EnqueueOfflineCheckOutAsync`) con reconciliación de datos fiscales canónicos devueltos por el API (`InvoiceNumber`, `Cufe`, `QrCodeData`, `DianStatus`).
+  3. **Interfaz de Usuario y ViewModel de Salida (`CheckOutViewModel.cs` & `CheckOutDialog.xaml`)**:
+     - Módulo de facturación electrónica condicionado estrictamente a `HasElectronicInvoicingEnabled == true`. Si está deshabilitado en la empresa, el flujo POS opera de forma quirúrgica sin alteraciones.
+     - Checkbox "Emitir Factura Electrónica (DIAN / Siigo)", bloqueado y obligatorio si `ForceElectronicInvoiceOnCheckout == true`.
+     - Selector de adquirentes con auto-selección reactiva si la placa del vehículo que sale coincide con un cliente registrado.
+     - Panel desplegable de registro rápido de cliente adquirente en caja, 100% limpio (sin datos quemados ni pre-llenados, solo placeholders de guía).
+     - Validación preventiva obligatoria: bloquea cobro y notifica si se requiere factura electrónica sin adquirente.
+  4. **Vista Previa de Factura/Recibo (`ReceiptPreviewViewModel.cs`)**:
+     - Carga automática de información de adquirente (Nombre, NIT/CC con DV, Dirección) y CUFE cuando el tiquete es electrónico.
+  5. **Cobertura de Pruebas Unitarias y Cero Regresiones**:
+     - Se agregaron pruebas para `CheckOutViewModel` (carga de clientes, obligatoriedad, auto-match por placa, bloqueo por falta de adquirente y registro rápido) y `EfParkingTicketService` (persistencia relacional con foreign key).
+     - **211 Pruebas Unitarias Superadas (100% Éxito, 0 Fallos)**.
+     - **0 Errores de Compilación**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Core/Enums/DianStatus.cs` (Nuevo)
+  - `Parking/Entities/Customer.cs` (Nuevo)
+  - `Parking/Entities/CustomerVehicle.cs` (Nuevo)
+  - `Parking/Entities/DaneMunicipality.cs` (Nuevo)
+  - `Parking/Entities/ParkingTicket.cs`
+  - `Parking/Data/Configurations/CustomerConfiguration.cs` (Nuevo)
+  - `Parking/Data/Configurations/CustomerVehicleConfiguration.cs` (Nuevo)
+  - `Parking/Data/Configurations/DaneMunicipalityConfiguration.cs` (Nuevo)
+  - `Parking/Data/ParkFlowDbContext.cs`
+  - `Parking/Models/UserSessionModel.cs`
+  - `Parking/Models/ApiModels/TicketApiModels.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Contracts/IParkingTicketService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `Parking.UnitTests/Tickets/EfParkingTicketServiceTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet test ParkingWpf.slnx` -> **211 Superadas / 0 Fallos (100% Éxito)**.
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+
+---
+
 ### [2026-09-11 19:35:00] - [FIX / AUTH / OFFLINE / RESILIENCE / RBAC] - Persistencia Integral y Resiliente de Credenciales, Roles y Sedes en SQLite para Operación Offline Confiable
 
 - **Autor**: Antigravity AI Assistant & Software Architect

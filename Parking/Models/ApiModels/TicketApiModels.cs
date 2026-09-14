@@ -125,6 +125,12 @@ public class CheckOutApiRequest
     [JsonPropertyName("fiscalInvoiceNumber")]
     public string? FiscalInvoiceNumber { get; set; }
 
+    [JsonPropertyName("requestElectronicInvoice")]
+    public bool RequestElectronicInvoice { get; set; } = false;
+
+    [JsonPropertyName("customerId")]
+    public Guid? CustomerId { get; set; }
+
     [JsonPropertyName("isLostTicket")]
     public bool IsLostTicket { get; set; }
 
@@ -164,6 +170,13 @@ public class LoginApiResponse
     public bool HasDesktopAccess { get; set; } = true;
     public bool HasWebAccess { get; set; } = true;
     public int MaxUsers { get; set; }
+
+    public bool HasElectronicInvoicingEnabled { get; set; } = false;
+    public bool AllowPosToInvoiceConversion { get; set; } = false;
+    public bool AllowCreditNotes { get; set; } = false;
+    public bool AllowSubscriptionInvoicing { get; set; } = false;
+    public bool ForceElectronicInvoiceOnCheckout { get; set; } = false;
+
     public List<BranchModel> Branches { get; set; } = new();
     public List<string> Permissions { get; set; } = new();
 }

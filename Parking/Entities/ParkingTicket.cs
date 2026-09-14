@@ -38,7 +38,18 @@ public class ParkingTicket
     public string? ResolutionName { get; set; }
     public string? InvoiceNumber { get; set; }
     public bool IsElectronicInvoice { get; set; } = false;
+    public Guid? CustomerId { get; set; }
+    public string? Cufe { get; set; }
+    public string? QrCodeData { get; set; }
+    public DianStatus DianStatus { get; set; } = DianStatus.None;
+    public string? CreditNoteNumber { get; set; }
+    public string? CreditNoteCufe { get; set; }
+    public bool IsPosConvertedToInvoice { get; set; } = false;
+    public DateTime? PosConvertedAtUtc { get; set; }
+    public int? PosConvertedByUserId { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    public virtual Customer? Customer { get; set; }
 
     public DateTime EntryTime => EntryTimeUtc.ToLocalTime();
     public DateTime? ExitTime => ExitTimeUtc?.ToLocalTime();

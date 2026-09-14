@@ -30,7 +30,9 @@ public interface IParkingTicketService
         string? resolutionName = null,
         string? fiscalInvoiceNumber = null,
         bool isLostTicket = false,
-        decimal lostTicketFee = 0m);
+        decimal lostTicketFee = 0m,
+        bool requestElectronicInvoice = false,
+        Guid? customerId = null);
     Task<IReadOnlyList<ParkingTicket>> GetActiveTicketsAsync();
     Task<IReadOnlyList<ParkingTicket>> GetCompletedTicketsAsync();
     Task<IReadOnlyList<ParkingTicket>> GetAllTicketsAsync();

@@ -466,6 +466,210 @@
                             </StackPanel>
                         </Grid>
 
+                        <!-- Módulo de Facturación Electrónica DIAN / Siigo (Condicional si la empresa lo tiene habilitado) -->
+                        <Border Visibility="{Binding HasElectronicInvoicingEnabled, Converter={StaticResource BoolToVis}}"
+                                BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                BorderThickness="1.5"
+                                CornerRadius="12"
+                                Padding="14,12"
+                                Margin="0,0,0,16"
+                                Background="#F8FAFC">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <CheckBox IsChecked="{Binding EmitElectronicInvoice}"
+                                                  IsEnabled="{Binding CanToggleElectronicInvoice}"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,8,0"/>
+                                        <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="EMITIR FACTURA ELECTRÓNICA (DIAN / SIIGO)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <!-- Indicador de Obligatoriedad por Parámetro de Empresa -->
+                                    <Border Grid.Column="1"
+                                            Visibility="{Binding ForceElectronicInvoiceOnCheckout, Converter={StaticResource BoolToVis}}"
+                                            Background="#E0F2FE"
+                                            BorderBrush="#0284C7"
+                                            BorderThickness="1"
+                                            CornerRadius="6"
+                                            Padding="6,2"
+                                            VerticalAlignment="Center">
+                                        <TextBlock Text="OBLIGATORIA EN SEDE" FontSize="10.5" FontWeight="Bold" Foreground="#0369A1"/>
+                                    </Border>
+                                </Grid>
+
+                                <!-- Selector y Registro Rápido de Adquirente (Visible si se emite factura electrónica) -->
+                                <StackPanel Visibility="{Binding EmitElectronicInvoice, Converter={StaticResource BoolToVis}}" Margin="0,4,0,0">
+                                    <Grid Margin="0,0,0,6">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Path Data="{StaticResource IconUser}" Fill="{DynamicResource BrushPrimary}" Width="13" Height="13" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                            <TextBlock Text="CLIENTE / ADQUIRENTE *" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- Alerta si falta cliente -->
+                                        <Border HorizontalAlignment="Right"
+                                                Background="#FEE2E2"
+                                                BorderBrush="#EF4444"
+                                                BorderThickness="1"
+                                                CornerRadius="4"
+                                                Padding="6,1"
+                                                Visibility="{Binding ShowCustomerWarning, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="⚠️ Seleccione o cree cliente" FontSize="11" FontWeight="Bold" Foreground="#DC2626"/>
+                                        </Border>
+                                    </Grid>
+
+                                    <!-- Fila de Selección de Cliente y Botón Crear -->
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="10"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <ComboBox Grid.Column="0"
+                                                  ItemsSource="{Binding AvailableCustomers}"
+                                                  SelectedItem="{Binding SelectedCustomer}"
+                                                  Style="{StaticResource ModernComboBox}"
+                                                  Height="40">
+                                            <ComboBox.ItemTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding FullName}" FontWeight="Bold" FontSize="12.5" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                        <TextBlock Text="{Binding DocumentNumber, StringFormat='{} - Doc: {0}'}" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" Margin="4,0,0,0"/>
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </ComboBox.ItemTemplate>
+                                        </ComboBox>
+
+                                        <Button Grid.Column="2"
+                                                Command="{Binding ToggleQuickRegisterCustomerCommand}"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Height="40"
+                                                Padding="12,0">
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Path Data="{StaticResource IconAdd}" Fill="{DynamicResource BrushPrimary}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0"/>
+                                                <TextBlock Text="Nuevo Cliente" FontWeight="SemiBold" FontSize="12"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </Grid>
+
+                                    <!-- Panel Desplegable de Registro Rápido de Cliente -->
+                                    <Border Visibility="{Binding IsQuickRegisterCustomerOpen, Converter={StaticResource BoolToVis}}"
+                                            Background="#FFFFFF"
+                                            BorderBrush="{DynamicResource BrushBorderMedium}"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Padding="12"
+                                            Margin="0,0,0,4">
+                                        <StackPanel>
+                                            <TextBlock Text="REGISTRO RÁPIDO DE ADQUIRENTE DIAN" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" Margin="0,0,0,8"/>
+
+                                            <!-- Feedback / Error de Registro Rápido -->
+                                            <TextBlock Text="{Binding QuickCustomerFeedback}"
+                                                       FontSize="11" FontWeight="Bold" Foreground="#DC2626" Margin="0,0,0,6">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding QuickCustomerFeedback, Converter={StaticResource EqualityConv}, ConverterParameter={x:Null}}" Value="False">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+
+                                            <!-- Grid de Campos (Sin datos quemados, solo placeholders limpios) -->
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="1.4*"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="1.5*"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="0.6*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="TIPO DOC *" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
+                                                    <ComboBox ItemsSource="{Binding IdentificationTypeOptions}"
+                                                              SelectedItem="{Binding SelectedIdentificationTypeOption}"
+                                                              DisplayMemberPath="Name"
+                                                              Style="{StaticResource ModernComboBox}"
+                                                              Height="36"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="NÚMERO DOCUMENTO *" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
+                                                    <TextBox Text="{Binding NewCustomerDocumentNumber, UpdateSourceTrigger=PropertyChanged}"
+                                                             Style="{StaticResource ModernTextBox}"
+                                                             Height="36"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="4">
+                                                    <TextBlock Text="DV" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
+                                                    <TextBox Text="{Binding NewCustomerCheckDigit, UpdateSourceTrigger=PropertyChanged}"
+                                                             Style="{StaticResource ModernTextBox}"
+                                                             Height="36"
+                                                             MaxLength="1"/>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <!-- Fila 2: Nombre o Razón Social -->
+                                            <StackPanel Margin="0,0,0,6">
+                                                <TextBlock Text="NOMBRE COMPLETO O RAZÓN SOCIAL *" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
+                                                <TextBox Text="{Binding NewCustomerFullName, UpdateSourceTrigger=PropertyChanged}"
+                                                         Style="{StaticResource ModernTextBox}"
+                                                         Height="36"/>
+                                            </StackPanel>
+
+                                            <!-- Fila 3: Email y Teléfono -->
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="1.5*"/>
+                                                    <ColumnDefinition Width="8"/>
+                                                    <ColumnDefinition Width="1*"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0">
+                                                    <TextBlock Text="CORREO ELECTRÓNICO (DIAN) *" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
+                                                    <TextBox Text="{Binding NewCustomerEmail, UpdateSourceTrigger=PropertyChanged}"
+                                                             Style="{StaticResource ModernTextBox}"
+                                                             Height="36"/>
+                                                </StackPanel>
+
+                                                <StackPanel Grid.Column="2">
+                                                    <TextBlock Text="TELÉFONO" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
+                                                    <TextBox Text="{Binding NewCustomerPhone, UpdateSourceTrigger=PropertyChanged}"
+                                                             Style="{StaticResource ModernTextBox}"
+                                                             Height="36"/>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <!-- Botones de Acción de Registro Rápido -->
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <Button Command="{Binding ToggleQuickRegisterCustomerCommand}"
+                                                        Content="Cancelar"
+                                                        Style="{StaticResource SecondaryButton}"
+                                                        Height="32"
+                                                        Padding="12,0"
+                                                        Margin="0,0,8,0"/>
+                                                <Button Command="{Binding SaveQuickCustomerCommand}"
+                                                        Content="Guardar y Seleccionar"
+                                                        Style="{StaticResource ModernButton}"
+                                                        Height="32"
+                                                        Padding="14,0"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
                         <!-- Total Neto y Módulo de Caja Mejorado -->
                         <Border Background="#F8FAFC" BorderBrush="{DynamicResource BrushBorderMedium}" BorderThickness="1.5" CornerRadius="12" Padding="16" Margin="0,0,0,16">
                             <Grid>
