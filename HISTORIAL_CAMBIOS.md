@@ -15,7 +15,6 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
-<<<<<<< HEAD
 ### [2026-09-09 13:00:00] - [FEAT / CONCURRENCY / SIGNALR / REACTIVITY / OFFLINE-SYNC / CANONICAL-DATA] - Reactividad Garantizada de Salidas PWA en WPF, Cero Consultas Recurrentes (Event-Driven) y Resolución Canónica de Conflictos Offline (La Nube Manda)
 
 - **Autor**: Antigravity AI Assistant & Software Architect
@@ -208,7 +207,6 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **✅ Verificación y Compilación**:
   - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
   - `dotnet test ParkingWpf.slnx` -> **193/193 Superadas (100% Éxito, 0 Fallos)**.
-=======
 ### [2026-09-09 23:20:00] - [UI/UX / PRIVACY / SECURITY / WPF] - Ocultamiento Total del Código / Identificador Privado de Sedes en Diálogo de Selección
 
 - **Autor**: Antigravity AI Assistant & Software Architect
@@ -265,7 +263,6 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **✅ Verificación y Compilación**:
   - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
   - `dotnet test ParkingWpf.slnx` -> **201/201 Superadas (100% Éxito, 0 Fallos)**.
->>>>>>> e083ad41fee04a12e9e6e3803eecd20fb75dff30
 
 ### [2026-09-09 10:50:00] - [FIX / RECONNECTION / PERFORMANCE / OFFLINE-PROBE] - Reconexión Automática Reactiva al Restablecer Internet, Sonda Exclusiva en Modo Offline con Backoff Progresivo (5s/15s/30s/60s), Detección de Hardware y Prevención de Sobrecarga
 
