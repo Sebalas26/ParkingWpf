@@ -1156,6 +1156,8 @@ public partial class CheckOutViewModel : ViewModelBase
                 generatedInvoiceNumber = await _billingResolutionService.ConsumeNextInvoiceNumberAsync(SelectedResolution.ResolutionId);
             }
 
+            if (SelectedTicket == null) return;
+
             var completedTicket = await _ticketService.ProcessExitAsync(
                 SelectedTicket.TicketId,
                 methodEnum,

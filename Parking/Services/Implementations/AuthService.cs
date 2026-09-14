@@ -95,18 +95,106 @@ public class AuthService : IAuthService
                 try
                 {
                     using var localDb = _connectionManager.CreateDbContext();
-                    var localUser = await localDb.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUser || (u.Email != null && u.Email.ToLower() == normalizedUser));
+                    var localUser = await localDb.Users
+                        .Include(u => u.Role)
+                        .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUser || (u.Email != null && u.Email.ToLower() == normalizedUser));
+
+                    // Resolver o asegurar rol correspondiente en SQLite
+                    Role? targetRole = null;
+                    if (!string.IsNullOrWhiteSpace(apiLogin.RoleName))
+                    {
+                        targetRole = await localDb.Roles.FirstOrDefaultAsync(r => r.Name.ToLower() == apiLogin.RoleName.ToLower());
+                    }
+
+                    if (targetRole == null)
+                    {
+                        var defaultRoleId = isAdmin
+                            ? Guid.Parse("11111111-1111-1111-1111-111111111111")
+                            : Guid.Parse("22222222-2222-2222-2222-222222222222");
+
+                        targetRole = await localDb.Roles.FirstOrDefaultAsync(r => r.RoleId == defaultRoleId);
+                        if (targetRole == null)
+                        {
+                            targetRole = new Role
+                            {
+                                RoleId = defaultRoleId,
+                                Name = roleName,
+                                Description = roleName
+                            };
+                            localDb.Roles.Add(targetRole);
+                            await localDb.SaveChangesAsync();
+                        }
+                    }
+
                     if (localUser != null)
                     {
                         if (!string.IsNullOrWhiteSpace(password))
                         {
                             localUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11);
                         }
-                        localUser.FullName = apiLogin.FullName;
-                        localUser.CompanyId = apiLogin.CompanyId;
+                        localUser.FullName = string.IsNullOrWhiteSpace(apiLogin.FullName) ? localUser.FullName : apiLogin.FullName;
+                        localUser.CompanyId = apiLogin.CompanyId ?? localUser.CompanyId;
+                        localUser.RoleId = targetRole.RoleId;
                         localUser.IsActive = true;
-                        await localDb.SaveChangesAsync();
                     }
+                    else
+                    {
+                        localUser = new User
+                        {
+                            UserId = Guid.NewGuid(),
+                            Username = apiLogin.Username ?? normalizedUser,
+                            FullName = string.IsNullOrWhiteSpace(apiLogin.FullName) ? normalizedUser : apiLogin.FullName,
+                            Email = normalizedUser.Contains("@") ? normalizedUser : null,
+                            CompanyId = apiLogin.CompanyId,
+                            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11),
+                            RoleId = targetRole.RoleId,
+                            IsActive = true,
+                            CreatedAtUtc = DateTime.UtcNow
+                        };
+                        localDb.Users.Add(localUser);
+                    }
+
+                    // Asegurar persistencia de sedes de la empresa/usuario para disponibilidad offline
+                    if (branches != null && branches.Count > 0)
+                    {
+                        var existingBranchIds = await localDb.Branches.Select(b => b.Id).ToListAsync();
+                        foreach (var b in branches)
+                        {
+                            if (!existingBranchIds.Contains(b.Id))
+                            {
+                                localDb.Branches.Add(new Branch
+                                {
+                                    Id = b.Id,
+                                    CompanyId = b.CompanyId,
+                                    Code = b.Code,
+                                    Name = b.Name,
+                                    Address = b.Address,
+                                    Phone = b.Phone,
+                                    City = b.City,
+                                    TotalCapacity = b.TotalCapacity,
+                                    Notes = b.Notes,
+                                    LogoBase64 = b.LogoBase64,
+                                    PaperWidth = b.PaperWidth > 0 ? b.PaperWidth : 80,
+                                    DefaultInitialCash = b.DefaultInitialCash ?? 0,
+                                    AllowChargeByMinute = b.AllowChargeByMinute,
+                                    AllowChargeByHour = b.AllowChargeByHour,
+                                    AllowChargeByDay = b.AllowChargeByDay,
+                                    AllowChargeByNight = b.AllowChargeByNight,
+                                    LostTicketFee = b.LostTicketFee,
+                                    FullDayThresholdMinutes = b.FullDayThresholdMinutes,
+                                    FullDayApplicableDays = b.FullDayApplicableDays,
+                                    FullDayStartTime = b.FullDayStartTime,
+                                    FullDayEndTime = b.FullDayEndTime,
+                                    NightStartTime = b.NightStartTime,
+                                    NightEndTime = b.NightEndTime,
+                                    NightStayMinMinutes = b.NightStayMinMinutes,
+                                    IsActive = b.IsActive
+                                });
+                            }
+                        }
+                    }
+
+                    await localDb.SaveChangesAsync();
                 }
                 catch { }
 
@@ -114,7 +202,7 @@ public class AuthService : IAuthService
                 {
                     Success = true,
                     User = userModel,
-                    Branches = branches,
+                    Branches = branches ?? new List<BranchModel>(),
                     HasDesktopAccess = apiLogin.HasDesktopAccess,
                     HasWebAccess = apiLogin.HasWebAccess
                 };
@@ -180,7 +268,9 @@ public class AuthService : IAuthService
 
         var localRoleName = user.Role?.Name ?? "Operador";
         var isLocalAdmin = localRoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
-                           localRoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase);
+                           localRoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
+                           localRoleName.Contains("Administrador", StringComparison.OrdinalIgnoreCase) ||
+                           localRoleName.Contains("Admin", StringComparison.OrdinalIgnoreCase);
 
         var localUserModel = new UserSessionModel
         {
@@ -198,10 +288,20 @@ public class AuthService : IAuthService
         CurrentUser = localUserModel;
 
         // Cargar sedes locales de SQLite
-        var localBranches = await db.Branches
+        var localBranchesQuery = db.Branches
             .Include(b => b.OperatingHours)
-            .Where(b => b.IsActive)
-            .ToListAsync();
+            .Where(b => b.IsActive);
+
+        if (user.CompanyId.HasValue && user.CompanyId.Value > 0)
+        {
+            var companyBranchExists = await localBranchesQuery.AnyAsync(b => b.CompanyId == user.CompanyId.Value);
+            if (companyBranchExists)
+            {
+                localBranchesQuery = localBranchesQuery.Where(b => b.CompanyId == user.CompanyId.Value);
+            }
+        }
+
+        var localBranches = await localBranchesQuery.ToListAsync();
         var branchesList = localBranches.Select(b => new BranchModel
         {
             Id = b.Id,

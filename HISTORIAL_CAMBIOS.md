@@ -15,10 +15,46 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-11 19:35:00] - [FIX / AUTH / OFFLINE / RESILIENCE / RBAC] - Persistencia Integral y Resiliente de Credenciales, Roles y Sedes en SQLite para Operación Offline Confiable
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+
+  > _"valida porque si ya estuve logeado online con un usuario, no me permite logearme sin internet, si ese deberia ser el funcionamiento correcto para trabajar offlie"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Persistencia Completa de Nuevos Usuarios en SQLite al Iniciar Sesión Online (`AuthService.cs`)**:
+     - **Problema corregido**: En `AuthService.AuthenticateAsync`, tras una autenticación exitosa contra el API Central, se buscaba el usuario en SQLite (`localDb.Users.FirstOrDefaultAsync(...)`) y solo se actualizaba si ya existía (`if (localUser != null)`). Al no existir un bloque `else`, los usuarios creados en la nube o que ingresaban por primera vez en esa terminal física (como `admin.parkgo`) **nunca eran insertados en la base SQLite local**. Al cortar el internet o iniciar en modo offline, la consulta arrojaba `user == null` y rechazaba el acceso con _"Usuario o contraseña incorrectos"_.
+     - **Solución implementada**:
+       - Se agregó la creación e inserción del nuevo usuario en `localDb.Users` cuando `localUser == null`, guardando su `PasswordHash` (BCrypt workFactor 11), `Username`, `FullName`, `Email`, `CompanyId` y asociándole un `RoleId` válido.
+       - Si el rol asignado no existe en SQLite, se asegura su creación o vinculación con los roles canónicos.
+       - Se garantiza la persistencia/actualización de las sedes autorizadas (`apiLogin.Branches`) en `localDb.Branches` para que el selector de sedes y los parámetros operativos estén disponibles en modo offline.
+  2. **Protección Contra Purga de Usuarios en Sincronización (`SyncEngineService.cs`)**:
+     - **Problema corregido**: `SyncEngineService` eliminaba indiscriminadamente de SQLite (`db.Users.RemoveRange(usersToDelete)`) a cualquier usuario cuyo username no estuviera en el paquete `bootstrap.Users` de la sede actual (excepto `"admin"`). Si un usuario con credenciales locales válidas no pertenecía a esa sede específica o era un administrador corporate, era purgado de la base local.
+     - **Solución implementada**: Se protegió al usuario actualmente en sesión (`CurrentUser.Username`) y a todo usuario con `PasswordHash` activo en SQLite, evitando que se borren usuarios con credenciales cacheadas para trabajo offline.
+  3. **Resolución de Roles Administrativos y Filtrado de Sedes en Modo Offline**:
+     - En `AuthService.AuthenticateAsync` (bloque offline), se actualizó la detección de `isLocalAdmin` para soportar variantes compuestas (`Administrador Cadena`, `Administrador Empresa`), otorgando los permisos administrativos o cargando los permisos de terminal sin bloquear al operador.
+     - Se ajustó la carga de sedes en modo offline para filtrar prioritariamente por el `CompanyId` del usuario si existen sedes locales de su empresa.
+  4. **Pruebas y Verificación**:
+     - `dotnet test ParkingWpf.slnx` -> **205/205 Superadas (100% Éxito, 0 Fallos)**.
+     - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet test ParkingWpf.slnx` -> **205 Superadas / 0 Fallos (100% Éxito)**.
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+
+---
+
 ### [2026-09-09 13:00:00] - [FEAT / CONCURRENCY / SIGNALR / REACTIVITY / OFFLINE-SYNC / CANONICAL-DATA] - Reactividad Garantizada de Salidas PWA en WPF, Cero Consultas Recurrentes (Event-Driven) y Resolución Canónica de Conflictos Offline (La Nube Manda)
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"No paila ya estaba en modo activo bien pero saque un vehiculo desde la pwa y en el wpf que si estaba online no se quito el vehjiculo entonces daria doble salida eso no deberia permitirlo si me explico ... y segundo como sería el caso que el wpf este offline y pues el administrador le de saliida desde la pwa y por error el colaborador vuelva y le de salida al vehiculo como no ha sincronizado se lo va a dejar entonces cuando sincronice que pasaria el sitema esta adaptado para decir no esto no se sincroniza por que en la nube ya esta la data real entonces antes la data se baja desde la nube a tierra diciendole no ese vehjiculo ya tuvo slida esta es la data real. si me explico ? pero bueno analiza y dame el plan ."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -32,7 +68,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   2. **Limpieza Inmediata de Pantalla en `CheckOutViewModel` para Evitar Doble Salida**:
      - Al dispararse `TicketCompleted` (sea local o remoto por SignalR):
        - Se ejecuta en el `Dispatcher` de forma no bloqueante.
-       - Si `SelectedTicket` coincide con el vehículo liquidado (por `TicketId` o `PlateNumber`), **se limpia inmediatamente la selección** (`SelectedTicket = null;`), se cierran popups y se muestra banner amigable: *"El vehículo con placa {Placa} fue liquidado centralmente (desde PWA)."*.
+       - Si `SelectedTicket` coincide con el vehículo liquidado (por `TicketId` o `PlateNumber`), **se limpia inmediatamente la selección** (`SelectedTicket = null;`), se cierran popups y se muestra banner amigable: _"El vehículo con placa {Placa} fue liquidado centralmente (desde PWA)."_.
        - Se remueve quirúrgicamente de la colección visual `ActiveVehicles` sin recargar toda la base de datos a 60 FPS.
      - En `ProcessPaymentAsync`: Antes de cobrar, si el terminal está online, se verifica el estado central con `GetTicketByIdAsync(ticketId)`. Si la API informa que el vehículo ya salió, frena el cobro, actualiza SQLite y notifica al operador, eliminando al 100% el riesgo de doble facturación.
   3. **Resolución Canónica de Conflictos Offline ("La Nube Manda / Bajar Data de Nube a Tierra")**:
@@ -74,6 +110,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Listo ya funciono, bien pero tenemos otra cosa si estoy en modo online en el wpf, y desde la pwa le doy salida a un vehiculo de la sede eso deberia ser reactivo para el wpf y que se quite por que aun se queda solo se quita cuando sincroniza manual otra cosa es que quremos quitar lo que cualquier cambio aparezca esa modal de sincronización en vivo quiero cambiarla por algo arriba hay donde esta el estado de la sincronizacion al lado del izquierdo quiero algo mas bonito sii , así sera no tan basta para el usuario colaborador si me explico necesito que analices y me des el plan claro esa modal de sincronización solo va aparecer cuando se le de click manual al boton sincronizar hay si se muestra me explico. has el plan"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -121,6 +158,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Listo ya hice la prueba pero encontre este error y eso me preocuopa por que en los mosktest que estas ahciendo no se por que eso no sale, ingrese modo offiline bien y le conecte internet y si sincronizo por que en la pwa aparecio la nueva darta pero se bloqueo el wpf no dijo nada y se murio el wpf y ya nada mas eso no debería pasar. analisa eso."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -169,6 +207,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"tengo otro error sucede que tengo internet pero como esta bloqueada las salidas a otras rutas pues no va a conectar a la api el sisitema lo detecta e inicia en modo offiline pero genera este error de entrada hay que por que si la ultima vez estaba bien que sucede hay ? analiza eso."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -207,10 +246,12 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **✅ Verificación y Compilación**:
   - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
   - `dotnet test ParkingWpf.slnx` -> **193/193 Superadas (100% Éxito, 0 Fallos)**.
+
 ### [2026-09-09 23:20:00] - [UI/UX / PRIVACY / SECURITY / WPF] - Ocultamiento Total del Código / Identificador Privado de Sedes en Diálogo de Selección
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Ayudame para en el wpf y ni el pwa, se vea el id de las sedes, este dato es privado de BD y no debe mostrarse a usuaro"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -232,6 +273,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Ajustame esto, cuando escribo un texto largo en el campo de la placa y mi resolucion de pantalla es pequeño, el texto se corta , deberia tener la accion de que si es largo, se achique la letra para que pueda ver todo el campo"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -239,7 +281,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - En `CheckInView.xaml`, el control `PlateTextBox` utilizaba un tamaño fijo de `FontSize="84"` (con estilo base `PlateInputTextBox` en `Controls.xaml`). Con fuente monoespaciada `Consolas`, cadenas de 9 caracteres (como `343423323` evidenciado en la captura del usuario) o códigos de 10–12 caracteres superaban los 470px–550px de ancho necesario.
      - En monitores con resolución estándar o reducida (ej: 1366x768, 1280x720) o cuando la ventana no está maximizada, el ancho disponible de la columna del formulario se contrae, causando que los caracteres extremos se recorten o queden ocultos fuera de la vista.
   2. **Diseño e Implementación de `AutoShrinkFontHelper.cs` (`Parking.Core.Helpers`)**:
-     - Se creó un *Attached Property* de alto rendimiento (`AutoShrinkFontHelper`) que expone `IsEnabled`, `MaxFontSize` y `MinFontSize`.
+     - Se creó un _Attached Property_ de alto rendimiento (`AutoShrinkFontHelper`) que expone `IsEnabled`, `MaxFontSize` y `MinFontSize`.
      - Se suscribe reactivamente a los eventos `TextChanged`, `SizeChanged` y `Loaded` del `TextBox`.
      - Mide el ancho disponible real descontando `Padding`, `BorderThickness` y un margen defensivo de 24px para acomodar el cursor (`caret`) y sombras estéticas.
      - Implementa `CalculateFittingFontSize(...)` como método puro testeable que evalúa la métrica tipográfica con `FormattedText` y DPI nativo (`VisualTreeHelper.GetDpi`).
@@ -268,6 +310,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Sabes que vi que listo ya funciona cuando se queda offline bien sigue operando pero vuelvo a conectar el internet y no se autoconecta no se cada cuanto hace como la reevaluacion de que si tiene internet esa task solo se activa para quede offline y pues se desactiva cuando vuelva a estar en linea si me explico. analiza eso"_
   > _"esto no afecta el rendimiento para las consultas pues digo si dura sin internete bastante eso no genera sobreconsultas en el wpf y afectaria el rendimiento ?"_
 
@@ -310,6 +353,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"se revento esa excepción cuando le di ingreso a un vehiculo algo sucede hay mira, siempre genera esas excepciones y ahora peor queria hacer la prueba de desconectar el internet se murio de una Parking.exe' (CoreCLR: clrhost): 'C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.11\System.Reflection.Metadata.dll' cargado... Excepción producida: 'System.Threading.Tasks.TaskCanceledException'... Excepción producida: 'System.Net.Http.HttpRequestException'... Excepción producida: 'Microsoft.Data.Sqlite.SqliteException' (x6)... enserio veo que algo esta sucediendo algo esta mal existe algo pegado algo no esta bien configurado necesito saber donde se revienta eso me parece que es por as peticiones de http por que se fue sin internet el wpf deberia de una activar el modo offline si no obtiene respuewsta despues de 10 seg y no se cada cuanto tiene como un hilo preguntando. analiza eso."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -324,7 +368,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - Diagnóstico: Se ejecutaban 6 sentencias `ALTER TABLE "ParkingTickets" ADD COLUMN ...` y 2 en `MonthlySubscriptions` en cada inserción. Como las columnas ya existen en la base de datos local SQLite, el motor arrojaba `SqliteException: duplicate column name` 6 veces por cada ingreso de vehículo.
      - Solución: Se removieron estos bloques redundantes ya que `DbConnectionManager` realiza la inspección y migración de esquema en el arranque de la aplicación.
   5. **Debounce en Búsqueda de Placas (`CheckInViewModel.cs`)**:
-     - Se añadió *debouncing* de 350ms con cancelación reactiva (`_plateSearchCts`), evitando ráfagas de 4-5 peticiones HTTP simultáneas al escribir la placa en el teclado.
+     - Se añadió _debouncing_ de 350ms con cancelación reactiva (`_plateSearchCts`), evitando ráfagas de 4-5 peticiones HTTP simultáneas al escribir la placa en el teclado.
   6. **Aislamiento Offline en Turnos (`EfShiftService.cs`)**:
      - `RefreshCurrentShiftAsync`, `OpenShiftAsync`, `CloseShiftAsync` y `GetCurrentShiftSummaryAsync` ahora verifican `IsOnline` antes de tocar la red, ejecutando en microsegundos contra SQLite si el sistema está offline.
   7. **Optimización del Heartbeat de Sesión (`SessionHeartbeatService.cs`)**:
@@ -357,6 +401,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"seguimos teniendo el mimos problema con el wpf algo sucede esta reventando el sistema no esta funcionando como debería funcionar se revienta genera y genera ese excepción y el sistema se dañla no se que hilos esta creando o que esta pasando para que suceda eso. 'Parking.exe' (CoreCLR: DefaultDomain): 'C:\Program Files\dotnet\shared\Microsoft.NETCore.App\10.0.11\System.Private.CoreLib.dll' cargado... Excepción del tipo 'System.Text.Json.JsonException' en System.Text.Json.dll en .NET TP Worker..."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -400,6 +445,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"esto no deberia ir para que se avisa a si mismo que se le aviso al administrador no tiene sentido eso eso debe ser transparente para el colaborador. mira como se ve esta modal esta supremamente mal eso no deberia verse así no se por que se ve tan grande. se cierra el turno desde la pwa y salio el mensaje y se trabo el wpf hay que sucede ? este boton titilea todo feo ese verde. el wpf se esta trabando se esta quedando bloqueado le iba a dar salida a un vehiculo y se bloque inmediatamente no se que sucedio hay quedo muerto se trabo ahora que pasa ya me ha pasado varias veces no se si intenta hacer algo o algo y se muere crea hilos o algo no entiendo que sucede. genero esto en la salida del visual studio System.Windows.Data Error: 12 : TargetNullValue '/Resources/logo.jpeg' (type 'String') cannot be converted for use in 'Source' (type 'ImageSource'). BindingExpression:Path=ImageUrl; DataItem=null; target element is 'Image' (Name=''); target property is 'Source' (type 'ImageSource') DirectoryNotFound. el cobro por dias enteros no me funciono"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -437,6 +483,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"debes analiza completamente para saber que paso son a seguir... Yo entro al WPF y listo, me sale abrir turno. Él dice que abrió turno, pero NO está guardando en la base de datos. No lo está haciendo. Por ende, en el PWA no registra... Yo puedo abrir una caja a un usuario específico desde la PWA... cuando ingrese en WPF debe saber que ya tiene caja abierta... al cerrar caja en PWA debe devolverlo al módulo de abrir caja... al abrir caja en WPF debe aparecer en tiempo real en PWA... y en PWA en módulo de activos dice que la sede se encuentra configurada como cerrada..."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -448,7 +495,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - Se actualizó la verificación de propiedad del turno: si `activeShift.UserId == CurrentUser.ServerUserId`, el sistema reconoce al operador inmediatamente como dueño del turno (además de la comparación por nombre).
      - Al iniciar sesión un operador al que se le abrió la caja desde la PWA, el sistema detecta su turno abierto y entra directamente a la operación (`CheckInViewModel`), sin exigir abrir caja nuevamente.
   3. **Cierre de Caja Remoto y Bloqueo Operativo**:
-     - Al recibir SignalR `ShiftClosed`, se reconcilia el turno, se muestra el aviso *"Se ha cerrado la caja por orden del administrador desde el panel central (PWA)"* y se redirige a `ShiftClosureViewModel`, bloqueando las operaciones hasta una nueva apertura.
+     - Al recibir SignalR `ShiftClosed`, se reconcilia el turno, se muestra el aviso _"Se ha cerrado la caja por orden del administrador desde el panel central (PWA)"_ y se redirige a `ShiftClosureViewModel`, bloqueando las operaciones hasta una nueva apertura.
   4. **Verificación y Pruebas Unitarias**:
      - `dotnet test ParkingWpf.slnx`: 165 de 165 pruebas superadas (0 fallos).
 
