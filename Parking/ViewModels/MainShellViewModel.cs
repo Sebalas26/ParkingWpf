@@ -385,6 +385,7 @@ public partial class MainShellViewModel : ViewModelBase
 
                 try
                 {
+                    var hadActiveShiftLocally = HasActiveShift;
                     await _shiftService.RefreshCurrentShiftAsync();
                     HasActiveShift = _shiftService.HasActiveShift;
 
@@ -392,6 +393,13 @@ public partial class MainShellViewModel : ViewModelBase
                     {
                         SyncStatusText = $"Caja cerrada centralmente ({DateTime.Now.ToString("hh:mm tt", CultureInfo.InvariantCulture)})";
                         
+                        // Si ya no había turno activo en este terminal (por ejemplo, el usuario lo cerró localmente),
+                        // o si el operador ya se encuentra en la pantalla de control de turno/cierre, omitir el diálogo modal invasivo
+                        if (!hadActiveShiftLocally || ActiveView is ShiftClosureViewModel)
+                        {
+                            return;
+                        }
+
                         if (_permissionService.HasPermission("shifts.view_current"))
                         {
                             NavigateToShiftClosure();

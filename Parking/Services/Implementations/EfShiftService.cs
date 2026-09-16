@@ -113,6 +113,14 @@ public class EfShiftService : IShiftService
                     shift.IsSynchronized = true;
                 }
             }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("Forbidden", StringComparison.OrdinalIgnoreCase) 
+                || ex.Message.Contains("403") 
+                || ex.Message.Contains("<html", StringComparison.OrdinalIgnoreCase) 
+                || ex.Message.Contains("Proxy", StringComparison.OrdinalIgnoreCase)
+                || ex.Message.Contains("interceptada", StringComparison.OrdinalIgnoreCase))
+            {
+                // Proxy / firewall corporativo interceptando la petición como 403 en lugar del API central: fallback a local
+            }
             catch (InvalidOperationException)
             {
                 // El servidor central rechazó activamente la apertura de turno (regla de negocio / validación)
@@ -519,30 +527,38 @@ public class EfShiftService : IShiftService
         var summary = await GetCurrentShiftSummaryAsync();
         var endTime = DateTime.UtcNow;
 
-        using var db = _connectionManager.CreateDbContext();
-        var local = await db.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == activeShift.ShiftId);
-        if (local != null)
+        await _shiftDbLock.WaitAsync();
+        try
         {
-            local.EndTimeUtc = endTime;
-            local.ClosedAtUtc = endTime;
-            local.TotalCashCollected = summary.TotalCashCollected;
-            local.TotalCardCollected = summary.TotalCardCollected;
-            local.TotalTransferCollected = summary.TotalTransferCollected;
-            local.TotalDiscounts = summary.TotalDiscounts;
-            local.TotalCashWithdrawals = summary.TotalCashWithdrawals;
-            local.ExpectedCash = summary.ExpectedCash;
-            local.ActualCashCounted = actualCashCounted;
-            local.CashDifference = actualCashCounted - summary.ExpectedCash;
-            local.TotalTicketsProcessed = summary.TotalTicketsProcessed;
-            local.TotalVehiclesEntered = summary.TotalVehiclesEntered;
-            local.Status = 1;
-            local.Notes = notes ?? local.Notes;
-            local.HandoverToUserId = handoverToUserId;
-            local.HandoverToUserName = handoverToUserName;
-            local.IsSynchronized = closedShift != null;
-            await db.SaveChangesAsync();
+            using var db = _connectionManager.CreateDbContext();
+            var local = await db.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == activeShift.ShiftId);
+            if (local != null)
+            {
+                local.EndTimeUtc = endTime;
+                local.ClosedAtUtc = endTime;
+                local.TotalCashCollected = summary.TotalCashCollected;
+                local.TotalCardCollected = summary.TotalCardCollected;
+                local.TotalTransferCollected = summary.TotalTransferCollected;
+                local.TotalDiscounts = summary.TotalDiscounts;
+                local.TotalCashWithdrawals = summary.TotalCashWithdrawals;
+                local.ExpectedCash = summary.ExpectedCash;
+                local.ActualCashCounted = actualCashCounted;
+                local.CashDifference = actualCashCounted - summary.ExpectedCash;
+                local.TotalTicketsProcessed = summary.TotalTicketsProcessed;
+                local.TotalVehiclesEntered = summary.TotalVehiclesEntered;
+                local.Status = 1;
+                local.Notes = notes ?? local.Notes;
+                local.HandoverToUserId = handoverToUserId;
+                local.HandoverToUserName = handoverToUserName;
+                local.IsSynchronized = closedShift != null;
+                await db.SaveChangesAsync();
 
-            closedShift ??= local;
+                closedShift ??= local;
+            }
+        }
+        finally
+        {
+            _shiftDbLock.Release();
         }
 
         CurrentShift = null;
@@ -572,9 +588,17 @@ public class EfShiftService : IShiftService
             CreatedAtUtc = DateTime.UtcNow
         };
 
-        using var db = _connectionManager.CreateDbContext();
-        db.WorkShifts.Add(nextShift);
-        await db.SaveChangesAsync();
+        await _shiftDbLock.WaitAsync();
+        try
+        {
+            using var db = _connectionManager.CreateDbContext();
+            db.WorkShifts.Add(nextShift);
+            await db.SaveChangesAsync();
+        }
+        finally
+        {
+            _shiftDbLock.Release();
+        }
 
         CurrentShift = nextShift;
         ShiftStateChanged?.Invoke();

@@ -45,6 +45,25 @@ public class ParkingApiClient : IApiClientService
         ConnectionStateChanged?.Invoke(isOnline);
     }
 
+    private static bool IsGenuineApiResponse(HttpResponseMessage response)
+    {
+        var mediaType = response.Content?.Headers?.ContentType?.MediaType;
+        if (mediaType != null && mediaType.Contains("html", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            if (mediaType != null && !mediaType.Contains("json", StringComparison.OrdinalIgnoreCase) && !mediaType.Contains("problem", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private void CheckUnauthorized(HttpResponseMessage response)
     {
         if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
@@ -75,8 +94,13 @@ public class ParkingApiClient : IApiClientService
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3.5));
         try
         {
-            var response = await _httpClient.GetAsync($"{BaseUrl}/api/health", cts.Token);
-            if (response.IsSuccessStatusCode)
+            var response = await _httpClient.GetAsync($"{BaseUrl}/health", cts.Token);
+            if (!response.IsSuccessStatusCode)
+            {
+                response = await _httpClient.GetAsync($"{BaseUrl}/api/health", cts.Token);
+            }
+
+            if (response.IsSuccessStatusCode && IsGenuineApiResponse(response))
             {
                 ReportConnectionState(true);
                 return true;
@@ -91,8 +115,13 @@ public class ParkingApiClient : IApiClientService
             try
             {
                 using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(2.5));
-                var response = await _httpClient.GetAsync($"{fallbackUrl}/api/health", ctsFallback.Token);
-                if (response.IsSuccessStatusCode)
+                var response = await _httpClient.GetAsync($"{fallbackUrl}/health", ctsFallback.Token);
+                if (!response.IsSuccessStatusCode)
+                {
+                    response = await _httpClient.GetAsync($"{fallbackUrl}/api/health", ctsFallback.Token);
+                }
+
+                if (response.IsSuccessStatusCode && IsGenuineApiResponse(response))
                 {
                     BaseUrl = fallbackUrl;
                     ReportConnectionState(true);
@@ -347,6 +376,12 @@ public class ParkingApiClient : IApiClientService
                 return await response.Content.ReadFromJsonAsync<WorkShift>(JsonOptions, cts.Token);
             }
 
+            if (!IsGenuineApiResponse(response))
+            {
+                ReportConnectionState(false);
+                throw new HttpRequestException($"La comunicación con el servidor central fue interceptada o no es válida ({response.StatusCode}).");
+            }
+
             ReportConnectionState(true);
             string errorMessage = $"Error del servidor al abrir turno ({response.StatusCode})";
             try
@@ -393,6 +428,13 @@ public class ParkingApiClient : IApiClientService
             var url = $"{BaseUrl}/api/shifts/active{queryString}";
             var response = await _httpClient.GetAsync(url, cts.Token);
             CheckUnauthorized(response);
+
+            if (!IsGenuineApiResponse(response))
+            {
+                ReportConnectionState(false);
+                return null;
+            }
+
             if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             {
                 ReportConnectionState(true);
@@ -431,6 +473,13 @@ public class ParkingApiClient : IApiClientService
                 ReportConnectionState(true);
                 return await response.Content.ReadFromJsonAsync<ShiftSummaryModel>(JsonOptions, cts.Token);
             }
+
+            if (!IsGenuineApiResponse(response))
+            {
+                ReportConnectionState(false);
+                return null;
+            }
+
             ReportConnectionState(true);
             return null;
         }
@@ -457,6 +506,13 @@ public class ParkingApiClient : IApiClientService
                 ReportConnectionState(true);
                 return await response.Content.ReadFromJsonAsync<WorkShift>(JsonOptions, cts.Token);
             }
+
+            if (!IsGenuineApiResponse(response))
+            {
+                ReportConnectionState(false);
+                return null;
+            }
+
             ReportConnectionState(true);
             return null;
         }

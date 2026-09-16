@@ -324,6 +324,25 @@ public class EfShiftServiceTests : IDisposable
         service.HasActiveShift.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task OpenShiftAsync_WhenProxyOrFirewallBlocksWith403_FallsBackToLocalShiftCreation()
+    {
+        // Arrange
+        var service = CreateService();
+        _mockApiClient.Setup(a => a.OpenShiftAsync(It.IsAny<OpenShiftApiRequest>()))
+            .ThrowsAsync(new InvalidOperationException("Error del servidor al abrir turno (Forbidden)"));
+
+        // Act
+        var result = await service.OpenShiftAsync(50000m, "Apertura con firewall");
+
+        // Assert
+        result.Should().NotBeNull();
+        result.BaseAmount.Should().Be(50000m);
+        result.IsSynchronized.Should().BeFalse();
+        service.HasActiveShift.Should().BeTrue();
+        service.CurrentShift.Should().Be(result);
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

@@ -131,12 +131,12 @@ public partial class App : Application
         // ViewModels
         services.AddTransient<LoginViewModel>();
         services.AddSingleton<MainShellViewModel>();
-        services.AddTransient<CheckInViewModel>();
-        services.AddTransient<CheckOutViewModel>();
-        services.AddTransient<RecentEntriesViewModel>();
-        services.AddTransient<AnalyticsViewModel>();
-        services.AddTransient<ShiftClosureViewModel>();
-        services.AddTransient<MonthlySubscriptionsViewModel>();
+        services.AddSingleton<CheckInViewModel>();
+        services.AddSingleton<CheckOutViewModel>();
+        services.AddSingleton<RecentEntriesViewModel>();
+        services.AddSingleton<AnalyticsViewModel>();
+        services.AddSingleton<ShiftClosureViewModel>();
+        services.AddSingleton<MonthlySubscriptionsViewModel>();
         services.AddTransient<ReceiptPreviewViewModel>();
 
         // Windows & Views

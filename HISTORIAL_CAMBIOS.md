@@ -15,6 +15,45 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-16 17:00:00] - [FIX / SHIFTS / OFFLINE / RESILIENCE / DI / PROXY] - Solución Integral a Bloqueos de Proxy/Firewall, Crashes de Apertura/Cierre de Turno y Fugas de Suscripciones en ViewModels
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+
+  > _"ayudame a validar porque cuando en el wpf abro caja o cierro se crashea generandome estos errores"_ / _"revisame este plan o huecos tecnicos"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Detección Inteligente de Proxy/Firewall (`ParkingApiClient.cs`)**:
+     - Se implementó `IsGenuineApiResponse(HttpResponseMessage response)` para detectar intercepciones por WAF/firewall corporativo (Fortinet/FortiGuard 403 Forbidden con payload HTML) o gateways intermediarios que devuelven HTML en lugar de JSON.
+     - En `OpenShiftAsync`, si la respuesta del proxy es un 403 HTML, no se lanza `InvalidOperationException` (que abortaba el flujo), sino `HttpRequestException`, notificando `ReportConnectionState(false)`.
+     - En `CloseShiftAsync`, `GetActiveShiftAsync` y `GetShiftSummaryAsync`, se eliminaron los falsos positivos de `ReportConnectionState(true)` cuando el proxy devuelve respuestas no exitosas.
+  2. **Corrección de Endpoint en Health Check (`ParkingApiClient.PingAsync`)**:
+     - `PingAsync` apuntaba a `/api/health` inexistente en el backend ASP.NET Core (que mapea `/health`). Se corrigió a `/health` con fallback a `/api/health` y validación de `IsGenuineApiResponse`, permitiendo la recuperación automática del estado online en `SyncEngineService`.
+  3. **Resiliencia en Apertura y Cierre de Turno (`EfShiftService.cs`)**:
+     - `OpenShiftAsync` ahora captura excepciones de intercepción de proxy (403, Forbidden, HTML, interceptada) y realiza el fallback fluido a la apertura local en SQLite (`IsSynchronized = false`) sin alertar al usuario ni interrumpir la operación de caja.
+     - `CloseShiftAsync` y `HandoverAndOpenNextShiftAsync` fueron protegidos con `await _shiftDbLock.WaitAsync()` para serializar el acceso a la base de datos local SQLite y prevenir excepciones de bloqueo de archivo o concurrencia con `RefreshCurrentShiftAsync`.
+  4. **Prevención de Fuga de Suscripciones en ViewModels (`App.xaml.cs`)**:
+     - Los ViewModels de navegación (`CheckInViewModel`, `CheckOutViewModel`, `RecentEntriesViewModel`, `AnalyticsViewModel`, `ShiftClosureViewModel`, `MonthlySubscriptionsViewModel`) fueron promovidos de `Transient` a `Singleton`. Esto previene la acumulación de instancias zombie suscritas a eventos de servicios Singleton que disparaban peticiones HTTP concurrentes y multiplicaban las esperas por timeout al cerrar turno.
+  5. **Supresión de Diálogo Modal Duplicado (`MainShellViewModel.cs`)**:
+     - Se añadió validación previa del estado local (`hadActiveShiftLocally` y `ActiveView is ShiftClosureViewModel`) antes de desplegar la alerta modal invasiva de "Caja cerrada centralmente por orden del administrador" ante eventos SignalR `ShiftClosed`, evitando colisión de diálogos cuando el operador cierra la caja en su propio terminal.
+  6. **Pruebas Unitarias y Certificación**:
+     - Se agregó la prueba unitaria `OpenShiftAsync_WhenProxyOrFirewallBlocksWith403_FallsBackToLocalShiftCreation` en `EfShiftServiceTests.cs`.
+     - **212 Pruebas Unitarias Superadas (100% Éxito, 0 Fallos)**.
+     - **0 Errores y 0 Advertencias de Compilación (`dotnet build`)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/App.xaml.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build Parking/Parking.csproj`: 0 Errores, 0 Advertencias.
+  - `dotnet test ParkingWpf.slnx`: 212 Pruebas ejecutadas, 212 Superadas, 0 Fallos.
+
+---
+
 ### [2026-09-14 15:00:00] - [FEAT / DIAN / SIIGO / FACTURACIÓN ELECTRÓNICA / CLIENTES / SYNC / UI] - Integración Integral de Facturación Electrónica DIAN / Siigo en ParkFlow Desktop (WPF)
 
 - **Autor**: Antigravity AI Assistant & Software Architect
