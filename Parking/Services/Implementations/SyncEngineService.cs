@@ -1422,11 +1422,16 @@ public class SyncEngineService : ISyncEngineService
             var localTickets = await db.ParkingTickets.ToListAsync(ct);
             var localByTicketId = localTickets.ToDictionary(t => t.TicketId);
             var localByTicketNumber = new Dictionary<string, ParkingTicket>(StringComparer.OrdinalIgnoreCase);
+            var localActiveByPlate = new Dictionary<string, ParkingTicket>(StringComparer.OrdinalIgnoreCase);
             foreach (var lt in localTickets)
             {
                 if (!string.IsNullOrWhiteSpace(lt.TicketNumber))
                 {
                     localByTicketNumber[lt.TicketNumber.Trim()] = lt;
+                }
+                if (lt.Status == TicketStatus.Active && !string.IsNullOrWhiteSpace(lt.PlateNumber))
+                {
+                    localActiveByPlate[lt.PlateNumber.Trim()] = lt;
                 }
             }
 
@@ -1447,6 +1452,27 @@ public class SyncEngineService : ISyncEngineService
                 else if (localByTicketNumber.TryGetValue(normalizedTicketNumber, out var matchByNum))
                 {
                     existing = matchByNum;
+                }
+                else if (status == TicketStatus.Active && !string.IsNullOrWhiteSpace(ticket.PlateNumber) && localActiveByPlate.TryGetValue(ticket.PlateNumber.Trim(), out var matchByPlate))
+                {
+                    existing = matchByPlate;
+                }
+
+                if (existing != null && existing.TicketId != ticket.TicketId)
+                {
+                    var oldestEntry = existing.EntryTimeUtc < ticket.EntryTimeUtc ? existing.EntryTimeUtc : ticket.EntryTimeUtc;
+                    db.ParkingTickets.Remove(existing);
+                    await db.SaveChangesAsync(ct);
+
+                    if (localByTicketId.ContainsKey(existing.TicketId))
+                        localByTicketId.Remove(existing.TicketId);
+                    if (!string.IsNullOrWhiteSpace(existing.TicketNumber) && localByTicketNumber.ContainsKey(existing.TicketNumber.Trim()))
+                        localByTicketNumber.Remove(existing.TicketNumber.Trim());
+                    if (!string.IsNullOrWhiteSpace(existing.PlateNumber) && localActiveByPlate.ContainsKey(existing.PlateNumber.Trim()))
+                        localActiveByPlate.Remove(existing.PlateNumber.Trim());
+
+                    existing = null;
+                    ticket.EntryTimeUtc = oldestEntry;
                 }
 
                 if (existing != null)
@@ -1530,6 +1556,10 @@ public class SyncEngineService : ISyncEngineService
                     db.ParkingTickets.Add(newTicket);
                     localByTicketId[ticket.TicketId] = newTicket;
                     localByTicketNumber[normalizedTicketNumber] = newTicket;
+                    if (newTicket.Status == TicketStatus.Active && !string.IsNullOrWhiteSpace(newTicket.PlateNumber))
+                    {
+                        localActiveByPlate[newTicket.PlateNumber.Trim()] = newTicket;
+                    }
                 }
                 ticketsCount++;
             }
@@ -1794,7 +1824,39 @@ public class SyncEngineService : ISyncEngineService
                         if (req != null)
                         {
                             var result = await _apiClient.CheckInAsync(req);
-                            if (result != null) item.IsProcessed = true;
+                            if (result != null)
+                            {
+                                item.IsProcessed = true;
+
+                                // Conciliar el TicketId local de SQLite con el canónico de la API
+                                if (req.TicketId.HasValue && req.TicketId.Value != Guid.Empty && req.TicketId.Value != result.TicketId)
+                                {
+                                    var localOldTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == req.TicketId.Value);
+                                    if (localOldTicket != null)
+                                    {
+                                        db.ParkingTickets.Remove(localOldTicket);
+                                        await db.SaveChangesAsync();
+
+                                        localOldTicket.TicketId = result.TicketId;
+                                        localOldTicket.TicketNumber = result.TicketNumber;
+                                        localOldTicket.EntryTimeUtc = result.EntryTimeUtc;
+                                        localOldTicket.IsSynchronized = true;
+
+                                        db.ParkingTickets.Add(localOldTicket);
+                                        await db.SaveChangesAsync();
+                                    }
+                                }
+                                else if (req.TicketId.HasValue)
+                                {
+                                    var localTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == req.TicketId.Value);
+                                    if (localTicket != null)
+                                    {
+                                        localTicket.EntryTimeUtc = result.EntryTimeUtc;
+                                        localTicket.IsSynchronized = true;
+                                        await db.SaveChangesAsync();
+                                    }
+                                }
+                            }
                         }
                     }
                     else if (item.OperationType == "CheckOut")

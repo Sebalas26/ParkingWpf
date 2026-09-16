@@ -744,8 +744,25 @@ public class EfParkingTicketService : IParkingTicketService
                         };
 
                         var existing = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == entity.TicketId);
+                        if (existing == null && !string.IsNullOrWhiteSpace(entity.PlateNumber))
+                        {
+                            var normalizedPlate = entity.PlateNumber.Trim().ToUpperInvariant();
+                            existing = await db.ParkingTickets.FirstOrDefaultAsync(t => t.Status == TicketStatus.Active && t.PlateNumber.ToUpper() == normalizedPlate);
+                        }
+
                         if (existing == null)
                         {
+                            db.ParkingTickets.Add(entity);
+                            await db.SaveChangesAsync();
+                            existing = entity;
+                        }
+                        else if (existing.TicketId != entity.TicketId)
+                        {
+                            var oldestTime = entity.EntryTimeUtc < existing.EntryTimeUtc ? entity.EntryTimeUtc : existing.EntryTimeUtc;
+                            db.ParkingTickets.Remove(existing);
+                            await db.SaveChangesAsync();
+
+                            entity.EntryTimeUtc = oldestTime;
                             db.ParkingTickets.Add(entity);
                             await db.SaveChangesAsync();
                             existing = entity;

@@ -15,6 +15,27 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-16 17:25:00] - [FEAT / FIX / SYNC / RECONCILIATION / REALTIME] - Conciliación Concurrente de Tiquetes por Placa Activa y Sincronización Silenciosa Real-Time con PWA
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Tengo el siguiente problema en la PWA en el modulo de activos cuando se tiene la siguiente validación si la empresa tiene configurado lo de cajas, si la caja de esa sede no esta abierta pues dice que se debe abrir caja eso esta super bien bien pero entonces tenemos el siguiente error ya la caja esta abierta en la sede por un usuario x si de mi empresa entonces yo o cualquier otra persona que tenga acceso a la pwa de mi empresa y permisos al modulo de activos entonces el ingresa en la parte de arriba ya esta seleccionada la sede entonces el va le da ingresar vehiculo y le sale que no tiene caja abierta pero como te decia la caja ya esta abierta de esa sede deberia dejar ingresar el vehiculo y que el wpf si esta en linea automaticamente le aparezca recuerda que en WPF ya no sale esa alerta de sincronización si no lo hace automatico, si no llegase a estar en linea y posible el wpf tambien le dio ingreso que sucede el toma el mas viejo desde el ingreso del vehiculo pero tiene que ser exactamente igual los datos"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Conciliación de Tiquetes en Recepción Remota SignalR (`EfParkingTicketService.cs`)**:
+     - En `HandleRemoteTicketCheckInAsync`, al recibir una notificación de ingreso (originada en PWA u otra terminal), se realiza una búsqueda defensiva en SQLite local no solo por `TicketId`, sino también por placa activa (`Status == TicketStatus.Active && PlateNumber.ToUpper() == normalizedPlate`).
+     - Si el vehículo ya existía localmente con un `TicketId` preliminar generado offline, se remueve el registro local y se inserta con el `TicketId` canónico del servidor, conservando la hora de ingreso más antigua (`Math.Min(entity.EntryTimeUtc, existing.EntryTimeUtc)`).
+  2. **Reconciliación de Cola Pendiente de CheckIn Offline (`SyncEngineService.cs`)**:
+     - En `ProcessPendingQueueAsync`, cuando un `CheckIn` generado en modo offline se envía al API y se obtiene la respuesta canónica `result`:
+       - Si `req.TicketId != result.TicketId`, se sustituye la clave primaria en SQLite removiendo la fila con el `TicketId` local temporal e insertando la entidad definitiva con `result.TicketId`, `result.TicketNumber` y `result.EntryTimeUtc`.
+  3. **Tercer Criterio de Coincidencia en Bootstrap Step 8 (`SyncEngineService.cs`)**:
+     - Durante la descarga inicial o reanudación online (`ExecuteBootstrapCycleAsync`), se indexan los tiquetes activos locales en el diccionario `localActiveByPlate`.
+     - Si un tiquete entrante de la nube no coincide por `TicketId` ni por `TicketNumber`, pero coincide por placa activa en la misma sede, se concilia preservando la hora de ingreso más antigua y actualizando el `TicketId` canónico en SQLite sin generar duplicados.
+  4. **Cero Regresiones y Pruebas Unitarias al 100%**:
+     - `dotnet test ParkingWpf.slnx`: **212 pruebas superadas, 0 fallos**.
+
+---
+
 ### [2026-09-16 17:00:00] - [FIX / SHIFTS / OFFLINE / RESILIENCE / DI / PROXY] - Solución Integral a Bloqueos de Proxy/Firewall, Crashes de Apertura/Cierre de Turno y Fugas de Suscripciones en ViewModels
 
 - **Autor**: Antigravity AI Assistant & Software Architect
