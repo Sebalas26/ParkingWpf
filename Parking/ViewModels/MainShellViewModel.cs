@@ -370,6 +370,19 @@ public partial class MainShellViewModel : ViewModelBase
             var branchId = _sessionService.CurrentBranch?.Id;
             if (!notification.BranchId.HasValue || (branchId.HasValue && notification.BranchId.Value == branchId.Value))
             {
+                // Si es apertura y el turno ya está registrado y activo en memoria para este operador, omitir re-consulta concurrente
+                if (notification.EventType == "ShiftOpened" && _shiftService.HasActiveShift)
+                {
+                    if (notification.EntityId.HasValue && _shiftService.CurrentShift?.ShiftId == notification.EntityId.Value)
+                    {
+                        return;
+                    }
+                    if (notification.UserId.HasValue && _sessionService.CurrentUser?.ServerUserId == notification.UserId.Value)
+                    {
+                        return;
+                    }
+                }
+
                 try
                 {
                     await _shiftService.RefreshCurrentShiftAsync();

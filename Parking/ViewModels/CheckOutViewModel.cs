@@ -47,6 +47,9 @@ public partial class CheckOutViewModel : ViewModelBase
     private string _searchQuery = string.Empty;
 
     [ObservableProperty]
+    private bool _isVirtualKeyboardVisible;
+
+    [ObservableProperty]
     private ParkingTicket? _selectedTicket;
 
     [ObservableProperty]
@@ -337,6 +340,16 @@ public partial class CheckOutViewModel : ViewModelBase
         {
             await LoadCustomersAsync();
         }
+        await _pricingCalculator.ReloadRatesAsync();
+        if (SelectedTicket != null)
+        {
+            var rateInfo = _pricingCalculator.GetRate(SelectedTicket.VehicleType);
+            HourRate = rateInfo?.HourRate ?? 0m;
+            MinuteRate = rateInfo != null && rateInfo.MinuteRate > 0
+                ? rateInfo.MinuteRate
+                : (rateInfo != null && rateInfo.HourRate > 0 ? Math.Round(rateInfo.HourRate / 60m, 2) : 0m);
+            RecalculateLiveFee();
+        }
     }
 
     private async Task LoadCustomersAsync()
@@ -617,6 +630,38 @@ public partial class CheckOutViewModel : ViewModelBase
         HasFeedback = false;
         FeedbackMessage = null;
         SelectedTicket = null;
+    }
+
+    [RelayCommand]
+    private void ToggleVirtualKeyboard()
+    {
+        IsVirtualKeyboardVisible = !IsVirtualKeyboardVisible;
+    }
+
+    [RelayCommand]
+    private void AppendVirtualKey(string key)
+    {
+        if (string.IsNullOrEmpty(key)) return;
+
+        if (key.Equals("BACKSPACE", StringComparison.OrdinalIgnoreCase) || key.Equals("DEL", StringComparison.OrdinalIgnoreCase))
+        {
+            if (SearchQuery.Length > 0)
+            {
+                SearchQuery = SearchQuery[..^1];
+            }
+        }
+        else if (key.Equals("CLEAR", StringComparison.OrdinalIgnoreCase))
+        {
+            SearchQuery = string.Empty;
+        }
+        else if (key.Equals("SPACE", StringComparison.OrdinalIgnoreCase))
+        {
+            SearchQuery += " ";
+        }
+        else
+        {
+            SearchQuery = (SearchQuery + key).ToUpperInvariant();
+        }
     }
 
     private string SanitizePlateQuery(string raw)

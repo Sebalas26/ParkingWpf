@@ -58,6 +58,7 @@ public partial class CheckOutView : UserControl
             {
                 SearchTextBox.Focus();
                 Keyboard.Focus(SearchTextBox);
+                SearchTextBox.CaretIndex = SearchTextBox.Text.Length;
             }
         }));
     }

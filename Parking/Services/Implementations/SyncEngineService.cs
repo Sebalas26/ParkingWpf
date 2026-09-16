@@ -786,7 +786,11 @@ public class SyncEngineService : ISyncEngineService
                 {
                     var rateId = rate.GetRateId();
                     var vehicleType = rate.GetVehicleType();
-                    var targetBranchId = rate.GetBranchId() ?? currentBranchId;
+                    if (currentBranchId.HasValue && rate.GetBranchId().HasValue && rate.GetBranchId()!.Value != currentBranchId.Value)
+                    {
+                        continue;
+                    }
+                    var targetBranchId = currentBranchId ?? rate.GetBranchId();
 
                     // Omitir registros de plantilla general sin sede que tengan tarifa 0 (catálogo no asignado a la sede)
                     if (!rate.GetBranchId().HasValue && rate.GetHourRate() == 0 && rate.GetMinuteRate() == 0)

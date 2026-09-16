@@ -17,8 +17,8 @@
         KeyDown="Window_KeyDown">
 
     <Grid Background="Transparent">
-        <Border Width="440"
-                MaxHeight="600"
+        <Border Width="500"
+                MaxHeight="650"
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Margin="24"
@@ -26,7 +26,7 @@
                 BorderBrush="{DynamicResource BrushBorderMedium}"
                 BorderThickness="1"
                 CornerRadius="16"
-                Padding="24"
+                Padding="26"
                 SnapsToDevicePixels="True">
         <Border.Effect>
             <DropShadowEffect BlurRadius="24" ShadowDepth="6" Direction="270" Opacity="0.18" Color="#0B3C49"/>
@@ -54,7 +54,7 @@
             </Button>
 
             <!-- Header with Badge Icon and Title -->
-            <Grid Grid.Row="0" Margin="0,0,24,16">
+            <Grid Grid.Row="0" Margin="0,0,24,18">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
@@ -63,17 +63,17 @@
                 <!-- Dynamic Icon Badge Container -->
                 <Border x:Name="IconBadgeBorder"
                         Grid.Column="0"
-                        Width="44"
-                        Height="44"
-                        CornerRadius="22"
+                        Width="48"
+                        Height="48"
+                        CornerRadius="24"
                         Background="{DynamicResource BrushPrimaryLight}"
                         Margin="0,0,14,0"
                         VerticalAlignment="Center">
                     <Path x:Name="IconPath"
                           Data="{StaticResource IconInfo}"
                           Fill="{DynamicResource BrushPrimary}"
-                          Width="20"
-                          Height="20"
+                          Width="22"
+                          Height="22"
                           Stretch="Uniform"
                           HorizontalAlignment="Center"
                           VerticalAlignment="Center"/>
@@ -83,7 +83,7 @@
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                     <TextBlock x:Name="TitleTextBlock"
                                Text="Título del Mensaje"
-                               FontSize="16"
+                               FontSize="18"
                                FontWeight="Bold"
                                Foreground="{DynamicResource BrushTextPrimary}"
                                TextWrapping="Wrap"/>
@@ -103,12 +103,12 @@
                     BorderBrush="{DynamicResource BrushBorderSubtle}"
                     BorderThickness="1"
                     CornerRadius="10"
-                    Padding="14,12"
+                    Padding="16,14"
                     Margin="0,0,0,20">
                 <TextBlock x:Name="MessageTextBlock"
                            Text="Contenido detallado de la notificación o pregunta para el usuario."
-                           FontSize="13"
-                           LineHeight="19"
+                           FontSize="15"
+                           LineHeight="22"
                            Foreground="{DynamicResource BrushTextPrimary}"
                            TextWrapping="Wrap"/>
             </Border>

@@ -61,6 +61,52 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- Estilo de Tecla Virtual Táctil -->
+        <Style x:Key="TouchKeyButton" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource BrushSurfaceBackground}"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMedium}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="17"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushPrimary}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextWhite}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource BrushSidebarItemActive}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource BrushTextWhite}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="TouchKeyActionButton" TargetType="Button" BasedOn="{StaticResource TouchKeyButton}">
+            <Setter Property="Background" Value="#F1F5F9"/>
+            <Setter Property="Foreground" Value="{DynamicResource BrushPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMedium}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Black"/>
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="20">
@@ -82,9 +128,11 @@
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- 1. Título y Descripción -->
+                <!-- 1. Título, Botón Teclado Táctil y Estado de Terminal -->
                 <Grid Grid.Row="0" Margin="0,0,0,14">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -96,22 +144,92 @@
                         <TextBlock Text="Escanee el código de barras del tiquete o digite la placa para procesar el cobro" FontSize="13" Foreground="{DynamicResource BrushTextMuted}" Margin="0,3,0,0"/>
                     </StackPanel>
 
-                    <Border Grid.Column="1"
-                            Background="#F0FDF4"
-                            BorderBrush="#86EFAC"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Padding="12,6"
-                            VerticalAlignment="Center">
-                        <StackPanel Orientation="Horizontal">
-                            <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushSuccess}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="Terminal Lista para Cobro" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushSuccess}" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Botón Teclado Táctil -->
+                        <Button Command="{Binding ToggleVirtualKeyboardCommand}"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="10,6"
+                                Margin="0,0,10,0"
+                                ToolTip="Abrir o cerrar teclado virtual para pantalla táctil">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconKeyboard}" Fill="{DynamicResource BrushPrimary}" Width="15" Height="15" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Teclado Táctil" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Border Background="#F0FDF4"
+                                BorderBrush="#86EFAC"
+                                BorderThickness="1"
+                                CornerRadius="10"
+                                Padding="12,6"
+                                VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushSuccess}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Terminal Lista para Cobro" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushSuccess}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </Grid>
 
-                <!-- 2. Caja de Búsqueda de Placa / Escaneo -->
-                <Grid Grid.Row="1">
+                <!-- 2. Alerta de Feedback (Informativo / Advertencia en Amarillo Institucional) -->
+                <Border Grid.Row="1"
+                        Visibility="{Binding HasFeedback, Converter={StaticResource BoolToVis}}"
+                        CornerRadius="10"
+                        Padding="14,10"
+                        Margin="0,0,0,14">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource BrushSuccessBg}"/>
+                            <Setter Property="BorderBrush" Value="{DynamicResource BrushSuccess}"/>
+                            <Setter Property="BorderThickness" Value="1"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSuccessFeedback}" Value="False">
+                                    <Setter Property="Background" Value="{DynamicResource BrushWarningBg}"/>
+                                    <Setter Property="BorderBrush" Value="{DynamicResource BrushWarning}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Path Grid.Column="0"
+                              Data="{StaticResource IconAlertTriangle}"
+                              Fill="{DynamicResource BrushWarning}"
+                              Width="18" Height="18"
+                              Stretch="Uniform"
+                              VerticalAlignment="Center"
+                              Margin="0,0,10,0">
+                            <Path.Style>
+                                <Style TargetType="Path">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSuccessFeedback}" Value="True">
+                                            <Setter Property="Data" Value="{StaticResource IconCheck}"/>
+                                            <Setter Property="Fill" Value="{DynamicResource BrushSuccess}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Path.Style>
+                        </Path>
+                        <TextBlock Grid.Column="1" Text="{Binding FeedbackMessage}" FontSize="14" FontWeight="Bold" TextWrapping="Wrap" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource BrushSuccessText}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsSuccessFeedback}" Value="False">
+                                            <Setter Property="Foreground" Value="{DynamicResource BrushWarningText}"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </Grid>
+                </Border>
+
+                <!-- 3. Caja de Búsqueda de Placa / Escaneo -->
+                <Grid Grid.Row="2">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -137,6 +255,82 @@
                             VerticalAlignment="Center"
                             ToolTip="Buscar tiquete o placa (Enter)"/>
                 </Grid>
+
+                <!-- 4. Teclado Virtual en Pantalla (Desplegable) -->
+                <Border Grid.Row="3"
+                        Visibility="{Binding IsVirtualKeyboardVisible, Converter={StaticResource BoolToVis}}"
+                        Background="#EDF2F7"
+                        BorderBrush="{DynamicResource BrushBorderMedium}"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        Padding="8"
+                        Margin="0,14,0,0">
+                    <StackPanel>
+                        <!-- Fila de Números -->
+                        <UniformGrid Columns="10" Rows="1">
+                            <Button Content="1" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="1"/>
+                            <Button Content="2" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="2"/>
+                            <Button Content="3" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="3"/>
+                            <Button Content="4" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="4"/>
+                            <Button Content="5" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="5"/>
+                            <Button Content="6" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="6"/>
+                            <Button Content="7" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="7"/>
+                            <Button Content="8" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="8"/>
+                            <Button Content="9" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="9"/>
+                            <Button Content="0" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="0"/>
+                        </UniformGrid>
+
+                        <!-- Fila Q - P -->
+                        <UniformGrid Columns="10" Rows="1">
+                            <Button Content="Q" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="Q"/>
+                            <Button Content="W" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="W"/>
+                            <Button Content="E" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="E"/>
+                            <Button Content="R" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="R"/>
+                            <Button Content="T" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="T"/>
+                            <Button Content="Y" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="Y"/>
+                            <Button Content="U" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="U"/>
+                            <Button Content="I" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="I"/>
+                            <Button Content="O" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="O"/>
+                            <Button Content="P" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="P"/>
+                        </UniformGrid>
+
+                        <!-- Fila A - L -->
+                        <UniformGrid Columns="9" Rows="1" Margin="14,0,14,0">
+                            <Button Content="A" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="A"/>
+                            <Button Content="S" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="S"/>
+                            <Button Content="D" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="D"/>
+                            <Button Content="F" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="F"/>
+                            <Button Content="G" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="G"/>
+                            <Button Content="H" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="H"/>
+                            <Button Content="J" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="J"/>
+                            <Button Content="K" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="K"/>
+                            <Button Content="L" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="L"/>
+                        </UniformGrid>
+
+                        <!-- Fila Z - M + Acciones -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.3*"/>
+                                <ColumnDefinition Width="7*"/>
+                                <ColumnDefinition Width="1.3*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Button Grid.Column="0" Content="Limpiar" Style="{StaticResource TouchKeyActionButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="CLEAR"/>
+
+                            <UniformGrid Grid.Column="1" Columns="7" Rows="1">
+                                <Button Content="Z" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="Z"/>
+                                <Button Content="X" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="X"/>
+                                <Button Content="C" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="C"/>
+                                <Button Content="V" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="V"/>
+                                <Button Content="B" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="B"/>
+                                <Button Content="N" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="N"/>
+                                <Button Content="M" Style="{StaticResource TouchKeyButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="M"/>
+                            </UniformGrid>
+
+                            <Button Grid.Column="2" Content="⌫ Borrar" Style="{StaticResource TouchKeyActionButton}" Command="{Binding AppendVirtualKeyCommand}" CommandParameter="BACKSPACE"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
             </Grid>
         </Border>
 

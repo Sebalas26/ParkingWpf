@@ -18,6 +18,7 @@ public class EfShiftService : IShiftService
     private readonly IAuthService _authService;
     private readonly ISessionService _sessionService;
     private readonly IServiceProvider? _serviceProvider;
+    private static readonly System.Threading.SemaphoreSlim _shiftDbLock = new(1, 1);
 
     public WorkShift? CurrentShift { get; private set; }
     public bool HasActiveShift => CurrentShift != null && CurrentShift.Status == 0;
@@ -148,22 +149,30 @@ public class EfShiftService : IShiftService
             shift.CompanyId = companyId.Value;
         }
 
-        using var db = _connectionManager.CreateDbContext();
-        var existing = await db.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == shift.ShiftId);
-        if (existing == null)
+        await _shiftDbLock.WaitAsync();
+        try
         {
-            db.WorkShifts.Add(shift);
+            using var db = _connectionManager.CreateDbContext();
+            var existing = await db.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == shift.ShiftId);
+            if (existing == null)
+            {
+                db.WorkShifts.Add(shift);
+            }
+            else
+            {
+                existing.BranchId = branchId.Value;
+                existing.CompanyId = companyId.Value;
+                existing.Status = 0;
+                existing.BaseAmount = baseAmount;
+                existing.Notes = notes;
+                existing.IsSynchronized = shift.IsSynchronized;
+            }
+            await db.SaveChangesAsync();
         }
-        else
+        finally
         {
-            existing.BranchId = branchId.Value;
-            existing.CompanyId = companyId.Value;
-            existing.Status = 0;
-            existing.BaseAmount = baseAmount;
-            existing.Notes = notes;
-            existing.IsSynchronized = shift.IsSynchronized;
+            _shiftDbLock.Release();
         }
-        await db.SaveChangesAsync();
 
         CurrentShift = shift;
         ShiftStateChanged?.Invoke();
@@ -185,28 +194,42 @@ public class EfShiftService : IShiftService
                 var apiShift = await _apiClient.GetActiveShiftAsync(userId: queryUserId, branchId: branchId);
                 if (apiShift != null)
                 {
-                    using var dbPersist = _connectionManager.CreateDbContext();
-                    var local = await dbPersist.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == apiShift.ShiftId);
-                    if (local == null)
+                    // Si ya tenemos en memoria el turno con el mismo ShiftId y sincronizado, evitar reescritura concurrente
+                    if (CurrentShift != null && CurrentShift.ShiftId == apiShift.ShiftId && CurrentShift.Status == apiShift.Status && CurrentShift.IsSynchronized)
                     {
-                        apiShift.IsSynchronized = true;
-                        dbPersist.WorkShifts.Add(apiShift);
+                        return;
                     }
-                    else
+
+                    await _shiftDbLock.WaitAsync();
+                    try
                     {
-                        local.Status = apiShift.Status;
-                        local.BaseAmount = apiShift.BaseAmount;
-                        local.StartTimeUtc = apiShift.StartTimeUtc;
-                        local.EndTimeUtc = apiShift.EndTimeUtc;
-                        local.OperatorName = apiShift.OperatorName;
-                        local.UserId = apiShift.UserId;
-                        local.BranchId = apiShift.BranchId;
-                        local.CompanyId = apiShift.CompanyId;
-                        local.CashRegisterName = apiShift.CashRegisterName;
-                        local.Notes = apiShift.Notes;
-                        local.IsSynchronized = true;
+                        using var dbPersist = _connectionManager.CreateDbContext();
+                        var local = await dbPersist.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == apiShift.ShiftId);
+                        if (local == null)
+                        {
+                            apiShift.IsSynchronized = true;
+                            dbPersist.WorkShifts.Add(apiShift);
+                        }
+                        else
+                        {
+                            local.Status = apiShift.Status;
+                            local.BaseAmount = apiShift.BaseAmount;
+                            local.StartTimeUtc = apiShift.StartTimeUtc;
+                            local.EndTimeUtc = apiShift.EndTimeUtc;
+                            local.OperatorName = apiShift.OperatorName;
+                            local.UserId = apiShift.UserId;
+                            local.BranchId = apiShift.BranchId;
+                            local.CompanyId = apiShift.CompanyId;
+                            local.CashRegisterName = apiShift.CashRegisterName;
+                            local.Notes = apiShift.Notes;
+                            local.IsSynchronized = true;
+                        }
+                        await dbPersist.SaveChangesAsync();
                     }
-                    await dbPersist.SaveChangesAsync();
+                    finally
+                    {
+                        _shiftDbLock.Release();
+                    }
 
                     CurrentShift = apiShift;
                     ShiftStateChanged?.Invoke();
@@ -215,22 +238,31 @@ public class EfShiftService : IShiftService
                 else
                 {
                     // El API respondió confirmando que no hay turno activo (cerrado centralmente desde PWA)
-                    using var dbClose = _connectionManager.CreateDbContext();
-                    if (branchId.HasValue && branchId.Value > 0)
+                    await _shiftDbLock.WaitAsync();
+                    try
                     {
-                        var openLocalShifts = await dbClose.WorkShifts
-                            .Where(s => s.BranchId == branchId.Value && s.Status == 0)
-                            .ToListAsync();
-                        foreach (var s in openLocalShifts)
+                        using var dbClose = _connectionManager.CreateDbContext();
+                        if (branchId.HasValue && branchId.Value > 0)
                         {
-                            s.Status = 1;
-                            s.EndTimeUtc ??= DateTime.UtcNow;
-                        }
-                        if (openLocalShifts.Count > 0)
-                        {
-                            await dbClose.SaveChangesAsync();
+                            var openLocalShifts = await dbClose.WorkShifts
+                                .Where(s => s.BranchId == branchId.Value && s.Status == 0)
+                                .ToListAsync();
+                            foreach (var s in openLocalShifts)
+                            {
+                                s.Status = 1;
+                                s.EndTimeUtc ??= DateTime.UtcNow;
+                            }
+                            if (openLocalShifts.Count > 0)
+                            {
+                                await dbClose.SaveChangesAsync();
+                            }
                         }
                     }
+                    finally
+                    {
+                        _shiftDbLock.Release();
+                    }
+
                     CurrentShift = null;
                     ShiftStateChanged?.Invoke();
                     return;
