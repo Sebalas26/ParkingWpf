@@ -45,6 +45,9 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private System.Windows.Media.ImageSource? _barcodeImage;
 
     [ObservableProperty]
+    private string? _branchLogoBase64;
+
+    [ObservableProperty]
     private string _branchName = string.Empty;
 
     [ObservableProperty]
@@ -240,6 +243,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             PlateFontSize = 16;
         }
 
+        BranchLogoBase64 = currentBranch?.LogoBase64;
         BranchName = !string.IsNullOrWhiteSpace(currentBranch?.Name) ? currentBranch.Name.ToUpperInvariant() : "PARQUEADERO";
         BranchAddress = !string.IsNullOrWhiteSpace(currentBranch?.Address) ? currentBranch.Address.ToUpperInvariant() : string.Empty;
 

@@ -333,6 +333,135 @@ public class OfflineResilienceTests : IDisposable
         localRates.Select(r => r.DisplayName).Should().Contain(new[] { "Carro", "Patineta", "Moto", "Bicicleta" });
     }
 
+    [Fact]
+    public async Task SyncEngineService_SyncRoles_WithCustomRole_DoesNotThrowRoleIdCollision()
+    {
+        // Arrange: Simular que la base de datos local ya tiene un rol 'Cajero' creado durante el login
+        var cajeroRoleId = Guid.NewGuid();
+        using (var dbInit = _connectionManager.CreateDbContext())
+        {
+            dbInit.Roles.Add(new Role
+            {
+                RoleId = cajeroRoleId,
+                Name = "Cajero",
+                Description = "Cajero de turno"
+            });
+            await dbInit.SaveChangesAsync();
+        }
+
+        _mockSessionService.Setup(s => s.CurrentBranchId).Returns(1);
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = 1, Name = "Sede Principal" });
+
+        var bootstrap = new BootstrapSyncResponse
+        {
+            UserRoles = new List<ApiUserRoleSyncDto>
+            {
+                new() { Id = 1, Role = "Administrador", Description = "Admin", IsActive = true },
+                new() { Id = 2, Role = "Cajero", Description = "Cajero de turno actualizado", IsActive = true },
+                new() { Id = 3, Role = "Supervisor", Description = "Supervisor de patio", IsActive = true }
+            },
+            Users = new List<ApiUserSyncDto>
+            {
+                new() { Id = 10, Username = "cajero1", FullName = "Carlos Cajero", UserRoleId = 2, IsActive = true },
+                new() { Id = 11, Username = "admin1", FullName = "Ana Admin", UserRoleId = 1, IsActive = true }
+            }
+        };
+
+        _mockApiClient.Setup(a => a.PingAsync()).ReturnsAsync(true);
+        _mockApiClient.Setup(a => a.GetBootstrapAsync(1)).ReturnsAsync(bootstrap);
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        // Act - No debe fallar con SQLite Error 19: UNIQUE constraint failed: Roles.RoleId
+        var result = await syncEngine.PerformFullSyncAsync();
+
+        // Assert
+        result.Should().BeTrue();
+        using var db = _connectionManager.CreateDbContext();
+        var roles = await db.Roles.ToListAsync();
+        roles.Should().HaveCount(3);
+        roles.Select(r => r.Name).Should().Contain(new[] { "Cajero", "Administrador", "Supervisor" });
+
+        var users = await db.Users.ToListAsync();
+        users.Should().HaveCount(2);
+        var cajeroUser = users.First(u => u.Username == "cajero1");
+        cajeroUser.RoleId.Should().Be(cajeroRoleId);
+    }
+
+    [Fact]
+    public async Task SyncEngineService_ReconcileActiveTickets_PreservesUnsynchronizedOfflineTickets()
+    {
+        // Arrange: Crear un tiquete activo generado en modo offline (IsSynchronized == false)
+        var offlineTicketId = Guid.NewGuid();
+        using (var dbInit = _connectionManager.CreateDbContext())
+        {
+            dbInit.ParkingTickets.Add(new ParkingTicket
+            {
+                TicketId = offlineTicketId,
+                BranchId = 1,
+                TicketNumber = "OFF-001",
+                PlateNumber = "OFF999",
+                Status = TicketStatus.Active,
+                IsSynchronized = false,
+                EntryTimeUtc = DateTime.UtcNow.AddMinutes(-30)
+            });
+            await dbInit.SaveChangesAsync();
+        }
+
+        _mockSessionService.Setup(s => s.CurrentBranchId).Returns(1);
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = 1, Name = "Sede Principal" });
+
+        // El servidor no reporta este tiquete porque aún no se ha subido
+        var bootstrap = new BootstrapSyncResponse
+        {
+            ActiveTickets = new List<ApiParkingTicketSyncDto>()
+        };
+
+        _mockApiClient.Setup(a => a.PingAsync()).ReturnsAsync(true);
+        _mockApiClient.Setup(a => a.GetBootstrapAsync(1)).ReturnsAsync(bootstrap);
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        // Act
+        var result = await syncEngine.PerformFullSyncAsync();
+
+        // Assert: El tiquete offline no debe cerrarse prematuramente
+        result.Should().BeTrue();
+        using var db = _connectionManager.CreateDbContext();
+        var ticket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == offlineTicketId);
+        ticket.Should().NotBeNull();
+        ticket!.Status.Should().Be(TicketStatus.Active);
+        ticket.IsSynchronized.Should().BeFalse();
+    }
+
+    [Fact]
+    public void BootstrapSyncResponse_GetGracePeriodMinutes_WhenNull_DefaultsToZero()
+    {
+        // Arrange
+        var rateDto = new ApiVehicleRateSyncDto
+        {
+            GracePeriodMinutes = null,
+            GracePeriodMinutesSnake = null,
+            Gracia = null
+        };
+
+        // Act
+        var grace = rateDto.GetGracePeriodMinutes();
+
+        // Assert - Regla de Oro #8: Debe ser 0, nunca 15 inventado
+        grace.Should().Be(0);
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

@@ -13,6 +13,7 @@ public class User
     public int? CompanyId { get; set; }
     public Guid RoleId { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsAdmin { get; set; } = false;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAtUtc { get; set; }
 

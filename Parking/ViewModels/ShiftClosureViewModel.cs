@@ -55,10 +55,12 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private string? _notes;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRelieveSectionVisible))]
+    [NotifyPropertyChangedFor(nameof(IsOpenNewRegisterSectionVisible))]
     private bool _hasActiveShift;
 
     [ObservableProperty]
-    private decimal _newShiftBaseAmount = 0m;
+    private decimal? _newShiftBaseAmount;
 
     [ObservableProperty]
     private string? _feedbackMessage;
@@ -119,6 +121,31 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
     [ObservableProperty]
     private IReadOnlyList<CashWithdrawal> _currentShiftWithdrawals = new List<CashWithdrawal>();
+
+    [ObservableProperty]
+    private ObservableCollection<WorkShift> _otherActiveShifts = new();
+
+    [ObservableProperty]
+    private WorkShift? _selectedShiftToRelieve;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRelieveSectionVisible))]
+    [NotifyPropertyChangedFor(nameof(IsOpenNewRegisterSectionVisible))]
+    private bool _hasOtherActiveShifts;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsRelieveSectionVisible))]
+    [NotifyPropertyChangedFor(nameof(IsOpenNewRegisterSectionVisible))]
+    private bool _isRelieveModeSelected = true;
+
+    [ObservableProperty]
+    private string _newCashRegisterName = string.Empty;
+
+    [ObservableProperty]
+    private ShiftSummaryModel? _selectedShiftToRelieveSummary;
+
+    public bool IsRelieveSectionVisible => !HasActiveShift && HasOtherActiveShifts && IsRelieveModeSelected;
+    public bool IsOpenNewRegisterSectionVisible => !HasActiveShift && (!HasOtherActiveShifts || !IsRelieveModeSelected);
 
     public ShiftClosureViewModel(
         IShiftService shiftService,
@@ -231,9 +258,79 @@ public partial class ShiftClosureViewModel : ViewModelBase
         RecalculateDifference();
     }
 
+    async partial void OnSelectedShiftToRelieveChanged(WorkShift? value)
+    {
+        if (value != null)
+        {
+            await UpdateSelectedShiftSummaryAsync(value);
+        }
+        else
+        {
+            SelectedShiftToRelieveSummary = null;
+        }
+    }
+
+    private async Task UpdateSelectedShiftSummaryAsync(WorkShift shift)
+    {
+        try
+        {
+            var summary = await _shiftService.GetShiftSummaryByIdAsync(shift.ShiftId);
+            SelectedShiftToRelieveSummary = summary;
+            if (!HasActiveShift && IsRelieveModeSelected)
+            {
+                ActualCashCounted = summary.ExpectedCash;
+                RecalculateDifference();
+
+                // Actualizar tarjetas de medios de pago para reflejar la caja que se va a relevar
+                PaymentMethodCards.Clear();
+                foreach (var pm in summary.PaymentMethodsBreakdown)
+                {
+                    PaymentMethodCards.Add(pm);
+                }
+                PaymentMethodCards.Add(new ShiftPaymentMethodItem
+                {
+                    PaymentMethodId = -1,
+                    Name = "Descuentos por Convenios",
+                    IconKey = "IconDiscount",
+                    IconBg = "#FFF8E1",
+                    IconBrushKey = "BrushWarning",
+                    AmountBrushKey = "BrushWarningText",
+                    TotalCollected = summary.TotalDiscounts,
+                    TransactionCount = 0,
+                    Subtitle = "Deducciones por convenios",
+                    RequiresCashTender = false
+                });
+            }
+        }
+        catch { }
+    }
+
+    [RelayCommand]
+    private void SelectRelieveMode()
+    {
+        IsRelieveModeSelected = true;
+        if (SelectedShiftToRelieveSummary != null)
+        {
+            ActualCashCounted = SelectedShiftToRelieveSummary.ExpectedCash;
+            RecalculateDifference();
+        }
+    }
+
+    [RelayCommand]
+    private void SelectNewRegisterMode()
+    {
+        IsRelieveModeSelected = false;
+        ActualCashCounted = 0m;
+        CashDifference = 0m;
+    }
+
     private void RecalculateDifference()
     {
-        CashDifference = ActualCashCounted - Summary.ExpectedCash;
+        var expected = (HasActiveShift || !IsRelieveModeSelected)
+            ? Summary.ExpectedCash
+            : (SelectedShiftToRelieveSummary?.ExpectedCash ?? Summary.ExpectedCash);
+
+        CashDifference = ActualCashCounted - expected;
     }
 
     [RelayCommand]
@@ -290,7 +387,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
             return;
         }
 
-        if (NewShiftBaseAmount <= 0)
+        if ((NewShiftBaseAmount ?? 0m) <= 0)
         {
             var branchDefault = _sessionService.CurrentBranch?.DefaultInitialCash ?? 0m;
             if (branchDefault > 0)
@@ -299,7 +396,9 @@ public partial class ShiftClosureViewModel : ViewModelBase
             }
         }
 
-        if (_sessionService.CurrentUser?.RequireInitialCashAmount == true && NewShiftBaseAmount <= 0)
+        var finalBase = NewShiftBaseAmount ?? 0m;
+
+        if (_sessionService.CurrentUser?.RequireInitialCashAmount == true && finalBase <= 0)
         {
             await _dialogService.ShowAlertAsync(
                 "Monto Base Requerido",
@@ -308,21 +407,25 @@ public partial class ShiftClosureViewModel : ViewModelBase
             return;
         }
 
+        var regName = !string.IsNullOrWhiteSpace(NewCashRegisterName)
+            ? NewCashRegisterName.Trim()
+            : (OtherActiveShifts.Count > 0 ? $"Caja {OtherActiveShifts.Count + 1}" : "Caja Principal");
+
         HasFeedback = false;
         IsBusy = true;
         BusyMessage = "Abriendo nuevo turno operativo y registrando base de caja...";
 
         try
         {
-            await _shiftService.OpenShiftAsync(NewShiftBaseAmount, Notes);
+            await _shiftService.OpenShiftAsync(finalBase, Notes, regName);
             HasFeedback = true;
             IsSuccessFeedback = true;
-            FeedbackMessage = $"Turno abierto exitosamente con base de ${NewShiftBaseAmount:N0}.";
+            FeedbackMessage = $"Turno abierto exitosamente en '{regName}' con base de ${finalBase:N0}.";
             await LoadShiftDataAsync();
 
             await _dialogService.ShowAlertAsync(
                 "Turno Operativo Abierto",
-                $"Se ha registrado la apertura del turno con base inicial de ${NewShiftBaseAmount:N0}. Ya puedes iniciar el ingreso de vehículos.",
+                $"Se ha registrado la apertura del turno en '{regName}' con base inicial de ${finalBase:N0}. Ya puedes iniciar el ingreso de vehículos.",
                 DialogNotificationType.Success);
 
             _navigationService.NavigateTo<CheckInViewModel>();
@@ -519,26 +622,27 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private async Task TakeOverShiftAsync()
     {
         HasFeedback = false;
-        var active = await _shiftService.GetActiveShiftAsync();
-        if (active == null)
+        var targetShift = SelectedShiftToRelieve ?? await _shiftService.GetActiveShiftAsync();
+        if (targetShift == null)
         {
             HasFeedback = true;
             IsSuccessFeedback = false;
-            FeedbackMessage = "No hay ningún turno activo para asumir.";
+            FeedbackMessage = "No hay ningún turno activo seleccionado para asumir.";
             return;
         }
 
+        var summary = SelectedShiftToRelieveSummary ?? await _shiftService.GetShiftSummaryByIdAsync(targetShift.ShiftId);
         var currentUserId = _authService.CurrentUser?.UserId ?? Guid.NewGuid();
         var currentFullName = _authService.CurrentUser?.FullName ?? "Operador";
 
         var confirmed = await _dialogService.ShowConfirmationAsync(
             "Confirmar Recepción de Turno y Caja",
-            $"¿Deseas asumir el turno y recibir la caja de la terminal?\n\n" +
-            $"• Turno Saliente: {ActiveShiftOperatorName}\n" +
-            $"• Saldo Esperado en Sistema: ${Summary.ExpectedCash:N0}\n" +
+            $"¿Deseas asumir el turno y recibir la caja '{targetShift.CashRegisterName}'?\n\n" +
+            $"• Turno Saliente: {targetShift.OperatorName}\n" +
+            $"• Saldo Esperado en Sistema: ${summary.ExpectedCash:N0}\n" +
             $"• Efectivo Contado en Gaveta: ${ActualCashCounted:N0}\n" +
             $"• Diferencia de Arqueo: ${CashDifference:N0}\n\n" +
-            $"Se cerrará formalmente el turno de '{ActiveShiftOperatorName}' y se abrirá tu nuevo turno a nombre de '{currentFullName}' con base de ${ActualCashCounted:N0}.",
+            $"Se cerrará formalmente el turno de '{targetShift.OperatorName}' y se abrirá tu nuevo turno a nombre de '{currentFullName}' con base de ${ActualCashCounted:N0}.",
             DialogNotificationType.Question,
             "Recibir Caja e Iniciar",
             "Cancelar");
@@ -551,19 +655,21 @@ public partial class ShiftClosureViewModel : ViewModelBase
         try
         {
             var note = string.IsNullOrWhiteSpace(Notes)
-                ? $"Relevo asumido por {currentFullName}. Base recibida: ${ActualCashCounted:N0}"
-                : $"{Notes} (Relevo asumido por {currentFullName})";
+                ? $"Relevo de '{targetShift.CashRegisterName}' asumido por {currentFullName}. Base recibida: ${ActualCashCounted:N0}"
+                : $"{Notes} (Relevo de '{targetShift.CashRegisterName}' asumido por {currentFullName})";
 
             await _shiftService.HandoverAndOpenNextShiftAsync(
                 ActualCashCounted,
                 note,
                 currentUserId,
                 currentFullName,
-                ActualCashCounted);
+                ActualCashCounted,
+                targetShift.ShiftId,
+                targetShift.CashRegisterName);
 
             await _dialogService.ShowAlertAsync(
                 "Turno Asumido con Éxito",
-                $"Has recibido la caja correctamente.\n\n" +
+                $"Has recibido la caja '{targetShift.CashRegisterName}' correctamente.\n\n" +
                 $"• Base Inicial de tu Turno: ${ActualCashCounted:N0}\n" +
                 $"• Operador a Cargo: {currentFullName}\n\n" +
                 $"Ya puedes comenzar a registrar ingresos y cobros en el parqueadero.",
@@ -580,6 +686,54 @@ public partial class ShiftClosureViewModel : ViewModelBase
             HasFeedback = true;
             IsSuccessFeedback = false;
             FeedbackMessage = $"Error al asumir turno: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+            BusyMessage = null;
+        }
+    }
+
+    [RelayCommand]
+    private async Task CloseOtherShiftDirectAsync()
+    {
+        if (!CanCloseShift)
+        {
+            await _dialogService.ShowAlertAsync("Acceso Denegado", "No tiene permisos para cerrar turnos operativos.", DialogNotificationType.Warning);
+            return;
+        }
+
+        var targetShift = SelectedShiftToRelieve;
+        if (targetShift == null) return;
+
+        var summary = SelectedShiftToRelieveSummary ?? await _shiftService.GetShiftSummaryByIdAsync(targetShift.ShiftId);
+
+        var confirmed = await _dialogService.ShowConfirmationAsync(
+            "Cerrar Turno de Operador",
+            $"¿Confirma el cierre definitivo de la caja '{targetShift.CashRegisterName}' del operador '{targetShift.OperatorName}'?\n\n" +
+            $"• Saldo Esperado: ${summary.ExpectedCash:N0}\n" +
+            $"• Efectivo Contado: ${ActualCashCounted:N0}\n" +
+            $"• Diferencia: ${CashDifference:N0}\n\n" +
+            "Esta acción dará por finalizada la jornada de esa caja sin abrir un nuevo turno.",
+            DialogNotificationType.Question,
+            "Cerrar Caja",
+            "Cancelar");
+
+        if (!confirmed) return;
+
+        IsBusy = true;
+        BusyMessage = "Cerrando caja del operador...";
+        try
+        {
+            await _shiftService.CloseSpecificShiftAsync(targetShift.ShiftId, ActualCashCounted, Notes);
+            await _dialogService.ShowAlertAsync("Caja Cerrada", $"La caja de '{targetShift.OperatorName}' ha sido cerrada exitosamente.", DialogNotificationType.Success);
+            ActualCashCounted = 0m;
+            Notes = null;
+            await LoadShiftDataAsync();
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowAlertAsync("Error", $"No fue posible cerrar la caja: {ex.Message}", DialogNotificationType.Error);
         }
         finally
         {
@@ -610,11 +764,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
             {
                 ActiveShiftOperatorName = active!.OperatorName ?? "Operador Anterior";
                 ActiveShiftStartTime = active.StartTimeUtc.ToLocalTime();
-
-                IsShiftOwner = isAdmin ||
-                               (active.UserId > 0 && _authService.CurrentUser?.ServerUserId.HasValue == true && active.UserId == _authService.CurrentUser.ServerUserId.Value) ||
-                               string.Equals(active.OperatorName, currentFullName, StringComparison.OrdinalIgnoreCase) ||
-                               string.Equals(active.OperatorName, currentUsername, StringComparison.OrdinalIgnoreCase);
+                IsShiftOwner = true;
 
                 Summary = await _shiftService.GetCurrentShiftSummaryAsync();
                 ActualCashCounted = Summary.ExpectedCash;
@@ -651,6 +801,37 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 CurrentShiftWithdrawals = new List<CashWithdrawal>();
                 LastClosedShift = await _shiftService.GetLastClosedShiftAsync();
                 HasLastClosedShift = LastClosedShift != null;
+
+                // Consultar todas las cajas abiertas en la sede
+                var otherShifts = await _shiftService.GetActiveShiftsByBranchAsync();
+                OtherActiveShifts.Clear();
+                foreach (var s in otherShifts)
+                {
+                    OtherActiveShifts.Add(s);
+                }
+                HasOtherActiveShifts = OtherActiveShifts.Count > 0;
+
+                if (HasOtherActiveShifts)
+                {
+                    SelectedShiftToRelieve = OtherActiveShifts.FirstOrDefault();
+                    IsRelieveModeSelected = true;
+                    if (SelectedShiftToRelieve != null)
+                    {
+                        await UpdateSelectedShiftSummaryAsync(SelectedShiftToRelieve);
+                    }
+                    NewCashRegisterName = $"Caja {OtherActiveShifts.Count + 1}";
+                }
+                else
+                {
+                    SelectedShiftToRelieve = null;
+                    SelectedShiftToRelieveSummary = null;
+                    IsRelieveModeSelected = false;
+                    NewCashRegisterName = "Caja Principal";
+                    Summary = new ShiftSummaryModel();
+                    ActualCashCounted = 0m;
+                    CashDifference = 0m;
+                }
+
                 using var dbCheck = _connectionManager.CreateDbContext();
                 var currentBranchId = _sessionService.CurrentBranch?.Id;
                 var localBranch = currentBranchId.HasValue

@@ -100,10 +100,10 @@ public class BranchModel
     public int? NightStayMinMinutes { get; set; }
 
     [JsonPropertyName("entryGracePeriodMinutes")]
-    public int EntryGracePeriodMinutes { get; set; } = 0;
+    public int? EntryGracePeriodMinutes { get; set; }
 
     [JsonPropertyName("exitGracePeriodMinutes")]
-    public int ExitGracePeriodMinutes { get; set; } = 0;
+    public int? ExitGracePeriodMinutes { get; set; }
 
     [JsonPropertyName("operatingHours")]
     public List<BranchOperatingHour> OperatingHours { get; set; } = new();

@@ -172,6 +172,7 @@ public class DbConnectionManager : IDbConnectionManager
                     ""ValidTo"" TEXT NOT NULL,
                     ""TechnicalKey"" TEXT NULL,
                     ""IsActive"" INTEGER NOT NULL DEFAULT 1,
+                    ""IsElectronicResolution"" INTEGER NOT NULL DEFAULT 0,
                     ""CreatedAtUtc"" TEXT NOT NULL
                 );
 

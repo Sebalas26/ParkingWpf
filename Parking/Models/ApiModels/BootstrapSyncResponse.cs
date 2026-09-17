@@ -99,10 +99,10 @@ public class ApiBranchSyncDto
     public int? NightStayMinMinutes { get; set; }
 
     [JsonPropertyName("entryGracePeriodMinutes")]
-    public int EntryGracePeriodMinutes { get; set; } = 0;
+    public int? EntryGracePeriodMinutes { get; set; }
 
     [JsonPropertyName("exitGracePeriodMinutes")]
-    public int ExitGracePeriodMinutes { get; set; } = 0;
+    public int? ExitGracePeriodMinutes { get; set; }
 
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
@@ -195,6 +195,15 @@ public class ApiPaymentMethodSyncDto
 
     [JsonPropertyName("requiresCashTender")]
     public bool? RequiresCashTender { get; set; }
+
+    [JsonPropertyName("requiresResolution")]
+    public bool RequiresResolution { get; set; } = false;
+
+    [JsonPropertyName("defaultResolutionId")]
+    public string? DefaultResolutionId { get; set; }
+
+    [JsonPropertyName("siigoPaymentMethodId")]
+    public string? SiigoPaymentMethodId { get; set; }
 
     public bool GetEffectiveActive() => State ?? IsActive;
 }
@@ -385,7 +394,7 @@ public class ApiVehicleRateSyncDto
     public decimal GetMinuteRate() => MinuteRate ?? MinuteRateSnake ?? ValorMinuto ?? 0m;
     public decimal GetFullDayRate() => FullDayRate ?? FullDayRateSnake ?? MaximoDia ?? DailyRate ?? 0m;
     public decimal GetNightRate() => NightRate ?? NightRateSnake ?? ValorNoche ?? 0m;
-    public int GetGracePeriodMinutes() => GracePeriodMinutes ?? GracePeriodMinutesSnake ?? Gracia ?? 15;
+    public int GetGracePeriodMinutes() => GracePeriodMinutes ?? GracePeriodMinutesSnake ?? Gracia ?? 0;
     public string GetIconKey() => IconKey ?? IconKeySnake ?? Icon ?? "IconCar";
     public bool GetEffectiveActive() => State ?? IsActive ?? IsActiveSnake ?? true;
 
@@ -505,6 +514,9 @@ public class ApiBillingResolutionSyncDto
 
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
+
+    [JsonPropertyName("isElectronicResolution")]
+    public bool IsElectronicResolution { get; set; } = false;
 }
 
 public class ApiWorkShiftSyncDto

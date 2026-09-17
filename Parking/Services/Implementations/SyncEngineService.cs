@@ -315,48 +315,26 @@ public class SyncEngineService : ISyncEngineService
 
             using var db = _dbManager.CreateDbContext();
 
+            if (_dbManager is DbConnectionManager concreteManager)
+            {
+                await concreteManager.AutoMigrateDatabaseAsync(db);
+            }
+
             // 4. Paso 3: Sincronizar Roles y Usuarios (60%)
             progress.Report(new SyncProgressReport
             {
                 Percentage = 60,
                 StepIndex = 3,
                 CurrentStepTitle = "Sincronizando Usuarios, Roles y Permisos...",
-                DetailMessage = $"Procesando {bootstrap.Users.Count} usuarios de MySQL..."
+                DetailMessage = $"Procesando {bootstrap.Users?.Count ?? 0} usuarios de MySQL..."
             });
 
-            var adminRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "Administrador" || r.Name == "Admin", ct);
-            if (adminRole == null)
-            {
-                adminRole = new Role
-                {
-                    RoleId = Guid.Parse("11111111-1111-1111-1111-111111111111"),
-                    Name = "Administrador",
-                    Description = "Control total y administración"
-                };
-                db.Roles.Add(adminRole);
-            }
-
-            var operatorRole = await db.Roles.FirstOrDefaultAsync(r => r.Name == "Operador" || r.Name == "Operator", ct);
-            if (operatorRole == null)
-            {
-                operatorRole = new Role
-                {
-                    RoleId = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-                    Name = "Operador",
-                    Description = "Operación de caja y patio"
-                };
-                db.Roles.Add(operatorRole);
-            }
-            await db.SaveChangesAsync(ct);
-
-            // Sincronizar Catálogo de Roles RBAC si vienen en el Bootstrap
+            // Sincronizar Catálogo de Roles RBAC dinámicamente desde el Bootstrap
             var roleMapping = new Dictionary<int, Guid>();
-            roleMapping[1] = adminRole.RoleId;
-            roleMapping[2] = operatorRole.RoleId;
+            var existingRoles = await db.Roles.ToListAsync(ct);
 
             if (bootstrap.UserRoles != null && bootstrap.UserRoles.Count > 0)
             {
-                var existingRoles = await db.Roles.ToListAsync(ct);
                 foreach (var ur in bootstrap.UserRoles)
                 {
                     var match = existingRoles.FirstOrDefault(r => r.Name.Equals(ur.Role, StringComparison.OrdinalIgnoreCase));
@@ -376,9 +354,25 @@ public class SyncEngineService : ISyncEngineService
                             IsActive = ur.IsActive
                         };
                         db.Roles.Add(newRole);
+                        existingRoles.Add(newRole);
                         roleMapping[ur.Id] = newRole.RoleId;
                     }
                 }
+                await db.SaveChangesAsync(ct);
+            }
+
+            // Asegurar que exista al menos un rol activo en SQLite si la base de datos está vacía
+            if (existingRoles.Count == 0)
+            {
+                var defaultRole = new Role
+                {
+                    RoleId = Guid.NewGuid(),
+                    Name = "Operador",
+                    Description = "Rol base de operación",
+                    IsActive = true
+                };
+                db.Roles.Add(defaultRole);
+                existingRoles.Add(defaultRole);
                 await db.SaveChangesAsync(ct);
             }
 
@@ -480,8 +474,11 @@ public class SyncEngineService : ISyncEngineService
                     }
                     else
                     {
-                        targetRoleId = apiUser.UserRoleId == 1 ? adminRole.RoleId : operatorRole.RoleId;
+                        targetRoleId = existingRoles.FirstOrDefault(r => r.IsActive)?.RoleId ?? existingRoles.First().RoleId;
                     }
+
+                    var assignedRole = existingRoles.FirstOrDefault(r => r.RoleId == targetRoleId);
+                    var isUserAdmin = apiUser.UserRoleId == 1 || (assignedRole != null && (assignedRole.Name.Equals("Administrador", StringComparison.OrdinalIgnoreCase) || assignedRole.Name.Equals("Admin", StringComparison.OrdinalIgnoreCase) || assignedRole.Name.Equals("Super Administrador", StringComparison.OrdinalIgnoreCase)));
 
                     var fullName = !string.IsNullOrWhiteSpace(apiUser.FullName)
                         ? apiUser.FullName
@@ -499,6 +496,7 @@ public class SyncEngineService : ISyncEngineService
                         existing.PasswordHash = apiUser.Password;
                         existing.RoleId = targetRoleId;
                         existing.IsActive = apiUser.IsActive;
+                        existing.IsAdmin = isUserAdmin;
                     }
                     else
                     {
@@ -512,6 +510,7 @@ public class SyncEngineService : ISyncEngineService
                             PasswordHash = apiUser.Password,
                             RoleId = targetRoleId,
                             IsActive = apiUser.IsActive,
+                            IsAdmin = isUserAdmin,
                             CreatedAtUtc = DateTime.UtcNow
                         });
                     }
@@ -536,9 +535,9 @@ public class SyncEngineService : ISyncEngineService
                 var incomingBranchIds = bootstrap.Branches.Select(b => b.Id).ToHashSet();
                 var localBranches = await db.Branches.ToListAsync(ct);
                 var branchesToDelete = localBranches.Where(b => !incomingBranchIds.Contains(b.Id)).ToList();
-                if (branchesToDelete.Count > 0)
+                foreach (var b in branchesToDelete)
                 {
-                    db.Branches.RemoveRange(branchesToDelete);
+                    b.IsActive = false;
                 }
 
                 foreach (var br in bootstrap.Branches)
@@ -708,9 +707,9 @@ public class SyncEngineService : ISyncEngineService
                 var incomingPmIds = bootstrap.PaymentMethods.Select(p => p.Id).ToHashSet();
                 var localPms = await db.PaymentMethods.ToListAsync(ct);
                 var pmsToDelete = localPms.Where(p => !incomingPmIds.Contains(p.Id)).ToList();
-                if (pmsToDelete.Count > 0)
+                foreach (var pm in pmsToDelete)
                 {
-                    db.PaymentMethods.RemoveRange(pmsToDelete);
+                    pm.State = false;
                 }
 
                 foreach (var pm in bootstrap.PaymentMethods)
@@ -722,6 +721,8 @@ public class SyncEngineService : ISyncEngineService
                         existing.Icon = string.IsNullOrWhiteSpace(pm.Icon) ? "IconCash" : pm.Icon;
                         existing.State = pm.GetEffectiveActive();
                         existing.RequiresCashTender = pm.RequiresCashTender ?? true;
+                        existing.RequiresResolution = pm.RequiresResolution;
+                        existing.DefaultResolutionId = pm.DefaultResolutionId;
                     }
                     else
                     {
@@ -731,7 +732,9 @@ public class SyncEngineService : ISyncEngineService
                             Name = pm.Name,
                             Icon = string.IsNullOrWhiteSpace(pm.Icon) ? "IconCash" : pm.Icon,
                             State = pm.GetEffectiveActive(),
-                            RequiresCashTender = pm.RequiresCashTender ?? true
+                            RequiresCashTender = pm.RequiresCashTender ?? true,
+                            RequiresResolution = pm.RequiresResolution,
+                            DefaultResolutionId = pm.DefaultResolutionId
                         });
                     }
                     paymentMethodsCount++;
@@ -1262,6 +1265,7 @@ public class SyncEngineService : ISyncEngineService
                         existing.ValidTo = res.ValidTo;
                         existing.TechnicalKey = res.TechnicalKey;
                         existing.IsActive = res.IsActive;
+                        existing.IsElectronicResolution = res.IsElectronicResolution;
                     }
                     else
                     {
@@ -1281,6 +1285,7 @@ public class SyncEngineService : ISyncEngineService
                             ValidTo = res.ValidTo,
                             TechnicalKey = res.TechnicalKey,
                             IsActive = res.IsActive,
+                            IsElectronicResolution = res.IsElectronicResolution,
                             CreatedAtUtc = DateTime.UtcNow
                         });
                     }
@@ -1423,6 +1428,11 @@ public class SyncEngineService : ISyncEngineService
                     var normalizedLocalPlate = localActive.PlateNumber.Trim().ToUpperInvariant();
                     if (!serverActiveTicketIds.Contains(localActive.TicketId) && !serverActivePlates.Contains(normalizedLocalPlate))
                     {
+                        // Resiliencia: Si fue generado localmente en modo offline y aún no se envía a la nube, no cerrarlo prematuramente
+                        if (!localActive.IsSynchronized)
+                        {
+                            continue;
+                        }
                         localActive.Status = TicketStatus.Completed;
                         localActive.ExitTimeUtc ??= DateTime.UtcNow;
                         localActive.IsSynchronized = true;
@@ -1842,7 +1852,25 @@ public class SyncEngineService : ISyncEngineService
             {
                 try
                 {
-                    if (item.OperationType == "CheckIn")
+                    if (item.OperationType == "CreateCustomer")
+                    {
+                        var req = JsonSerializer.Deserialize<CreateCustomerApiRequest>(item.PayloadJson, ParkingApiClient.JsonOptions);
+                        if (req != null)
+                        {
+                            var result = await _apiClient.CreateCustomerAsync(req);
+                            if (result != null)
+                            {
+                                item.IsProcessed = true;
+                                var localCust = await db.Customers.FirstOrDefaultAsync(c => c.CustomerId == req.CustomerId);
+                                if (localCust != null)
+                                {
+                                    localCust.IsActive = true;
+                                    await db.SaveChangesAsync();
+                                }
+                            }
+                        }
+                    }
+                    else if (item.OperationType == "CheckIn")
                     {
                         var req = JsonSerializer.Deserialize<CheckInApiRequest>(item.PayloadJson, ParkingApiClient.JsonOptions);
                         if (req != null)

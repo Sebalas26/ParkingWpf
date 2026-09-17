@@ -424,6 +424,16 @@
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                         <Path Data="{StaticResource IconDocument}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                         <TextBlock Text="RESOLUCIÓN / DOC *" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center"/>
+                                        <!-- Badge de Bloqueo si el medio de pago exige FE -->
+                                        <Border Visibility="{Binding IsResolutionLocked, Converter={StaticResource BoolToVis}}"
+                                                Background="#FEF2F2" BorderBrush="#EF4444" BorderThickness="1" CornerRadius="4"
+                                                Padding="5,1" Margin="6,0,0,0" VerticalAlignment="Center"
+                                                ToolTip="{Binding ResolutionLockReason}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{StaticResource IconLock}" Fill="#EF4444" Width="9" Height="9" Stretch="Uniform" Margin="0,0,3,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="EXIGE FE" FontSize="8.5" FontWeight="Bold" Foreground="#EF4444" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
                                     </StackPanel>
 
                                     <!-- Advertencia Roja si no se selecciona -->
@@ -449,8 +459,9 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
-                                    <ComboBox ItemsSource="{Binding AvailableResolutions}"
+                                    <ComboBox ItemsSource="{Binding FilteredResolutions}"
                                               SelectedItem="{Binding SelectedResolution}"
+                                              IsEnabled="{Binding CanChangeResolution}"
                                               Style="{StaticResource ModernComboBox}"
                                               Height="44">
                                         <ComboBox.ItemTemplate>
@@ -458,6 +469,7 @@
                                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                     <Path Data="{StaticResource IconDocument}" Fill="{DynamicResource BrushPrimary}" Width="13" Height="13" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                                     <TextBlock Text="{Binding Prefix}" FontWeight="Black" FontSize="13" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Name, StringFormat='{} - {0}'}" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" VerticalAlignment="Center" Margin="4,0,0,0"/>
                                                 </StackPanel>
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
@@ -466,8 +478,8 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- Módulo de Facturación Electrónica DIAN / Siigo (Condicional si la empresa lo tiene habilitado) -->
-                        <Border Visibility="{Binding HasElectronicInvoicingEnabled, Converter={StaticResource BoolToVis}}"
+                        <!-- Módulo de Facturación Electrónica DIAN / Siigo (Visible si la empresa/sede o el medio de pago/resolución lo exige) -->
+                        <Border Visibility="{Binding IsElectronicInvoicingSectionVisible, Converter={StaticResource BoolToVis}}"
                                 BorderBrush="{DynamicResource BrushBorderSubtle}"
                                 BorderThickness="1.5"
                                 CornerRadius="12"
@@ -490,17 +502,28 @@
                                         <TextBlock Text="EMITIR FACTURA ELECTRÓNICA (DIAN / SIIGO)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
                                     </StackPanel>
 
-                                    <!-- Indicador de Obligatoriedad por Parámetro de Empresa -->
-                                    <Border Grid.Column="1"
-                                            Visibility="{Binding ForceElectronicInvoiceOnCheckout, Converter={StaticResource BoolToVis}}"
-                                            Background="#E0F2FE"
-                                            BorderBrush="#0284C7"
-                                            BorderThickness="1"
-                                            CornerRadius="6"
-                                            Padding="6,2"
-                                            VerticalAlignment="Center">
-                                        <TextBlock Text="OBLIGATORIA EN SEDE" FontSize="10.5" FontWeight="Bold" Foreground="#0369A1"/>
-                                    </Border>
+                                    <!-- Indicador de Obligatoriedad por Parámetro de Empresa o Medio de Pago -->
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Visibility="{Binding IsResolutionLocked, Converter={StaticResource BoolToVis}}"
+                                                Background="#FEF2F2"
+                                                BorderBrush="#EF4444"
+                                                BorderThickness="1"
+                                                CornerRadius="6"
+                                                Padding="6,2"
+                                                Margin="0,0,4,0"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="OBLIGATORIA POR MEDIO DE PAGO" FontSize="10" FontWeight="Bold" Foreground="#DC2626"/>
+                                        </Border>
+                                        <Border Visibility="{Binding ForceElectronicInvoiceOnCheckout, Converter={StaticResource BoolToVis}}"
+                                                Background="#E0F2FE"
+                                                BorderBrush="#0284C7"
+                                                BorderThickness="1"
+                                                CornerRadius="6"
+                                                Padding="6,2"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="OBLIGATORIA EN SEDE" FontSize="10" FontWeight="Bold" Foreground="#0369A1"/>
+                                        </Border>
+                                    </StackPanel>
                                 </Grid>
 
                                 <!-- Selector y Registro Rápido de Adquirente (Visible si se emite factura electrónica) -->
@@ -571,18 +594,8 @@
 
                                             <!-- Feedback / Error de Registro Rápido -->
                                             <TextBlock Text="{Binding QuickCustomerFeedback}"
-                                                       FontSize="11" FontWeight="Bold" Foreground="#DC2626" Margin="0,0,0,6">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding QuickCustomerFeedback, Converter={StaticResource EqualityConv}, ConverterParameter={x:Null}}" Value="False">
-                                                                <Setter Property="Visibility" Value="Visible"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
+                                                       FontSize="11" FontWeight="Bold" Foreground="#DC2626" Margin="0,0,0,6"
+                                                       Visibility="{Binding QuickCustomerFeedback, Converter={StaticResource NullToVis}}"/>
 
                                             <!-- Grid de Campos (Sin datos quemados, solo placeholders limpios) -->
                                             <Grid Margin="0,0,0,6">
@@ -606,16 +619,42 @@
                                                 <StackPanel Grid.Column="2">
                                                     <TextBlock Text="NÚMERO DOCUMENTO *" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
                                                     <TextBox Text="{Binding NewCustomerDocumentNumber, UpdateSourceTrigger=PropertyChanged}"
-                                                             Style="{StaticResource ModernTextBox}"
-                                                             Height="36"/>
+                                                             Height="36">
+                                                        <TextBox.Style>
+                                                            <Style TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding NewCustomerDocumentError, Converter={StaticResource NullToVis}}" Value="Visible">
+                                                                        <Setter Property="BorderBrush" Value="#EF4444"/>
+                                                                        <Setter Property="BorderThickness" Value="1.5"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBox.Style>
+                                                    </TextBox>
+                                                    <TextBlock Text="{Binding NewCustomerDocumentError}"
+                                                               FontSize="10" FontWeight="SemiBold" Foreground="#EF4444" Margin="0,2,0,0"
+                                                               Visibility="{Binding NewCustomerDocumentError, Converter={StaticResource NullToVis}}"/>
                                                 </StackPanel>
 
                                                 <StackPanel Grid.Column="4">
                                                     <TextBlock Text="DV" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
                                                     <TextBox Text="{Binding NewCustomerCheckDigit, UpdateSourceTrigger=PropertyChanged}"
-                                                             Style="{StaticResource ModernTextBox}"
                                                              Height="36"
-                                                             MaxLength="1"/>
+                                                             MaxLength="1">
+                                                        <TextBox.Style>
+                                                            <Style TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding NewCustomerCheckDigitError, Converter={StaticResource NullToVis}}" Value="Visible">
+                                                                        <Setter Property="BorderBrush" Value="#EF4444"/>
+                                                                        <Setter Property="BorderThickness" Value="1.5"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBox.Style>
+                                                    </TextBox>
+                                                    <TextBlock Text="{Binding NewCustomerCheckDigitError}"
+                                                               FontSize="10" FontWeight="SemiBold" Foreground="#EF4444" Margin="0,2,0,0"
+                                                               Visibility="{Binding NewCustomerCheckDigitError, Converter={StaticResource NullToVis}}"/>
                                                 </StackPanel>
                                             </Grid>
 
@@ -623,8 +662,21 @@
                                             <StackPanel Margin="0,0,0,6">
                                                 <TextBlock Text="NOMBRE COMPLETO O RAZÓN SOCIAL *" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
                                                 <TextBox Text="{Binding NewCustomerFullName, UpdateSourceTrigger=PropertyChanged}"
-                                                         Style="{StaticResource ModernTextBox}"
-                                                         Height="36"/>
+                                                         Height="36">
+                                                    <TextBox.Style>
+                                                        <Style TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding NewCustomerFullNameError, Converter={StaticResource NullToVis}}" Value="Visible">
+                                                                    <Setter Property="BorderBrush" Value="#EF4444"/>
+                                                                    <Setter Property="BorderThickness" Value="1.5"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBox.Style>
+                                                </TextBox>
+                                                <TextBlock Text="{Binding NewCustomerFullNameError}"
+                                                           FontSize="10" FontWeight="SemiBold" Foreground="#EF4444" Margin="0,2,0,0"
+                                                           Visibility="{Binding NewCustomerFullNameError, Converter={StaticResource NullToVis}}"/>
                                             </StackPanel>
 
                                             <!-- Fila 3: Email y Teléfono -->
@@ -638,15 +690,41 @@
                                                 <StackPanel Grid.Column="0">
                                                     <TextBlock Text="CORREO ELECTRÓNICO (DIAN) *" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
                                                     <TextBox Text="{Binding NewCustomerEmail, UpdateSourceTrigger=PropertyChanged}"
-                                                             Style="{StaticResource ModernTextBox}"
-                                                             Height="36"/>
+                                                             Height="36">
+                                                        <TextBox.Style>
+                                                            <Style TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding NewCustomerEmailError, Converter={StaticResource NullToVis}}" Value="Visible">
+                                                                        <Setter Property="BorderBrush" Value="#EF4444"/>
+                                                                        <Setter Property="BorderThickness" Value="1.5"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBox.Style>
+                                                    </TextBox>
+                                                    <TextBlock Text="{Binding NewCustomerEmailError}"
+                                                               FontSize="10" FontWeight="SemiBold" Foreground="#EF4444" Margin="0,2,0,0"
+                                                               Visibility="{Binding NewCustomerEmailError, Converter={StaticResource NullToVis}}"/>
                                                 </StackPanel>
 
                                                 <StackPanel Grid.Column="2">
                                                     <TextBlock Text="TELÉFONO" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
                                                     <TextBox Text="{Binding NewCustomerPhone, UpdateSourceTrigger=PropertyChanged}"
-                                                             Style="{StaticResource ModernTextBox}"
-                                                             Height="36"/>
+                                                             Height="36">
+                                                        <TextBox.Style>
+                                                            <Style TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding NewCustomerPhoneError, Converter={StaticResource NullToVis}}" Value="Visible">
+                                                                        <Setter Property="BorderBrush" Value="#EF4444"/>
+                                                                        <Setter Property="BorderThickness" Value="1.5"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBox.Style>
+                                                    </TextBox>
+                                                    <TextBlock Text="{Binding NewCustomerPhoneError}"
+                                                               FontSize="10" FontWeight="SemiBold" Foreground="#EF4444" Margin="0,2,0,0"
+                                                               Visibility="{Binding NewCustomerPhoneError, Converter={StaticResource NullToVis}}"/>
                                                 </StackPanel>
                                             </Grid>
 

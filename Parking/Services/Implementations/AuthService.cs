@@ -55,7 +55,7 @@ public class AuthService : IAuthService
                 var userModel = new UserSessionModel
                 {
                     ServerUserId = apiLogin.UserId,
-                    ServerRoleId = apiLogin.RoleId > 0 ? apiLogin.RoleId : (isAdmin ? 1 : 2),
+                    ServerRoleId = apiLogin.RoleId > 0 ? apiLogin.RoleId : (int?)null,
                     UserId = Guid.NewGuid(),
                     Username = apiLogin.Username,
                     FullName = apiLogin.FullName,
@@ -117,22 +117,14 @@ public class AuthService : IAuthService
 
                     if (targetRole == null)
                     {
-                        var defaultRoleId = isAdmin
-                            ? Guid.Parse("11111111-1111-1111-1111-111111111111")
-                            : Guid.Parse("22222222-2222-2222-2222-222222222222");
-
-                        targetRole = await localDb.Roles.FirstOrDefaultAsync(r => r.RoleId == defaultRoleId);
-                        if (targetRole == null)
+                        targetRole = new Role
                         {
-                            targetRole = new Role
-                            {
-                                RoleId = defaultRoleId,
-                                Name = roleName,
-                                Description = roleName
-                            };
-                            localDb.Roles.Add(targetRole);
-                            await localDb.SaveChangesAsync();
-                        }
+                            RoleId = Guid.NewGuid(),
+                            Name = roleName,
+                            Description = roleName
+                        };
+                        localDb.Roles.Add(targetRole);
+                        await localDb.SaveChangesAsync();
                     }
 
                     if (localUser != null)
@@ -145,6 +137,7 @@ public class AuthService : IAuthService
                         localUser.CompanyId = apiLogin.CompanyId ?? localUser.CompanyId;
                         localUser.RoleId = targetRole.RoleId;
                         localUser.IsActive = true;
+                        localUser.IsAdmin = isAdmin;
                     }
                     else
                     {
@@ -158,6 +151,7 @@ public class AuthService : IAuthService
                             PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11),
                             RoleId = targetRole.RoleId,
                             IsActive = true,
+                            IsAdmin = isAdmin,
                             CreatedAtUtc = DateTime.UtcNow
                         };
                         localDb.Users.Add(localUser);
@@ -278,7 +272,8 @@ public class AuthService : IAuthService
         await db.SaveChangesAsync();
 
         var localRoleName = user.Role?.Name ?? "Operador";
-        var isLocalAdmin = localRoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
+        var isLocalAdmin = user.IsAdmin ||
+                           localRoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
                            localRoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
                            localRoleName.Contains("Administrador", StringComparison.OrdinalIgnoreCase) ||
                            localRoleName.Contains("Admin", StringComparison.OrdinalIgnoreCase);
@@ -469,7 +464,7 @@ public class AuthService : IAuthService
         using var db = _connectionManager.CreateDbContext();
         var adminUsers = await db.Users
             .Include(u => u.Role)
-            .Where(u => u.IsActive && (u.Role.Name == "Administrador" || u.Role.Name == "Admin" || u.Role.RoleId == Guid.Parse("11111111-1111-1111-1111-111111111111")))
+            .Where(u => u.IsActive && (u.IsAdmin || u.Role.Name == "Administrador" || u.Role.Name == "Admin"))
             .ToListAsync();
 
         foreach (var admin in adminUsers)

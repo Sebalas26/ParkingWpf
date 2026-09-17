@@ -1,6 +1,8 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -10,7 +12,9 @@ using Parking.Core.Enums;
 using Parking.Core.Security;
 using Parking.Data.Factories;
 using Parking.Entities;
+using Parking.Models.ApiModels;
 using Parking.Services.Contracts;
+using Parking.Services.Implementations;
 
 namespace Parking.ViewModels;
 
@@ -37,7 +41,7 @@ public partial class CheckOutViewModel : ViewModelBase
     private readonly DispatcherTimer _liveCalculationTimer;
     private DateTime _ticketSelectionTimeUtc;
     private DateTime _frozenExitTimeUtc;
-    private int _currentGracePeriodSeconds = 900;
+    private int _currentGracePeriodSeconds = 0;
     private bool _isPaymentTimeoutDialogShowing;
 
     public event Action? RequestCloseDialog;
@@ -163,6 +167,20 @@ public partial class CheckOutViewModel : ViewModelBase
     [ObservableProperty]
     private bool _showResolutionWarning;
 
+    [ObservableProperty]
+    private bool _isResolutionLocked;
+
+    [ObservableProperty]
+    private string _resolutionLockReason = string.Empty;
+
+    public bool CanChangeResolution => !IsResolutionLocked || FilteredResolutions.Count > 1;
+
+    public bool IsElectronicInvoicingSectionVisible =>
+        HasElectronicInvoicingEnabled ||
+        EmitElectronicInvoice ||
+        (SelectedPaymentMethodEntity?.RequiresResolution == true) ||
+        (SelectedResolution != null && (SelectedResolution.IsElectronicResolution || (SelectedResolution.Prefix?.Equals("FE", StringComparison.OrdinalIgnoreCase) ?? false) || (SelectedResolution.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)));
+
     private readonly DispatcherTimer _agreementPopupTimer;
 
     public ObservableCollection<ParkingTicket> ActiveVehicles { get; } = new();
@@ -171,6 +189,7 @@ public partial class CheckOutViewModel : ViewModelBase
     public ObservableCollection<CommercialAgreement> BranchAgreements { get; } = new();
     public ObservableCollection<PaymentMethodEntity> AvailablePaymentMethods { get; } = new();
     public ObservableCollection<BillingResolution> AvailableResolutions { get; } = new();
+    public ObservableCollection<BillingResolution> FilteredResolutions { get; } = new();
     public ObservableCollection<Customer> AvailableCustomers { get; } = new();
     public List<IdentificationTypeOption> IdentificationTypeOptions { get; } = new()
     {
@@ -221,6 +240,21 @@ public partial class CheckOutViewModel : ViewModelBase
 
     [ObservableProperty]
     private string? _quickCustomerFeedback;
+
+    [ObservableProperty]
+    private string? _newCustomerDocumentError;
+
+    [ObservableProperty]
+    private string? _newCustomerCheckDigitError;
+
+    [ObservableProperty]
+    private string? _newCustomerFullNameError;
+
+    [ObservableProperty]
+    private string? _newCustomerEmailError;
+
+    [ObservableProperty]
+    private string? _newCustomerPhoneError;
 
     public CheckOutViewModel(
         IParkingTicketService ticketService,
@@ -336,7 +370,7 @@ public partial class CheckOutViewModel : ViewModelBase
         await LoadActiveVehiclesAsync();
         await LoadStoresAsync();
         await LoadResolutionsAsync();
-        if (HasElectronicInvoicingEnabled)
+        if (HasElectronicInvoicingEnabled || (SelectedPaymentMethodEntity?.RequiresResolution == true) || (SelectedResolution?.IsElectronicResolution == true))
         {
             await LoadCustomersAsync();
         }
@@ -384,7 +418,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 AvailableResolutions.Add(r);
             }
             HasResolutions = AvailableResolutions.Count > 0;
-            SelectedResolution = null;
+            ApplyPaymentMethodResolutionFilter(SelectedPaymentMethodEntity);
         }
         catch { }
     }
@@ -428,12 +462,41 @@ public partial class CheckOutViewModel : ViewModelBase
         catch { }
     }
 
+    partial void OnHasElectronicInvoicingEnabledChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsElectronicInvoicingSectionVisible));
+    }
+
     partial void OnSelectedResolutionChanged(BillingResolution? value)
     {
         if (value != null)
         {
             ShowResolutionWarning = false;
+
+            // Si el medio de pago actual exige FE y se intenta seleccionar una resolución POS
+            if (SelectedPaymentMethodEntity?.RequiresResolution == true && !value.IsElectronicResolution && (value.Prefix?.Contains("POS", StringComparison.OrdinalIgnoreCase) ?? false))
+            {
+                ApplyPaymentMethodResolutionFilter(SelectedPaymentMethodEntity);
+                return;
+            }
+
+            bool isElectronic = value.IsElectronicResolution ||
+                                (value.Prefix?.Equals("FE", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                (value.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                (value.Prefix?.Equals("FM", StringComparison.OrdinalIgnoreCase) ?? false) ||
+                                (value.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false);
+
+            if (isElectronic)
+            {
+                EmitElectronicInvoice = true;
+                _ = LoadCustomersAsync();
+            }
+            else if (!ForceElectronicInvoiceOnCheckout && (SelectedPaymentMethodEntity == null || !SelectedPaymentMethodEntity.RequiresResolution))
+            {
+                EmitElectronicInvoice = false;
+            }
         }
+        OnPropertyChanged(nameof(IsElectronicInvoicingSectionVisible));
     }
 
     partial void OnSelectedPaymentMethodEntityChanged(PaymentMethodEntity? value)
@@ -452,30 +515,106 @@ public partial class CheckOutViewModel : ViewModelBase
                 CalculateChange();
             }
 
-            // Si es tarjeta de crédito/débito o similar, auto-seleccionar resolución FVM
-            if (IsCardOrElectronicPayment(value.Name))
+            ApplyPaymentMethodResolutionFilter(value);
+        }
+        else
+        {
+            ApplyPaymentMethodResolutionFilter(null);
+        }
+    }
+
+    private void ApplyPaymentMethodResolutionFilter(PaymentMethodEntity? method)
+    {
+        if (AvailableResolutions.Count == 0)
+        {
+            FilteredResolutions.Clear();
+            IsResolutionLocked = false;
+            ResolutionLockReason = string.Empty;
+            OnPropertyChanged(nameof(CanChangeResolution));
+            OnPropertyChanged(nameof(IsElectronicInvoicingSectionVisible));
+            return;
+        }
+
+        if (method != null && (method.RequiresResolution || !string.IsNullOrWhiteSpace(method.DefaultResolutionId)))
+        {
+            var feResolutions = AvailableResolutions.Where(r => r.IsElectronicResolution
+                                                                || (r.Prefix?.StartsWith("FE", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                                || (r.Prefix?.StartsWith("FM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                                || (r.Prefix?.StartsWith("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                                || (r.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
+
+            var targetList = feResolutions.Count > 0 ? feResolutions : AvailableResolutions.ToList();
+
+            FilteredResolutions.Clear();
+            foreach (var r in targetList)
             {
-                AutoSelectFvmResolution();
+                FilteredResolutions.Add(r);
             }
-            // Si es efectivo o requiere cambio, auto-seleccionar resolución POS
-            else if (value.ToEnum() == Core.Enums.PaymentMethod.Cash || value.RequiresCashTender || IsCashPayment(value.Name))
+
+            IsResolutionLocked = true;
+            ResolutionLockReason = $"Bloqueada por {method.Name}: exige Facturación Electrónica";
+            EmitElectronicInvoice = true;
+            CanToggleElectronicInvoice = false;
+            _ = LoadCustomersAsync();
+
+            BillingResolution? targetResolution = null;
+            if (!string.IsNullOrWhiteSpace(method.DefaultResolutionId))
             {
-                AutoSelectPosResolution();
+                targetResolution = targetList.FirstOrDefault(r => r.ResolutionId.ToString().Equals(method.DefaultResolutionId, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (targetResolution == null)
+            {
+                targetResolution = targetList.FirstOrDefault(r => r.IsElectronicResolution)
+                                   ?? targetList.FirstOrDefault(r => r.Prefix?.StartsWith("FE", StringComparison.OrdinalIgnoreCase) ?? false)
+                                   ?? targetList.FirstOrDefault(r => r.Prefix?.StartsWith("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                   ?? targetList.FirstOrDefault();
+            }
+
+            SelectedResolution = targetResolution;
+        }
+        else
+        {
+            IsResolutionLocked = false;
+            ResolutionLockReason = string.Empty;
+            CanToggleElectronicInvoice = !ForceElectronicInvoiceOnCheckout;
+
+            FilteredResolutions.Clear();
+            foreach (var r in AvailableResolutions)
+            {
+                FilteredResolutions.Add(r);
+            }
+
+            if (method != null)
+            {
+                if (IsCardOrElectronicPayment(method.Name))
+                {
+                    AutoSelectFvmResolution();
+                }
+                else if (method.ToEnum() == Core.Enums.PaymentMethod.Cash || method.RequiresCashTender || IsCashPayment(method.Name))
+                {
+                    AutoSelectPosResolution();
+                }
             }
         }
+
+        OnPropertyChanged(nameof(CanChangeResolution));
+        OnPropertyChanged(nameof(IsElectronicInvoicingSectionVisible));
     }
 
     private void AutoSelectFvmResolution()
     {
-        if (AvailableResolutions.Count == 0) return;
+        var targetList = FilteredResolutions.Count > 0 ? FilteredResolutions : AvailableResolutions;
+        if (targetList.Count == 0) return;
 
-        var fvmRes = AvailableResolutions.FirstOrDefault(r => (r.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                            || (r.Prefix?.Equals("FM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                            || (r.Prefix?.Equals("FE", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                            || (r.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                            || (r.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                            || (r.Name?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                            || (r.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false));
+        var fvmRes = targetList.FirstOrDefault(r => r.IsElectronicResolution
+                                                    || (r.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                    || (r.Prefix?.Equals("FM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                    || (r.Prefix?.Equals("FE", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                    || (r.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                    || (r.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                    || (r.Name?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                    || (r.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false));
         if (fvmRes != null)
         {
             SelectedResolution = fvmRes;
@@ -484,11 +623,13 @@ public partial class CheckOutViewModel : ViewModelBase
 
     private void AutoSelectPosResolution()
     {
-        if (AvailableResolutions.Count == 0) return;
+        var targetList = FilteredResolutions.Count > 0 ? FilteredResolutions : AvailableResolutions;
+        if (targetList.Count == 0) return;
 
-        var posRes = AvailableResolutions.FirstOrDefault(r => (r.Prefix?.Equals("POS", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                            || (r.DocumentType?.Contains("POS", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                            || (r.Name?.Contains("POS", StringComparison.OrdinalIgnoreCase) ?? false));
+        var posRes = targetList.FirstOrDefault(r => !r.IsElectronicResolution &&
+                                                   ((r.Prefix?.Equals("POS", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                    || (r.DocumentType?.Contains("POS", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                    || (r.Name?.Contains("POS", StringComparison.OrdinalIgnoreCase) ?? false)));
         if (posRes != null)
         {
             SelectedResolution = posRes;
@@ -564,6 +705,10 @@ public partial class CheckOutViewModel : ViewModelBase
     private void SelectResolution(BillingResolution resolution)
     {
         if (resolution == null) return;
+        if (IsResolutionLocked && !resolution.IsElectronicResolution && (resolution.Prefix?.Contains("POS", StringComparison.OrdinalIgnoreCase) ?? false))
+        {
+            return;
+        }
         SelectedResolution = resolution;
     }
 
@@ -889,8 +1034,8 @@ public partial class CheckOutViewModel : ViewModelBase
             IsLostTicket = false;
 
             var rateInfo = _pricingCalculator.GetRate(value.VehicleType);
-            var exitGrace = currentBranch?.ExitGracePeriodMinutes ?? 0;
-            _currentGracePeriodSeconds = exitGrace > 0 ? exitGrace * 60 : (rateInfo?.GracePeriodMinutes ?? 0) * 60;
+            var exitGrace = currentBranch?.ExitGracePeriodMinutes ?? rateInfo?.GracePeriodMinutes ?? 0;
+            _currentGracePeriodSeconds = exitGrace * 60;
             HourRate = rateInfo?.HourRate ?? 0m;
             MinuteRate = rateInfo != null && rateInfo.MinuteRate > 0
                 ? rateInfo.MinuteRate
@@ -977,7 +1122,7 @@ public partial class CheckOutViewModel : ViewModelBase
             _isPaymentTimeoutDialogShowing = false;
             _ticketSelectionTimeUtc = default;
             _frozenExitTimeUtc = default;
-            _currentGracePeriodSeconds = 900;
+            _currentGracePeriodSeconds = 0;
             HourRate = 0m;
             MinuteRate = 0m;
             IsLostTicket = false;
@@ -1005,11 +1150,16 @@ public partial class CheckOutViewModel : ViewModelBase
 
     partial void OnEmitElectronicInvoiceChanged(bool value)
     {
-        if (!value)
+        if (value)
+        {
+            _ = LoadCustomersAsync();
+        }
+        else
         {
             ShowCustomerWarning = false;
             IsQuickRegisterCustomerOpen = false;
         }
+        OnPropertyChanged(nameof(IsElectronicInvoicingSectionVisible));
     }
 
     partial void OnSelectedCustomerChanged(Customer? value)
@@ -1034,6 +1184,12 @@ public partial class CheckOutViewModel : ViewModelBase
     {
         IsQuickRegisterCustomerOpen = !IsQuickRegisterCustomerOpen;
         QuickCustomerFeedback = null;
+        NewCustomerDocumentError = null;
+        NewCustomerCheckDigitError = null;
+        NewCustomerFullNameError = null;
+        NewCustomerEmailError = null;
+        NewCustomerPhoneError = null;
+
         if (IsQuickRegisterCustomerOpen)
         {
             SelectedIdentificationTypeOption = IdentificationTypeOptions.FirstOrDefault();
@@ -1045,22 +1201,169 @@ public partial class CheckOutViewModel : ViewModelBase
         }
     }
 
+    public static string CalculateNitCheckDigit(string nit)
+    {
+        if (string.IsNullOrWhiteSpace(nit)) return "0";
+        var cleanNit = new string(nit.Where(char.IsDigit).ToArray());
+        if (cleanNit.Length == 0) return "0";
+
+        int[] vpri = { 3, 7, 13, 17, 19, 23, 29, 37, 41, 43, 47, 53, 59, 67, 71 };
+        int z = cleanNit.Length;
+        int x = 0;
+        for (int i = 0; i < z; i++)
+        {
+            var y = cleanNit[i] - '0';
+            x += (y * vpri[z - 1 - i]);
+        }
+        int yRemainder = x % 11;
+        return (yRemainder > 1 ? 11 - yRemainder : yRemainder).ToString();
+    }
+
+    private bool ValidateQuickCustomerForm()
+    {
+        bool isValid = true;
+        NewCustomerDocumentError = null;
+        NewCustomerCheckDigitError = null;
+        NewCustomerFullNameError = null;
+        NewCustomerEmailError = null;
+        NewCustomerPhoneError = null;
+
+        var doc = NewCustomerDocumentNumber?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(doc))
+        {
+            NewCustomerDocumentError = "El número de documento es obligatorio.";
+            isValid = false;
+        }
+        else if (doc.Length < 4)
+        {
+            NewCustomerDocumentError = "Debe tener al menos 4 caracteres.";
+            isValid = false;
+        }
+
+        var isNit = SelectedIdentificationTypeOption?.Id == 31;
+        var dv = NewCustomerCheckDigit?.Trim();
+        if (isNit)
+        {
+            if (string.IsNullOrWhiteSpace(dv))
+            {
+                NewCustomerCheckDigit = CalculateNitCheckDigit(doc);
+            }
+            else if (!Regex.IsMatch(dv, @"^[0-9]{1}$"))
+            {
+                NewCustomerCheckDigitError = "El DV debe ser un dígito (0-9).";
+                isValid = false;
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(dv) && !Regex.IsMatch(dv, @"^[0-9]{1}$"))
+        {
+            NewCustomerCheckDigitError = "El DV debe ser un dígito (0-9).";
+            isValid = false;
+        }
+
+        var name = NewCustomerFullName?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            NewCustomerFullNameError = "El nombre o razón social es obligatorio.";
+            isValid = false;
+        }
+        else if (name.Length < 3)
+        {
+            NewCustomerFullNameError = "Debe tener al menos 3 caracteres.";
+            isValid = false;
+        }
+
+        var email = NewCustomerEmail?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            NewCustomerEmailError = "El correo electrónico es obligatorio para la DIAN.";
+            isValid = false;
+        }
+        else if (!Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.IgnoreCase))
+        {
+            NewCustomerEmailError = "Ingrese un correo válido (ej: cliente@correo.com).";
+            isValid = false;
+        }
+
+        var phone = NewCustomerPhone?.Trim();
+        if (!string.IsNullOrWhiteSpace(phone))
+        {
+            if (!Regex.IsMatch(phone, @"^[0-9+\s\-]{7,15}$") || phone.Count(char.IsDigit) < 7)
+            {
+                NewCustomerPhoneError = "El teléfono debe contener solo números (mínimo 7).";
+                isValid = false;
+            }
+        }
+
+        if (!isValid)
+        {
+            QuickCustomerFeedback = "Por favor corrija los campos marcados en rojo.";
+        }
+        else
+        {
+            QuickCustomerFeedback = null;
+        }
+
+        return isValid;
+    }
+
+    partial void OnNewCustomerDocumentNumberChanged(string value)
+    {
+        if (NewCustomerDocumentError != null && !string.IsNullOrWhiteSpace(value))
+        {
+            NewCustomerDocumentError = null;
+            if (QuickCustomerFeedback != null) QuickCustomerFeedback = null;
+        }
+        if (SelectedIdentificationTypeOption?.Id == 31 && !string.IsNullOrWhiteSpace(value))
+        {
+            NewCustomerCheckDigit = CalculateNitCheckDigit(value);
+            NewCustomerCheckDigitError = null;
+        }
+    }
+
+    partial void OnNewCustomerFullNameChanged(string value)
+    {
+        if (NewCustomerFullNameError != null && !string.IsNullOrWhiteSpace(value))
+        {
+            NewCustomerFullNameError = null;
+            if (QuickCustomerFeedback != null) QuickCustomerFeedback = null;
+        }
+    }
+
+    partial void OnNewCustomerEmailChanged(string value)
+    {
+        if (NewCustomerEmailError != null && Regex.IsMatch(value?.Trim() ?? string.Empty, @"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.IgnoreCase))
+        {
+            NewCustomerEmailError = null;
+            if (QuickCustomerFeedback != null) QuickCustomerFeedback = null;
+        }
+    }
+
+    partial void OnNewCustomerPhoneChanged(string? value)
+    {
+        if (NewCustomerPhoneError != null)
+        {
+            if (string.IsNullOrWhiteSpace(value) || (Regex.IsMatch(value.Trim(), @"^[0-9+\s\-]{7,15}$") && value.Count(char.IsDigit) >= 7))
+            {
+                NewCustomerPhoneError = null;
+                if (QuickCustomerFeedback != null) QuickCustomerFeedback = null;
+            }
+        }
+    }
+
+    partial void OnNewCustomerCheckDigitChanged(string? value)
+    {
+        if (NewCustomerCheckDigitError != null && (string.IsNullOrWhiteSpace(value) || Regex.IsMatch(value.Trim(), @"^[0-9]{1}$")))
+        {
+            NewCustomerCheckDigitError = null;
+            if (QuickCustomerFeedback != null) QuickCustomerFeedback = null;
+        }
+    }
+
     [RelayCommand]
     private async Task SaveQuickCustomerAsync()
     {
-        if (string.IsNullOrWhiteSpace(NewCustomerDocumentNumber))
+        if (!ValidateQuickCustomerForm())
         {
-            QuickCustomerFeedback = "El número de documento es obligatorio.";
-            return;
-        }
-        if (string.IsNullOrWhiteSpace(NewCustomerFullName))
-        {
-            QuickCustomerFeedback = "El nombre o razón social es obligatorio.";
-            return;
-        }
-        if (string.IsNullOrWhiteSpace(NewCustomerEmail) || !NewCustomerEmail.Contains('@'))
-        {
-            QuickCustomerFeedback = "Un correo electrónico válido es obligatorio para la DIAN.";
             return;
         }
 
@@ -1106,7 +1409,38 @@ public partial class CheckOutViewModel : ViewModelBase
             }
 
             db.Customers.Add(newCustomer);
+
+            // Encolar creación del cliente para sincronización con MySQL y que no falle el checkout offline
+            var pendingItem = new PendingSyncItem
+            {
+                PendingSyncItemId = Guid.NewGuid(),
+                OperationType = "CreateCustomer",
+                PayloadJson = JsonSerializer.Serialize(new CreateCustomerApiRequest
+                {
+                    CustomerId = newCustomer.CustomerId,
+                    CompanyId = newCustomer.CompanyId,
+                    IdentificationTypeId = newCustomer.IdentificationTypeId,
+                    DocumentNumber = newCustomer.DocumentNumber,
+                    CheckDigit = newCustomer.CheckDigit,
+                    PersonType = newCustomer.PersonType,
+                    FullName = newCustomer.FullName,
+                    Email = newCustomer.Email,
+                    Phone = newCustomer.Phone,
+                    FiscalResponsibilities = newCustomer.FiscalResponsibilities,
+                    InitialPlateNumber = SelectedTicket?.PlateNumber?.Trim().ToUpperInvariant()
+                }, ParkingApiClient.JsonOptions),
+                CreatedAtUtc = DateTime.UtcNow,
+                IsProcessed = false
+            };
+            db.PendingSyncItems.Add(pendingItem);
+
             await db.SaveChangesAsync();
+
+            // Si está en línea, intentar sincronizar de inmediato
+            if (_syncEngine != null && _syncEngine.IsOnline)
+            {
+                _ = _syncEngine.ProcessPendingQueueAsync();
+            }
 
             AvailableCustomers.Add(newCustomer);
             SelectedCustomer = newCustomer;
@@ -1131,16 +1465,19 @@ public partial class CheckOutViewModel : ViewModelBase
 
         var nowUtc = DateTime.UtcNow;
 
-        // Si transcurrió el periodo de gracia configurado desde que se escaneó/seleccionó el tiquete sin cobrar
-        var allowedGraceSeconds = _currentGracePeriodSeconds > 0 ? _currentGracePeriodSeconds : 900;
-        if ((nowUtc - _ticketSelectionTimeUtc).TotalSeconds >= allowedGraceSeconds && !_isPaymentTimeoutDialogShowing)
+        // Si hay periodo de gracia de salida configurado (> 0), validar si expiró la tolerancia
+        if (_currentGracePeriodSeconds > 0)
         {
-            _isPaymentTimeoutDialogShowing = true;
-            _ = HandlePaymentTimeoutAsync();
-            return;
+            if ((nowUtc - _ticketSelectionTimeUtc).TotalSeconds >= _currentGracePeriodSeconds && !_isPaymentTimeoutDialogShowing)
+            {
+                _isPaymentTimeoutDialogShowing = true;
+                _ = HandlePaymentTimeoutAsync();
+                return;
+            }
         }
 
-        var feeCalculationTime = _frozenExitTimeUtc;
+        // Si no hay periodo de gracia (0 segundos), se calcula contra el tiempo actual en vivo
+        var feeCalculationTime = _currentGracePeriodSeconds > 0 ? _frozenExitTimeUtc : nowUtc;
         var duration = feeCalculationTime - SelectedTicket.EntryTimeUtc;
         if (duration.TotalSeconds < 0) duration = TimeSpan.Zero;
 

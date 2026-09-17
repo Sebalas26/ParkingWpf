@@ -10,6 +10,8 @@ public class PaymentMethodEntity
     public string Icon { get; set; } = "IconCash";
     public bool State { get; set; } = true;
     public bool RequiresCashTender { get; set; } = true;
+    public bool RequiresResolution { get; set; } = false;
+    public string? DefaultResolutionId { get; set; }
 
     public PaymentMethod ToEnum()
     {

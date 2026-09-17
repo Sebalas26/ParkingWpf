@@ -21,7 +21,7 @@ public class BackgroundSyncScheduler : IBackgroundSyncScheduler
 
         _syncTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromMinutes(5)
+            Interval = TimeSpan.FromSeconds(20)
         };
         _syncTimer.Tick += async (s, e) =>
         {

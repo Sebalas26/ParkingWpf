@@ -461,6 +461,43 @@ public class ParkingApiClient : IApiClientService
         }
     }
 
+    public async Task<IReadOnlyList<WorkShift>> GetActiveShiftsAsync(int? branchId = null)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try
+        {
+            var queryString = (branchId.HasValue && branchId.Value > 0) ? $"?branchId={branchId.Value}" : string.Empty;
+            var url = $"{BaseUrl}/api/shifts/active-list{queryString}";
+            var response = await _httpClient.GetAsync(url, cts.Token);
+            CheckUnauthorized(response);
+
+            if (!IsGenuineApiResponse(response))
+            {
+                ReportConnectionState(false);
+                return Array.Empty<WorkShift>();
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                ReportConnectionState(true);
+                var list = await response.Content.ReadFromJsonAsync<List<WorkShift>>(JsonOptions, cts.Token);
+                return list ?? (IReadOnlyList<WorkShift>)Array.Empty<WorkShift>();
+            }
+
+            ReportConnectionState(true);
+            return Array.Empty<WorkShift>();
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
+            return Array.Empty<WorkShift>();
+        }
+        catch
+        {
+            return Array.Empty<WorkShift>();
+        }
+    }
+
     public async Task<ShiftSummaryModel?> GetShiftSummaryAsync(Guid shiftId)
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
@@ -616,6 +653,36 @@ public class ParkingApiClient : IApiClientService
             {
                 ReportConnectionState(true);
                 return await response.Content.ReadFromJsonAsync<PlateCheckResultDto>(JsonOptions, cts.Token);
+            }
+            return null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<CustomerApiResponse?> CreateCustomerAsync(CreateCustomerApiRequest request)
+    {
+        if (request == null) return null;
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+        try
+        {
+            var url = request.CompanyId.HasValue
+                ? $"{BaseUrl}/api/customers?companyId={request.CompanyId.Value}"
+                : $"{BaseUrl}/api/customers";
+
+            var response = await _httpClient.PostAsJsonAsync(url, request, JsonOptions, cts.Token);
+            CheckUnauthorized(response);
+            if (response.IsSuccessStatusCode)
+            {
+                ReportConnectionState(true);
+                return await response.Content.ReadFromJsonAsync<CustomerApiResponse>(JsonOptions, cts.Token);
             }
             return null;
         }

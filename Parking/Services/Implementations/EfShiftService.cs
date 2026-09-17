@@ -43,30 +43,33 @@ public class EfShiftService : IShiftService
 
     private int? CurrentBranchId => _sessionService.CurrentBranch?.Id ?? _sessionService.CurrentBranchId;
 
-    public async Task<WorkShift> OpenShiftAsync(decimal baseAmount, string? notes = null)
+    public async Task<WorkShift> OpenShiftAsync(decimal baseAmount, string? notes = null, string? cashRegisterName = null)
     {
-        var branchId = _sessionService.CurrentBranch?.Id ?? _sessionService.CurrentBranchId;
+        var branchId = CurrentBranchId;
         if (!branchId.HasValue || branchId.Value <= 0)
         {
-            throw new InvalidOperationException("Debe seleccionar una sede activa antes de abrir el turno de caja.");
+            throw new InvalidOperationException("No hay una sede seleccionada para la apertura del turno.");
         }
 
         var companyId = _sessionService.CurrentCompanyId;
         if (!companyId.HasValue || companyId.Value <= 0)
         {
-            using (var dbCheck = _connectionManager.CreateDbContext())
+            using var dbCheck = _connectionManager.CreateDbContext();
+            var branch = await dbCheck.Branches.AsNoTracking().FirstOrDefaultAsync(b => b.Id == branchId.Value);
+            companyId = branch?.CompanyId;
+
+            if (!companyId.HasValue || companyId.Value <= 0)
             {
-                var recoveredId = await dbCheck.Branches
-                    .Where(b => b.CompanyId.HasValue && b.CompanyId.Value > 0)
-                    .Select(b => b.CompanyId)
+                var recoveredId = await dbCheck.Users
+                    .Where(u => u.CompanyId.HasValue && u.CompanyId.Value > 0)
+                    .Select(u => u.CompanyId)
                     .FirstOrDefaultAsync();
 
                 if (!recoveredId.HasValue || recoveredId.Value <= 0)
                 {
                     recoveredId = await dbCheck.ParkingTickets
-                        .Where(t => t.CompanyId > 0)
-                        .OrderByDescending(t => t.EntryTimeUtc)
-                        .Select(t => (int?)t.CompanyId)
+                        .Where(t => t.CompanyId.HasValue && t.CompanyId.Value > 0)
+                        .Select(t => t.CompanyId)
                         .FirstOrDefaultAsync();
                 }
 
@@ -79,15 +82,15 @@ public class EfShiftService : IShiftService
                 }
 
                 companyId = (recoveredId.HasValue && recoveredId.Value > 0) ? recoveredId.Value : 1;
+            }
 
-                if (_sessionService.CurrentUser != null)
-                {
-                    _sessionService.CurrentUser.CompanyId = companyId.Value;
-                }
-                if (_sessionService.CurrentBranch != null)
-                {
-                    _sessionService.CurrentBranch.CompanyId = companyId.Value;
-                }
+            if (_sessionService.CurrentUser != null)
+            {
+                _sessionService.CurrentUser.CompanyId = companyId.Value;
+            }
+            if (_sessionService.CurrentBranch != null)
+            {
+                _sessionService.CurrentBranch.CompanyId = companyId.Value;
             }
         }
 
@@ -97,6 +100,7 @@ public class EfShiftService : IShiftService
             BranchId = branchId.Value,
             CompanyId = companyId.Value,
             UserId = _authService.CurrentUser?.ServerUserId,
+            CashRegisterName = cashRegisterName,
             BaseAmount = baseAmount,
             Notes = notes
         };
@@ -139,6 +143,7 @@ public class EfShiftService : IShiftService
             CompanyId = companyId.Value,
             UserId = _authService.CurrentUser?.ServerUserId ?? 1,
             OperatorName = operatorName,
+            CashRegisterName = !string.IsNullOrWhiteSpace(cashRegisterName) ? cashRegisterName : "Caja Principal",
             StartTimeUtc = DateTime.UtcNow,
             BaseAmount = baseAmount,
             Status = 0,
@@ -191,15 +196,13 @@ public class EfShiftService : IShiftService
     {
         var branchId = CurrentBranchId;
         var currentUser = _authService.CurrentUser;
-        int? queryUserId = (currentUser != null && !currentUser.IsAdmin && currentUser.ServerUserId.HasValue)
-            ? currentUser.ServerUserId.Value
-            : null;
+        int? queryUserId = currentUser?.ServerUserId;
 
-        if (IsOnline)
+        if (IsOnline && queryUserId.HasValue && queryUserId.Value > 0)
         {
             try
             {
-                var apiShift = await _apiClient.GetActiveShiftAsync(userId: queryUserId, branchId: branchId);
+                var apiShift = await _apiClient.GetActiveShiftAsync(userId: queryUserId.Value, branchId: branchId);
                 if (apiShift != null)
                 {
                     // Si ya tenemos en memoria el turno con el mismo ShiftId y sincronizado, evitar reescritura concurrente
@@ -245,7 +248,8 @@ public class EfShiftService : IShiftService
                 }
                 else
                 {
-                    // El API respondió confirmando que no hay turno activo (cerrado centralmente desde PWA)
+                    // El API confirmó que el usuario actual no tiene turno activo (o fue cerrado centralmente)
+                    // Solo cerrar en SQLite local los turnos abiertos pertenecientes a ESTE usuario
                     await _shiftDbLock.WaitAsync();
                     try
                     {
@@ -253,7 +257,7 @@ public class EfShiftService : IShiftService
                         if (branchId.HasValue && branchId.Value > 0)
                         {
                             var openLocalShifts = await dbClose.WorkShifts
-                                .Where(s => s.BranchId == branchId.Value && s.Status == 0)
+                                .Where(s => s.BranchId == branchId.Value && s.Status == 0 && s.UserId == queryUserId.Value)
                                 .ToListAsync();
                             foreach (var s in openLocalShifts)
                             {
@@ -279,12 +283,27 @@ public class EfShiftService : IShiftService
             catch { }
         }
 
-        // Si falló la consulta online o estamos en modo offline, resolver contra SQLite local
+        // Si falló la consulta online o estamos en modo offline, resolver contra SQLite local para el usuario autenticado
         using var db = _connectionManager.CreateDbContext();
         var query = db.WorkShifts.Where(s => s.Status == 0);
         if (branchId.HasValue && branchId.Value > 0)
         {
             query = query.Where(s => s.BranchId == branchId.Value);
+        }
+
+        if (queryUserId.HasValue && queryUserId.Value > 0)
+        {
+            query = query.Where(s => s.UserId == queryUserId.Value);
+        }
+        else if (currentUser != null && !string.IsNullOrWhiteSpace(currentUser.FullName))
+        {
+            query = query.Where(s => s.OperatorName == currentUser.FullName || s.OperatorName == currentUser.Username);
+        }
+        else
+        {
+            CurrentShift = null;
+            ShiftStateChanged?.Invoke();
+            return;
         }
 
         var localShift = await query
@@ -301,17 +320,86 @@ public class EfShiftService : IShiftService
         return CurrentShift;
     }
 
+    public async Task<IReadOnlyList<WorkShift>> GetActiveShiftsByBranchAsync(int? branchId = null)
+    {
+        branchId ??= CurrentBranchId;
+        if (!branchId.HasValue || branchId.Value <= 0) return Array.Empty<WorkShift>();
+
+        if (IsOnline)
+        {
+            try
+            {
+                var apiShifts = await _apiClient.GetActiveShiftsAsync(branchId.Value);
+                if (apiShifts != null && apiShifts.Count > 0)
+                {
+                    // Sincronizar en SQLite local para consistencia offline
+                    await _shiftDbLock.WaitAsync();
+                    try
+                    {
+                        using var dbPersist = _connectionManager.CreateDbContext();
+                        foreach (var apiShift in apiShifts)
+                        {
+                            var local = await dbPersist.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == apiShift.ShiftId);
+                            if (local == null)
+                            {
+                                apiShift.IsSynchronized = true;
+                                dbPersist.WorkShifts.Add(apiShift);
+                            }
+                            else
+                            {
+                                local.Status = apiShift.Status;
+                                local.BaseAmount = apiShift.BaseAmount;
+                                local.StartTimeUtc = apiShift.StartTimeUtc;
+                                local.EndTimeUtc = apiShift.EndTimeUtc;
+                                local.OperatorName = apiShift.OperatorName;
+                                local.UserId = apiShift.UserId;
+                                local.BranchId = apiShift.BranchId;
+                                local.CompanyId = apiShift.CompanyId;
+                                local.CashRegisterName = apiShift.CashRegisterName;
+                                local.Notes = apiShift.Notes;
+                                local.IsSynchronized = true;
+                            }
+                        }
+                        await dbPersist.SaveChangesAsync();
+                    }
+                    finally
+                    {
+                        _shiftDbLock.Release();
+                    }
+
+                    return apiShifts;
+                }
+            }
+            catch { }
+        }
+
+        // Fallback SQLite local
+        using var db = _connectionManager.CreateDbContext();
+        return await db.WorkShifts
+            .Where(s => s.BranchId == branchId.Value && s.Status == 0)
+            .OrderByDescending(s => s.StartTimeUtc)
+            .ToListAsync();
+    }
+
     public async Task<ShiftSummaryModel> GetCurrentShiftSummaryAsync()
     {
-        var branchId = CurrentBranchId;
         var activeShift = CurrentShift ?? await GetActiveShiftAsync();
-        var startTime = activeShift?.StartTimeUtc ?? DateTime.UtcNow.Date;
-        var baseAmount = activeShift?.BaseAmount ?? 0m;
-        var shiftId = activeShift?.ShiftId ?? Guid.Empty;
-        var operatorName = activeShift?.OperatorName ?? (_authService.CurrentUser?.FullName ?? "Operador General");
+        if (activeShift == null)
+        {
+            return new ShiftSummaryModel();
+        }
+        return await GetShiftSummaryByIdAsync(activeShift.ShiftId);
+    }
+
+    public async Task<ShiftSummaryModel> GetShiftSummaryByIdAsync(Guid shiftId)
+    {
+        if (shiftId == Guid.Empty)
+        {
+            return new ShiftSummaryModel();
+        }
 
         ShiftSummaryModel? remoteSummary = null;
-        if (IsOnline && shiftId != Guid.Empty)
+        if (IsOnline)
         {
             try
             {
@@ -320,8 +408,19 @@ public class EfShiftService : IShiftService
             catch { }
         }
 
-        // Cálculo local en SQLite filtrado por sede
+        // Buscar información del turno para el cálculo local
         using var db = _connectionManager.CreateDbContext();
+        var targetShift = (CurrentShift != null && CurrentShift.ShiftId == shiftId)
+            ? CurrentShift
+            : await db.WorkShifts.AsNoTracking().FirstOrDefaultAsync(s => s.ShiftId == shiftId);
+
+        var branchId = targetShift?.BranchId ?? CurrentBranchId;
+        var startTime = targetShift?.StartTimeUtc ?? DateTime.UtcNow.Date;
+        var endTime = targetShift?.EndTimeUtc ?? DateTime.UtcNow;
+        var isClosed = targetShift != null && targetShift.Status != 0;
+        var baseAmount = targetShift?.BaseAmount ?? 0m;
+        var operatorName = targetShift?.OperatorName ?? (_authService.CurrentUser?.FullName ?? "Operador General");
+
         var ticketsQuery = db.ParkingTickets.AsNoTracking().AsQueryable();
         if (branchId.HasValue && branchId.Value > 0)
         {
@@ -331,11 +430,13 @@ public class EfShiftService : IShiftService
         var allTickets = await ticketsQuery.ToListAsync();
 
         var completedTickets = allTickets
-            .Where(t => t.Status == TicketStatus.Completed && (activeShift == null || t.ExitTimeUtc >= startTime))
+            .Where(t => t.Status == TicketStatus.Completed && 
+                        t.ExitTimeUtc >= startTime && 
+                        (!isClosed || t.ExitTimeUtc <= endTime))
             .ToList();
 
         var enteredTicketsCount = allTickets
-            .Count(t => activeShift == null || t.EntryTimeUtc >= startTime);
+            .Count(t => t.EntryTimeUtc >= startTime && (!isClosed || t.EntryTimeUtc <= endTime));
 
         // Medios de pago configurados en base de datos para la sede
         var branchPmIds = branchId.HasValue
@@ -360,7 +461,6 @@ public class EfShiftService : IShiftService
         decimal transfer = 0m;
         decimal discounts = completedTickets.Sum(t => t.DiscountAmount);
 
-        // Agrupar tiquetes por PaymentMethodId
         var ticketsByPmId = completedTickets
             .Where(t => t.PaymentMethodId.HasValue && t.PaymentMethodId.Value > 0)
             .GroupBy(t => t.PaymentMethodId!.Value)
@@ -379,7 +479,6 @@ public class EfShiftService : IShiftService
             var isCard = pm.Name.ToLowerInvariant().Contains("tarjeta") || pm.Name.ToLowerInvariant().Contains("card") || pm.Name.ToLowerInvariant().Contains("credito") || pm.Name.ToLowerInvariant().Contains("debito");
             var isTransfer = pm.Name.ToLowerInvariant().Contains("nequi") || pm.Name.ToLowerInvariant().Contains("transfer") || pm.Name.ToLowerInvariant().Contains("qr") || pm.Name.ToLowerInvariant().Contains("davi");
 
-            // Si hay tiquetes sin PaymentMethodId, asignar por fallback
             if (unassignedTickets.Count > 0)
             {
                 var matched = unassignedTickets.Where(t =>
@@ -435,7 +534,6 @@ public class EfShiftService : IShiftService
             });
         }
 
-        // Tiquetes restantes que no encajaron
         if (unassignedTickets.Count > 0)
         {
             var extraAmount = unassignedTickets.Sum(t => t.NetAmount);
@@ -449,17 +547,12 @@ public class EfShiftService : IShiftService
             }
         }
 
-        // Obtener retiros de caja (recogidas del dueño/administración)
-        decimal withdrawals = 0m;
-        if (shiftId != Guid.Empty)
-        {
-            var shiftWithdrawals = await db.CashWithdrawals
-                .Where(w => w.ShiftId == shiftId)
-                .ToListAsync();
-            withdrawals = shiftWithdrawals.Sum(w => w.Amount);
-        }
+        // Obtener retiros de caja
+        var shiftWithdrawals = await db.CashWithdrawals
+            .Where(w => w.ShiftId == shiftId)
+            .ToListAsync();
+        decimal withdrawals = shiftWithdrawals.Sum(w => w.Amount);
 
-        // Si el remoto respondió pero no tenía el desglose por medio de pago, enriquecerlo
         if (remoteSummary != null)
         {
             remoteSummary.PaymentMethodsBreakdown = breakdown;
@@ -480,7 +573,7 @@ public class EfShiftService : IShiftService
         {
             ShiftId = shiftId,
             BranchId = branchId,
-            UserId = activeShift?.UserId ?? (_authService.CurrentUser?.ServerUserId ?? 1),
+            UserId = targetShift?.UserId ?? (_authService.CurrentUser?.ServerUserId ?? 1),
             OperatorName = operatorName,
             StartTimeUtc = startTime,
             BaseAmount = baseAmount,
@@ -490,12 +583,12 @@ public class EfShiftService : IShiftService
             TotalDiscounts = discounts,
             TotalCashWithdrawals = withdrawals,
             ExpectedCash = expectedCash,
-            ActualCashCounted = 0m,
-            CashDifference = -expectedCash,
+            ActualCashCounted = targetShift?.ActualCashCounted ?? 0m,
+            CashDifference = (targetShift?.ActualCashCounted ?? 0m) - expectedCash,
             TotalTicketsProcessed = completedTickets.Count,
             TotalVehiclesEntered = enteredTicketsCount,
-            Status = 0,
-            Notes = activeShift?.Notes,
+            Status = targetShift?.Status ?? 0,
+            Notes = targetShift?.Notes,
             PaymentMethodsBreakdown = breakdown
         };
     }
@@ -505,9 +598,14 @@ public class EfShiftService : IShiftService
         var activeShift = CurrentShift ?? await GetActiveShiftAsync();
         if (activeShift == null) return null;
 
+        return await CloseSpecificShiftAsync(activeShift.ShiftId, actualCashCounted, notes, handoverToUserId, handoverToUserName);
+    }
+
+    public async Task<WorkShift?> CloseSpecificShiftAsync(Guid shiftId, decimal actualCashCounted, string? notes = null, Guid? handoverToUserId = null, string? handoverToUserName = null)
+    {
         var request = new CloseShiftApiRequest
         {
-            ShiftId = activeShift.ShiftId,
+            ShiftId = shiftId,
             ActualCashCounted = actualCashCounted,
             Notes = notes,
             HandoverToUserId = handoverToUserId,
@@ -524,14 +622,14 @@ public class EfShiftService : IShiftService
             catch { }
         }
 
-        var summary = await GetCurrentShiftSummaryAsync();
+        var summary = await GetShiftSummaryByIdAsync(shiftId);
         var endTime = DateTime.UtcNow;
 
         await _shiftDbLock.WaitAsync();
         try
         {
             using var db = _connectionManager.CreateDbContext();
-            var local = await db.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == activeShift.ShiftId);
+            var local = await db.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == shiftId);
             if (local != null)
             {
                 local.EndTimeUtc = endTime;
@@ -561,25 +659,53 @@ public class EfShiftService : IShiftService
             _shiftDbLock.Release();
         }
 
-        CurrentShift = null;
+        if (CurrentShift?.ShiftId == shiftId)
+        {
+            CurrentShift = null;
+        }
         ShiftStateChanged?.Invoke();
         return closedShift;
     }
 
-    public async Task<WorkShift> HandoverAndOpenNextShiftAsync(decimal actualCashCounted, string? notes, Guid handoverToUserId, string handoverToUserName, decimal newShiftBaseAmount)
+    public async Task<WorkShift> HandoverAndOpenNextShiftAsync(
+        decimal actualCashCounted, 
+        string? notes, 
+        Guid handoverToUserId, 
+        string handoverToUserName, 
+        decimal newShiftBaseAmount, 
+        Guid? shiftIdToClose = null, 
+        string? newCashRegisterName = null)
     {
         var branchId = CurrentBranchId;
+        var targetShiftId = shiftIdToClose ?? CurrentShift?.ShiftId;
 
         // 1. Cerrar el turno saliente
-        await CloseShiftAsync(actualCashCounted, notes, handoverToUserId, handoverToUserName);
+        if (targetShiftId.HasValue)
+        {
+            await CloseSpecificShiftAsync(targetShiftId.Value, actualCashCounted, notes, handoverToUserId, handoverToUserName);
+        }
+
+        // Obtener el nombre de la caja anterior si no se especificó uno nuevo
+        string registerName = newCashRegisterName ?? "Caja Principal";
+        if (targetShiftId.HasValue && string.IsNullOrWhiteSpace(newCashRegisterName))
+        {
+            using var dbLookup = _connectionManager.CreateDbContext();
+            var prevShift = await dbLookup.WorkShifts.AsNoTracking().FirstOrDefaultAsync(s => s.ShiftId == targetShiftId.Value);
+            if (prevShift != null && !string.IsNullOrWhiteSpace(prevShift.CashRegisterName))
+            {
+                registerName = prevShift.CashRegisterName;
+            }
+        }
 
         // 2. Abrir inmediatamente el nuevo turno a nombre del operador receptor
         var nextShift = new WorkShift
         {
             ShiftId = Guid.NewGuid(),
             BranchId = branchId,
-            UserId = 1,
+            CompanyId = _sessionService.CurrentCompanyId,
+            UserId = _authService.CurrentUser?.ServerUserId ?? 1,
             OperatorName = handoverToUserName,
+            CashRegisterName = registerName,
             StartTimeUtc = DateTime.UtcNow,
             BaseAmount = newShiftBaseAmount,
             Status = 0,
@@ -587,6 +713,29 @@ public class EfShiftService : IShiftService
             IsSynchronized = false,
             CreatedAtUtc = DateTime.UtcNow
         };
+
+        // Si estamos online, registrar la apertura central en el API
+        if (IsOnline && branchId.HasValue)
+        {
+            try
+            {
+                var apiShift = await _apiClient.OpenShiftAsync(new OpenShiftApiRequest
+                {
+                    BranchId = branchId.Value,
+                    CompanyId = _sessionService.CurrentCompanyId,
+                    UserId = _authService.CurrentUser?.ServerUserId,
+                    CashRegisterName = registerName,
+                    BaseAmount = newShiftBaseAmount,
+                    Notes = nextShift.Notes
+                });
+                if (apiShift != null)
+                {
+                    nextShift.ShiftId = apiShift.ShiftId;
+                    nextShift.IsSynchronized = true;
+                }
+            }
+            catch { }
+        }
 
         await _shiftDbLock.WaitAsync();
         try

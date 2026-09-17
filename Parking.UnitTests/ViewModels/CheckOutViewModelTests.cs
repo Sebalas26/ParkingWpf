@@ -473,6 +473,64 @@ public class CheckOutViewModelTests : IDisposable
         savedInDb.Should().NotBeNull();
     }
 
+    [Fact]
+    public void OnSelectedPaymentMethodEntityChanged_WhenRequiresResolution_LocksResolutionToElectronicAndExcludesPos()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var fvmRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FE", Name = "Facturación Electrónica DIAN", IsElectronicResolution = true };
+        var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS Estándar", IsElectronicResolution = false };
+        vm.AvailableResolutions.Add(fvmRes);
+        vm.AvailableResolutions.Add(posRes);
+
+        var paymentMethod = new PaymentMethodEntity
+        {
+            Id = 3,
+            Name = "Transferencia Bancaria",
+            RequiresResolution = true,
+            RequiresCashTender = false
+        };
+
+        // Act
+        vm.SelectedPaymentMethodEntity = paymentMethod;
+
+        // Assert
+        vm.IsResolutionLocked.Should().BeTrue();
+        vm.ResolutionLockReason.Should().Contain("Transferencia Bancaria");
+        vm.FilteredResolutions.Should().Contain(fvmRes);
+        vm.FilteredResolutions.Should().NotContain(posRes);
+        vm.SelectedResolution.Should().Be(fvmRes);
+        vm.EmitElectronicInvoice.Should().BeTrue();
+        vm.CanToggleElectronicInvoice.Should().BeFalse();
+        vm.IsElectronicInvoicingSectionVisible.Should().BeTrue();
+    }
+
+    [Fact]
+    public void SelectResolution_WhenResolutionLocked_RejectsPosSelection()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var fvmRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FE", Name = "Facturación Electrónica DIAN", IsElectronicResolution = true };
+        var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS Estándar", IsElectronicResolution = false };
+        vm.AvailableResolutions.Add(fvmRes);
+        vm.AvailableResolutions.Add(posRes);
+
+        var paymentMethod = new PaymentMethodEntity
+        {
+            Id = 4,
+            Name = "Tarjeta Prepago",
+            RequiresResolution = true
+        };
+        vm.SelectedPaymentMethodEntity = paymentMethod;
+        vm.SelectedResolution.Should().Be(fvmRes);
+
+        // Act - Operator tries to manually pick POS
+        vm.SelectResolutionCommand.Execute(posRes);
+
+        // Assert - Selection remains the electronic resolution
+        vm.SelectedResolution.Should().Be(fvmRes);
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

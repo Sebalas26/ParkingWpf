@@ -338,7 +338,11 @@ public class EfParkingTicketService : IParkingTicketService
         ticket.ResolutionId = resolutionId;
         ticket.ResolutionName = resolutionName;
         ticket.InvoiceNumber = fiscalInvoiceNumber;
-        ticket.IsElectronicInvoice = requestElectronicInvoice || !string.IsNullOrWhiteSpace(fiscalInvoiceNumber);
+        ticket.IsElectronicInvoice = requestElectronicInvoice;
+        if (requestElectronicInvoice)
+        {
+            ticket.DianStatus = DianStatus.Pending;
+        }
         ticket.CustomerId = customerId ?? ticket.CustomerId;
         ticket.IsLostTicket = isLostTicket;
         ticket.LostTicketFee = lostTicketFee;

@@ -22,7 +22,7 @@ public class VehicleRate
     public TimeSpan? NightStartTime { get; set; }
     public TimeSpan? NightEndTime { get; set; }
     public int? NightStayMinMinutes { get; set; }
-    public int GracePeriodMinutes { get; set; } = 15;
+    public int GracePeriodMinutes { get; set; } = 0;
     public string IconKey { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;

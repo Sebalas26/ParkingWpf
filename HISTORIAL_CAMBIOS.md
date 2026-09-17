@@ -14,6 +14,200 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 3. **Componentes / Módulos Modificados** (archivos afectados).
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
+### [2026-09-17 10:10:00] - [FIX / FEAT / UI/UX] - Solución Integral: Validación de Clientes Rápidos, Cola de Contingencia Offline DIAN, Sincronización en Tiempo Real PWA->WPF, Soporte de Logotipo en Tiquetes y Corrección de Período de Gracia $0
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"1. Mira el error que me arrojo cuando intente hacer que ingrese con otro usuario y ya se tiene una caja abierta... fallo esa excepción. 2. En la segunda imagen los inputs no tienen validación ni nada. 3. La facturación electrónica debe funcionar bien en online pero si el sistema está offline debe almacenar que se solicitó la factura electrónica para después enviarlas. 4. No está funcionando la sincronización automática: si le di salida a un vehículo desde la PWA y estoy logueado en la sede desde el WPF no se sincroniza en tiempo real por debajo y en la parte superior debe aparecer animando 'Sincronizando...'. 5. En la PWA en companies no está la opción para parametrizar el logo si se quiere colocar uno o dejar el que tiene por defecto para que aparezca en el tiquete o factura. 6. Se tiene en 0 el tiempo de gracia en la sede pero sigue aplicando 15 minutos."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Corrección de Excepción Crítica en WPF (`ShiftClosureView.xaml`)**:
+     - Se corrigió `XamlParseException` / `InvalidOperationException` al enlazar propiedades getter-only (`StartTime`, `OperatorName`) en elementos `<Run Text="{Binding ...}"/>`. Al no tener setter, el TwoWay binding por defecto fallaba en runtime. Se forzó `Mode=OneWay`.
+  2. **Validación Visual y Formulario Limpio de Creación Rápida de Clientes (`CheckOutViewModel.cs` & `CheckOutDialog.xaml`)**:
+     - Implementado cálculo dinámico del Dígito de Verificación (DV) para NIT en Colombia (algoritmo DIAN módulo 11 ponderado con primos).
+     - Validación estricta en tiempo real de formato de correo electrónico (`EMAIL_REGEX`), teléfonos numéricos de 7 a 10 dígitos, y obligatoriedad de documento y nombre/razón social.
+     - Enlace de errores visuales con bordes rojos (`#EF4444`) y etiquetas explicativas bajo los inputs con convertidor `NullToVis`.
+  3. **Cola de Contingencia Offline para Facturación Electrónica DIAN y Sincronización de Clientes**:
+     - Si el tiquete se liquida con solicitud de Factura Electrónica y el equipo está offline o falla la conexión DIAN, se preserva el estado `IsElectronicInvoice = true` y `DianStatus = DianStatus.Pending` en SQLite para su posterior reporte en lote.
+     - Si el cliente fue creado de forma local/offline, se genera un elemento en `PendingSyncItems` con `OperationType = "CreateCustomer"`, sincronizándolo en la API central antes de la salida del tiquete (`CreateCustomerApiRequest`, `CustomerApiResponse`, `ParkingApiClient.CreateCustomerAsync`, `SyncEngineService.ProcessPendingQueueAsync`).
+     - En `EfParkingTicketService.cs` se corrigió la asignación errónea que marcaba recibos POS como electrónicos sin haberlo solicitado el operador.
+  4. **Sincronización Automática en Tiempo Real (PWA -> WPF) e Indicador Visual Animado**:
+     - En `SignalRClientService.cs`, se corrigió un defecto crítico en `StartAsync()` que recreaba una instancia de conexión separada no iniciada dentro de `OnConfigUpdateRequired`, descartando todos los eventos entrantes del Hub SignalR (`TicketCheckedOut`, `TicketCheckedIn`, `ShiftOpened`, `ShiftClosed`).
+     - `BackgroundSyncScheduler.cs`: Intervalo reducido de 5 minutos a 20 segundos para sincronización en segundo plano ultrarrápida.
+     - `MainShellViewModel.cs` & `MainShellWindow.xaml`: La píldora de sincronización en el topbar ahora muestra un icono giratorio continuo (`IconSync`) y texto dinámico *"Sincronizando..."* durante cualquier ciclo activo de SignalR o BackgroundSync, reactivando la ocupación en patio sin requerir clics manuales.
+  5. **Visualización de Logotipo en Tiquetes y Facturas**:
+     - En `ReceiptPreviewViewModel.cs` y `ReceiptPreviewDialog.xaml`: Integrado soporte de logotipo corporativo en tiquetes de entrada, comprobantes de pago/salida y facturas electrónicas FVM mediante `Base64ToImageConverter` vinculado a `BranchLogoBase64`.
+  6. **Período de Gracia Estricto de Sede ($0 Real)**:
+     - Se eliminó el fallback forzado a 15 minutos en `EfPricingCalculatorService.cs`, `CheckOutViewModel.cs`, `Branch.cs`, `BranchModel.cs` y `VehicleRate.cs`. Si la sede define `EntryGracePeriodMinutes = 0`, el sistema cobra la estancia completa sin otorgar gratuidad indebida.
+  7. **Compilación y Pruebas**:
+     - `dotnet test ParkingWpf.slnx`: **225 de 225 Pruebas Unitarias Superadas (0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ShiftClosureView.xaml`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Services/Implementations/SignalRClientService.cs`
+  - `Parking/Services/Implementations/BackgroundSyncScheduler.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Models/ApiModels/CustomerApiModels.cs`
+  - `Parking/Entities/Branch.cs`
+  - `Parking/Entities/VehicleRate.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+
+---
+
+### [2026-09-17 08:52:00] - [FEAT / UI/UX / MULTI-REGISTER] - Soporte Completo Multi-Caja en WPF: Apertura de Nuevas Cajas Independientes o Relevo de Cajas Activas en la Misma Sede
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"En parqueaderos con múltiples taquillas/cajas (ej: taquilla norte y taquilla sur, o entrada y salida), cuando un usuario inicia sesión en una sede donde ya existe un turno abierto de otro usuario (ej: Sebalas o Pacho), el sistema no debe asumir indebidamente la caja ajena sin autorización ni forzar el relevo sin opción. Debe permitir al operador elegir con total libertad entre: (1) Tomar el relevo de la caja abierta existente en la sede (contando el efectivo en gaveta y asumiendo la custodia), o (2) Abrir una nueva caja / turno independiente para operar en paralelo con su propio identificador de caja y base inicial."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico del Flujo Anterior**:
+     - `ShiftService.RefreshCurrentShiftAsync()` consultaba el turno activo del usuario autenticado si era operador, pero si era admin o si el API devolvía un turno activo en la sede, el usuario quedaba atado al turno del primer operador sin haberlo recibido ni contado.
+     - `MainShellViewModel` redirigía automáticamente a `ShiftClosureViewModel` mostrando advertencias de "Relevar" o "Cierre de Caja" sin permitir al nuevo operador abrir su propia caja independiente en la misma sede.
+     - La API central ya disponía de soporte para múltiples turnos simultáneos por sede con nombres de caja (`CashRegisterName`, `GET /api/shifts/active-list`).
+  2. **Aislamiento Multi-Caja en Servicios y Clientes (`IApiClientService`, `ParkingApiClient`, `IShiftService`, `EfShiftService`)**:
+     - `IApiClientService` / `ParkingApiClient`: Se implementó el método `GetActiveShiftsAsync(int? branchId = null)` consultando `GET /api/shifts/active-list`.
+     - `IShiftService` / `EfShiftService`:
+       - `OpenShiftAsync`: Se añadió el parámetro opcional `string? cashRegisterName = null` para nombrar la terminal o caja (ej: "Caja 2", "Taquilla Norte").
+       - `RefreshCurrentShiftAsync`: Se eliminó la suposición indebida para administradores; ahora busca de forma estricta el turno correspondiente al `ServerUserId` del usuario activo. Si el usuario no tiene turno, `HasActiveShift` es `false` y `CurrentShift` es `null`, sin modificar ni cerrar localmente los turnos de otros operarios en SQLite.
+       - `GetActiveShiftsByBranchAsync(int? branchId)`: Consulta todos los turnos abiertos en la sede activa, con soporte online (`/api/shifts/active-list`) y fallback resiliente en SQLite local.
+       - `GetShiftSummaryByIdAsync(Guid shiftId)`: Calcula el balance y desglose de arqueo para cualquier turno específico de la sede.
+       - `CloseSpecificShiftAsync(Guid shiftId, ...)`: Cierra directamente un turno específico en el backend y en SQLite local sin afectar el turno personal del usuario logueado.
+       - `HandoverAndOpenNextShiftAsync(...)`: Soporta `shiftIdToClose` y `newCashRegisterName` para cerrar específicamente la caja seleccionada y abrir la nueva caja en un flujo transaccional.
+  3. **Lógica de Decisión y Navegación en `MainShellViewModel`**:
+     - Al iniciar sesión o cambiar de sede, si el usuario no tiene turno activo personal pero existen otras cajas operando en la sede (`GetActiveShiftsByBranchAsync`), se navega a `ShiftClosureViewModel` y se notifica con un mensaje informativo: *"Cajas Activas en la Sede: Existen cajas operando actualmente en esta sede. Puedes relevar una existente o abrir una nueva caja independiente."*.
+  4. **Panel de Decisión y Switcher en `ShiftClosureViewModel` & `ShiftClosureView.xaml`**:
+     - Propiedades observables añadidas: `OtherActiveShifts`, `SelectedShiftToRelieve`, `HasOtherActiveShifts`, `IsRelieveModeSelected`, `NewCashRegisterName`, `SelectedShiftToRelieveSummary`, `IsRelieveSectionVisible`, `IsOpenNewRegisterSectionVisible`.
+     - Modo Relevo: Permite seleccionar en un `ComboBox` la caja a recibir, muestra el desglose financiero en tiempo real (`SelectedShiftToRelieveSummary`), captura el efectivo contado en gaveta (`ActualCashCounted`), calcula la diferencia de arqueo en tiempo real (`CashDifference`) y permite asumir la caja (`TakeOverShiftCommand`) o cerrarla directamente (`CloseOtherShiftDirectCommand` para administradores).
+     - Modo Apertura Nueva Caja: Permite especificar el nombre de la terminal (`NewCashRegisterName`), base inicial (`NewShiftBaseAmount`, nullable cumpliendo Regla 8) y notas, abriendo una nueva caja independiente que opera en paralelo.
+  5. **Pruebas Unitarias y Certificación**:
+     - 4 nuevas pruebas unitarias en `EfShiftServiceTests.cs`:
+       - `OpenShiftAsync_WithCashRegisterName_PersistsCashRegisterName`
+       - `GetActiveShiftsByBranchAsync_ReturnsAllActiveShiftsForBranch`
+       - `RefreshCurrentShiftAsync_WhenUserHasNoShift_ReturnsNullEvenIfOtherUserHasShiftInBranch`
+       - `CloseSpecificShiftAsync_ClosesTargetShift`
+     - Compilación: **0 Errores, 0 Advertencias**.
+     - Pruebas unitarias: `dotnet test ParkingWpf.slnx`: **225 superadas, 0 fallos (100% de éxito)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Contracts/IShiftService.cs`
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking/Views/ShiftClosureView.xaml`
+  - `Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
+
+### [2026-09-17 08:15:00] - [FEAT / FIX / UI/UX / FE-ENFORCEMENT] - Bloqueo Estricto de Resolución para Medios de Pago con FE Obligatoria y Desbloqueo de Formulario de Adquirente en Checkout
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Bloquear la resolución y evitar que se pueda pasar a POS cuando el medio de pago exige FE (tanto en WPF como en PWA) y explicar y solucionar por qué no se muestra la búsqueda ni creación rápida de cliente en el diálogo de cobro cuando se activa una resolución FE o medio de pago con FE exigida."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Causa Raíz**:
+     - En `ParkingApi`, `SyncService.cs` omitía proyectar las columnas `RequiresResolution`, `DefaultResolutionId` y `SiigoPaymentMethodId` en el bootstrap sync DTO (`paymentMethods`).
+     - En WPF, `PaymentMethodEntity` y `ApiPaymentMethodSyncDto` carecían de dichas propiedades, por lo que SQLite no registraba qué medios de pago exigían resolución DIAN. Además, `BillingResolution` y `ApiBillingResolutionSyncDto` carecían del indicador `IsElectronicResolution`.
+     - En la interfaz de checkout (`CheckOutDialog.xaml`), todo el bloque de Facturación Electrónica y Adquirente estaba encerrado en un contenedor con visibilidad condicionada exclusivamente a `HasElectronicInvoicingEnabled` (parámetro de sesión de usuario), por lo que si el usuario no tenía el flag activado, el panel completo permanecía oculto, aún cuando el medio de pago exigiera FE o se seleccionara una resolución FE.
+     - Tampoco existía filtrado en el ComboBox de resoluciones, permitiendo seleccionar POS indebidamente ante medios de pago electrónicos.
+  2. **Resolución y Blindaje en Capa de Datos y Modelos (WPF & API)**:
+     - Se extendieron `PaymentMethodEntity.cs` y `ApiPaymentMethodSyncDto.cs` con `RequiresResolution`, `DefaultResolutionId` y `SiigoPaymentMethodId`.
+     - Se extendieron `BillingResolution.cs` y `ApiBillingResolutionSyncDto.cs` con `IsElectronicResolution`.
+     - Se actualizó `SyncEngineService.cs` para persistir estas propiedades dinámicamente en SQLite durante la reconciliación.
+     - Se actualizó la DDL en `DbConnectionManager.cs` (`BillingResolutions` con `IsElectronicResolution`) y su auto-migración dinámica.
+  3. **Lógica de Bloqueo y Filtrado en ViewModel (`CheckOutViewModel.cs`)**:
+     - Se agregó la colección `FilteredResolutions` y las propiedades `IsResolutionLocked`, `ResolutionLockReason`, `CanChangeResolution` e `IsElectronicInvoicingSectionVisible`.
+     - Al seleccionar un medio de pago con `RequiresResolution == true` (o al cargar resoluciones con dicho medio activo):
+       - `FilteredResolutions` se restringe estrictamente a resoluciones electrónicas (`IsElectronicResolution == true` o prefijos FE/FM/FVM), excluyendo completamente resoluciones POS.
+       - Se autoselecciona la resolución configurada en `DefaultResolutionId` o la primera electrónica.
+       - Se establece `IsResolutionLocked = true` con su respectivo mensaje explicativo en `ResolutionLockReason`.
+       - Se fuerza `EmitElectronicInvoice = true` y se bloquea el desmarcado manual (`CanToggleElectronicInvoice = false`).
+       - Se dispara la carga inmediata de clientes con `LoadCustomersAsync()`.
+     - Si el operador intenta cambiar a POS mediante comando o evento cuando la resolución está bloqueada, el cambio es rechazado y se revierte a la resolución electrónica.
+     - Si el medio de pago no exige resolución, se restauran todas las resoluciones en `FilteredResolutions`, se desbloquea el selector y se permite la selección de POS.
+  4. **Mejora Visual y Visibilidad de Adquirente en UI (`CheckOutDialog.xaml`)**:
+     - Se vinculó el selector de resoluciones a `FilteredResolutions`, respetando `IsEnabled="{Binding CanChangeResolution}"`.
+     - Se agregó un badge visual `[EXIGE FE]` con ícono de candado (`IconLock`) y tooltip explicativo junto a la etiqueta `RESOLUCIÓN / DOC *`.
+     - Se enlazó la visibilidad del panel de Facturación Electrónica a `IsElectronicInvoicingSectionVisible`.
+     - Se añadió el indicador `[OBLIGATORIA POR MEDIO DE PAGO]`.
+     - El selector de cliente y el botón desplegable de `"Nuevo Cliente"` (registro rápido de adquirente DIAN) ahora se despliegan de inmediato ante cualquier medio de pago que exija FE o resolución electrónica.
+  5. **Pruebas Unitarias y Certificación**:
+     - Se crearon 2 nuevas pruebas unitarias en `CheckOutViewModelTests.cs`:
+       - `OnSelectedPaymentMethodEntityChanged_WhenRequiresResolution_LocksResolutionToElectronicAndExcludesPos`: Valida filtrado estricto, exclusión de POS, bloqueo de toggle y visibilidad del panel.
+       - `SelectResolution_WhenResolutionLocked_RejectsPosSelection`: Valida rechazo defensivo ante intentos de asignar resolución POS.
+     - Compilación: **0 Errores, 0 Advertencias**.
+     - Pruebas unitarias: `dotnet test ParkingWpf.slnx`: **221 superadas, 0 fallos (100% de éxito)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Entities/PaymentMethodEntity.cs`
+  - `Parking/Entities/BillingResolution.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+
+---
+
+### [2026-09-17 07:37:00] - [FIX / REFACTOR / SYNC / RBAC-DATA-DRIVEN / ZERO-HARDCODING] - Dinamización Total de Roles RBAC, Erradicación de GUIDs Sentinela, Auto-Migración Preventiva y Blindaje de Tiquetes Offline
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"revisa esto por que no es claro que aun existan codigos quemados si ya todo es dinamico eso ya deberia esatr claro desde que el rol tenga el permiso para operar en el wpf deberia ser claro el poder hacerlo no deberiá existir otro error ni nada. si me hago entender y valida si este plan tiene algun hueco tecnico o algo mas se esta pasando apra que la sincronziación no se cumpla"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Erradicación de la Causa Raíz del Crash de Sincronización**:
+     - Se identificó una colisión destructiva de claves primarias: `AuthService.cs` asignaba GUIDs sentinela fijos (`22222222-2222-2222-2222-222222222222`) a roles creados durante el login (ej. `"Cajero"`). Luego, `SyncEngineService.cs` buscaba por nombre de texto `"Operador"`, no lo encontraba y trataba de insertar otro rol con el mismo GUID fijo, disparando `SQLite Error 19: UNIQUE constraint failed: Roles.RoleId`.
+     - Esto abortaba la sincronización al 60% (Paso 3), impidiendo la ejecución de los Pasos 4 a 8 (dejando Tarifas en 0, Convenios en 0, Tiquetes en 0 y vehículos en patio en 0).
+  2. **Erradicación Total de Código Quemado (Regla de Oro #4 y #8)**:
+     - Se eliminaron por completo todos los GUIDs sentinela (`11111111-1111-1111-1111-111111111111` y `22222222-2222-2222-2222-222222222222`) de `AuthService.cs` y `SyncEngineService.cs`.
+     - Se eliminaron los fallbacks quemados `(isAdmin ? 1 : 2)` en `AuthService.cs` y `MainShellViewModel.cs`.
+     - Se erradicó el valor hardcodeado `?? 15` en `BootstrapSyncResponse.GetGracePeriodMinutes()`, sustituyéndolo por `?? 0` en estricto cumplimiento de la Regla de Oro #8.
+  3. **Catálogo de Roles 100% Basado en Datos (RBAC Canónico desde Bootstrap)**:
+     - En `SyncEngineService.cs`, el `roleMapping` se construye dinámicamente a partir de `bootstrap.UserRoles`, mapeando los IDs enteros de MySQL a GUIDs únicos en SQLite (`db.Roles`).
+     - Si un rol entrante ya existe en SQLite (por nombre case-insensitive), se reutiliza su `RoleId` y se actualiza su estado. Si no existe, se genera un `Guid.NewGuid()`.
+     - Los usuarios de `bootstrap.Users` resuelven su `RoleId` a través de este mapeo dinámico. Si el rol no figura en el mapa, se asigna al primer rol activo en SQLite, sin asumir nombres quemados.
+  4. **Persistencia de `IsAdmin` en Entidad `User` y Desacoplamiento de Textos**:
+     - Se incorporó la propiedad `public bool IsAdmin { get; set; }` a la entidad `User.cs`.
+     - `AuthService.AuthenticateAsync` persiste `localUser.IsAdmin = isAdmin`.
+     - El login offline evalúa `user.IsAdmin` como criterio primario antes de evaluar nombres de rol.
+     - `ValidateAdminAuthorizationAsync` evalúa `u.IsAdmin || u.Role.Name == "Administrador" || u.Role.Name == "Admin"`.
+  5. **Auto-Migración Preventiva en Cada Ciclo de Sincronización**:
+     - Al abrir el `DbContext` en `PerformFullSyncWithProgressAsync`, se invoca `concreteManager.AutoMigrateDatabaseAsync(db)` para garantizar que cualquier columna o tabla nueva exista antes de procesar los catálogos.
+  6. **Blindaje contra Violaciones de Claves Foráneas (Sedes y Medios de Pago)**:
+     - En el Paso 4, se reemplazó `db.Branches.RemoveRange` y `db.PaymentMethods.RemoveRange` por bajas lógicas (`b.IsActive = false`, `pm.State = false`), evitando fallos por tiquetes, turnos o suscripciones que referencien dichos registros.
+  7. **Preservación de Tiquetes Creados Offline en Reconciliación**:
+     - En el Paso 8, la reconciliación de tiquetes activos solo finaliza tiquetes locales que ya fueron sincronizados (`localActive.IsSynchronized == true`), preservando intactos los tiquetes generados en modo offline pendientes de envío a la nube.
+  8. **Pruebas Unitarias y Certificación**:
+     - Se añadieron 3 nuevas pruebas unitarias en `OfflineResilienceTests.cs`:
+       - `SyncEngineService_SyncRoles_WithCustomRole_DoesNotThrowRoleIdCollision`: Certifica que con roles custom ("Cajero") no se produce colisión de ID.
+       - `SyncEngineService_ReconcileActiveTickets_PreservesUnsynchronizedOfflineTickets`: Certifica que los tiquetes offline no se cierran indebidamente.
+       - `BootstrapSyncResponse_GetGracePeriodMinutes_WhenNull_DefaultsToZero`: Certifica que el tiempo de gracia devuelve 0 y no valores inventados.
+     - Compilación: **0 Errores, 0 Advertencias**.
+     - Pruebas unitarias: `dotnet test ParkingWpf.slnx`: **219 superadas, 0 fallos (100% de éxito)**.
+
+- **📦 Componentes Modificados**:
+  - `c:\Users\miguelagutierrezg\Documents\Parking\Parking\Entities\User.cs`
+  - `c:\Users\miguelagutierrezg\Documents\Parking\Parking\Models\ApiModels\BootstrapSyncResponse.cs`
+  - `c:\Users\miguelagutierrezg\Documents\Parking\Parking\Services\Implementations\AuthService.cs`
+  - `c:\Users\miguelagutierrezg\Documents\Parking\Parking\Services\Implementations\SyncEngineService.cs`
+  - `c:\Users\miguelagutierrezg\Documents\Parking\Parking\ViewModels\MainShellViewModel.cs`
+  - `c:\Users\miguelagutierrezg\Documents\Parking\Parking.UnitTests\Services\OfflineResilienceTests.cs`
+
+---
 
 ### [2026-09-16 23:05:00] - [FEAT / FIX / PRINT / THERMAL-RECEIPT / PWA-SYNC / ZERO-HARDCODING] - Dinamización Total de Datos en Tiquete de Entrada: NIT de Empresa, Teléfonos de Sede, Tarifas Parametrizadas y Atendido por Usuario Logueado
 

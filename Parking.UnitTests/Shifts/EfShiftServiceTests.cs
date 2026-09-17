@@ -343,6 +343,127 @@ public class EfShiftServiceTests : IDisposable
         service.CurrentShift.Should().Be(result);
     }
 
+    [Fact]
+    public async Task OpenShiftAsync_WithCashRegisterName_PersistsCashRegisterName()
+    {
+        // Arrange
+        var service = CreateService();
+
+        // Act
+        var shift = await service.OpenShiftAsync(50000m, "Apertura caja 2", "Caja 2");
+
+        // Assert
+        shift.Should().NotBeNull();
+        shift.CashRegisterName.Should().Be("Caja 2");
+    }
+
+    [Fact]
+    public async Task GetActiveShiftsByBranchAsync_ReturnsAllActiveShiftsForBranch()
+    {
+        // Arrange
+        var service = CreateService();
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.WorkShifts.Add(new WorkShift
+            {
+                ShiftId = Guid.NewGuid(),
+                BranchId = 1,
+                CompanyId = 5,
+                UserId = 10,
+                OperatorName = "Otro Operador",
+                CashRegisterName = "Caja 1",
+                Status = 0,
+                BaseAmount = 50000m,
+                StartTimeUtc = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // Mock API client returns empty or fails so it falls back to local SQLite
+        _mockApiClient.Setup(a => a.GetActiveShiftsAsync(1))
+            .ThrowsAsync(new InvalidOperationException("Offline"));
+
+        // Act
+        var shifts = await service.GetActiveShiftsByBranchAsync(1);
+
+        // Assert
+        shifts.Should().NotBeEmpty();
+        shifts.Should().Contain(s => s.OperatorName == "Otro Operador" && s.CashRegisterName == "Caja 1");
+    }
+
+    [Fact]
+    public async Task RefreshCurrentShiftAsync_WhenUserHasNoShift_ReturnsNullEvenIfOtherUserHasShiftInBranch()
+    {
+        // Arrange
+        var service = CreateService();
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.WorkShifts.Add(new WorkShift
+            {
+                ShiftId = Guid.NewGuid(),
+                BranchId = 1,
+                CompanyId = 5,
+                UserId = 99, // Another user
+                OperatorName = "Usuario Diferente",
+                CashRegisterName = "Caja Entrada",
+                Status = 0,
+                BaseAmount = 40000m,
+                StartTimeUtc = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // Mock API returns null for current user (UserId 1)
+        _mockApiClient.Setup(a => a.GetActiveShiftAsync(1, 1))
+            .ReturnsAsync((WorkShift?)null);
+
+        // Act
+        await service.RefreshCurrentShiftAsync();
+
+        // Assert
+        service.HasActiveShift.Should().BeFalse();
+        service.CurrentShift.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task CloseSpecificShiftAsync_ClosesTargetShift()
+    {
+        // Arrange
+        var service = CreateService();
+        var targetShiftId = Guid.NewGuid();
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.WorkShifts.Add(new WorkShift
+            {
+                ShiftId = targetShiftId,
+                BranchId = 1,
+                CompanyId = 5,
+                UserId = 15,
+                OperatorName = "Operador a Cerrar",
+                CashRegisterName = "Caja Norte",
+                Status = 0,
+                BaseAmount = 30000m,
+                StartTimeUtc = DateTime.UtcNow.AddHours(-3)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // Act
+        var closedShift = await service.CloseSpecificShiftAsync(targetShiftId, 30000m, "Cierre administrativo");
+
+        // Assert
+        closedShift.Should().NotBeNull();
+        closedShift.Status.Should().Be(1); // Cerrado
+        closedShift.ActualCashCounted.Should().Be(30000m);
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            var dbShift = await db.WorkShifts.FindAsync(targetShiftId);
+            dbShift.Should().NotBeNull();
+            dbShift!.Status.Should().Be(1);
+        }
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

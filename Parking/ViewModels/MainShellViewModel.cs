@@ -59,16 +59,24 @@ public partial class MainShellViewModel : ViewModelBase
     private bool _isOnlineMode;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplaySyncStatusText))]
     private string _syncStatusText = "Sincronizando...";
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplaySyncStatusText))]
     private bool _isSyncing;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplaySyncStatusText))]
     private bool _isRealtimeSyncing;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplaySyncStatusText))]
     private string _realtimeSyncMessage = string.Empty;
+
+    public string DisplaySyncStatusText => (IsRealtimeSyncing || IsSyncing)
+        ? (!string.IsNullOrWhiteSpace(RealtimeSyncMessage) ? RealtimeSyncMessage : "Sincronizando...")
+        : SyncStatusText;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanOperateTerminal))]
@@ -102,6 +110,19 @@ public partial class MainShellViewModel : ViewModelBase
         _dialogService = dialogService;
         _shiftService = shiftService;
         _signalRClient = signalRClient;
+
+        _backgroundSync.SyncTriggered += (s, e) =>
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(async () => await RefreshOccupancyAsync());
+            }
+            else
+            {
+                _ = RefreshOccupancyAsync();
+            }
+        };
 
         _navigationService.CurrentViewModelChanged += (s, vm) =>
         {
@@ -334,9 +355,9 @@ public partial class MainShellViewModel : ViewModelBase
         if (notification.EventType == "PermissionsChanged" || notification.EventType == "RolesChanged")
         {
             var user = _sessionService.CurrentUser;
-            if (user != null)
+            if (user != null && user.ServerRoleId.HasValue && user.ServerRoleId.Value > 0)
             {
-                var roleId = user.ServerRoleId ?? (user.IsAdmin ? 1 : 2);
+                var roleId = user.ServerRoleId.Value;
                 try
                 {
                     var updatedPermissions = await _apiClient.GetRolePermissionsAsync(roleId);
@@ -593,6 +614,7 @@ public partial class MainShellViewModel : ViewModelBase
             var activeShift = await _shiftService.GetActiveShiftAsync();
             if (activeShift == null)
             {
+                var otherShifts = await _shiftService.GetActiveShiftsByBranchAsync();
                 if (_permissionService.HasPermission("shifts.view_current"))
                 {
                     NavigateToShiftClosure();
@@ -600,10 +622,21 @@ public partial class MainShellViewModel : ViewModelBase
                     {
                         try
                         {
-                            await _dialogService.ShowAlertAsync(
-                                "Apertura de Turno Requerida",
-                                "No hay un turno operativo abierto. Debe ingresar la base inicial de caja y abrir el turno antes de operar en la terminal.",
-                                DialogNotificationType.Warning);
+                            if (otherShifts.Count > 0)
+                            {
+                                await _dialogService.ShowAlertAsync(
+                                    "Cajas Activas en la Sede",
+                                    $"Existen {otherShifts.Count} caja(s) abierta(s) por otros operadores en esta sede.\n\n" +
+                                    "Puedes relevar una caja existente o abrir una nueva caja independiente antes de registrar movimientos.",
+                                    DialogNotificationType.Information);
+                            }
+                            else
+                            {
+                                await _dialogService.ShowAlertAsync(
+                                    "Apertura de Turno Requerida",
+                                    "No hay un turno operativo abierto. Debe ingresar la base inicial de caja y abrir el turno antes de operar en la terminal.",
+                                    DialogNotificationType.Warning);
+                            }
                         }
                         catch { }
                     });
@@ -617,7 +650,7 @@ public partial class MainShellViewModel : ViewModelBase
                         {
                             await _dialogService.ShowAlertAsync(
                                 "Apertura de Turno Requerida",
-                                "No hay un turno operativo abierto actualmente. Un usuario con permisos de caja/turnos debe realizar la apertura antes de registrar movimientos.",
+                                "No hay un turno operativo abierto actualmente para su usuario. Un usuario con permisos de caja/turnos debe realizar la apertura antes de registrar movimientos.",
                                 DialogNotificationType.Warning);
                         }
                         catch { }
@@ -626,34 +659,7 @@ public partial class MainShellViewModel : ViewModelBase
             }
             else
             {
-                var isCurrentShiftOwner = CurrentUser != null && (
-                    (activeShift.UserId > 0 && CurrentUser.ServerUserId.HasValue && activeShift.UserId == CurrentUser.ServerUserId.Value) ||
-                    string.Equals(activeShift.OperatorName, CurrentUser.FullName, StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(activeShift.OperatorName, CurrentUser.Username, StringComparison.OrdinalIgnoreCase));
-
-                var isAdmin = CurrentUser != null && CurrentUser.IsAdmin;
-
-                if (!isCurrentShiftOwner && !isAdmin)
-                {
-                    if (_permissionService.HasPermission("shifts.view_current"))
-                    {
-                        NavigateToShiftClosure();
-                    }
-                    else
-                    {
-                        NavigateToInitialAuthorizedView();
-                    }
-
-                    _ = _dialogService.ShowAlertAsync(
-                        "Turno Activo a Nombre de Otro Operador",
-                        $"Existe un turno operativo abierto a nombre de '{activeShift.OperatorName}'.\n\n" +
-                        $"Para operar la terminal con su usuario ('{CurrentUser?.FullName}'), debe solicitar la Entrega / Relevo de Turno o el Cierre de Caja anterior.",
-                        DialogNotificationType.Warning);
-                }
-                else
-                {
-                    NavigateToInitialAuthorizedView();
-                }
+                NavigateToInitialAuthorizedView();
             }
         }
     }
@@ -705,6 +711,7 @@ public partial class MainShellViewModel : ViewModelBase
                 var activeShift = await _shiftService.GetActiveShiftAsync();
                 if (activeShift == null)
                 {
+                    var otherShifts = await _shiftService.GetActiveShiftsByBranchAsync();
                     if (_permissionService.HasPermission("shifts.view_current"))
                     {
                         NavigateToShiftClosure();
@@ -713,10 +720,22 @@ public partial class MainShellViewModel : ViewModelBase
                     {
                         NavigateToInitialAuthorizedView();
                     }
-                    _ = _dialogService.ShowAlertAsync(
-                        "Apertura de Turno Requerida",
-                        $"Sede cambiada a '{dialog.SelectedBranch.Name}'.\n\nNo hay un turno operativo abierto en esta sede. Debe ingresar la base inicial de caja y abrir el turno antes de operar.",
-                        DialogNotificationType.Warning);
+
+                    if (otherShifts.Count > 0)
+                    {
+                        _ = _dialogService.ShowAlertAsync(
+                            "Cajas Activas en la Sede",
+                            $"Sede cambiada a '{dialog.SelectedBranch.Name}'.\n\nExisten {otherShifts.Count} caja(s) abierta(s) por otros operadores en esta sede.\n" +
+                            "Puedes relevar una caja existente o abrir una nueva caja independiente antes de registrar movimientos.",
+                            DialogNotificationType.Information);
+                    }
+                    else
+                    {
+                        _ = _dialogService.ShowAlertAsync(
+                            "Apertura de Turno Requerida",
+                            $"Sede cambiada a '{dialog.SelectedBranch.Name}'.\n\nNo hay un turno operativo abierto para su usuario en esta sede. Debe ingresar la base inicial de caja y abrir el turno antes de operar.",
+                            DialogNotificationType.Warning);
+                    }
                 }
                 else
                 {

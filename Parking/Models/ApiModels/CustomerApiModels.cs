@@ -1,0 +1,82 @@
+using System;
+using System.Text.Json.Serialization;
+
+namespace Parking.Models.ApiModels;
+
+public class CreateCustomerApiRequest
+{
+    [JsonPropertyName("customerId")]
+    public Guid? CustomerId { get; set; }
+
+    [JsonPropertyName("companyId")]
+    public int? CompanyId { get; set; }
+
+    [JsonPropertyName("identificationTypeId")]
+    public int IdentificationTypeId { get; set; } = 1;
+
+    [JsonPropertyName("documentNumber")]
+    public string DocumentNumber { get; set; } = string.Empty;
+
+    [JsonPropertyName("checkDigit")]
+    public string? CheckDigit { get; set; }
+
+    [JsonPropertyName("personType")]
+    public string PersonType { get; set; } = "Person";
+
+    [JsonPropertyName("fullName")]
+    public string FullName { get; set; } = string.Empty;
+
+    [JsonPropertyName("tradeName")]
+    public string? TradeName { get; set; }
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("phone")]
+    public string? Phone { get; set; }
+
+    [JsonPropertyName("address")]
+    public string? Address { get; set; }
+
+    [JsonPropertyName("cityCode")]
+    public string? CityCode { get; set; }
+
+    [JsonPropertyName("stateCode")]
+    public string? StateCode { get; set; }
+
+    [JsonPropertyName("fiscalResponsibilities")]
+    public string FiscalResponsibilities { get; set; } = "R-99-PN";
+
+    [JsonPropertyName("initialPlateNumber")]
+    public string? InitialPlateNumber { get; set; }
+}
+
+public class CustomerApiResponse
+{
+    [JsonPropertyName("customerId")]
+    public Guid CustomerId { get; set; }
+
+    [JsonPropertyName("companyId")]
+    public int? CompanyId { get; set; }
+
+    [JsonPropertyName("identificationTypeId")]
+    public int IdentificationTypeId { get; set; }
+
+    [JsonPropertyName("documentNumber")]
+    public string DocumentNumber { get; set; } = string.Empty;
+
+    [JsonPropertyName("checkDigit")]
+    public string? CheckDigit { get; set; }
+
+    [JsonPropertyName("fullName")]
+    public string FullName { get; set; } = string.Empty;
+
+    [JsonPropertyName("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [JsonPropertyName("phone")]
+    public string? Phone { get; set; }
+
+    [JsonPropertyName("isActive")]
+    public bool IsActive { get; set; }
+}

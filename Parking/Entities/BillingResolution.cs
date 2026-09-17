@@ -20,5 +20,6 @@ public class BillingResolution
     public DateTime ValidTo { get; set; }
     public string? TechnicalKey { get; set; }
     public bool IsActive { get; set; } = true;
+    public bool IsElectronicResolution { get; set; } = false;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
