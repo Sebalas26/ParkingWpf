@@ -144,6 +144,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
     [ObservableProperty]
     private ShiftSummaryModel? _selectedShiftToRelieveSummary;
 
+    private bool _isLoadingShiftData;
+
     public bool IsRelieveSectionVisible => !HasActiveShift && HasOtherActiveShifts && IsRelieveModeSelected;
     public bool IsOpenNewRegisterSectionVisible => !HasActiveShift && (!HasOtherActiveShifts || !IsRelieveModeSelected);
 
@@ -260,6 +262,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
     async partial void OnSelectedShiftToRelieveChanged(WorkShift? value)
     {
+        if (_isLoadingShiftData) return;
+
         if (value != null)
         {
             await UpdateSelectedShiftSummaryAsync(value);
@@ -306,10 +310,14 @@ public partial class ShiftClosureViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SelectRelieveMode()
+    private async Task SelectRelieveModeAsync()
     {
         IsRelieveModeSelected = true;
-        if (SelectedShiftToRelieveSummary != null)
+        if (SelectedShiftToRelieve != null)
+        {
+            await UpdateSelectedShiftSummaryAsync(SelectedShiftToRelieve);
+        }
+        else if (SelectedShiftToRelieveSummary != null)
         {
             ActualCashCounted = SelectedShiftToRelieveSummary.ExpectedCash;
             RecalculateDifference();
@@ -322,6 +330,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
         IsRelieveModeSelected = false;
         ActualCashCounted = 0m;
         CashDifference = 0m;
+        PaymentMethodCards.Clear();
     }
 
     private void RecalculateDifference()
@@ -744,6 +753,9 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
     private async Task LoadShiftDataAsync(bool isSilent = false)
     {
+        if (_isLoadingShiftData) return;
+        _isLoadingShiftData = true;
+
         if (!isSilent)
         {
             IsBusy = true;
@@ -859,58 +871,61 @@ public partial class ShiftClosureViewModel : ViewModelBase
                     NewShiftBaseAmount = 0m;
                 }
 
-                // Cargar medios de pago reales inactivos para proyectar estructura limpia
-                PaymentMethodCards.Clear();
-                var branchPmIds = currentBranchId.HasValue
-                    ? await dbCheck.BranchPaymentMethods
-                        .Where(bpm => bpm.BranchId == currentBranchId.Value && bpm.IsActive)
-                        .Select(bpm => bpm.PaymentMethodId)
-                        .ToListAsync()
-                    : new List<int>();
-
-                var inactiveMethods = await dbCheck.PaymentMethods
-                    .Where(pm => pm.State && (branchPmIds.Count == 0 || branchPmIds.Contains(pm.Id)))
-                    .ToListAsync();
-
-                if (inactiveMethods.Count == 0)
+                // Cargar medios de pago reales inactivos para proyectar estructura limpia solo si no hay relevo activo
+                if (!HasOtherActiveShifts || !IsRelieveModeSelected)
                 {
-                    inactiveMethods = await dbCheck.PaymentMethods.Where(pm => pm.State).ToListAsync();
-                }
+                    PaymentMethodCards.Clear();
+                    var branchPmIds = currentBranchId.HasValue
+                        ? await dbCheck.BranchPaymentMethods
+                            .Where(bpm => bpm.BranchId == currentBranchId.Value && bpm.IsActive)
+                            .Select(bpm => bpm.PaymentMethodId)
+                            .ToListAsync()
+                        : new List<int>();
 
-                foreach (var pm in inactiveMethods)
-                {
-                    var isCash = pm.RequiresCashTender || pm.Name.ToLowerInvariant().Contains("efectivo");
-                    var isTransfer = pm.Name.ToLowerInvariant().Contains("nequi") || pm.Name.ToLowerInvariant().Contains("transfer") || pm.Name.ToLowerInvariant().Contains("qr") || pm.Name.ToLowerInvariant().Contains("davi");
-                    var isCard = pm.Name.ToLowerInvariant().Contains("tarjeta") || pm.Name.ToLowerInvariant().Contains("card") || pm.Name.ToLowerInvariant().Contains("credito") || pm.Name.ToLowerInvariant().Contains("debito");
+                    var inactiveMethods = await dbCheck.PaymentMethods
+                        .Where(pm => pm.State && (branchPmIds.Count == 0 || branchPmIds.Contains(pm.Id)))
+                        .ToListAsync();
+
+                    if (inactiveMethods.Count == 0)
+                    {
+                        inactiveMethods = await dbCheck.PaymentMethods.Where(pm => pm.State).ToListAsync();
+                    }
+
+                    foreach (var pm in inactiveMethods)
+                    {
+                        var isCash = pm.RequiresCashTender || pm.Name.ToLowerInvariant().Contains("efectivo");
+                        var isTransfer = pm.Name.ToLowerInvariant().Contains("nequi") || pm.Name.ToLowerInvariant().Contains("transfer") || pm.Name.ToLowerInvariant().Contains("qr") || pm.Name.ToLowerInvariant().Contains("davi");
+                        var isCard = pm.Name.ToLowerInvariant().Contains("tarjeta") || pm.Name.ToLowerInvariant().Contains("card") || pm.Name.ToLowerInvariant().Contains("credito") || pm.Name.ToLowerInvariant().Contains("debito");
+
+                        PaymentMethodCards.Add(new ShiftPaymentMethodItem
+                        {
+                            PaymentMethodId = pm.Id,
+                            Name = pm.Name,
+                            IconKey = isCash ? "IconCash" : (isTransfer ? "IconQr" : (isCard ? "IconCard" : "IconCash")),
+                            IconBg = isCash ? "#E0F2F1" : (isTransfer ? "#E0F7FA" : (isCard ? "#E0F2F1" : "#F1F5F9")),
+                            IconBrushKey = isCash ? "BrushPrimary" : (isTransfer ? "BrushCyan" : (isCard ? "BrushPrimary" : "BrushTextSecondary")),
+                            AmountBrushKey = isCash ? "BrushPrimary" : (isTransfer ? "BrushCyan" : (isCard ? "BrushPrimary" : "BrushTextPrimary")),
+                            TotalCollected = 0m,
+                            TransactionCount = 0,
+                            Subtitle = "Sin turno activo",
+                            RequiresCashTender = isCash
+                        });
+                    }
 
                     PaymentMethodCards.Add(new ShiftPaymentMethodItem
                     {
-                        PaymentMethodId = pm.Id,
-                        Name = pm.Name,
-                        IconKey = isCash ? "IconCash" : (isTransfer ? "IconQr" : (isCard ? "IconCard" : "IconCash")),
-                        IconBg = isCash ? "#E0F2F1" : (isTransfer ? "#E0F7FA" : (isCard ? "#E0F2F1" : "#F1F5F9")),
-                        IconBrushKey = isCash ? "BrushPrimary" : (isTransfer ? "BrushCyan" : (isCard ? "BrushPrimary" : "BrushTextSecondary")),
-                        AmountBrushKey = isCash ? "BrushPrimary" : (isTransfer ? "BrushCyan" : (isCard ? "BrushPrimary" : "BrushTextPrimary")),
+                        PaymentMethodId = -1,
+                        Name = "Descuentos por Convenios",
+                        IconKey = "IconDiscount",
+                        IconBg = "#FFF8E1",
+                        IconBrushKey = "BrushWarning",
+                        AmountBrushKey = "BrushWarningText",
                         TotalCollected = 0m,
                         TransactionCount = 0,
-                        Subtitle = "Sin turno activo",
-                        RequiresCashTender = isCash
+                        Subtitle = "Deducciones por convenios",
+                        RequiresCashTender = false
                     });
                 }
-
-                PaymentMethodCards.Add(new ShiftPaymentMethodItem
-                {
-                    PaymentMethodId = -1,
-                    Name = "Descuentos por Convenios",
-                    IconKey = "IconDiscount",
-                    IconBg = "#FFF8E1",
-                    IconBrushKey = "BrushWarning",
-                    AmountBrushKey = "BrushWarningText",
-                    TotalCollected = 0m,
-                    TransactionCount = 0,
-                    Subtitle = "Deducciones por convenios",
-                    RequiresCashTender = false
-                });
             }
 
             // Cargar usuarios reales asignados a la sede activa con rol operativo para entrega de turno
@@ -991,6 +1006,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
         }
         finally
         {
+            _isLoadingShiftData = false;
             if (!isSilent)
             {
                 IsBusy = false;

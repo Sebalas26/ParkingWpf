@@ -14,6 +14,34 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 3. **Componentes / Módulos Modificados** (archivos afectados).
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
+### [2026-09-17 11:30:00] - [FIX / PERF / UI/UX] - Corrección de Bucle Infinito de Eventos ShiftStateChanged, Titileo y Crash en Apertura/Relevo de Caja y Error de Binding CashPayments
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"se crasheo si ves empieza a titilear en la primera imagen vez como se rompe y despues como en la segunda muestra todo ese errores. como se rompe se rompio es cuando apenas despues de la modal que de existe una caja abierta y que se quiere relevar o abrir otra hay se crasheo de una . otra cosa cuando hago una salida de un vehciulo desde el wpf no esta siendo reactivo el tema de que le avise a la pwa que se fue que paso si funciona perfecto desde la pwa hacia el wpf estoy logueado con mi usaurio en la pwa y pues con otro usuario desde el wpf y pues yo como jefe saque un carro y de una se actualizo en el wpf bien pero lo hice al reves y yo estaba en la visual de activos y pues mirando la sede pero nada me toco utilizar el boton de actualizar para que sucediera entonces no se que paso hay ? has el plan"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Erradicación del Bucle Infinito de Eventos (`ShiftStateChanged`)**:
+     - En `EfShiftService.cs` (`RefreshCurrentShiftAsync`), cada consulta invocaba incondicionalmente `ShiftStateChanged?.Invoke();`, incluso si el turno en memoria y el resultado consultado eran `null` o idénticos. Al estar `ShiftClosureViewModel` suscrito a este evento y llamar a su vez a `GetActiveShiftAsync()`, se producía un bucle infinito recursivo en el Dispatcher de WPF a máxima velocidad.
+     - Se implementó `NotifyIfStateChanged()` en `RefreshCurrentShiftAsync()`, almacenando `previousShiftId` y `previousStatus`, invocando `ShiftStateChanged` exclusivamente cuando el estado del turno realmente cambia.
+  2. **Prevención de Reentrada Concurrente y Protección de Medios de Pago (`ShiftClosureViewModel.cs`)**:
+     - Se incorporó la bandera de guardia `_isLoadingShiftData` en `LoadShiftDataAsync()`, impidiendo llamadas simultáneas o reentrantes.
+     - Se condicionó `OnSelectedShiftToRelieveChanged` para omitir recargas no coordinadas mientras `_isLoadingShiftData` esté activo.
+     - En `SelectRelieveModeAsync()`, se asegura la sincronización del balance de caja seleccionada al pulsar el botón de relevo.
+     - En `SelectNewRegisterMode()`, se limpia la colección `PaymentMethodCards`.
+     - Se protegió la carga de tarjetas de medios de pago inactivos para que solo se ejecute cuando `!HasOtherActiveShifts || !IsRelieveModeSelected`, evitando limpiar y borrar las tarjetas del turno a relevar.
+  3. **Corrección de Expresión de Binding Inválida (`ShiftClosureView.xaml`)**:
+     - En la línea 575, se reemplazó `{Binding SelectedShiftToRelieveSummary.CashPayments}` por `{Binding SelectedShiftToRelieveSummary.TotalCashCollected}`, eliminando la cascada de errores `BindingExpression path error: 'CashPayments' property not found on object 'ShiftSummaryModel'` y el parpadeo de la interfaz.
+  4. **Compilación y Pruebas**:
+     - `dotnet test ParkingWpf.slnx`: **100% Superado (225 Pruebas Unitarias, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking/Views/ShiftClosureView.xaml`
+
+---
+
 ### [2026-09-17 10:10:00] - [FIX / FEAT / UI/UX] - Solución Integral: Validación de Clientes Rápidos, Cola de Contingencia Offline DIAN, Sincronización en Tiempo Real PWA->WPF, Soporte de Logotipo en Tiquetes y Corrección de Período de Gracia $0
 
 - **Autor**: Antigravity AI Assistant & Software Architect
