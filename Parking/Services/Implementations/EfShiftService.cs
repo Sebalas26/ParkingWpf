@@ -198,6 +198,19 @@ public class EfShiftService : IShiftService
         var currentUser = _authService.CurrentUser;
         int? queryUserId = currentUser?.ServerUserId;
 
+        var previousShiftId = CurrentShift?.ShiftId;
+        var previousStatus = CurrentShift?.Status;
+
+        void NotifyIfStateChanged()
+        {
+            var newShiftId = CurrentShift?.ShiftId;
+            var newStatus = CurrentShift?.Status;
+            if (previousShiftId != newShiftId || previousStatus != newStatus)
+            {
+                ShiftStateChanged?.Invoke();
+            }
+        }
+
         if (IsOnline && queryUserId.HasValue && queryUserId.Value > 0)
         {
             try
@@ -243,7 +256,7 @@ public class EfShiftService : IShiftService
                     }
 
                     CurrentShift = apiShift;
-                    ShiftStateChanged?.Invoke();
+                    NotifyIfStateChanged();
                     return;
                 }
                 else
@@ -276,7 +289,7 @@ public class EfShiftService : IShiftService
                     }
 
                     CurrentShift = null;
-                    ShiftStateChanged?.Invoke();
+                    NotifyIfStateChanged();
                     return;
                 }
             }
@@ -302,7 +315,7 @@ public class EfShiftService : IShiftService
         else
         {
             CurrentShift = null;
-            ShiftStateChanged?.Invoke();
+            NotifyIfStateChanged();
             return;
         }
 
@@ -311,7 +324,7 @@ public class EfShiftService : IShiftService
             .FirstOrDefaultAsync();
 
         CurrentShift = localShift;
-        ShiftStateChanged?.Invoke();
+        NotifyIfStateChanged();
     }
 
     public async Task<WorkShift?> GetActiveShiftAsync()
