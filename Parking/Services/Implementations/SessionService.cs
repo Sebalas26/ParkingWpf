@@ -55,6 +55,15 @@ public class SessionService : ISessionService
         }
     }
 
+    public void UpdateCurrentUser(Action<UserSessionModel> updateAction)
+    {
+        if (CurrentUser != null)
+        {
+            updateAction(CurrentUser);
+            UserSessionChanged?.Invoke(CurrentUser);
+        }
+    }
+
     public void Clear()
     {
         CurrentUser = null;

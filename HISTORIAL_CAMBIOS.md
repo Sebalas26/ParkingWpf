@@ -14,6 +14,43 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 3. **Componentes / Módulos Modificados** (archivos afectados).
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
+### [2026-09-17 16:15:00] - [FIX / REACTIVITY / FE / SECURITY] - Estabilización de Facturación Electrónica en Checkout (Anti-Reentrancia), Eliminación de JsonException y Sincronización Reactiva de Usuarios y Permisos
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"listo mira esos errores, segundo tengo algo que analisis por que hay cosas que no estan sincronizando en vivo de acciones que se hacen desde el pwa hasta el wpf, por que ejemplo le cambie el nombre al usuario y no se actualizo en vivo en el wpf, ni dando actualizar... ejemplo desde la pwa inactive el usuario eso deberia sacar al usuario de donde este logueado así sea la pwa o el wpf... si le quito permisos al rol para que no este en el wpf deberia sacarlo si tengo una sesion abierta en la sesion en el wpf... ahora volviendo a la imagen que te mostre es que cuando selecciono un medio de pago que tiene regla exigente facturación electronica y se revienta el sistema"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Estabilización de Facturación Electrónica en Diálogo de Cobro (`CheckOutViewModel.cs`)**:
+     - Se introdujo la bandera de guardia `private bool _isApplyingResolutionFilter` en `ApplyPaymentMethodResolutionFilter` y `OnSelectedResolutionChanged`, erradicando por completo el bucle infinito de recursión sincrónica provocado por los eventos encadenados del `ComboBox`.
+     - Se eliminó el fallback que cargaba resoluciones POS cuando un medio de pago exigía Facturación Electrónica (`RequiresResolution = true`). Si la sede no cuenta con resoluciones FE, se limpia `FilteredResolutions`, se asigna `SelectedResolution = null` y se emite una advertencia visual limpia sin congelar la ventana modal ni revertir la selección a Efectivo.
+  2. **Erradicación de `System.Text.Json.JsonException` en SignalR (`SignalRClientService.cs`)**:
+     - Se configuró `.AddJsonProtocol()` en `HubConnectionBuilder` con `PropertyNameCaseInsensitive = true`, `NumberHandling = JsonNumberHandling.AllowReadingFromString` y `JsonStringEnumConverter`, utilizando la dependencia transitiva existente `Microsoft.AspNetCore.SignalR.Protocols.Json` v9.0.2 sin requerir paquetes NuGet externos.
+  3. **Sincronización en Vivo y Cierre de Sesión en Caliente (`MainShellViewModel.cs`, `ISessionService.cs`, `SessionService.cs`, `IApiClientService.cs`, `ParkingApiClient.cs`)**:
+     - Se implementó `UpdateCurrentUser(Action<UserSessionModel>)` en `SessionService` para mutar en caliente el perfil del usuario activo sin destruir la sesión y notificar el cambio a la interfaz.
+     - Se implementó `GetUserByIdAsync(int userId)` en `ParkingApiClient` para consultar el endpoint central `GET /api/Users/{id}`.
+     - En `HandleRealtimeNotificationAsync`:
+       - `UserSessionTerminated`: reforzado con `matchesUser` (por `UserId` y `Username`) para expulsión inmediata ante inactivación o eliminación.
+       - `UsersChanged`: consulta defensiva remota de perfil; si el usuario fue desactivado, invoca expulsión inmediata; si sigue activo, actualiza `FullName`, `Username` y `RoleName` en la barra de navegación en caliente.
+       - `PermissionsChanged` / `RolesChanged`: recarga permisos del rol y, si el usuario no es Admin y se quedó sin permisos operativos (`GrantedPermissions.Count == 0`), expulsa la sesión de inmediato con un diálogo explicativo.
+     - En `ForceSyncAsync` (botón "Actualizar"): se añadió refresco del usuario actual para garantizar sincronización manual.
+
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Services/Implementations/SignalRClientService.cs`
+  - `Parking/Services/Contracts/ISessionService.cs`
+  - `Parking/Services/Implementations/SessionService.cs`
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet test ParkingWpf.slnx`: **100% Superado (225/225 Pruebas Unitarias, 0 Fallos)**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+
+---
+
 ### [2026-09-17 11:30:00] - [FIX / PERF / UI/UX] - Corrección de Bucle Infinito de Eventos ShiftStateChanged, Titileo y Crash en Apertura/Relevo de Caja y Error de Binding CashPayments
 
 - **Autor**: Antigravity AI Assistant & Software Architect

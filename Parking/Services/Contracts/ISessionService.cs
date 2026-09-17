@@ -20,5 +20,6 @@ public interface ISessionService
     void SetSession(UserSessionModel user, IEnumerable<BranchModel> branches, BranchModel? selectedBranch = null);
     void SetActiveBranch(BranchModel branch);
     void UpdateCurrentBranch(Action<BranchModel> updateAction);
+    void UpdateCurrentUser(Action<UserSessionModel> updateAction);
     void Clear();
 }

@@ -174,6 +174,9 @@ public class ApiUserSyncDto
 
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
+
+    [JsonPropertyName("roleName")]
+    public string? RoleName { get; set; }
 }
 
 public class ApiPaymentMethodSyncDto

@@ -170,6 +170,8 @@ public partial class CheckOutViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isResolutionLocked;
 
+    private bool _isApplyingResolutionFilter;
+
     [ObservableProperty]
     private string _resolutionLockReason = string.Empty;
 
@@ -469,6 +471,8 @@ public partial class CheckOutViewModel : ViewModelBase
 
     partial void OnSelectedResolutionChanged(BillingResolution? value)
     {
+        if (_isApplyingResolutionFilter) return;
+
         if (value != null)
         {
             ShowResolutionWarning = false;
@@ -476,7 +480,17 @@ public partial class CheckOutViewModel : ViewModelBase
             // Si el medio de pago actual exige FE y se intenta seleccionar una resolución POS
             if (SelectedPaymentMethodEntity?.RequiresResolution == true && !value.IsElectronicResolution && (value.Prefix?.Contains("POS", StringComparison.OrdinalIgnoreCase) ?? false))
             {
-                ApplyPaymentMethodResolutionFilter(SelectedPaymentMethodEntity);
+                _isApplyingResolutionFilter = true;
+                try
+                {
+                    var validFe = FilteredResolutions.FirstOrDefault(r => r.IsElectronicResolution);
+                    SelectedResolution = validFe;
+                    ShowResolutionWarning = validFe == null;
+                }
+                finally
+                {
+                    _isApplyingResolutionFilter = false;
+                }
                 return;
             }
 
@@ -525,81 +539,114 @@ public partial class CheckOutViewModel : ViewModelBase
 
     private void ApplyPaymentMethodResolutionFilter(PaymentMethodEntity? method)
     {
-        if (AvailableResolutions.Count == 0)
+        if (_isApplyingResolutionFilter) return;
+        _isApplyingResolutionFilter = true;
+
+        try
         {
-            FilteredResolutions.Clear();
-            IsResolutionLocked = false;
-            ResolutionLockReason = string.Empty;
+            if (AvailableResolutions.Count == 0)
+            {
+                FilteredResolutions.Clear();
+                SelectedResolution = null;
+                IsResolutionLocked = false;
+                ResolutionLockReason = string.Empty;
+                return;
+            }
+
+            if (method != null && (method.RequiresResolution || !string.IsNullOrWhiteSpace(method.DefaultResolutionId)))
+            {
+                var feResolutions = AvailableResolutions.Where(r => r.IsElectronicResolution
+                                                                    || (r.Prefix?.StartsWith("FE", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                                    || (r.Prefix?.StartsWith("FM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                                    || (r.Prefix?.StartsWith("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                                                    || (r.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
+
+                if (method.RequiresResolution)
+                {
+                    // Si el medio de pago exige FE, SOLO se permiten resoluciones FE (CERO fallback a POS)
+                    FilteredResolutions.Clear();
+                    foreach (var r in feResolutions)
+                    {
+                        FilteredResolutions.Add(r);
+                    }
+
+                    IsResolutionLocked = true;
+                    ResolutionLockReason = $"Bloqueada por {method.Name}: exige Facturación Electrónica";
+                    EmitElectronicInvoice = true;
+                    CanToggleElectronicInvoice = false;
+                    _ = LoadCustomersAsync();
+
+                    if (feResolutions.Count == 0)
+                    {
+                        SelectedResolution = null;
+                        ShowResolutionWarning = true;
+                    }
+                    else
+                    {
+                        BillingResolution? targetResolution = null;
+                        if (!string.IsNullOrWhiteSpace(method.DefaultResolutionId))
+                        {
+                            targetResolution = feResolutions.FirstOrDefault(r => r.ResolutionId.ToString().Equals(method.DefaultResolutionId, StringComparison.OrdinalIgnoreCase));
+                        }
+
+                        targetResolution ??= feResolutions.FirstOrDefault(r => r.IsElectronicResolution)
+                                             ?? feResolutions.FirstOrDefault(r => r.Prefix?.StartsWith("FE", StringComparison.OrdinalIgnoreCase) ?? false)
+                                             ?? feResolutions.FirstOrDefault(r => r.Prefix?.StartsWith("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                             ?? feResolutions.FirstOrDefault();
+
+                        SelectedResolution = targetResolution;
+                        ShowResolutionWarning = targetResolution == null;
+                    }
+                }
+                else
+                {
+                    var targetList = feResolutions.Count > 0 ? feResolutions : AvailableResolutions.ToList();
+                    FilteredResolutions.Clear();
+                    foreach (var r in targetList)
+                    {
+                        FilteredResolutions.Add(r);
+                    }
+
+                    BillingResolution? targetResolution = null;
+                    if (!string.IsNullOrWhiteSpace(method.DefaultResolutionId))
+                    {
+                        targetResolution = targetList.FirstOrDefault(r => r.ResolutionId.ToString().Equals(method.DefaultResolutionId, StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    SelectedResolution = targetResolution ?? targetList.FirstOrDefault();
+                }
+            }
+            else
+            {
+                IsResolutionLocked = false;
+                ResolutionLockReason = string.Empty;
+                CanToggleElectronicInvoice = !ForceElectronicInvoiceOnCheckout;
+
+                FilteredResolutions.Clear();
+                foreach (var r in AvailableResolutions)
+                {
+                    FilteredResolutions.Add(r);
+                }
+
+                if (method != null)
+                {
+                    if (IsCardOrElectronicPayment(method.Name))
+                    {
+                        AutoSelectFvmResolution();
+                    }
+                    else if (method.ToEnum() == Core.Enums.PaymentMethod.Cash || method.RequiresCashTender || IsCashPayment(method.Name))
+                    {
+                        AutoSelectPosResolution();
+                    }
+                }
+            }
+        }
+        finally
+        {
+            _isApplyingResolutionFilter = false;
             OnPropertyChanged(nameof(CanChangeResolution));
             OnPropertyChanged(nameof(IsElectronicInvoicingSectionVisible));
-            return;
         }
-
-        if (method != null && (method.RequiresResolution || !string.IsNullOrWhiteSpace(method.DefaultResolutionId)))
-        {
-            var feResolutions = AvailableResolutions.Where(r => r.IsElectronicResolution
-                                                                || (r.Prefix?.StartsWith("FE", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                                || (r.Prefix?.StartsWith("FM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                                || (r.Prefix?.StartsWith("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                                || (r.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
-
-            var targetList = feResolutions.Count > 0 ? feResolutions : AvailableResolutions.ToList();
-
-            FilteredResolutions.Clear();
-            foreach (var r in targetList)
-            {
-                FilteredResolutions.Add(r);
-            }
-
-            IsResolutionLocked = true;
-            ResolutionLockReason = $"Bloqueada por {method.Name}: exige Facturación Electrónica";
-            EmitElectronicInvoice = true;
-            CanToggleElectronicInvoice = false;
-            _ = LoadCustomersAsync();
-
-            BillingResolution? targetResolution = null;
-            if (!string.IsNullOrWhiteSpace(method.DefaultResolutionId))
-            {
-                targetResolution = targetList.FirstOrDefault(r => r.ResolutionId.ToString().Equals(method.DefaultResolutionId, StringComparison.OrdinalIgnoreCase));
-            }
-
-            if (targetResolution == null)
-            {
-                targetResolution = targetList.FirstOrDefault(r => r.IsElectronicResolution)
-                                   ?? targetList.FirstOrDefault(r => r.Prefix?.StartsWith("FE", StringComparison.OrdinalIgnoreCase) ?? false)
-                                   ?? targetList.FirstOrDefault(r => r.Prefix?.StartsWith("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                   ?? targetList.FirstOrDefault();
-            }
-
-            SelectedResolution = targetResolution;
-        }
-        else
-        {
-            IsResolutionLocked = false;
-            ResolutionLockReason = string.Empty;
-            CanToggleElectronicInvoice = !ForceElectronicInvoiceOnCheckout;
-
-            FilteredResolutions.Clear();
-            foreach (var r in AvailableResolutions)
-            {
-                FilteredResolutions.Add(r);
-            }
-
-            if (method != null)
-            {
-                if (IsCardOrElectronicPayment(method.Name))
-                {
-                    AutoSelectFvmResolution();
-                }
-                else if (method.ToEnum() == Core.Enums.PaymentMethod.Cash || method.RequiresCashTender || IsCashPayment(method.Name))
-                {
-                    AutoSelectPosResolution();
-                }
-            }
-        }
-
-        OnPropertyChanged(nameof(CanChangeResolution));
-        OnPropertyChanged(nameof(IsElectronicInvoicingSectionVisible));
     }
 
     private void AutoSelectFvmResolution()

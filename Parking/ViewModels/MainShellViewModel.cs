@@ -334,21 +334,63 @@ public partial class MainShellViewModel : ViewModelBase
                                     !string.IsNullOrWhiteSpace(currentUser.SessionToken) &&
                                     string.Equals(notification.SessionToken, currentUser.SessionToken, StringComparison.OrdinalIgnoreCase);
 
-                bool matchesUser = notification.UserId.HasValue && currentUser.ServerUserId == notification.UserId.Value;
+                bool matchesUser = (notification.UserId.HasValue && currentUser.ServerUserId == notification.UserId.Value) ||
+                                   (!string.IsNullOrWhiteSpace(notification.EntityIdentifier) &&
+                                    string.Equals(notification.EntityIdentifier, currentUser.Username, StringComparison.OrdinalIgnoreCase));
 
                 bool matchesCompany = !notification.UserId.HasValue &&
                                       string.IsNullOrWhiteSpace(notification.SessionToken) &&
+                                      string.IsNullOrWhiteSpace(notification.EntityIdentifier) &&
                                       notification.CompanyId.HasValue &&
                                       currentUser.CompanyId.HasValue &&
                                       currentUser.CompanyId.Value == notification.CompanyId.Value &&
                                       !currentUser.IsSuperAdmin;
 
-                if (matchesToken || (matchesUser && string.IsNullOrWhiteSpace(notification.SessionToken)) || matchesCompany)
+                if (matchesToken || matchesUser || matchesCompany)
                 {
                     await HandleConcurrentSessionTerminatedAsync(notification.Message);
                 }
             }
             return;
+        }
+
+        // 0.1 Manejo reactivo de actualización de perfil de usuario en tiempo real
+        if (notification.EventType == "UsersChanged")
+        {
+            var currentUser = _sessionService.CurrentUser;
+            if (currentUser != null)
+            {
+                bool matchesUser = (notification.UserId.HasValue && currentUser.ServerUserId == notification.UserId.Value) ||
+                                   (!string.IsNullOrWhiteSpace(notification.EntityIdentifier) &&
+                                    string.Equals(notification.EntityIdentifier, currentUser.Username, StringComparison.OrdinalIgnoreCase));
+
+                if (matchesUser && currentUser.ServerUserId.HasValue)
+                {
+                    try
+                    {
+                        var remoteUser = await _apiClient.GetUserByIdAsync(currentUser.ServerUserId.Value);
+                        if (remoteUser != null)
+                        {
+                            if (!remoteUser.IsActive)
+                            {
+                                await HandleConcurrentSessionTerminatedAsync("Tu cuenta ha sido desactivada por un administrador.");
+                                return;
+                            }
+
+                            _sessionService.UpdateCurrentUser(u =>
+                            {
+                                if (!string.IsNullOrWhiteSpace(remoteUser.FullName)) u.FullName = remoteUser.FullName;
+                                if (!string.IsNullOrWhiteSpace(remoteUser.Username)) u.Username = remoteUser.Username;
+                                if (!string.IsNullOrWhiteSpace(remoteUser.RoleName)) u.RoleName = remoteUser.RoleName;
+                                if (remoteUser.UserRoleId > 0) u.ServerRoleId = remoteUser.UserRoleId;
+                            });
+                            OnPropertyChanged(nameof(CurrentUser));
+                            SyncStatusText = $"Perfil sincronizado en tiempo real ({DateTime.Now.ToString("hh:mm tt", CultureInfo.InvariantCulture)})";
+                        }
+                    }
+                    catch { }
+                }
+            }
         }
 
         // 1. Manejo reactivo de cambios de permisos y roles en tiempo real
@@ -361,10 +403,17 @@ public partial class MainShellViewModel : ViewModelBase
                 try
                 {
                     var updatedPermissions = await _apiClient.GetRolePermissionsAsync(roleId);
-                    if (updatedPermissions != null && updatedPermissions.Count > 0)
+                    if (updatedPermissions != null)
                     {
                         user.GrantedPermissions = new HashSet<string>(updatedPermissions, StringComparer.OrdinalIgnoreCase);
                         _permissionService.LoadPermissions(updatedPermissions, user.IsAdmin);
+
+                        if (!user.IsAdmin && _permissionService.GrantedPermissions.Count == 0)
+                        {
+                            await HandleConcurrentSessionTerminatedAsync("Tus permisos para operar la estación de escritorio han sido revocados por un administrador.");
+                            return;
+                        }
+
                         SyncStatusText = $"Permisos actualizados en tiempo real ({DateTime.Now.ToString("hh:mm tt", CultureInfo.InvariantCulture)})";
                     }
                 }
@@ -792,6 +841,32 @@ public partial class MainShellViewModel : ViewModelBase
             await _shiftService.RefreshCurrentShiftAsync();
             await RefreshOccupancyAsync();
             HasActiveShift = _shiftService.HasActiveShift;
+
+            if (CurrentUser?.ServerUserId.HasValue == true)
+            {
+                try
+                {
+                    var remoteUser = await _apiClient.GetUserByIdAsync(CurrentUser.ServerUserId.Value);
+                    if (remoteUser != null)
+                    {
+                        if (!remoteUser.IsActive)
+                        {
+                            await HandleConcurrentSessionTerminatedAsync("Tu cuenta ha sido desactivada por un administrador.");
+                            return;
+                        }
+
+                        _sessionService.UpdateCurrentUser(u =>
+                        {
+                            if (!string.IsNullOrWhiteSpace(remoteUser.FullName)) u.FullName = remoteUser.FullName;
+                            if (!string.IsNullOrWhiteSpace(remoteUser.Username)) u.Username = remoteUser.Username;
+                            if (!string.IsNullOrWhiteSpace(remoteUser.RoleName)) u.RoleName = remoteUser.RoleName;
+                            if (remoteUser.UserRoleId > 0) u.ServerRoleId = remoteUser.UserRoleId;
+                        });
+                        OnPropertyChanged(nameof(CurrentUser));
+                    }
+                }
+                catch { }
+            }
 
             if (ActiveView is ShiftClosureViewModel && HasActiveShift)
             {

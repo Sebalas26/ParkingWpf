@@ -637,6 +637,25 @@ public class ParkingApiClient : IApiClientService
         }
     }
 
+    public async Task<ApiUserSyncDto?> GetUserByIdAsync(int userId)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        try
+        {
+            var response = await _httpClient.GetAsync($"{BaseUrl}/api/Users/{userId}", cts.Token);
+            CheckUnauthorized(response);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ApiUserSyncDto>(JsonOptions, cts.Token);
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public async Task<PlateCheckResultDto?> CheckPlateAsync(string plateNumber, int? branchId = null)
     {
         if (string.IsNullOrWhiteSpace(plateNumber)) return null;

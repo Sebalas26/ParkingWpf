@@ -1,9 +1,11 @@
 using System;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Parking.Models.ApiModels;
 using Parking.Services.Contracts;
 
@@ -114,6 +116,12 @@ public class SignalRClientService : ISignalRClientService, IAsyncDisposable
                     }
                     return handler;
                 };
+            })
+            .AddJsonProtocol(options =>
+            {
+                options.PayloadSerializerOptions.PropertyNameCaseInsensitive = true;
+                options.PayloadSerializerOptions.NumberHandling = JsonNumberHandling.AllowReadingFromString;
+                options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter());
             })
             .WithAutomaticReconnect(new[]
             {

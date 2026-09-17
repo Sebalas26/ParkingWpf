@@ -33,6 +33,7 @@ public interface IApiClientService
     Task<IReadOnlyList<WorkShift>> GetShiftHistoryAsync(DateTime? fromDate = null, DateTime? toDate = null, int? branchId = null);
     Task<IReadOnlyList<ApiUserSyncDto>> GetBranchUsersAsync(int branchId);
     Task<List<string>> GetRolePermissionsAsync(int roleId);
+    Task<ApiUserSyncDto?> GetUserByIdAsync(int userId);
     Task<PlateCheckResultDto?> CheckPlateAsync(string plateNumber, int? branchId = null);
     Task<CustomerApiResponse?> CreateCustomerAsync(CreateCustomerApiRequest request);
 }
