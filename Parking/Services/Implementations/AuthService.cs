@@ -64,6 +64,7 @@ public class AuthService : IAuthService
                     IsSuperAdmin = isSuperAdmin,
                     CompanyId = apiLogin.CompanyId,
                     CompanyName = apiLogin.CompanyName,
+                    CompanyNit = apiLogin.CompanyNit,
                     AllowMultipleSessions = apiLogin.AllowMultipleSessions,
                     MaxActiveSessionsPerUser = apiLogin.MaxActiveSessionsPerUser > 1 ? apiLogin.MaxActiveSessionsPerUser : 1,
                     AllowMultipleOpenShifts = apiLogin.AllowMultipleOpenShifts,
@@ -88,6 +89,14 @@ public class AuthService : IAuthService
                     if (!b.CompanyId.HasValue && apiLogin.CompanyId.HasValue)
                     {
                         b.CompanyId = apiLogin.CompanyId;
+                    }
+                    if (string.IsNullOrWhiteSpace(b.CompanyNit) && !string.IsNullOrWhiteSpace(apiLogin.CompanyNit))
+                    {
+                        b.CompanyNit = apiLogin.CompanyNit;
+                    }
+                    if (string.IsNullOrWhiteSpace(b.CompanyName) && !string.IsNullOrWhiteSpace(apiLogin.CompanyName))
+                    {
+                        b.CompanyName = apiLogin.CompanyName;
                     }
                 }
 
@@ -166,6 +175,8 @@ public class AuthService : IAuthService
                                 {
                                     Id = b.Id,
                                     CompanyId = b.CompanyId,
+                                    CompanyName = b.CompanyName ?? apiLogin.CompanyName,
+                                    CompanyNit = b.CompanyNit ?? apiLogin.CompanyNit,
                                     Code = b.Code,
                                     Name = b.Name,
                                     Address = b.Address,
@@ -281,6 +292,7 @@ public class AuthService : IAuthService
             RoleId = user.RoleId,
             IsAdmin = isLocalAdmin,
             IsSuperAdmin = false,
+            CompanyId = user.CompanyId,
             SessionToken = sessionToken,
             LoginTime = DateTime.Now
         };
@@ -306,6 +318,8 @@ public class AuthService : IAuthService
         {
             Id = b.Id,
             CompanyId = b.CompanyId,
+            CompanyName = b.CompanyName,
+            CompanyNit = b.CompanyNit,
             Code = b.Code,
             Name = b.Name,
             Address = b.Address,

@@ -16,6 +16,12 @@ public class ApiBranchSyncDto
     [JsonPropertyName("companyId")]
     public int? CompanyId { get; set; }
 
+    [JsonPropertyName("companyName")]
+    public string? CompanyName { get; set; }
+
+    [JsonPropertyName("companyNit")]
+    public string? CompanyNit { get; set; }
+
     [JsonPropertyName("code")]
     public string Code { get; set; } = string.Empty;
 
@@ -937,6 +943,12 @@ public class BootstrapSyncResponse
 
     [JsonPropertyName("companyId")]
     public int? CompanyId { get; set; }
+
+    [JsonPropertyName("companyName")]
+    public string? CompanyName { get; set; }
+
+    [JsonPropertyName("companyNit")]
+    public string? CompanyNit { get; set; }
 
     [JsonPropertyName("totalCapacity")]
     public int TotalCapacity { get; set; } = 120;

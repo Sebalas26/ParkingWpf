@@ -51,11 +51,19 @@ public class EfPricingCalculatorService : IPricingCalculatorService
         List<VehicleRate> rates;
         if (currentBranchId.HasValue)
         {
-            // Cargar estrictamente las tarifas asignadas a la sede activa (sin fallback global)
-            rates = await db.VehicleRates
+            // Cargar tarifas asignadas a la sede activa con fallback a tarifas globales de la empresa
+            var branchRates = await db.VehicleRates
                 .Where(r => r.IsActive && r.BranchId == currentBranchId.Value)
                 .OrderBy(r => r.DisplayName)
                 .ToListAsync();
+
+            var branchVehicleTypes = branchRates.Select(r => r.VehicleType).ToHashSet();
+            var globalRates = await db.VehicleRates
+                .Where(r => r.IsActive && r.BranchId == null && !branchVehicleTypes.Contains(r.VehicleType))
+                .OrderBy(r => r.DisplayName)
+                .ToListAsync();
+
+            rates = branchRates.Concat(globalRates).ToList();
         }
         else
         {

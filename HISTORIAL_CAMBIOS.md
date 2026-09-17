@@ -15,6 +15,37 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-16 23:05:00] - [FEAT / FIX / PRINT / THERMAL-RECEIPT / PWA-SYNC / ZERO-HARDCODING] - Dinamización Total de Datos en Tiquete de Entrada: NIT de Empresa, Teléfonos de Sede, Tarifas Parametrizadas y Atendido por Usuario Logueado
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Ayudame a ajustar los datos de la impresion de entrada._
+  > _- Que el nit sea el de empresa configurada al crearla desde el pwa_
+  > _- Los telefonos mostrados deben ser el que se configure desde el pwa cuando se crea una sede_
+  > _- Quiero que me muestre las tarifas configuradas para la sede desde el pwa_
+  > _- El atentido por, que sea el usuario que le genero el ingreso delvehiculo por el wpf, es decir que el nombre del usuario logeado"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Erradicación de Data Hardcodeada en Tiquetes (`ReceiptPreviewViewModel.cs`)**:
+     - Se erradicaron de raíz los valores quemados: `"NIT. 900900900-9"`, `"Tel. 318 181818 - 301 301301301"`, `"MERLIN"` y `"TARIFA: $ 0 / HORA"`, en estricto cumplimiento de la Regla de Oro #8.
+  2. **NIT Dinámico de Empresa Configurada en PWA**:
+     - Se propagó `CompanyNit` a través de toda la arquitectura: DTOs de API (`AuthResponseDto`, `LoginResponseDto`, `BranchDto`, `BootstrapSyncDto`), clientes de sincronización (`BootstrapSyncResponse`, `ApiBranchSyncDto`, `LoginApiResponse`), entidades y modelos (`Branch`, `BranchModel`, `UserSessionModel`).
+     - En `ReceiptPreviewViewModel`, el NIT se resuelve dinámicamente desde `CurrentBranch.CompanyNit`, `CurrentUser.CompanyNit` o la consulta en SQLite local a `Branches`, formateándose como `NIT. {nit}`.
+  3. **Teléfono Dinámico de Sede Configurada en PWA**:
+     - Se extrae directamente desde `CurrentBranch.Phone` o de SQLite (`Branches.Phone`), mostrando el teléfono oficial configurado para la sede física.
+  4. **Atendido por Asignado al Usuario Logueado que Ingresó el Vehículo**:
+     - Se extrajo la asignación de `AttendedBy` fuera del bloque exclusivo de salida `if (IsExitReceipt)`, garantizando que tanto en tiquetes de ingreso como de egreso se refleje fielmente el nombre del operador (`ticket.OperatorName`, `CurrentUser.FullName` o `CurrentUser.Username`).
+  5. **Tarifas Reales de la Sede Parametrizadas desde PWA**:
+     - Se inyectó `IPricingCalculatorService` en `ReceiptPreviewViewModel`. Se consulta la tarifa activa del tipo de vehículo para la sede (`_pricingCalculator.GetRate(ticket.VehicleType)` con fallback a SQLite).
+     - Si la sede cobra por hora, minuto o esquemas combinados, se proyecta `TARIFA: {hour:C0} / HORA | {min:C0} / MIN` (o solo hora, solo minuto, tarifa plena o tarifa nocturna según corresponda).
+     - En `CheckInViewModel.cs`, se corrigió la asignación de `customRate` para resolver la tarifa activa cuando el operador no selecciona manualmente un botón de tarifa y evitar que el tiquete nazca con tarifa en 0.
+     - En `EfPricingCalculatorService.cs`, se añadió fallback a tarifas globales de empresa (`BranchId == null`) si la sede no cuenta con parametrización exclusiva para ese tipo de vehículo.
+  6. **Pruebas Unitarias y Certificación**:
+     - Se crearon 4 nuevas pruebas unitarias en `ReceiptPreviewViewModelTests.cs` certificando la no existencia de datos quemados y la resolución de NIT, teléfono, tarifas y operador.
+     - `dotnet test ParkingWpf.slnx`: **216 pruebas superadas, 0 fallos (100% de éxito)**.
+
+---
+
 ### [2026-09-16 17:25:00] - [FEAT / FIX / SYNC / RECONCILIATION / REALTIME] - Conciliación Concurrente de Tiquetes por Placa Activa y Sincronización Silenciosa Real-Time con PWA
 
 - **Autor**: Antigravity AI Assistant & Software Architect

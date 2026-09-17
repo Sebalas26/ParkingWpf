@@ -14,6 +14,12 @@ public class BranchModel
     [JsonPropertyName("companyId")]
     public int? CompanyId { get; set; }
 
+    [JsonPropertyName("companyName")]
+    public string? CompanyName { get; set; }
+
+    [JsonPropertyName("companyNit")]
+    public string? CompanyNit { get; set; }
+
     [JsonPropertyName("code")]
     public string Code { get; set; } = string.Empty;
 

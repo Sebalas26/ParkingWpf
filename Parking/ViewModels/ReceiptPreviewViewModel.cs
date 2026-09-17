@@ -18,6 +18,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private readonly ISessionService _sessionService;
     private readonly IDbConnectionManager _connectionManager;
     private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
+    private readonly IPricingCalculatorService _pricingCalculator;
 
     [ObservableProperty]
     private ParkingTicket _ticket = new();
@@ -44,16 +45,16 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private System.Windows.Media.ImageSource? _barcodeImage;
 
     [ObservableProperty]
-    private string _branchName = "PARKING FLOW";
+    private string _branchName = string.Empty;
 
     [ObservableProperty]
-    private string _branchNit = "NIT: 900.914.246-2";
+    private string _branchNit = string.Empty;
 
     [ObservableProperty]
-    private string _branchAddress = "CALLE 26 #57-83";
+    private string _branchAddress = string.Empty;
 
     [ObservableProperty]
-    private string _branchPhone = "Tel. 318 181818 - 301 301301301";
+    private string _branchPhone = string.Empty;
 
     [ObservableProperty]
     private string _formattedRateText = string.Empty;
@@ -131,7 +132,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private string _totalStr = "0";
 
     [ObservableProperty]
-    private string _attendedBy = "MERLIN";
+    private string _attendedBy = "OPERADOR";
 
     [ObservableProperty]
     private string _paymentMethodName = "CONTADO";
@@ -196,12 +197,14 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         IReceiptPrinterService printerService,
         ISessionService sessionService,
         IDbConnectionManager connectionManager,
-        Microsoft.Extensions.Configuration.IConfiguration configuration)
+        Microsoft.Extensions.Configuration.IConfiguration configuration,
+        IPricingCalculatorService pricingCalculator)
     {
         _printerService = printerService;
         _sessionService = sessionService;
         _connectionManager = connectionManager;
         _configuration = configuration;
+        _pricingCalculator = pricingCalculator;
     }
 
     public void LoadTicket(ParkingTicket ticket, BillingResolution? resolution = null)
@@ -237,14 +240,149 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             PlateFontSize = 16;
         }
 
-        BranchName = !string.IsNullOrWhiteSpace(currentBranch?.Name) ? currentBranch.Name.ToUpperInvariant() : "PARQUEADERO MERLIN";
-        BranchAddress = !string.IsNullOrWhiteSpace(currentBranch?.Address) ? currentBranch.Address.ToUpperInvariant() : "CALLE 18 18-18";
-        BranchNit = !string.IsNullOrWhiteSpace(currentBranch?.Notes) && currentBranch.Notes.StartsWith("NIT", StringComparison.OrdinalIgnoreCase)
-            ? currentBranch.Notes
-            : "NIT. 900900900-9";
-        BranchPhone = "Tel. 318 181818 - 301 301301301";
+        BranchName = !string.IsNullOrWhiteSpace(currentBranch?.Name) ? currentBranch.Name.ToUpperInvariant() : "PARQUEADERO";
+        BranchAddress = !string.IsNullOrWhiteSpace(currentBranch?.Address) ? currentBranch.Address.ToUpperInvariant() : string.Empty;
 
-        FormattedRateText = $"TARIFA: {ticket.HourlyRate:C0} / HORA";
+        // 1. NIT de la Empresa configurada desde el PWA
+        var rawNit = _sessionService.CurrentBranch?.CompanyNit
+            ?? _sessionService.CurrentUser?.CompanyNit
+            ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(rawNit))
+        {
+            try
+            {
+                using var db = _connectionManager.CreateDbContext();
+                var branchId = currentBranch?.Id ?? ticket.BranchId;
+                if (branchId > 0)
+                {
+                    rawNit = db.Branches.Where(b => b.Id == branchId).Select(b => b.CompanyNit).FirstOrDefault() ?? string.Empty;
+                }
+                if (string.IsNullOrWhiteSpace(rawNit))
+                {
+                    rawNit = db.Branches.Where(b => !string.IsNullOrWhiteSpace(b.CompanyNit)).Select(b => b.CompanyNit).FirstOrDefault() ?? string.Empty;
+                }
+            }
+            catch { }
+        }
+
+        if (string.IsNullOrWhiteSpace(rawNit) && !string.IsNullOrWhiteSpace(currentBranch?.Notes) && currentBranch.Notes.StartsWith("NIT", StringComparison.OrdinalIgnoreCase))
+        {
+            rawNit = currentBranch.Notes;
+        }
+
+        BranchNit = !string.IsNullOrWhiteSpace(rawNit)
+            ? (rawNit.StartsWith("NIT", StringComparison.OrdinalIgnoreCase) ? rawNit.ToUpperInvariant() : $"NIT. {rawNit}".ToUpperInvariant())
+            : string.Empty;
+
+        // 2. Teléfono de la Sede configurado desde el PWA
+        var rawPhone = currentBranch?.Phone ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(rawPhone))
+        {
+            try
+            {
+                using var db = _connectionManager.CreateDbContext();
+                var branchId = currentBranch?.Id ?? ticket.BranchId;
+                if (branchId > 0)
+                {
+                    rawPhone = db.Branches.Where(b => b.Id == branchId).Select(b => b.Phone).FirstOrDefault() ?? string.Empty;
+                }
+            }
+            catch { }
+        }
+
+        BranchPhone = !string.IsNullOrWhiteSpace(rawPhone)
+            ? (rawPhone.StartsWith("Tel", StringComparison.OrdinalIgnoreCase) ? rawPhone : $"Tel. {rawPhone}")
+            : string.Empty;
+
+        // 3. Atendido por (Usuario logueado en WPF que realizó el ingreso)
+        AttendedBy = !string.IsNullOrWhiteSpace(ticket.OperatorName)
+            ? ticket.OperatorName.ToUpperInvariant()
+            : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.FullName)
+                ? _sessionService.CurrentUser.FullName.ToUpperInvariant()
+                : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.Username)
+                    ? _sessionService.CurrentUser.Username.ToUpperInvariant()
+                    : "OPERADOR"));
+
+        // 4. Tarifas de la Sede configuradas desde el PWA
+        VehicleRate? rate = null;
+        try
+        {
+            rate = _pricingCalculator.GetRate(ticket.VehicleType);
+            if (rate == null)
+            {
+                using var db = _connectionManager.CreateDbContext();
+                var branchId = currentBranch?.Id ?? ticket.BranchId;
+                rate = db.VehicleRates.FirstOrDefault(r => (r.BranchId == branchId || r.BranchId == null) && r.VehicleType == ticket.VehicleType && r.IsActive);
+            }
+        }
+        catch { }
+
+        var hourRate = (rate != null && rate.HourRate > 0) ? rate.HourRate : ticket.HourlyRate;
+        var minuteRate = rate?.MinuteRate ?? 0m;
+        var fullDayRate = rate?.FullDayRate ?? 0m;
+        var nightRate = rate?.NightRate ?? 0m;
+
+        if (hourRate > 0 && minuteRate > 0)
+        {
+            FormattedRateText = $"TARIFA: {hourRate:C0} / HORA  |  {minuteRate:C0} / MIN";
+        }
+        else if (hourRate > 0)
+        {
+            FormattedRateText = $"TARIFA: {hourRate:C0} / HORA";
+        }
+        else if (minuteRate > 0)
+        {
+            FormattedRateText = $"TARIFA: {minuteRate:C0} / MINUTO";
+        }
+        else if (fullDayRate > 0)
+        {
+            FormattedRateText = $"TARIFA DÍA: {fullDayRate:C0}";
+        }
+        else if (nightRate > 0)
+        {
+            FormattedRateText = $"TARIFA NOCHE: {nightRate:C0}";
+        }
+        else
+        {
+            // Fallback a cualquier tarifa activa de la sede
+            try
+            {
+                using var db = _connectionManager.CreateDbContext();
+                var branchId = currentBranch?.Id ?? ticket.BranchId;
+                var anyRate = db.VehicleRates.FirstOrDefault(r => (r.BranchId == branchId || r.BranchId == null) && r.IsActive && (r.HourRate > 0 || r.MinuteRate > 0));
+                if (anyRate != null)
+                {
+                    if (anyRate.HourRate > 0 && anyRate.MinuteRate > 0)
+                        FormattedRateText = $"TARIFA: {anyRate.HourRate:C0} / HORA  |  {anyRate.MinuteRate:C0} / MIN";
+                    else if (anyRate.HourRate > 0)
+                        FormattedRateText = $"TARIFA: {anyRate.HourRate:C0} / HORA";
+                    else
+                        FormattedRateText = $"TARIFA: {anyRate.MinuteRate:C0} / MINUTO";
+                }
+                else
+                {
+                    FormattedRateText = ticket.HourlyRate > 0 ? $"TARIFA: {ticket.HourlyRate:C0} / HORA" : string.Empty;
+                }
+            }
+            catch
+            {
+                FormattedRateText = ticket.HourlyRate > 0 ? $"TARIFA: {ticket.HourlyRate:C0} / HORA" : string.Empty;
+            }
+        }
+
+        if (fullDayRate > 0 && nightRate > 0 && hourRate > 0)
+        {
+            FormattedRateText += $"\nPLENA: {fullDayRate:C0} | NOCHE: {nightRate:C0}";
+        }
+        else if (fullDayRate > 0 && hourRate > 0)
+        {
+            FormattedRateText += $"\nTARIFA PLENA: {fullDayRate:C0}";
+        }
+        else if (nightRate > 0 && hourRate > 0)
+        {
+            FormattedRateText += $"\nTARIFA NOCTURNA: {nightRate:C0}";
+        }
 
         IsExitReceipt = ticket.Status == TicketStatus.Completed || ticket.ExitTimeUtc.HasValue || ticket.ExitTime.HasValue;
         IsEntryTicket = !IsExitReceipt;
@@ -384,7 +522,11 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
             AttendedBy = !string.IsNullOrWhiteSpace(ticket.OperatorName)
                 ? ticket.OperatorName.ToUpperInvariant()
-                : (_sessionService.CurrentUser?.FullName?.ToUpperInvariant() ?? "MERLIN");
+                : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.FullName)
+                    ? _sessionService.CurrentUser.FullName.ToUpperInvariant()
+                    : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.Username)
+                        ? _sessionService.CurrentUser.Username.ToUpperInvariant()
+                        : "OPERADOR"));
 
             // 5. Datos de Factura vs POS Estándar
             CustomerName = "CONSUMIDOR FINAL";

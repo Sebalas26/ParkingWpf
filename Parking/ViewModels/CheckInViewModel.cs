@@ -532,8 +532,21 @@ public partial class CheckInViewModel : ViewModelBase
 
         try
         {
-            var operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
+            var operatorName = !string.IsNullOrWhiteSpace(_authService.CurrentUser?.FullName)
+                ? _authService.CurrentUser.FullName
+                : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.FullName)
+                    ? _sessionService.CurrentUser.FullName
+                    : (_sessionService.CurrentUser?.Username ?? "Operador General"));
+
             decimal? customRate = IsMonthlySubscriber ? 0m : SelectedRate?.HourRate;
+            if (!IsMonthlySubscriber && (!customRate.HasValue || customRate.Value <= 0))
+            {
+                var resolvedRate = _pricingCalculator.GetRate(SelectedVehicleType);
+                if (resolvedRate != null && resolvedRate.HourRate > 0)
+                {
+                    customRate = resolvedRate.HourRate;
+                }
+            }
             var ticketNotes = IsMonthlySubscriber && ActiveSubscription != null
                 ? $"Mensualidad Activa: {ActiveSubscription.CustomerName} (Vence: {ActiveSubscription.EndDate:yyyy-MM-dd})"
                 : Notes;
