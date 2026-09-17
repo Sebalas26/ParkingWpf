@@ -252,7 +252,7 @@
                             BorderBrush="{DynamicResource BrushBorderMedium}"
                             BorderThickness="1"
                             CornerRadius="12"
-                            Padding="14,8"
+                            Padding="16,10"
                             Margin="0,0,0,14"
                             HorizontalAlignment="Left">
                         <Grid>
@@ -263,14 +263,14 @@
 
                             <!-- Icono de Reloj -->
                             <Border Grid.Column="0"
-                                    Width="36" Height="36"
-                                    CornerRadius="9"
+                                    Width="42" Height="42"
+                                    CornerRadius="10"
                                     Background="#EBF6F8"
-                                    Margin="0,0,10,0"
+                                    Margin="0,0,12,0"
                                     VerticalAlignment="Center">
                                 <Path Data="{StaticResource IconClock}"
                                       Fill="{DynamicResource BrushPrimary}"
-                                      Width="18" Height="18"
+                                      Width="20" Height="20"
                                       Stretch="Uniform"
                                       HorizontalAlignment="Center"
                                       VerticalAlignment="Center"/>
@@ -280,10 +280,10 @@
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding CurrentDateString}"
                                            FontSize="13"
-                                           FontWeight="Bold"
-                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                           FontWeight="SemiBold"
+                                           Foreground="{DynamicResource BrushTextSecondary}"/>
                                 <TextBlock Text="{Binding CurrentTimeString}"
-                                           FontSize="18"
+                                           FontSize="26"
                                            FontWeight="Black"
                                            Foreground="{DynamicResource BrushPrimary}"
                                            Margin="0,1,0,0"/>
@@ -513,28 +513,46 @@
                                                     CornerRadius="10"
                                                     Padding="12,8"
                                                     SnapsToDevicePixels="True">
-                                                <!-- Ícono y Nombre -->
+                                                <!-- Ícono y Nombre con Tarifa de Referencia -->
                                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                                     <Border x:Name="IconBadge"
-                                                            Width="24" Height="24"
+                                                            Width="26" Height="26"
                                                             CornerRadius="6"
                                                             Background="#F1F5F9"
-                                                            Margin="0,0,7,0"
+                                                            Margin="0,0,8,0"
                                                             VerticalAlignment="Center">
                                                         <Path x:Name="IconPath"
                                                               Data="{Binding VehicleType, Converter={StaticResource VehicleIconConv}}"
                                                               Fill="{DynamicResource BrushPrimary}"
-                                                              Width="13" Height="13"
+                                                              Width="14" Height="14"
                                                               Stretch="Uniform"
                                                               HorizontalAlignment="Center"
                                                               VerticalAlignment="Center"/>
                                                     </Border>
-                                                    <TextBlock x:Name="NameText"
-                                                               Text="{Binding DisplayName}"
-                                                               FontWeight="Bold"
-                                                               FontSize="13"
-                                                               Foreground="{DynamicResource BrushTextPrimary}"
-                                                               VerticalAlignment="Center"/>
+                                                    <StackPanel VerticalAlignment="Center">
+                                                        <TextBlock x:Name="NameText"
+                                                                   Text="{Binding DisplayName}"
+                                                                   FontWeight="Bold"
+                                                                   FontSize="13"
+                                                                   Foreground="{DynamicResource BrushTextPrimary}"
+                                                                   VerticalAlignment="Center"/>
+                                                        <TextBlock x:Name="RateText"
+                                                                   FontSize="11"
+                                                                   FontWeight="Bold"
+                                                                   Foreground="{DynamicResource BrushPrimary}"
+                                                                   Margin="0,1,0,0">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Text" Value="{Binding HourRate, Converter={StaticResource CurrencyConv}, StringFormat='{}{0} / hr'}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding DataContext.AllowChargeByHour, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False">
+                                                                            <Setter Property="Text" Value="{Binding MinuteRate, Converter={StaticResource CurrencyConv}, StringFormat='{}{0} / min'}"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+                                                    </StackPanel>
                                                 </StackPanel>
                                             </Border>
                                             <ControlTemplate.Triggers>
@@ -753,27 +771,38 @@
                                                                VerticalAlignment="Center"/>
                                                 </StackPanel>
 
-                                                <!-- Píldoras de Tarifas (Minuto, Hora, Día) -->
+                                                <!-- Píldoras de Tarifas Condicionadas por Esquema de la Sede -->
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                                                     <!-- Minuto -->
-                                                    <Border Background="#FFFFFF" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="5" Padding="5,2" Margin="0,0,4,0">
+                                                    <Border Background="#FFFFFF" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="5" Padding="5,2" Margin="0,0,4,0"
+                                                            Visibility="{Binding DataContext.AllowChargeByMinute, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}">
                                                         <StackPanel Orientation="Horizontal">
                                                             <TextBlock Text="Min: " FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}"/>
                                                             <TextBlock Text="{Binding MinuteRate, Converter={StaticResource CurrencyConv}}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
                                                         </StackPanel>
                                                     </Border>
                                                     <!-- Hora -->
-                                                    <Border Background="#EBF6F8" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="5" Padding="5,2" Margin="0,0,4,0">
+                                                    <Border Background="#EBF6F8" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="5" Padding="5,2" Margin="0,0,4,0"
+                                                            Visibility="{Binding DataContext.AllowChargeByHour, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}">
                                                         <StackPanel Orientation="Horizontal">
                                                             <TextBlock Text="Hora: " FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushPrimary}"/>
                                                             <TextBlock Text="{Binding HourRate, Converter={StaticResource CurrencyConv}}" FontSize="11" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}"/>
                                                         </StackPanel>
                                                     </Border>
                                                     <!-- Día -->
-                                                    <Border Background="#FFFFFF" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="5" Padding="5,2">
+                                                    <Border Background="#FFFFFF" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="5" Padding="5,2" Margin="0,0,4,0"
+                                                            Visibility="{Binding DataContext.AllowChargeByDay, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}">
                                                         <StackPanel Orientation="Horizontal">
                                                             <TextBlock Text="Día: " FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}"/>
                                                             <TextBlock Text="{Binding FullDayRate, Converter={StaticResource CurrencyConv}}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <!-- Noche (Pernocta) -->
+                                                    <Border Background="#FFFFFF" BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="5" Padding="5,2"
+                                                            Visibility="{Binding DataContext.AllowChargeByNight, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="Noche: " FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource BrushTextMuted}"/>
+                                                            <TextBlock Text="{Binding NightRate, Converter={StaticResource CurrencyConv}}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
                                                         </StackPanel>
                                                     </Border>
                                                 </StackPanel>

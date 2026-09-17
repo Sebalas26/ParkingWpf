@@ -114,6 +114,11 @@ public partial class CheckInViewModel : ViewModelBase
     [ObservableProperty]
     private bool _hasActiveShift;
 
+    public bool AllowChargeByMinute => _sessionService.CurrentBranch?.AllowChargeByMinute ?? true;
+    public bool AllowChargeByHour => _sessionService.CurrentBranch?.AllowChargeByHour ?? true;
+    public bool AllowChargeByDay => _sessionService.CurrentBranch?.AllowChargeByDay ?? true;
+    public bool AllowChargeByNight => _sessionService.CurrentBranch?.AllowChargeByNight ?? false;
+
     [ObservableProperty]
     private string _shiftOperatorName = string.Empty;
 
@@ -228,6 +233,10 @@ public partial class CheckInViewModel : ViewModelBase
             SelectedRate = null;
             CurrentRate = null;
         }
+        OnPropertyChanged(nameof(AllowChargeByMinute));
+        OnPropertyChanged(nameof(AllowChargeByHour));
+        OnPropertyChanged(nameof(AllowChargeByDay));
+        OnPropertyChanged(nameof(AllowChargeByNight));
         await RefreshRecentEntriesAndOccupancyAsync();
         await RefreshShiftSummaryAsync();
     }

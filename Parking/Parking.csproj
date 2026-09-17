@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <Resource Include="Resources\logo.jpeg" />
+    <Resource Include="Resources\logo_completo_3d.png" />
     <Resource Include="Resources\parkpoint.ico" />
   </ItemGroup>
 

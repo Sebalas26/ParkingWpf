@@ -14,6 +14,40 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 3. **Componentes / Módulos Modificados** (archivos afectados).
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
+### [2026-09-17 12:15:00] - [UI/UX / FEAT] - Mejoras de Interfaz WPF: Reloj de Entrada Ampliado, Tarifas Dinámicas por Sede, Captura Global de Tecla Enter y Nuevo Logo 3D en Sidebar
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"en el modulo de ingreso de vehiculos que la hora sea un poco mas grande y que las tarifas se carguen de acuerdo a lo parametrizado de la sede desde la pwa /configuracion /editar sede
+  en la pantalla de ingreso de vehiculos que permita ingresar el vehiculo si ya tengo diligenciada la placa en el cuadro, porque al perder el foco y no estar en ese cuadro, la accion de enter no sirve, ej: si ingreso la placa y pongo el mouse en la categoria del vehiculo, al oprimir el enter ya no me sirve para ingresar el vehiculo
+  El logo de wpf reemplazalo por el logo_completo_3d.png"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Nuevo Logo 3D Oficial en Barra Lateral (`MainShellWindow.xaml` & `Parking.csproj`)**:
+     - Se incorporó el recurso `logo_completo_3d.png` en `Parking/Resources/` y se registró como `<Resource Include="Resources\logo_completo_3d.png" />` en `Parking.csproj`.
+     - Se reemplazó el contenedor con fondo sólido y el archivo antiguo `logo.jpeg` por el nuevo logo 3D con fondo transparente, preservando la proporción visual y eliminando bordes discordantes.
+  2. **Reloj de Entrada en Tiempo Real Rediseñado (`CheckInView.xaml`)**:
+     - Se aumentó el tamaño de fuente del reloj digital de `18` a `26` puntos con peso tipográfico ultra-destacado (`FontWeight="Black"`), garantizando visibilidad instantánea a distancia para el operador en caseta.
+  3. **Tarifas Dinámicas por Sede y Esquemas de Cobro Activos (`CheckInViewModel.cs` & `CheckInView.xaml`)**:
+     - Se expusieron las banderas de esquema de cobro activo de la sede (`AllowChargeByMinute`, `AllowChargeByHour`, `AllowChargeByDay`, `AllowChargeByNight`) en `CheckInViewModel` notificadas en `InitializeAsync()`.
+     - En `CheckInView.xaml`, las tarjetas de categoría de vehículo ahora exhiben la tarifa principal dinámica (priorizando la hora con fallback al minuto) y en el panel lateral de desglose se muestran únicamente las tarifas cuyos esquemas se encuentren activos en la parametrización de la sede (`/configuracion/editar sede`).
+  4. **Captura Global de Tecla Enter en Registro de Entrada (`CheckInView.xaml.cs`)**:
+     - Se implementó el manejador `CheckInView_PreviewKeyDown` en la vista de CheckIn.
+     - Cuando el operador presiona la tecla `Enter`, el sistema intercepta el evento a nivel de vista e invoca `RegisterAndPrintCommand.Execute(null)` siempre que la placa sea válida y el comando pueda ejecutarse, incluso si el foco se trasladó a los botones de categoría de vehículo, eliminando la necesidad de devolver el cursor manualmente al campo de placa.
+  5. **Verificación y Pruebas Unitarias**:
+     - `dotnet build ParkingWpf.slnx`: 0 Errores, 0 Advertencias.
+     - `dotnet test ParkingWpf.slnx`: **225 de 225 Pruebas Unitarias Superadas (0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Resources/logo_completo_3d.png` (Nuevo recurso)
+  - `Parking/Parking.csproj`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking/Views/CheckInView.xaml.cs`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+
+---
+
 ### [2026-09-17 10:10:00] - [FIX / FEAT / UI/UX] - Solución Integral: Validación de Clientes Rápidos, Cola de Contingencia Offline DIAN, Sincronización en Tiempo Real PWA->WPF, Soporte de Logotipo en Tiquetes y Corrección de Período de Gracia $0
 
 - **Autor**: Antigravity AI Assistant & Software Architect

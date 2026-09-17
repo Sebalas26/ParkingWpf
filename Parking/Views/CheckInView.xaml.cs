@@ -16,6 +16,24 @@ public partial class CheckInView : UserControl
         Loaded += CheckInView_Loaded;
         IsVisibleChanged += CheckInView_IsVisibleChanged;
         DataContextChanged += CheckInView_DataContextChanged;
+        PreviewKeyDown += CheckInView_PreviewKeyDown;
+    }
+
+    private void CheckInView_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter || e.Key == Key.Return)
+        {
+            if (Keyboard.FocusedElement is TextBox tb && tb.AcceptsReturn)
+            {
+                return;
+            }
+
+            if (DataContext is CheckInViewModel vm && vm.RegisterAndPrintCommand.CanExecute(null))
+            {
+                vm.RegisterAndPrintCommand.Execute(null);
+                e.Handled = true;
+            }
+        }
     }
 
     private void CheckInView_Loaded(object sender, RoutedEventArgs e)

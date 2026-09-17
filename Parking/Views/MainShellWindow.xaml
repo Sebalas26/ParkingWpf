@@ -192,13 +192,10 @@
                         </StackPanel>
 
                         <!-- Caso 2: Logo Oficial Parking Flow por defecto (CurrentBranch.LogoBase64 == null) -->
-                        <Border CornerRadius="10"
-                                Background="#111827"
-                                BorderBrush="#25343B"
-                                BorderThickness="1"
-                                Padding="8,4"
+                        <Border CornerRadius="8"
+                                Background="Transparent"
                                 HorizontalAlignment="Left"
-                                ClipToBounds="True">
+                                Margin="0,2,0,0">
                             <Border.Style>
                                 <Style TargetType="Border">
                                     <Setter Property="Visibility" Value="Visible"/>
@@ -209,8 +206,8 @@
                                     </Style.Triggers>
                                 </Style>
                             </Border.Style>
-                            <Image Source="/Resources/logo.jpeg"
-                                   Height="44"
+                            <Image Source="/Resources/logo_completo_3d.png"
+                                   Height="52"
                                    Stretch="Uniform"
                                    RenderOptions.BitmapScalingMode="HighQuality"/>
                         </Border>
