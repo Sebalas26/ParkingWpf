@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using Parking.ViewModels;
 
 namespace Parking.Views;
 
@@ -9,6 +10,28 @@ public partial class ReceiptPreviewDialog : Window
     {
         InitializeComponent();
         Loaded += ReceiptPreviewDialog_Loaded;
+        PreviewKeyDown += ReceiptPreviewDialog_PreviewKeyDown;
+    }
+
+    private async void ReceiptPreviewDialog_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Enter or Key.Return)
+        {
+            e.Handled = true;
+            if (DataContext is ReceiptPreviewViewModel vm)
+            {
+                if (vm.PrintTicketCommand.CanExecute(null))
+                {
+                    await vm.PrintTicketCommand.ExecuteAsync(null);
+                }
+            }
+            Close();
+        }
+        else if (e.Key == Key.Escape)
+        {
+            e.Handled = true;
+            Close();
+        }
     }
 
     private void ReceiptPreviewDialog_Loaded(object sender, RoutedEventArgs e)

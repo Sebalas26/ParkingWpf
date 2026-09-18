@@ -42,6 +42,7 @@ public partial class CheckOutViewModel : ViewModelBase
     private DateTime _ticketSelectionTimeUtc;
     private DateTime _frozenExitTimeUtc;
     private int _currentGracePeriodSeconds = 0;
+    private int _graceRenewalCount = 0;
     private bool _isPaymentTimeoutDialogShowing;
 
     public event Action? RequestCloseDialog;
@@ -555,15 +556,18 @@ public partial class CheckOutViewModel : ViewModelBase
 
             if (method != null && (method.RequiresResolution || !string.IsNullOrWhiteSpace(method.DefaultResolutionId)))
             {
-                var feResolutions = AvailableResolutions.Where(r => r.IsElectronicResolution
-                                                                    || (r.Prefix?.StartsWith("FE", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                                    || (r.Prefix?.StartsWith("FM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                                    || (r.Prefix?.StartsWith("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                                    || (r.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
+                var feResolutions = AvailableResolutions.Where(r =>
+                    !r.DocumentType.Contains("POS", StringComparison.OrdinalIgnoreCase) &&
+                    !(r.Prefix?.StartsWith("POS", StringComparison.OrdinalIgnoreCase) ?? false) &&
+                    (r.IsElectronicResolution
+                     || (r.Prefix?.StartsWith("FE", StringComparison.OrdinalIgnoreCase) ?? false)
+                     || (r.Prefix?.StartsWith("FM", StringComparison.OrdinalIgnoreCase) ?? false)
+                     || (r.Prefix?.StartsWith("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                     || (r.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false))).ToList();
 
                 if (method.RequiresResolution)
                 {
-                    // Si el medio de pago exige FE, SOLO se permiten resoluciones FE (CERO fallback a POS)
+                    // Si el medio de pago exige FE, SOLO se permiten resoluciones FE (CERO resoluciones tipo POS)
                     FilteredResolutions.Clear();
                     foreach (var r in feResolutions)
                     {
@@ -589,9 +593,11 @@ public partial class CheckOutViewModel : ViewModelBase
                             targetResolution = feResolutions.FirstOrDefault(r => r.ResolutionId.ToString().Equals(method.DefaultResolutionId, StringComparison.OrdinalIgnoreCase));
                         }
 
-                        targetResolution ??= feResolutions.FirstOrDefault(r => r.IsElectronicResolution)
+                        // Priorizar FVM por defecto
+                        targetResolution ??= feResolutions.FirstOrDefault(r => r.Prefix?.StartsWith("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                             ?? feResolutions.FirstOrDefault(r => r.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
                                              ?? feResolutions.FirstOrDefault(r => r.Prefix?.StartsWith("FE", StringComparison.OrdinalIgnoreCase) ?? false)
-                                             ?? feResolutions.FirstOrDefault(r => r.Prefix?.StartsWith("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
+                                             ?? feResolutions.FirstOrDefault(r => r.IsElectronicResolution)
                                              ?? feResolutions.FirstOrDefault();
 
                         SelectedResolution = targetResolution;
@@ -1070,6 +1076,7 @@ public partial class CheckOutViewModel : ViewModelBase
             _ticketSelectionTimeUtc = DateTime.UtcNow;
             _frozenExitTimeUtc = _ticketSelectionTimeUtc;
             _isPaymentTimeoutDialogShowing = false;
+            _graceRenewalCount = 0;
 
             var currentBranch = _sessionService.CurrentBranch;
             AllowMinute = currentBranch?.AllowChargeByMinute ?? true;
@@ -1082,7 +1089,7 @@ public partial class CheckOutViewModel : ViewModelBase
 
             var rateInfo = _pricingCalculator.GetRate(value.VehicleType);
             var exitGrace = currentBranch?.ExitGracePeriodMinutes ?? rateInfo?.GracePeriodMinutes ?? 0;
-            _currentGracePeriodSeconds = exitGrace * 60;
+            _currentGracePeriodSeconds = Math.Max(300, exitGrace * 60);
             HourRate = rateInfo?.HourRate ?? 0m;
             MinuteRate = rateInfo != null && rateInfo.MinuteRate > 0
                 ? rateInfo.MinuteRate
@@ -1170,6 +1177,7 @@ public partial class CheckOutViewModel : ViewModelBase
             _ticketSelectionTimeUtc = default;
             _frozenExitTimeUtc = default;
             _currentGracePeriodSeconds = 0;
+            _graceRenewalCount = 0;
             HourRate = 0m;
             MinuteRate = 0m;
             IsLostTicket = false;
@@ -1600,28 +1608,42 @@ public partial class CheckOutViewModel : ViewModelBase
             return;
         }
 
+        _graceRenewalCount++;
         var graceMinutes = _currentGracePeriodSeconds / 60;
-        await _dialogService.ShowAlertAsync(
-            "Periodo de Gracia Superado",
-            $"Se ha superado el tiempo de gracia de liquidación ({graceMinutes} min). Se actualizará el cobro con el tiempo transcurrido.",
-            DialogNotificationType.Warning);
 
-        if (SelectedTicket == null || _ticketSelectionTimeUtc == default)
+        if (_graceRenewalCount <= 3)
         {
+            await _dialogService.ShowAlertAsync(
+                "Tiempo de Pago Superado",
+                $"Superó el tiempo de tolerancia de pago ({graceMinutes} minutos). Se actualizará el tiempo y cobro con los minutos transcurridos.",
+                DialogNotificationType.Warning);
+
+            if (SelectedTicket == null || _ticketSelectionTimeUtc == default)
+            {
+                _isPaymentTimeoutDialogShowing = false;
+                return;
+            }
+
+            // Al hacer clic en Aceptar, refrescar tiempo y cobro sumando los minutos transcurridos
+            var nowUtc = DateTime.UtcNow;
+            _ticketSelectionTimeUtc = nowUtc;
+            _frozenExitTimeUtc = nowUtc;
             _isPaymentTimeoutDialogShowing = false;
-            return;
+
+            RecalculateLiveFee();
+            AmountTendered = CalculatedFee;
+
+            _liveCalculationTimer.Start();
         }
+        else
+        {
+            await _dialogService.ShowAlertAsync(
+                "Límite de Tolerancia Excedido",
+                "Se alcanzó el límite máximo de tolerancia de pago para esta liquidación. Por favor finalice el cobro o vuelva a seleccionar el vehículo.",
+                DialogNotificationType.Warning);
 
-        // Al hacer clic en Aceptar, refrescar tiempo y cobro sumando los minutos transcurridos
-        var nowUtc = DateTime.UtcNow;
-        _ticketSelectionTimeUtc = nowUtc;
-        _frozenExitTimeUtc = nowUtc;
-        _isPaymentTimeoutDialogShowing = false;
-
-        RecalculateLiveFee();
-        AmountTendered = CalculatedFee;
-
-        _liveCalculationTimer.Start();
+            _isPaymentTimeoutDialogShowing = false;
+        }
     }
 
     private bool CanSearchTicket => !string.IsNullOrWhiteSpace(SearchQuery);
@@ -1807,7 +1829,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 {
                     await _dialogService.ShowAlertAsync(
                         "Adquirente Requerido",
-                        "Ha seleccionado emitir Factura Electrónica (DIAN / Siigo), pero no ha seleccionado ningún cliente. Por favor seleccione o registre uno.",
+                        "Ha seleccionado emitir Factura Electrónica (DIAN), pero no ha seleccionado ningún cliente. Por favor seleccione o registre uno.",
                         DialogNotificationType.Warning);
                 }
                 return;
@@ -1883,11 +1905,8 @@ public partial class CheckOutViewModel : ViewModelBase
                 IsQuickRegisterCustomerOpen = false;
                 QuickCustomerFeedback = null;
 
-                HasFeedback = true;
-                IsSuccessFeedback = true;
-                FeedbackMessage = IsMonthlyTicket
-                    ? $"Salida registrada para vehículo con mensualidad {clearedPlate}. Cupo liberado exitosamente (Sin cobro horario)."
-                    : $"Pago procesado para {clearedPlate}. Total Neto: ${totalPaid:F2}. Cambio: ${change:F2}. Cupo liberado exitosamente.";
+                HasFeedback = false;
+                FeedbackMessage = null;
 
                 var shouldPrint = await _dialogService.ShowConfirmationAsync(
                     "Impresión de Factura",

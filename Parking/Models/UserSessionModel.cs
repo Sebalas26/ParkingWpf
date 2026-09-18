@@ -29,7 +29,7 @@ public class UserSessionModel
     public bool HasWebAccess { get; set; } = true;
     public int MaxUsers { get; set; }
 
-    // Feature Flags de Facturación Electrónica (DIAN / Siigo)
+    // Feature Flags de Facturación Electrónica (DIAN)
     public bool HasElectronicInvoicingEnabled { get; set; } = false;
     public bool AllowPosToInvoiceConversion { get; set; } = false;
     public bool AllowCreditNotes { get; set; } = false;

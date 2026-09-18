@@ -459,6 +459,19 @@ public class EfParkingTicketService : IParkingTicketService
             .ToListAsync();
     }
 
+    public async Task<IReadOnlyList<ParkingTicket>> GetCompletedTicketsByShiftAsync(DateTime shiftStartTimeUtc, int? operatorId = null)
+    {
+        using var db = _connectionManager.CreateDbContext();
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
+
+        var query = db.ParkingTickets
+            .Where(t => t.Status == TicketStatus.Completed &&
+                        (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value) &&
+                        t.ExitTimeUtc >= shiftStartTimeUtc);
+
+        return await query.OrderByDescending(t => t.ExitTimeUtc).ToListAsync();
+    }
+
     public async Task<IReadOnlyList<ParkingTicket>> GetAllTicketsAsync()
     {
         using var db = _connectionManager.CreateDbContext();

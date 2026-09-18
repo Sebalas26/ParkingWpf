@@ -300,8 +300,9 @@ public partial class ShiftClosureViewModel : ViewModelBase
                     IconBrushKey = "BrushWarning",
                     AmountBrushKey = "BrushWarningText",
                     TotalCollected = summary.TotalDiscounts,
-                    TransactionCount = 0,
-                    Subtitle = "Deducciones por convenios",
+                    TransactionCount = summary.TotalDiscountTickets,
+                    IsCountOnly = true,
+                    Subtitle = "Tiquetes beneficiados",
                     RequiresCashTender = false
                 });
             }
@@ -800,8 +801,9 @@ public partial class ShiftClosureViewModel : ViewModelBase
                     IconBrushKey = "BrushWarning",
                     AmountBrushKey = "BrushWarningText",
                     TotalCollected = Summary.TotalDiscounts,
-                    TransactionCount = 0,
-                    Subtitle = "Deducciones por convenios",
+                    TransactionCount = Summary.TotalDiscountTickets,
+                    IsCountOnly = true,
+                    Subtitle = "Tiquetes beneficiados",
                     RequiresCashTender = false
                 });
             }
@@ -922,7 +924,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
                         AmountBrushKey = "BrushWarningText",
                         TotalCollected = 0m,
                         TransactionCount = 0,
-                        Subtitle = "Deducciones por convenios",
+                        IsCountOnly = true,
+                        Subtitle = "Tiquetes beneficiados",
                         RequiresCashTender = false
                     });
                 }

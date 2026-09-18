@@ -35,6 +35,7 @@ public interface IParkingTicketService
         Guid? customerId = null);
     Task<IReadOnlyList<ParkingTicket>> GetActiveTicketsAsync();
     Task<IReadOnlyList<ParkingTicket>> GetCompletedTicketsAsync();
+    Task<IReadOnlyList<ParkingTicket>> GetCompletedTicketsByShiftAsync(DateTime shiftStartTimeUtc, int? operatorId = null);
     Task<IReadOnlyList<ParkingTicket>> GetAllTicketsAsync();
     Task<ParkingTicket?> FindActiveTicketAsync(string query);
     Task<bool> IsPlateCurrentlyParkedAsync(string plateNumber);

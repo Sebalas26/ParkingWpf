@@ -151,7 +151,7 @@
                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                     </Grid>
-                                    <TextBlock Text="{Binding TotalCollected, Converter={StaticResource CurrencyConv}}"
+                                    <TextBlock Text="{Binding DisplayAmount}"
                                                FontSize="20"
                                                FontWeight="Black"
                                                Foreground="{DynamicResource BrushPrimary}"

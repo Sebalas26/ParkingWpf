@@ -14,6 +14,63 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 3. **Componentes / Módulos Modificados** (archivos afectados).
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
+
+### [2026-09-17 23:10:00] - [UI/UX / FEAT / REFACTOR] - Salida 4 Columnas, Gracia de Cobro 5 Minutos con Renovación Limitada, Submódulos Activos/Completados en Patio, Enter/Escape en Preview y Tarjeta de Descuentos en Cierre
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Ayudame con estos siguientes ajustes: WPF: En la pantalla de salida de vehiculos, ajustame los vehiculos activos adentro para que se vean por filas de 4 elementos y no de a 3 como actualmente esta... Cuando estoy en detalle de liquidacion y cobro , elijo fvm y crear un nuevo cliente , alli veo que los campos de texto se ven cortado a lo verticulal... Cuando le doy salida a un vehiculo, noto que el tiempo de cobro todavia sigue contabilizando... ayuda a implementar la detencion del tiempo y cobro en un tiempo de gracia de 5 minutos, si llegase a pasarse del tiempo, que salga aviso de supero el teimpo de pago, al aceptar en el cobro le aumenta en el tiempo y cobro esos 5 minutos que espero... Elimina que al darle salida a un vehiculo, e muestra un mensaje de pago procead... En la pantalla de vehiculos en patio, separala en dos submodulos o pestañas una llamada activos y la otra completados en el turno... ajusta que al escribir en el buscador busque sin necesidad de darle al boton de buscar y si se borra el texto del buscador se borre la busqueda y muestre todos los vehiculos... En la pantalla de visualizacion de impresion, que al darle enter imprima y cierre la ventana, y con esc cierre la ventana... En la pantalla de cierre de turno, en la tarjeta de descuento por convenios... que muestre es la cantidad de tiquetes que se le aplico convenio mas no el valor en dinero... En resoluciones al elegir FVM que no muestre la resolucion POS sino la de factura electronica... revisate en todo el proyecto los modulos donde aparezca la palabra siigo, la idea es eliminar ese nombre que es visible para el cliente y cambiarlo por un nombre neutro acorde al sistema"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Grilla de Salida de Vehículos en 4 Columnas (`CheckOutView.xaml`)**:
+     - Se actualizó el `ItemsPanel` de `CheckOutView.xaml` de `UniformGrid Columns="3"` a `UniformGrid Columns="4"`.
+     - Se ajustaron márgenes, paddings y tipografías para garantizar espaciado visual óptimo sin superposición de textos, placas ni botones de acción.
+  2. **Eliminación de Recorte Vertical en Formulario Rápido de Cliente (`CheckOutDialog.xaml`)**:
+     - Se creó un estilo exclusivo `QuickCustomerTextBox` con `Height="40"`, `FontSize="13"`, `Padding="10,6"`, `VerticalContentAlignment="Center"` para los campos de captura de nuevo cliente dentro de la modal de cobro (`CheckOutDialog.xaml`).
+     - Se ajustó el `ComboBox` de tipo de documento a altura 40, eliminando el corte vertical visible sin afectar el estilo global `ModernTextBox`.
+  3. **Detención de Cobro con Tiempo de Gracia de 5 Minutos y Límite de Renovaciones (`CheckOutViewModel.cs`)**:
+     - Se garantizó un período mínimo de 5 minutos (`Math.Max(300, exitGrace * 60)`) congelando el tiempo de liquidación en `_frozenExitTimeUtc = DateTime.UtcNow`.
+     - Se implementó un contador de renovaciones `_graceRenewalCount` con un tope estricto de 3 ciclos para prevenir abusos operativos.
+     - Al vencer el tiempo, el sistema pausa el cobro, muestra la alerta modal al operador y, al aceptar, actualiza el tiempo congelado, cobra el período transcurrido y reinicia el ciclo de gracia. Al exceder 3 renovaciones, el temporizador se detiene definitivamente requiriendo reliquidación final.
+  4. **Eliminación de Notificación Redundante "Pago Procesado" (`CheckOutViewModel.cs`)**:
+     - Al procesar exitosamente el pago en `ProcessPaymentAsync`, se desactivó `HasFeedback = false` y `FeedbackMessage = null`, eliminando el banner flotante innecesario previo al cierre del diálogo y diálogo de impresión.
+  5. **Atajos de Teclado Enter / Escape en Vista Previa de Recibo (`ReceiptPreviewDialog.xaml.cs`)**:
+     - Se implementó el manejador `PreviewKeyDown` en `ReceiptPreviewDialog.xaml.cs`: tecla `Enter` ejecuta de forma asíncrona `PrintTicketCommand` e inmediatamente cierra el diálogo (`Close()`); tecla `Escape` cierra la ventana sin imprimir.
+  6. **Tarjeta de Descuentos por Convenios Muestra Cantidad de Tiquetes (`ShiftApiModels.cs`, `EfShiftService.cs`, `ShiftClosureViewModel.cs`, `ShiftClosureView.xaml`)**:
+     - Se extendió `ShiftSummaryModel` con `TotalDiscountTickets` y `ShiftPaymentMethodItem` con `IsCountOnly` y `DisplayAmount`.
+     - En `EfShiftService.cs`, se calculó la cantidad de tiquetes con descuento del turno: `completedTickets.Count(t => t.DiscountAmount > 0)`.
+     - En `ShiftClosureViewModel.cs`, el ítem de Descuentos por Convenio se configuró con `IsCountOnly = true`, `TransactionCount = Summary.TotalDiscountTickets` y `Subtitle = "Tiquetes beneficiados"`.
+     - En `ShiftClosureView.xaml`, se vinculó `Text="{Binding DisplayAmount}"` mostrando el conteo formateado (`"X tiquetes"`) en lugar del monto en pesos.
+  7. **Filtrado Estricto de Resoluciones FVM Excluyendo POS (`CheckOutViewModel.cs`)**:
+     - En `ApplyPaymentMethodResolutionFilter`, ante métodos de pago con requerimiento fiscal (FVM/FE), se filtraron explícitamente resoluciones que no correspondan a POS (`!r.DocumentType.Contains("POS")`), dando prioridad a resoluciones con prefijo FVM.
+  8. **Submódulos (Activos / Completados en Turno) y Buscador Instantáneo en Vehículos en Patio (`IParkingTicketService.cs`, `EfParkingTicketService.cs`, `RecentEntriesViewModel.cs`, `RecentEntriesView.xaml`)**:
+     - Se añadió `GetCompletedTicketsByShiftAsync(DateTime shiftStartTimeUtc, int? operatorId = null)` a los servicios de tiquetes para consultar los tiquetes cobrados/completados dentro del turno activo.
+     - `RecentEntriesViewModel` se enriqueció con pestañas (`SelectedTab = 0` para Activos, `1` para Completados en Turno), propiedades computadas `ActiveEntries`, `CompletedEntries`, búsqueda reactiva instantánea al cambiar `SearchText` sin requerir clic en botón, y comando `ClearSearchCommand` con propiedad `HasSearchQuery`.
+     - `RecentEntriesView.xaml` se rediseñó con selector de pestañas tipo chip `FilterChipRadioButton`, campo de búsqueda con icono lupa `IconSearch`, botón de limpieza `IconClose` y tablas DataGrid especializadas para activos y completados.
+  9. **Erradicación de Nombres de Terceros ("Siigo") en UI (`CheckOutDialog.xaml`, `CheckOutViewModel.cs`, `UserSessionModel.cs`)**:
+     - Reemplazo de cadenas visibles por terminología institucional neutral ("EMITIR FACTURA ELECTRÓNICA (DIAN)", "Factura Electrónica (DIAN)"). Propiedades internas de serialización se preservaron intactas.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Models/ApiModels/ShiftApiModels.cs`
+  - `Parking/Models/UserSessionModel.cs`
+  - `Parking/Services/Contracts/IParkingTicketService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/ViewModels/RecentEntriesViewModel.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/Views/CheckOutView.xaml`
+  - `Parking/Views/ReceiptPreviewDialog.xaml.cs`
+  - `Parking/Views/RecentEntriesView.xaml`
+  - `Parking/Views/ShiftClosureView.xaml`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet test ParkingWpf.slnx`: **100% Superado (225/225 Pruebas Unitarias, 0 Fallos)**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+
+---
+
 ### [2026-09-17 16:15:00] - [FIX / REACTIVITY / FE / SECURITY] - Estabilización de Facturación Electrónica en Checkout (Anti-Reentrancia), Eliminación de JsonException y Sincronización Reactiva de Usuarios y Permisos
 
 - **Autor**: Antigravity AI Assistant & Software Architect

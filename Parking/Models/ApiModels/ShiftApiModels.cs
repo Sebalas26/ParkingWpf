@@ -36,6 +36,7 @@ public class ShiftSummaryModel
     public decimal TotalCardCollected { get; set; }
     public decimal TotalTransferCollected { get; set; }
     public decimal TotalDiscounts { get; set; }
+    public int TotalDiscountTickets { get; set; }
     public decimal TotalCashWithdrawals { get; set; }
     public decimal ExpectedCash { get; set; }
     public decimal ActualCashCounted { get; set; }
@@ -67,4 +68,8 @@ public class ShiftPaymentMethodItem
     public int TransactionCount { get; set; }
     public string Subtitle { get; set; } = string.Empty;
     public bool RequiresCashTender { get; set; }
+    public bool IsCountOnly { get; set; }
+    public string DisplayAmount => IsCountOnly
+        ? $"{TransactionCount} {(TransactionCount == 1 ? "Tiquete" : "Tiquetes")}"
+        : TotalCollected.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("en-US"));
 }

@@ -24,6 +24,14 @@
         <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
         <conv:EqualityToBooleanConverter x:Key="EqualityConv"/>
 
+        <!-- Estilo Específico para Inputs de Registro de Adquirente DIAN (Previene recorte vertical) -->
+        <Style x:Key="QuickCustomerTextBox" TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="10,6"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
         <!-- Estilo de Botón de Billete Rápido -->
         <Style x:Key="CashPresetButton" TargetType="Button">
             <Setter Property="Background" Value="#F1F5F9"/>
@@ -478,7 +486,7 @@
                             </StackPanel>
                         </Grid>
 
-                        <!-- Módulo de Facturación Electrónica DIAN / Siigo (Visible si la empresa/sede o el medio de pago/resolución lo exige) -->
+                        <!-- Módulo de Facturación Electrónica DIAN (Visible si la empresa/sede o el medio de pago/resolución lo exige) -->
                         <Border Visibility="{Binding IsElectronicInvoicingSectionVisible, Converter={StaticResource BoolToVis}}"
                                 BorderBrush="{DynamicResource BrushBorderSubtle}"
                                 BorderThickness="1.5"
@@ -499,7 +507,7 @@
                                                   VerticalAlignment="Center"
                                                   Margin="0,0,8,0"/>
                                         <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="EMITIR FACTURA ELECTRÓNICA (DIAN / SIIGO)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="EMITIR FACTURA ELECTRÓNICA (DIAN)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
                                     </StackPanel>
 
                                     <!-- Indicador de Obligatoriedad por Parámetro de Empresa o Medio de Pago -->
@@ -613,15 +621,15 @@
                                                               SelectedItem="{Binding SelectedIdentificationTypeOption}"
                                                               DisplayMemberPath="Name"
                                                               Style="{StaticResource ModernComboBox}"
-                                                              Height="36"/>
+                                                              Height="40"/>
                                                 </StackPanel>
 
                                                 <StackPanel Grid.Column="2">
                                                     <TextBlock Text="NÚMERO DOCUMENTO *" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
                                                     <TextBox Text="{Binding NewCustomerDocumentNumber, UpdateSourceTrigger=PropertyChanged}"
-                                                             Height="36">
+                                                             Height="40">
                                                         <TextBox.Style>
-                                                            <Style TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+                                                            <Style TargetType="TextBox" BasedOn="{StaticResource QuickCustomerTextBox}">
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding NewCustomerDocumentError, Converter={StaticResource NullToVis}}" Value="Visible">
                                                                         <Setter Property="BorderBrush" Value="#EF4444"/>
@@ -639,10 +647,10 @@
                                                 <StackPanel Grid.Column="4">
                                                     <TextBlock Text="DV" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
                                                     <TextBox Text="{Binding NewCustomerCheckDigit, UpdateSourceTrigger=PropertyChanged}"
-                                                             Height="36"
+                                                             Height="40"
                                                              MaxLength="1">
                                                         <TextBox.Style>
-                                                            <Style TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+                                                            <Style TargetType="TextBox" BasedOn="{StaticResource QuickCustomerTextBox}">
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding NewCustomerCheckDigitError, Converter={StaticResource NullToVis}}" Value="Visible">
                                                                         <Setter Property="BorderBrush" Value="#EF4444"/>
@@ -662,9 +670,9 @@
                                             <StackPanel Margin="0,0,0,6">
                                                 <TextBlock Text="NOMBRE COMPLETO O RAZÓN SOCIAL *" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
                                                 <TextBox Text="{Binding NewCustomerFullName, UpdateSourceTrigger=PropertyChanged}"
-                                                         Height="36">
+                                                         Height="40">
                                                     <TextBox.Style>
-                                                        <Style TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+                                                        <Style TargetType="TextBox" BasedOn="{StaticResource QuickCustomerTextBox}">
                                                             <Style.Triggers>
                                                                 <DataTrigger Binding="{Binding NewCustomerFullNameError, Converter={StaticResource NullToVis}}" Value="Visible">
                                                                     <Setter Property="BorderBrush" Value="#EF4444"/>
@@ -690,9 +698,9 @@
                                                 <StackPanel Grid.Column="0">
                                                     <TextBlock Text="CORREO ELECTRÓNICO (DIAN) *" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
                                                     <TextBox Text="{Binding NewCustomerEmail, UpdateSourceTrigger=PropertyChanged}"
-                                                             Height="36">
+                                                             Height="40">
                                                         <TextBox.Style>
-                                                            <Style TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+                                                            <Style TargetType="TextBox" BasedOn="{StaticResource QuickCustomerTextBox}">
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding NewCustomerEmailError, Converter={StaticResource NullToVis}}" Value="Visible">
                                                                         <Setter Property="BorderBrush" Value="#EF4444"/>
@@ -710,9 +718,9 @@
                                                 <StackPanel Grid.Column="2">
                                                     <TextBlock Text="TELÉFONO" FontSize="10.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,2"/>
                                                     <TextBox Text="{Binding NewCustomerPhone, UpdateSourceTrigger=PropertyChanged}"
-                                                             Height="36">
+                                                             Height="40">
                                                         <TextBox.Style>
-                                                            <Style TargetType="TextBox" BasedOn="{StaticResource ModernTextBox}">
+                                                            <Style TargetType="TextBox" BasedOn="{StaticResource QuickCustomerTextBox}">
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding NewCustomerPhoneError, Converter={StaticResource NullToVis}}" Value="Visible">
                                                                         <Setter Property="BorderBrush" Value="#EF4444"/>

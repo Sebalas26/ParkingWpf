@@ -473,6 +473,7 @@ public class EfShiftService : IShiftService
         decimal card = 0m;
         decimal transfer = 0m;
         decimal discounts = completedTickets.Sum(t => t.DiscountAmount);
+        int discountTickets = completedTickets.Count(t => t.DiscountAmount > 0);
 
         var ticketsByPmId = completedTickets
             .Where(t => t.PaymentMethodId.HasValue && t.PaymentMethodId.Value > 0)
@@ -569,6 +570,7 @@ public class EfShiftService : IShiftService
         if (remoteSummary != null)
         {
             remoteSummary.PaymentMethodsBreakdown = breakdown;
+            remoteSummary.TotalDiscountTickets = discountTickets;
             if (breakdown.Count > 0)
             {
                 remoteSummary.TotalCashCollected = cash;
@@ -594,6 +596,7 @@ public class EfShiftService : IShiftService
             TotalCardCollected = card,
             TotalTransferCollected = transfer,
             TotalDiscounts = discounts,
+            TotalDiscountTickets = discountTickets,
             TotalCashWithdrawals = withdrawals,
             ExpectedCash = expectedCash,
             ActualCashCounted = targetShift?.ActualCashCounted ?? 0m,
