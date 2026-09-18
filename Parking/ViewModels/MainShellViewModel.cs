@@ -1020,6 +1020,10 @@ public partial class MainShellViewModel : ViewModelBase
         {
             NavigateToAnalytics();
         }
+        else if (_permissionService.HasPermission("invoicing.customers.view") || _permissionService.HasPermission("invoicing.customers.manage"))
+        {
+            NavigateToCustomers();
+        }
     }
 
     [RelayCommand]
@@ -1115,6 +1119,17 @@ public partial class MainShellViewModel : ViewModelBase
         _navigationService.NavigateTo<ShiftClosureViewModel>();
     }
 
+    [RelayCommand]
+    private void NavigateToCustomers()
+    {
+        if (!_permissionService.HasPermission("invoicing.customers.view") && !_permissionService.HasPermission("invoicing.customers.manage"))
+        {
+            _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para acceder al módulo de Clientes de Facturación Electrónica.", DialogNotificationType.Warning);
+            return;
+        }
+        _navigationService.NavigateTo<CustomersViewModel>();
+    }
+
     private void UpdateSelectedNavSection(ViewModelBase viewModel)
     {
         SelectedNavSection = viewModel switch
@@ -1125,6 +1140,7 @@ public partial class MainShellViewModel : ViewModelBase
             RecentEntriesViewModel => "RecentEntries",
             AnalyticsViewModel => "Analytics",
             ShiftClosureViewModel => "ShiftClosure",
+            CustomersViewModel => "Customers",
             _ => string.Empty
         };
     }

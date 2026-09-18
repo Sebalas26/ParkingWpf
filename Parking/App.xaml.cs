@@ -138,6 +138,7 @@ public partial class App : Application
         services.AddSingleton<ShiftClosureViewModel>();
         services.AddSingleton<MonthlySubscriptionsViewModel>();
         services.AddTransient<ReceiptPreviewViewModel>();
+        services.AddTransient<CustomersViewModel>();
 
         // Windows & Views
         services.AddTransient<LoginWindow>();
@@ -148,6 +149,7 @@ public partial class App : Application
         services.AddTransient<AnalyticsView>();
         services.AddTransient<ShiftClosureView>();
         services.AddTransient<MonthlySubscriptionsView>();
+        services.AddTransient<CustomersView>();
     }
 
     private void ShowLoginWindow()

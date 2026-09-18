@@ -796,7 +796,7 @@
                                                  Margin="0,0,0,6"/>
 
                                         <!-- Botones de Billetes Rápidos -->
-                                        <UniformGrid Columns="4" Rows="1">
+                                        <UniformGrid Columns="4" Rows="1" Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}}">
                                             <Button Content="Exacto" Style="{StaticResource CashPresetButton}" Command="{Binding ExactCashCommand}" Background="#E0F2FE" Foreground="#0369A1" FontWeight="Black"/>
                                             <Button Content="$5K" Style="{StaticResource CashPresetButton}" Command="{Binding QuickCashCommand}" CommandParameter="5000"/>
                                             <Button Content="$10K" Style="{StaticResource CashPresetButton}" Command="{Binding QuickCashCommand}" CommandParameter="10000"/>
@@ -806,7 +806,9 @@
                                 </Grid>
 
                                 <!-- Fila Inferior: Tarjeta de CAMBIO / DEVUELTA en Grande -->
-                                <Border Grid.Row="1" Background="#b2e5f3ff" BorderBrush="#36c8f1ff" BorderThickness="1.5" CornerRadius="10" Padding="14,8">
+                                <Border Grid.Row="1"
+                                        Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}}"
+                                        Background="#b2e5f3ff" BorderBrush="#36c8f1ff" BorderThickness="1.5" CornerRadius="10" Padding="14,8">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*"/>

@@ -98,6 +98,9 @@
         <DataTemplate DataType="{x:Type vm:ShiftClosureViewModel}">
             <views:ShiftClosureView/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type vm:CustomersViewModel}">
+            <views:CustomersView/>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid>
@@ -301,6 +304,18 @@
                                      Margin="0,0,0,6">
                             <RadioButton.Tag>
                                 <Path Data="{StaticResource IconAnalytics}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform"/>
+                            </RadioButton.Tag>
+                        </RadioButton>
+
+                        <!-- 7. Clientes (Facturación Electrónica) -->
+                        <RadioButton Content="Clientes"
+                                     Command="{Binding NavigateToCustomersCommand}"
+                                     IsChecked="{Binding SelectedNavSection, Converter={StaticResource BoolToVis}, ConverterParameter=Customers, Mode=OneWay}"
+                                     security:Authorize.Permission="invoicing.customers.view"
+                                     Style="{StaticResource SidebarNavButton}"
+                                     Margin="0,0,0,6">
+                            <RadioButton.Tag>
+                                <Path Data="{StaticResource IconCustomers}" Fill="{DynamicResource BrushTextWhite}" Width="16" Height="16" Stretch="Uniform"/>
                             </RadioButton.Tag>
                         </RadioButton>
                     </StackPanel>

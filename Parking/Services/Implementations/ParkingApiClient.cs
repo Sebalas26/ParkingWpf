@@ -715,4 +715,122 @@ public class ParkingApiClient : IApiClientService
             return null;
         }
     }
+
+    public async Task<IReadOnlyList<CustomerApiResponse>> GetCustomersAsync(string? term = null, int? companyId = null)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+        try
+        {
+            var queryParams = new List<string>();
+            if (!string.IsNullOrWhiteSpace(term))
+            {
+                queryParams.Add($"term={Uri.EscapeDataString(term.Trim())}");
+            }
+            if (companyId.HasValue && companyId.Value > 0)
+            {
+                queryParams.Add($"companyId={companyId.Value}");
+            }
+            var qs = queryParams.Count > 0 ? "?" + string.Join("&", queryParams) : string.Empty;
+            var url = $"{BaseUrl}/api/customers{qs}";
+
+            var response = await _httpClient.GetAsync(url, cts.Token);
+            CheckUnauthorized(response);
+            if (response.IsSuccessStatusCode)
+            {
+                ReportConnectionState(true);
+                var items = await response.Content.ReadFromJsonAsync<List<CustomerApiResponse>>(JsonOptions, cts.Token);
+                return items ?? (IReadOnlyList<CustomerApiResponse>)Array.Empty<CustomerApiResponse>();
+            }
+            return Array.Empty<CustomerApiResponse>();
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
+            return Array.Empty<CustomerApiResponse>();
+        }
+        catch
+        {
+            return Array.Empty<CustomerApiResponse>();
+        }
+    }
+
+    public async Task<bool> UpdateCustomerAsync(Guid customerId, CreateCustomerApiRequest request)
+    {
+        if (request == null) return false;
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+        try
+        {
+            var url = $"{BaseUrl}/api/customers/{customerId}";
+            var response = await _httpClient.PutAsJsonAsync(url, request, JsonOptions, cts.Token);
+            CheckUnauthorized(response);
+            if (response.IsSuccessStatusCode)
+            {
+                ReportConnectionState(true);
+                return true;
+            }
+            return false;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteCustomerAsync(Guid customerId)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+        try
+        {
+            var url = $"{BaseUrl}/api/customers/{customerId}";
+            var response = await _httpClient.DeleteAsync(url, cts.Token);
+            CheckUnauthorized(response);
+            if (response.IsSuccessStatusCode)
+            {
+                ReportConnectionState(true);
+                return true;
+            }
+            return false;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task<ParkingTicket?> ConvertTicketToInvoiceAsync(Guid ticketId, Guid customerId)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        try
+        {
+            var url = $"{BaseUrl}/api/tickets/{ticketId}/convert-to-invoice";
+            var payload = new { customerId };
+            var response = await _httpClient.PostAsJsonAsync(url, payload, JsonOptions, cts.Token);
+            CheckUnauthorized(response);
+            if (response.IsSuccessStatusCode)
+            {
+                ReportConnectionState(true);
+                return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions, cts.Token);
+            }
+            return null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }

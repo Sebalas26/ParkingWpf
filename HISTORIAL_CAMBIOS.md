@@ -15,6 +15,56 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-18 09:15:00] - [FEAT / ARCH / REFACTOR / SECURITY] - Módulo Integral de Clientes Fiscales DIAN, 3ra Pestaña de Histórico POS a FE y Desacoplamiento Agnóstico de Proveedor en WPF, PWA y API
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Y el modulo de clientes de la facturacion electronica recuerda que cuando se da salida desde el wpf se crea los clientes ese modulo debe estar tanto en el wpf como en la pwa logico todo por permisos como se tiene el estandar completo si me hago entender."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Módulo Completo de Clientes de Facturación Electrónica en WPF (`CustomersView.xaml`, `CustomersViewModel.cs`)**:
+     - Creado submódulo completo accesible desde la barra lateral (`MainShellWindow.xaml`) mediante RBAC estricto (`invoicing.customers.view`, `invoicing.customers.manage`, `invoicing.customers.delete`).
+     - Lista completa de clientes desde SQLite local con fallback reactivo al API central.
+     - Modal deslizante de captura/edición de datos fiscales requeridos por la DIAN (Tipo de documento, Documento, DV, Nombre/Razón Social, Nombre Comercial, Email fiscal, Teléfono, Dirección, Municipio DANE).
+     - Cálculo matemático dinámico del Dígito de Verificación (DV) oficial para NIT (módulo 11 ponderado con serie de números primos DIAN).
+     - Formularios 100% limpios con directiva de cero datos quemados (`placeholder` exclusivamente).
+     - Cero comentarios en el código nuevo (política estricta Clean Code).
+  2. **Tercera Pestaña en Monitoreo de Patio (`RecentEntriesView.xaml`, `RecentEntriesViewModel.cs`)**:
+     - Agregada pestaña *"Histórico Facturación Electrónica"* con selector de rango de fechas (*Desde* - *Hasta*) y buscador en vivo por placa, tiquete o factura.
+     - Botón de acción contextual: Para tiquetes POS liquidados, botón *"Facturar DIAN"* que abre el diálogo modal `CustomerSelectionDialog.xaml` para asociar un cliente fiscal existente o registrarlo en caliente y convertir el comprobante a Factura Electrónica oficial.
+     - Para tiquetes ya convertidos, botón *"Ver Factura"* para reimpresión inmediata con `ReceiptPreviewDialog`.
+  3. **Extensión de Capas de Servicio y Clientes API (`IApiClientService`, `ParkingApiClient`, `IParkingTicketService`, `EfParkingTicketService`, `IDialogService`, `DialogService`)**:
+     - Métodos implementados: `ConvertTicketToInvoiceAsync`, `GetCustomersAsync`, `UpdateCustomerAsync`, `DeleteCustomerAsync`, `GetHistoricalTicketsAsync` y `ShowCustomerSelectionDialogAsync`.
+  4. **Certificación de Pruebas Unitarias (`Parking.UnitTests`)**:
+     - `CustomersViewModelTests.cs`: Cálculo de DV DIAN, validaciones obligatorias, inicialización limpia sin datos quemados, mapeo de edición y búsqueda.
+     - `RecentEntriesViewModelTests.cs`: Conmutación a 3ra pestaña histórica, prevención de refacturación y conversión POS a FE.
+     - `dotnet test ParkingWpf.slnx`: **100% Superado (242/242 Pruebas Unitarias, 0 Fallos)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados / Creados**:
+  - `Parking/ViewModels/CustomersViewModel.cs` (Nuevo)
+  - `Parking/Views/CustomersView.xaml` (Nuevo)
+  - `Parking/Views/CustomersView.xaml.cs` (Nuevo)
+  - `Parking/Views/CustomerSelectionDialog.xaml` (Nuevo)
+  - `Parking/Views/CustomerSelectionDialog.xaml.cs` (Nuevo)
+  - `Parking/Styles/Icons.xaml` (Adición de `IconCustomers`)
+  - `Parking/ViewModels/RecentEntriesViewModel.cs`
+  - `Parking/Views/RecentEntriesView.xaml`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `Parking/App.xaml.cs`
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Contracts/IParkingTicketService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Services/Contracts/IDialogService.cs`
+  - `Parking/Services/Implementations/DialogService.cs`
+  - `Parking/Models/ApiModels/CustomerApiModels.cs`
+  - `Parking.UnitTests/ViewModels/CustomersViewModelTests.cs` (Nuevo)
+  - `Parking.UnitTests/ViewModels/RecentEntriesViewModelTests.cs`
+
+---
+
 ### [2026-09-17 23:45:00] - [FIX / UNIT-TESTS] - Erradicación de ArgumentException Type Mismatch en Submódulos de Vehículos en Patio y Salidas
 
 - **Autor**: Antigravity AI Assistant & Software Architect

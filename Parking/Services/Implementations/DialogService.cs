@@ -119,5 +119,21 @@ public class DialogService : IDialogService
             return result ?? false;
         }).Task;
     }
+
+    public Task<Customer?> ShowCustomerSelectionDialogAsync(string? defaultPlate = null)
+    {
+        return Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            var connMgr = _serviceProvider.GetRequiredService<Parking.Data.Factories.IDbConnectionManager>();
+            var apiClient = _serviceProvider.GetRequiredService<IApiClientService>();
+            var session = _serviceProvider.GetRequiredService<ISessionService>();
+
+            var dialog = new CustomerSelectionDialog(connMgr, apiClient, session, defaultPlate);
+            dialog.Owner = Application.Current.MainWindow;
+
+            var result = dialog.ShowDialog();
+            return result == true ? dialog.SelectedCustomer : null;
+        }).Task;
+    }
 }
 

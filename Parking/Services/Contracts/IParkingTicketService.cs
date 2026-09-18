@@ -44,4 +44,6 @@ public interface IParkingTicketService
     void UpdateTotalCapacity(int newCapacity);
     Task HandleRemoteTicketCheckOutAsync(Guid? ticketId, string? plateNumber, int? branchId);
     Task HandleRemoteTicketCheckInAsync(Guid? ticketId, string? plateNumber, int? branchId);
+    Task<ParkingTicket?> ConvertTicketToInvoiceAsync(Guid ticketId, Guid customerId);
+    Task<IReadOnlyList<ParkingTicket>> GetHistoricalTicketsAsync(DateTime fromUtc, DateTime toUtc, string? query = null);
 }

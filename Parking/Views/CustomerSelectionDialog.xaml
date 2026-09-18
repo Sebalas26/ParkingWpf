@@ -1,0 +1,389 @@
+<Window x:Class="Parking.Views.CustomerSelectionDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Seleccionar o Registrar Cliente"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="#B3000000"
+        ShowInTaskbar="False"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        Width="740" MaxHeight="800">
+
+    <Grid Background="Transparent">
+        <Border HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="20"
+                Background="{DynamicResource BrushSurfaceBackground}"
+                BorderBrush="{DynamicResource BrushBorderMedium}"
+                BorderThickness="1"
+                CornerRadius="18"
+                Padding="24"
+                SnapsToDevicePixels="True">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="30" ShadowDepth="8" Direction="270" Opacity="0.25" Color="#1E2A2F"/>
+            </Border.Effect>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            Width="44"
+                            Height="44"
+                            CornerRadius="22"
+                            Background="{DynamicResource BrushPrimaryLight}"
+                            Margin="0,0,14,0"
+                            VerticalAlignment="Center">
+                        <Path Data="{StaticResource IconCustomers}"
+                              Fill="{DynamicResource BrushPrimary}"
+                              Width="20"
+                              Height="20"
+                              Stretch="Uniform"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Cliente para Factura Electrónica"
+                                   FontSize="18"
+                                   FontWeight="Black"
+                                   Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <TextBlock Text="Seleccione un cliente registrado o capture sus datos fiscales oficiales para la DIAN"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource BrushTextMuted}"
+                                   Margin="0,2,0,0"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="2"
+                            Click="CancelButton_Click"
+                            Style="{StaticResource SecondaryButton}"
+                            Width="32" Height="32"
+                            Padding="0"
+                            VerticalAlignment="Top">
+                        <Path Data="{StaticResource IconClose}"
+                              Fill="{DynamicResource BrushTextSecondary}"
+                              Width="11" Height="11"
+                              Stretch="Uniform"/>
+                    </Button>
+                </Grid>
+
+                <Grid Grid.Row="1" Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            Background="{DynamicResource BrushInputBackground}"
+                            BorderBrush="{DynamicResource BrushBorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            Padding="10,2">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Path Grid.Column="0"
+                                  Data="{StaticResource IconSearch}"
+                                  Fill="{DynamicResource BrushTextSecondary}"
+                                  Width="13" Height="13"
+                                  Stretch="Uniform"
+                                  Margin="2,0,8,0"
+                                  VerticalAlignment="Center"/>
+                            <TextBox x:Name="SearchBox"
+                                     Grid.Column="1"
+                                     BorderThickness="0"
+                                     Background="Transparent"
+                                     FontSize="13"
+                                     Foreground="{DynamicResource BrushTextPrimary}"
+                                     CaretBrush="{DynamicResource BrushPrimary}"
+                                     TextChanged="SearchBox_TextChanged"
+                                     Padding="0,6"/>
+                            <TextBlock Grid.Column="1"
+                                       x:Name="SearchPlaceholder"
+                                       Text="Buscar por documento, nombre o placa..."
+                                       IsHitTestVisible="False"
+                                       Foreground="{DynamicResource BrushTextMuted}"
+                                       FontSize="13"
+                                       VerticalAlignment="Center"
+                                       Margin="2,0,0,0"/>
+                        </Grid>
+                    </Border>
+
+                    <Button Grid.Column="1"
+                            x:Name="ToggleNewCustomerButton"
+                            Click="ToggleNewCustomer_Click"
+                            Style="{StaticResource ModernButton}"
+                            Margin="10,0,0,0"
+                            Padding="14,8">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconPlus}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="ToggleNewCustomerText" Text="Nuevo Cliente" FontWeight="Bold" FontSize="12" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <Grid Grid.Row="2" Margin="0,0,0,12">
+                    <Border x:Name="SearchResultsContainer"
+                            Background="{DynamicResource BrushCardBackground}"
+                            BorderBrush="{DynamicResource BrushBorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            MaxHeight="260"
+                            MinHeight="100">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <ListBox x:Name="CustomersListBox"
+                                         BorderThickness="0"
+                                         Background="Transparent"
+                                         SelectionMode="Single"
+                                         SelectionChanged="CustomersListBox_SelectionChanged">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                                    BorderThickness="0,0,0,1"
+                                                    Padding="12,10">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel Grid.Column="0">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <Border Background="#E0F2FE" CornerRadius="4" Padding="6,1" Margin="0,0,8,0">
+                                                                <TextBlock Text="{Binding DocumentNumber}"
+                                                                           FontWeight="Bold"
+                                                                           FontSize="11"
+                                                                           Foreground="{DynamicResource BrushPrimary}"/>
+                                                            </Border>
+                                                            <TextBlock Text="{Binding FullName}"
+                                                                       FontWeight="Bold"
+                                                                       FontSize="13"
+                                                                       Foreground="{DynamicResource BrushTextPrimary}"/>
+                                                        </StackPanel>
+                                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                            <TextBlock Text="{Binding Email}"
+                                                                       FontSize="11.5"
+                                                                       Foreground="{DynamicResource BrushTextMuted}"
+                                                                       Margin="0,0,14,0"/>
+                                                            <TextBlock Text="{Binding Phone}"
+                                                                       FontSize="11.5"
+                                                                       Foreground="{DynamicResource BrushTextMuted}"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                    <Button Grid.Column="1"
+                                                            Content="Seleccionar"
+                                                            Click="SelectCustomerItem_Click"
+                                                            Tag="{Binding}"
+                                                            Style="{StaticResource SuccessButton}"
+                                                            Padding="10,4"
+                                                            FontSize="11"
+                                                            VerticalAlignment="Center"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <TextBlock x:Name="EmptyCustomersText"
+                                           Text="No se encontraron clientes coincidentes. Puede registrar uno nuevo arriba."
+                                           FontSize="12"
+                                           Foreground="{DynamicResource BrushTextMuted}"
+                                           HorizontalAlignment="Center"
+                                           Margin="16"
+                                           Visibility="Collapsed"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+
+                <Border Grid.Row="3"
+                        x:Name="NewCustomerFormCard"
+                        Visibility="Collapsed"
+                        Background="{DynamicResource BrushCardBackground}"
+                        BorderBrush="{DynamicResource BrushBorderMedium}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="16"
+                        Margin="0,0,0,14">
+                    <StackPanel>
+                        <TextBlock Text="Datos Fiscales del Nuevo Cliente"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource BrushPrimary}"
+                                   Margin="0,0,0,10"/>
+
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.5*"/>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="0.6*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Tipo Documento *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,3"/>
+                                <ComboBox x:Name="IdTypeComboBox"
+                                          DisplayMemberPath="Name"
+                                          SelectedValuePath="Id"
+                                          Height="34"
+                                          SelectionChanged="IdTypeComboBox_SelectionChanged"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                <TextBlock Text="Número Documento *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="DocumentNumberBox"
+                                         Height="34"
+                                         Padding="8,6"
+                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                         Background="{DynamicResource BrushInputBackground}"
+                                         Foreground="{DynamicResource BrushTextPrimary}"
+                                         TextChanged="DocumentNumberBox_TextChanged"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="DV" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="CheckDigitBox"
+                                         Height="34"
+                                         Padding="4,6"
+                                         MaxLength="1"
+                                         HorizontalContentAlignment="Center"
+                                         FontWeight="Bold"
+                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                         Background="{DynamicResource BrushInputBackground}"
+                                         Foreground="{DynamicResource BrushTextPrimary}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Nombre o Razón Social *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="FullNameBox"
+                                         Height="34"
+                                         Padding="8,6"
+                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                         Background="{DynamicResource BrushInputBackground}"
+                                         Foreground="{DynamicResource BrushTextPrimary}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Correo Electrónico (Facturación DIAN) *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="EmailBox"
+                                         Height="34"
+                                         Padding="8,6"
+                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                         Background="{DynamicResource BrushInputBackground}"
+                                         Foreground="{DynamicResource BrushTextPrimary}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="1.4*"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Teléfono" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="PhoneBox"
+                                         Height="34"
+                                         Padding="8,6"
+                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                         Background="{DynamicResource BrushInputBackground}"
+                                         Foreground="{DynamicResource BrushTextPrimary}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                <TextBlock Text="Dirección" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="AddressBox"
+                                         Height="34"
+                                         Padding="8,6"
+                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                         Background="{DynamicResource BrushInputBackground}"
+                                         Foreground="{DynamicResource BrushTextPrimary}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Ciudad / Municipio" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,3"/>
+                                <TextBox x:Name="CityBox"
+                                         Height="34"
+                                         Padding="8,6"
+                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                         Background="{DynamicResource BrushInputBackground}"
+                                         Foreground="{DynamicResource BrushTextPrimary}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock x:Name="FormErrorText"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{DynamicResource BrushDanger}"
+                                   Margin="0,2,0,8"
+                                   Visibility="Collapsed"/>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="Guardar y Seleccionar"
+                                    Click="SaveNewCustomer_Click"
+                                    Style="{StaticResource SuccessButton}"
+                                    Padding="16,8"
+                                    FontWeight="Bold"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Grid Grid.Row="4" Margin="0,8,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock x:Name="SelectedSummaryText"
+                                   Text="Ningún cliente seleccionado aún"
+                                   FontSize="12"
+                                   Foreground="{DynamicResource BrushTextSecondary}"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Content="Cancelar"
+                                Click="CancelButton_Click"
+                                Style="{StaticResource SecondaryButton}"
+                                Padding="16,8"
+                                Margin="0,0,8,0"/>
+                        <Button x:Name="ConfirmSelectionButton"
+                                Content="Confirmar y Facturar"
+                                Click="ConfirmSelection_Click"
+                                IsEnabled="False"
+                                Style="{StaticResource ModernButton}"
+                                Padding="18,8"
+                                FontWeight="Bold"/>
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

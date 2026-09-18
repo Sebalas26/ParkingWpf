@@ -77,6 +77,33 @@ public class CustomerApiResponse
     [JsonPropertyName("phone")]
     public string? Phone { get; set; }
 
+    [JsonPropertyName("personType")]
+    public string PersonType { get; set; } = "Person";
+
+    [JsonPropertyName("tradeName")]
+    public string? TradeName { get; set; }
+
+    [JsonPropertyName("address")]
+    public string? Address { get; set; }
+
+    [JsonPropertyName("cityCode")]
+    public string? CityCode { get; set; }
+
+    [JsonPropertyName("stateCode")]
+    public string? StateCode { get; set; }
+
+    [JsonPropertyName("cityName")]
+    public string? CityName { get; set; }
+
+    [JsonPropertyName("departmentName")]
+    public string? DepartmentName { get; set; }
+
+    [JsonPropertyName("fiscalResponsibilities")]
+    public string FiscalResponsibilities { get; set; } = "R-99-PN";
+
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; }
+
+    [JsonPropertyName("plateNumbers")]
+    public List<string> PlateNumbers { get; set; } = new();
 }

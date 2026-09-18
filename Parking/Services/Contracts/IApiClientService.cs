@@ -36,4 +36,8 @@ public interface IApiClientService
     Task<ApiUserSyncDto?> GetUserByIdAsync(int userId);
     Task<PlateCheckResultDto?> CheckPlateAsync(string plateNumber, int? branchId = null);
     Task<CustomerApiResponse?> CreateCustomerAsync(CreateCustomerApiRequest request);
+    Task<IReadOnlyList<CustomerApiResponse>> GetCustomersAsync(string? term = null, int? companyId = null);
+    Task<bool> UpdateCustomerAsync(Guid customerId, CreateCustomerApiRequest request);
+    Task<bool> DeleteCustomerAsync(Guid customerId);
+    Task<ParkingTicket?> ConvertTicketToInvoiceAsync(Guid ticketId, Guid customerId);
 }

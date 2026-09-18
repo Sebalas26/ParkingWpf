@@ -135,4 +135,80 @@ public class RecentEntriesViewModelTests
         vm.SearchQuery.Should().BeEmpty();
         vm.HasSearchQuery.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task SetTabCommand_WithParameterTwo_SwitchesToHistoricalTabAndLoadsEntries()
+    {
+        var historical = new List<ParkingTicket>
+        {
+            new ParkingTicket { TicketId = Guid.NewGuid(), PlateNumber = "FE123", IsElectronicInvoice = true, InvoiceNumber = "FE-100" }
+        };
+        _mockTicketService.Setup(s => s.GetHistoricalTicketsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>()))
+            .ReturnsAsync(historical);
+
+        var vm = new RecentEntriesViewModel(_mockTicketService.Object, _mockDialogService.Object, _mockShiftService.Object);
+        vm.SetTabCommand.Execute("2");
+
+        vm.SelectedTab.Should().Be(2);
+        vm.IsActiveTab.Should().BeFalse();
+        vm.IsCompletedTab.Should().BeFalse();
+        vm.IsHistoricalTab.Should().BeTrue();
+
+        await Task.Delay(50);
+        vm.HistoricalEntries.Should().HaveCount(1);
+        vm.HistoricalTicketsCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ConvertTicketToInvoiceCommand_WhenTicketAlreadyInvoiced_DoesNotOpenDialog()
+    {
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "ABC123",
+            IsElectronicInvoice = true,
+            InvoiceNumber = "FE-999"
+        };
+
+        var vm = new RecentEntriesViewModel(_mockTicketService.Object, _mockDialogService.Object, _mockShiftService.Object);
+        await vm.ConvertTicketToInvoiceCommand.ExecuteAsync(ticket);
+
+        _mockDialogService.Verify(d => d.ShowCustomerSelectionDialogAsync(It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ConvertTicketToInvoiceCommand_WhenCustomerSelected_CallsServiceAndUpdates()
+    {
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "ABC123",
+            IsElectronicInvoice = false
+        };
+
+        var customer = new Customer
+        {
+            CustomerId = Guid.NewGuid(),
+            FullName = "Cliente Prueba",
+            DocumentNumber = "12345678"
+        };
+
+        var updated = new ParkingTicket
+        {
+            TicketId = ticket.TicketId,
+            PlateNumber = "ABC123",
+            IsElectronicInvoice = true,
+            InvoiceNumber = "FE-101"
+        };
+
+        _mockDialogService.Setup(d => d.ShowCustomerSelectionDialogAsync("ABC123")).ReturnsAsync(customer);
+        _mockTicketService.Setup(s => s.ConvertTicketToInvoiceAsync(ticket.TicketId, customer.CustomerId)).ReturnsAsync(updated);
+        _mockTicketService.Setup(s => s.GetHistoricalTicketsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<string?>()))
+            .ReturnsAsync(new List<ParkingTicket> { updated });
+
+        var vm = new RecentEntriesViewModel(_mockTicketService.Object, _mockDialogService.Object, _mockShiftService.Object);
+        await vm.ConvertTicketToInvoiceCommand.ExecuteAsync(ticket);
+
+        _mockTicketService.Verify(s => s.ConvertTicketToInvoiceAsync(ticket.TicketId, customer.CustomerId), Times.Once);
+    }
 }

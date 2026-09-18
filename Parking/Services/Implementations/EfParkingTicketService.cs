@@ -824,4 +824,82 @@ public class EfParkingTicketService : IParkingTicketService
         }
         catch { }
     }
+
+    public async Task<ParkingTicket?> ConvertTicketToInvoiceAsync(Guid ticketId, Guid customerId)
+    {
+        using var db = _connectionManager.CreateDbContext();
+        var ticket = await db.ParkingTickets
+            .Include(t => t.Customer)
+            .FirstOrDefaultAsync(t => t.TicketId == ticketId);
+
+        if (ticket == null) return null;
+
+        var customer = await db.Customers.FirstOrDefaultAsync(c => c.CustomerId == customerId);
+        ticket.CustomerId = customerId;
+        ticket.Customer = customer;
+        ticket.IsElectronicInvoice = true;
+        ticket.IsPosConvertedToInvoice = true;
+        ticket.PosConvertedAtUtc = DateTime.UtcNow;
+        ticket.PosConvertedByUserId = _sessionService.CurrentUser?.ServerUserId;
+        ticket.DianStatus = DianStatus.Pending;
+
+        if (_syncEngine.IsOnline)
+        {
+            try
+            {
+                var remoteTicket = await _apiClient.ConvertTicketToInvoiceAsync(ticketId, customerId);
+                if (remoteTicket != null)
+                {
+                    ticket.InvoiceNumber = remoteTicket.InvoiceNumber;
+                    ticket.Cufe = remoteTicket.Cufe;
+                    ticket.QrCodeData = remoteTicket.QrCodeData;
+                    ticket.DianStatus = remoteTicket.DianStatus;
+                    ticket.ResolutionId = remoteTicket.ResolutionId;
+                    ticket.ResolutionName = remoteTicket.ResolutionName;
+                    ticket.IsSynchronized = true;
+                }
+            }
+            catch
+            {
+                ticket.IsSynchronized = false;
+            }
+        }
+        else
+        {
+            ticket.IsSynchronized = false;
+        }
+
+        await db.SaveChangesAsync();
+        TicketCompleted?.Invoke(this, ticket);
+        return ticket;
+    }
+
+    public async Task<IReadOnlyList<ParkingTicket>> GetHistoricalTicketsAsync(DateTime fromUtc, DateTime toUtc, string? query = null)
+    {
+        using var db = _connectionManager.CreateDbContext();
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
+
+        var q = db.ParkingTickets
+            .AsNoTracking()
+            .Include(t => t.Customer)
+            .Where(t => t.Status == TicketStatus.Completed &&
+                        (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value) &&
+                        t.ExitTimeUtc >= fromUtc && t.ExitTimeUtc <= toUtc);
+
+        var list = await q.OrderByDescending(t => t.ExitTimeUtc).ToListAsync();
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var clean = query.Trim();
+            list = list.Where(t =>
+                t.PlateNumber.Contains(clean, StringComparison.OrdinalIgnoreCase) ||
+                t.TicketNumber.Contains(clean, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrWhiteSpace(t.InvoiceNumber) && t.InvoiceNumber.Contains(clean, StringComparison.OrdinalIgnoreCase)) ||
+                (t.Customer != null && !string.IsNullOrWhiteSpace(t.Customer.FullName) && t.Customer.FullName.Contains(clean, StringComparison.OrdinalIgnoreCase)) ||
+                (t.Customer != null && !string.IsNullOrWhiteSpace(t.Customer.DocumentNumber) && t.Customer.DocumentNumber.Contains(clean, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+        }
+
+        return list;
+    }
 }
