@@ -15,6 +15,34 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-17 23:45:00] - [FIX / UNIT-TESTS] - Erradicación de ArgumentException Type Mismatch en Submódulos de Vehículos en Patio y Salidas
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Ayudame con algo, en mi wpf: En el modulo de vehiculos en patio y salidas, me esta saliendo este error - novedad de aplicacion [ArgumentException: Parameter 'parameter' (object) cannot be of type System.String, as the command type requires an argument of type System.Int32]"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Corrección de Tipado de Comando (`RecentEntriesViewModel.cs`)**:
+     - En `RecentEntriesView.xaml`, las pestañas `RadioButton` vinculan `Command="{Binding SetTabCommand}"` con literales `CommandParameter="0"` y `CommandParameter="1"`, los cuales son inferidos por el parser de WPF como `System.String`.
+     - El comando autogenerado por CommunityToolkit `SetTab(int tabIndex)` validaba estrictamente el tipo con `ThrowIfNotValid(parameter, "parameter")`, provocando un crash en runtime con diálogo modal de "Novedad en la Aplicación".
+     - Se modificó `SetTab(object? parameter)` implementando resolución polimórfica defensiva (`parameter is int` o `int.TryParse(parameter.ToString(), out var idx)`), garantizando compatibilidad total con strings, ints y bindings sin disparar excepciones.
+  2. **Certificación de Pruebas Unitarias (`RecentEntriesViewModelTests.cs`)**:
+     - Se creó una nueva suite de pruebas unitarias cubriendo:
+       - `SetTabCommand_WithStringParameter_UpdatesSelectedTabWithoutThrowing`: valida conmutación fluida pasando `"0"` y `"1"`.
+       - `SetTabCommand_WithIntParameter_UpdatesSelectedTab`: valida enteros `0` y `1`.
+       - `SetTabCommand_WithInvalidOrNullParameter_DoesNotThrow`: valida resiliencia ante `null` o strings malformados sin lanzar excepciones.
+       - `LoadEntriesAsync_PopulatesActiveAndCompletedEntries`: valida separación y conteo de vehículos activos y salidas.
+       - `ClearSearchCommand_ResetsSearchQueryAndHasSearchQueryFlag`: valida restablecimiento instantáneo del buscador.
+  3. **Verificación y Compilación**:
+     - `dotnet test ParkingWpf.slnx`: **100% Superado (230/230 Pruebas Unitarias, 0 Fallos)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/RecentEntriesViewModel.cs`
+  - `Parking.UnitTests/ViewModels/RecentEntriesViewModelTests.cs` (Nuevo)
+
+---
+
 ### [2026-09-17 23:10:00] - [UI/UX / FEAT / REFACTOR] - Salida 4 Columnas, Gracia de Cobro 5 Minutos con Renovación Limitada, Submódulos Activos/Completados en Patio, Enter/Escape en Preview y Tarjeta de Descuentos en Cierre
 
 - **Autor**: Antigravity AI Assistant & Software Architect

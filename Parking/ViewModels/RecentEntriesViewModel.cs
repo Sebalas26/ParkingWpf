@@ -86,9 +86,16 @@ public partial class RecentEntriesViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SetTab(int tabIndex)
+    private void SetTab(object? parameter)
     {
-        SelectedTab = tabIndex;
+        if (parameter is int intVal)
+        {
+            SelectedTab = intVal;
+        }
+        else if (parameter != null && int.TryParse(parameter.ToString(), out var parsedVal))
+        {
+            SelectedTab = parsedVal;
+        }
     }
 
     [RelayCommand]
