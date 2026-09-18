@@ -14,4 +14,6 @@ public interface IDbConnectionManager
     ParkFlowDbContext CreateDbContext();
     Task InitializeDatabaseAsync();
     Task<bool> TestConnectionAsync();
+    Task<string> BackupDatabaseAsync();
+    string DatabasePath { get; }
 }

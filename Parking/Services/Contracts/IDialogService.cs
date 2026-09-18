@@ -13,5 +13,6 @@ public interface IDialogService
     Task<bool> ShowSyncRequiredModalAsync(Models.ApiModels.ConfigNotificationDto notification, ISyncEngineService syncEngine);
     Task<bool> ShowCheckOutDialogAsync(object viewModel);
     Task<Customer?> ShowCustomerSelectionDialogAsync(string? defaultPlate = null);
+    Task<bool> ShowAppUpdateDialogAsync(Models.AppReleaseInfoDto release);
 }
 

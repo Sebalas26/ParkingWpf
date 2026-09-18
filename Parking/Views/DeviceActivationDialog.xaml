@@ -1,0 +1,244 @@
+<Window x:Class="Parking.Views.DeviceActivationDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Activación de Dispositivo - ParkFlow"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="#B3000000"
+        ShowInTaskbar="False"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        Width="620" Height="580">
+
+    <Grid Background="Transparent">
+        <Border HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="20"
+                Background="{DynamicResource BrushSurfaceBackground}"
+                BorderBrush="{DynamicResource BrushBorderMedium}"
+                BorderThickness="1"
+                CornerRadius="18"
+                Padding="28"
+                Width="560"
+                SnapsToDevicePixels="True">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="30" ShadowDepth="8" Direction="270" Opacity="0.25" Color="#1E2A2F"/>
+            </Border.Effect>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Encabezado con ícono de seguridad -->
+                <Grid Grid.Row="0" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            Width="48"
+                            Height="48"
+                            CornerRadius="24"
+                            Background="{DynamicResource BrushPrimaryLight}"
+                            Margin="0,0,16,0"
+                            VerticalAlignment="Center">
+                        <Path Data="{StaticResource IconShield}"
+                              Fill="{DynamicResource BrushPrimary}"
+                              Width="24"
+                              Height="24"
+                              Stretch="Uniform"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Activación de Terminal"
+                                   FontSize="20"
+                                   FontWeight="Bold"
+                                   Foreground="{DynamicResource BrushTextPrimary}"/>
+                        <TextBlock Text="Autorización por hardware y enlace a sede"
+                                   FontSize="13"
+                                   Foreground="{DynamicResource BrushTextSecondary}"
+                                   Margin="0,2,0,0"/>
+                    </StackPanel>
+
+                    <Button Grid.Column="2"
+                            Width="32"
+                            Height="32"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            Command="{Binding CancelCommand}">
+                        <Path Data="{StaticResource IconClose}"
+                              Fill="{DynamicResource BrushTextSecondary}"
+                              Width="14"
+                              Height="14"
+                              Stretch="Uniform"/>
+                    </Button>
+                </Grid>
+
+                <!-- Tarjeta de Identificación de Hardware Local -->
+                <Border Grid.Row="1"
+                        Background="{DynamicResource BrushSurfaceBackgroundLight}"
+                        BorderBrush="{DynamicResource BrushBorderSubtle}"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        Padding="16"
+                        Margin="0,0,0,20">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                            <Path Data="{StaticResource IconHardware}"
+                                  Fill="{DynamicResource BrushPrimary}"
+                                  Width="16"
+                                  Height="16"
+                                  Stretch="Uniform"
+                                  Margin="0,0,8,0"
+                                  VerticalAlignment="Center"/>
+                            <TextBlock Text="Huella de Hardware del Dispositivo (Inmutable)"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource BrushTextSecondary}"/>
+                        </StackPanel>
+
+                        <TextBox Grid.Row="1"
+                                 Text="{Binding MachineFingerprint, Mode=OneWay}"
+                                 IsReadOnly="True"
+                                 Background="{DynamicResource BrushInputBackground}"
+                                 Foreground="{DynamicResource BrushTextSecondary}"
+                                 FontFamily="Consolas"
+                                 FontSize="11"
+                                 BorderThickness="1"
+                                 BorderBrush="{DynamicResource BrushBorderSubtle}"
+                                 Padding="8,6"
+                                 Margin="0,0,0,8"/>
+
+                        <StackPanel Grid.Row="2" Orientation="Horizontal">
+                            <TextBlock Text="Equipo: "
+                                       FontSize="12"
+                                       Foreground="{DynamicResource BrushTextTertiary}"/>
+                            <TextBlock Text="{Binding MachineName}"
+                                       FontSize="12"
+                                       FontWeight="Medium"
+                                       Foreground="{DynamicResource BrushTextSecondary}"
+                                       Margin="0,0,16,0"/>
+
+                            <TextBlock Text="Usuario: "
+                                       FontSize="12"
+                                       Foreground="{DynamicResource BrushTextTertiary}"/>
+                            <TextBlock Text="{Binding WindowsUser}"
+                                       FontSize="12"
+                                       FontWeight="Medium"
+                                       Foreground="{DynamicResource BrushTextSecondary}"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- Campo de Entrada: Clave de Licencia -->
+                <StackPanel Grid.Row="2" Margin="0,0,0,20">
+                    <TextBlock Text="Clave de Licencia de la Sede *"
+                               FontSize="14"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource BrushTextPrimary}"
+                               Margin="0,0,0,6"/>
+
+                    <TextBox Style="{StaticResource ModernTextBox}"
+                             Text="{Binding LicenseKey, UpdateSourceTrigger=PropertyChanged}"
+                             MaxLength="100"
+                             Padding="12,12"
+                             FontSize="15"
+                             FontFamily="Consolas"
+                             CharacterCasing="Upper"
+                             IsEnabled="{Binding IsBusy, Converter={x:Null}}"/>
+
+                    <TextBlock Text="Formato: PKF-XXXX-XXXX-XXXX (Suministrado en su contrato de servicio)"
+                               FontSize="12"
+                               Foreground="{DynamicResource BrushTextTertiary}"
+                               Margin="0,4,0,12"/>
+
+                    <!-- Mensajes de estado / error -->
+                    <Border Background="#2B1D20"
+                            BorderBrush="#EF4444"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="12,10"
+                            Margin="0,0,0,8"
+                            Visibility="{Binding ErrorMessage, Converter={StaticResource NullToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconAlertTriangle}"
+                                  Fill="#EF4444"
+                                  Width="16"
+                                  Height="16"
+                                  Stretch="Uniform"
+                                  Margin="0,0,8,0"
+                                  VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding ErrorMessage}"
+                                       Foreground="#EF4444"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="#1C2B22"
+                            BorderBrush="#10B981"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Padding="12,10"
+                            Margin="0,0,0,8"
+                            Visibility="{Binding SuccessMessage, Converter={StaticResource NullToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconCheck}"
+                                  Fill="#10B981"
+                                  Width="16"
+                                  Height="16"
+                                  Stretch="Uniform"
+                                  Margin="0,0,8,0"
+                                  VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding SuccessMessage}"
+                                       Foreground="#10B981"
+                                       FontSize="12"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Botones de Acción -->
+                <Grid Grid.Row="3">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Button Grid.Column="0"
+                            Style="{StaticResource SecondaryButton}"
+                            Content="Cancelar y Salir"
+                            Height="42"
+                            Margin="0,0,12,0"
+                            Command="{Binding CancelCommand}"/>
+
+                    <Button Grid.Column="1"
+                            Style="{StaticResource ModernButton}"
+                            Content="Activar Terminal"
+                            Height="42"
+                            MinWidth="170"
+                            Command="{Binding ActivateCommand}"/>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

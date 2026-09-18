@@ -40,6 +40,8 @@ public class TestDbConnectionManager : IDbConnectionManager, IDisposable
 
     public Task InitializeDatabaseAsync() => Task.CompletedTask;
     public Task<bool> TestConnectionAsync() => Task.FromResult(true);
+    public Task<string> BackupDatabaseAsync() => Task.FromResult(string.Empty);
+    public string DatabasePath => ":memory:";
 
     public void Dispose()
     {

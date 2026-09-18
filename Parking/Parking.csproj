@@ -33,6 +33,7 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.2" />
     <PackageReference Include="QRCoder" Version="1.8.0" />
     <PackageReference Include="ZXing.Net" Version="0.16.10" />
+    <PackageReference Include="System.Management" Version="9.0.2" />
   </ItemGroup>
 
   <ItemGroup>

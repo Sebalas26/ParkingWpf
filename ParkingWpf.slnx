@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="Parking/Parking.csproj" />
+  <Project Path="ParkFlow.Updater/ParkFlow.Updater.csproj" />
   <Project Path="Parking.UnitTests/Parking.UnitTests.csproj" />
 </Solution>
 

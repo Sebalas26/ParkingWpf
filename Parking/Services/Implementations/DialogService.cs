@@ -135,5 +135,23 @@ public class DialogService : IDialogService
             return result == true ? dialog.SelectedCustomer : null;
         }).Task;
     }
+
+    public Task<bool> ShowAppUpdateDialogAsync(Models.AppReleaseInfoDto release)
+    {
+        return Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            var updateVm = _serviceProvider.GetRequiredService<AppUpdateViewModel>();
+            updateVm.Initialize(release);
+
+            var dialog = new AppUpdateDialog(updateVm);
+            if (Application.Current.MainWindow != null && Application.Current.MainWindow.IsVisible)
+            {
+                dialog.Owner = Application.Current.MainWindow;
+            }
+
+            var result = dialog.ShowDialog();
+            return result ?? false;
+        }).Task;
+    }
 }
 

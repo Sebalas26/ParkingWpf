@@ -15,6 +15,71 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-18 16:30:00] - [FEAT / ARCH / SECURITY / PACKAGING / UPDATES] - Sistema Integral de Empaquetado, Licenciamiento por Hardware (Anti-Copia), Micro-Updater y Actualizaciones Remotas Obligatorias con Regla de Oro Pre-Update Sync (Cero Pérdida de Datos)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Segundo tengo un problema complejo complejo pero es que es reee complejo todalmente complejo, por que se requiere ahora si como se va hacer para empaquetar la publicación del wpf que se pueda actualizar antes me habias mencionado que se iba hacer por un endpoint que iba a escuchar el wpf desde la misma api donde diga si tiene actualizacion pendiente y que obligue al usuario a actualizar la aplicación pero que eso debería ir firmado y todo y que como se iba a crear el instalador del wpf que tuviera una credencial para eso no que se permita instalar en cualquier dispositivo si me explico. creo que con este contexto la tienes clarisima para crear un plan de trabajo pero recuerda que esas actualizaciones no pueden ddañar la bd por que siempre va a existir informacion y todo y que sucede antes de actualizar como regla debe tener todo sincronizado todo es todo para evitar riesgos de perdida de información. listo con esto analiza y dame plan completo."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Licenciamiento y Enlace Físico de Hardware (Hardware Binding & Anti-Copia)**:
+     - Implementado `HardwareFingerprintService.cs` en WPF: captura serial de placa madre (`Win32_BaseBoard.SerialNumber`), CPU Processor ID (`Win32_Processor.ProcessorId`) y UUID de BIOS (`Win32_ComputerSystemProduct.UUID`) combinados en HMAC-SHA256 con salt interno.
+     - Implementado `DeviceLicenseService.cs`: almacenamiento y lectura de `license.dat` en `%LocalAppData%\ParkFlow\Data\` cifrado mediante **Windows DPAPI** (`ProtectedData.Protect` con ámbito `CurrentUser`). Si los archivos del programa se copian a otra máquina, DPAPI no descifra o la huella de hardware no coincide, bloqueando el software inmediatamente.
+     - Creado `DeviceActivationDialog.xaml` y `DeviceActivationViewModel.cs` con diseño Dark Glassmorphism, desplegado automáticamente al primer inicio sin licencia válida para activación mediante `POST /api/v1/licenses/activate`.
+  2. **Regla de Oro Inquebrantable de Sincronización Previa (CERO Pérdida de Información)**:
+     - En `AppUpdateService.cs`, antes de descargar o aplicar cualquier actualización (incluso si es mandatoria), se comprueba `_syncEngine.PendingItemsCount`.
+     - Si existen transacciones locales en cola (`PendingSyncItems > 0`), se invoca forzadamente `PerformFullSyncAsync()`. Si la sincronización falla (ej. sin internet o error del servidor), **la actualización se aborta/pospone de inmediato**, protegiendo el 100% de las ventas y turnos del cajero.
+  3. **Aislamiento y Backup Preventivo de la Base de Datos SQLite**:
+     - Actualizado `DbConnectionManager.cs`: ubicación canónica de la base de datos desacoplada de la carpeta de instalación en `%LocalAppData%\ParkFlow\Data\parkflow_local.db`. Migración preventiva transparente si existe una BD preexistente en la carpeta del ejecutable.
+     - Implementado `BackupDatabaseAsync`: genera un respaldo físico fechado de `parkflow_local.db` (y sus archivos `-wal` / `-shm`) en `%LocalAppData%\ParkFlow\Backups\` antes de cualquier reemplazo de archivos.
+  4. **Micro-Updater Desacoplado (`ParkFlow.Updater`)**:
+     - Creado proyecto independiente `ParkFlow.Updater` (.NET 10 WPF).
+     - Recibe `--pid`, `--zip`, `--target`, `--exe`, `--sha256`. Espera a que el proceso principal cierre y libere los bloqueos de Windows, verifica el hash SHA-256 y extrae el ZIP respetando la regla de exclusión estricta (nunca toca archivos `.db*`, `license.dat` ni `appsettings.Production.json`). Relanza la aplicación principal.
+  5. **Detección y Notificación de Actualizaciones en WPF (`AppUpdateDialog.xaml`, `AppUpdateViewModel.cs`)**:
+     - Diálogo modal oscuro con soporte para actualizaciones obligatorias (`IsMandatory = true`), barra de progreso de descarga y notas de versión.
+  6. **Scripts de Empaquetado e Instalador**:
+     - `publish-release.ps1`: Compila en Release, excluye archivos de desarrollo, crea el paquete ZIP, calcula el Checksum SHA-256 inmutable y emite `release_manifest.json`.
+     - `installer.iss`: Script de Inno Setup con instalación en `%LocalAppData%\Programs\ParkFlow` (permitiendo auto-actualizaciones fluidas sin elevación UAC en cada release).
+
+- **📦 Componentes Modificados / Creados**:
+  - `Parking/Parking.csproj`
+  - `Parking/Styles/Icons.xaml`
+  - `Parking/Data/Factories/IDbConnectionManager.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Services/Contracts/IHardwareFingerprintService.cs`
+  - `Parking/Services/Implementations/HardwareFingerprintService.cs`
+  - `Parking/Models/LicenseModels.cs`
+  - `Parking/Services/Contracts/IDeviceLicenseService.cs`
+  - `Parking/Services/Implementations/DeviceLicenseService.cs`
+  - `Parking/Models/AppUpdateModels.cs`
+  - `Parking/Services/Contracts/IAppUpdateService.cs`
+  - `Parking/Services/Implementations/AppUpdateService.cs`
+  - `Parking/Services/Contracts/IDialogService.cs`
+  - `Parking/Services/Implementations/DialogService.cs`
+  - `Parking/ViewModels/DeviceActivationViewModel.cs`
+  - `Parking/Views/DeviceActivationDialog.xaml`
+  - `Parking/Views/DeviceActivationDialog.xaml.cs`
+  - `Parking/ViewModels/AppUpdateViewModel.cs`
+  - `Parking/Views/AppUpdateDialog.xaml`
+  - `Parking/Views/AppUpdateDialog.xaml.cs`
+  - `Parking/App.xaml.cs`
+  - `ParkFlow.Updater/ParkFlow.Updater.csproj`
+  - `ParkFlow.Updater/App.xaml`
+  - `ParkFlow.Updater/App.xaml.cs`
+  - `ParkFlow.Updater/MainWindow.xaml`
+  - `ParkFlow.Updater/MainWindow.xaml.cs`
+  - `ParkingWpf.slnx`
+  - `Parking.UnitTests/Common/TestDbConnectionManager.cs`
+  - `Parking.UnitTests/Services/AppUpdateAndLicensingTests.cs`
+  - `Scripts/publish-release.ps1`
+  - `Scripts/installer.iss`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **247 Pruebas Superadas (100%), 0 Fallos**.
+
+---
+
 ### [2026-09-18 09:15:00] - [FEAT / ARCH / REFACTOR / SECURITY] - Módulo Integral de Clientes Fiscales DIAN, 3ra Pestaña de Histórico POS a FE y Desacoplamiento Agnóstico de Proveedor en WPF, PWA y API
 
 - **Autor**: Antigravity AI Assistant & Software Architect

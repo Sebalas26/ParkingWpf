@@ -59,6 +59,39 @@ public partial class App : Application
             var connectionManager = _serviceProvider.GetRequiredService<IDbConnectionManager>();
             await connectionManager.InitializeDatabaseAsync();
 
+            // 1. Verificación de Licencia Local y Enlace a Hardware (Anti-Copia)
+            var licenseService = _serviceProvider.GetRequiredService<IDeviceLicenseService>();
+            if (!licenseService.HasValidLicense())
+            {
+                var activationDialog = _serviceProvider.GetRequiredService<DeviceActivationDialog>();
+                var activated = activationDialog.ShowDialog();
+                if (activated != true || !licenseService.HasValidLicense())
+                {
+                    Shutdown(0);
+                    return;
+                }
+            }
+
+            // 2. Comprobación de Actualizaciones Remotas en Segundo Plano
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(2000); // Esperar que la UI inicial esté cargada
+                    var updateService = _serviceProvider.GetRequiredService<IAppUpdateService>();
+                    var release = await updateService.CheckForUpdateAsync();
+                    if (release != null && release.HasUpdate)
+                    {
+                        await Dispatcher.InvokeAsync(() =>
+                        {
+                            var dialogService = _serviceProvider.GetRequiredService<IDialogService>();
+                            _ = dialogService.ShowAppUpdateDialogAsync(release);
+                        });
+                    }
+                }
+                catch { }
+            });
+
             ShowLoginWindow();
         }
         catch (Exception ex)
@@ -128,6 +161,11 @@ public partial class App : Application
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IDialogService, DialogService>();
 
+        // Módulo Licenciamiento de Dispositivo y Actualizaciones Remotas
+        services.AddSingleton<IHardwareFingerprintService, HardwareFingerprintService>();
+        services.AddSingleton<IDeviceLicenseService, DeviceLicenseService>();
+        services.AddSingleton<IAppUpdateService, AppUpdateService>();
+
         // ViewModels
         services.AddTransient<LoginViewModel>();
         services.AddSingleton<MainShellViewModel>();
@@ -139,6 +177,8 @@ public partial class App : Application
         services.AddSingleton<MonthlySubscriptionsViewModel>();
         services.AddTransient<ReceiptPreviewViewModel>();
         services.AddTransient<CustomersViewModel>();
+        services.AddTransient<DeviceActivationViewModel>();
+        services.AddTransient<AppUpdateViewModel>();
 
         // Windows & Views
         services.AddTransient<LoginWindow>();
@@ -150,6 +190,8 @@ public partial class App : Application
         services.AddTransient<ShiftClosureView>();
         services.AddTransient<MonthlySubscriptionsView>();
         services.AddTransient<CustomersView>();
+        services.AddTransient<DeviceActivationDialog>();
+        services.AddTransient<AppUpdateDialog>();
     }
 
     private void ShowLoginWindow()

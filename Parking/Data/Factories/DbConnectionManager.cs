@@ -21,12 +21,99 @@ public class DbConnectionManager : IDbConnectionManager
     public bool IsOnlineMode => true;
     public DatabaseProviderType CurrentProvider => DatabaseProviderType.Sqlite;
     public string StatusDescription => "SQLite Local Resiliente (Caché Local)";
+    public string DatabasePath { get; }
 
     public event EventHandler<bool>? ConnectionStateChanged;
 
+    public static string GetDefaultDatabasePath()
+    {
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var dataDir = Path.Combine(localAppData, "ParkFlow", "Data");
+        if (!Directory.Exists(dataDir))
+        {
+            Directory.CreateDirectory(dataDir);
+        }
+
+        var targetDbPath = Path.Combine(dataDir, "parkflow_local.db");
+
+        // Migración preventiva transparente: Si existe un parkflow_local.db en el directorio base de la aplicación y aún no en DataDir, copiarlo de forma segura
+        try
+        {
+            var legacyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "parkflow_local.db");
+            if (File.Exists(legacyPath) && !File.Exists(targetDbPath))
+            {
+                File.Copy(legacyPath, targetDbPath, overwrite: false);
+            }
+        }
+        catch { }
+
+        return targetDbPath;
+    }
+
     public DbConnectionManager(string? sqliteConnectionString = null)
     {
-        _sqliteConnectionString = sqliteConnectionString ?? "Data Source=parkflow_local.db;Cache=Shared;Mode=ReadWriteCreate;Default Timeout=15;";
+        if (sqliteConnectionString != null)
+        {
+            _sqliteConnectionString = sqliteConnectionString;
+            DatabasePath = ExtractPathFromConnectionString(sqliteConnectionString);
+        }
+        else
+        {
+            var dbPath = GetDefaultDatabasePath();
+            DatabasePath = dbPath;
+            _sqliteConnectionString = $"Data Source={dbPath};Cache=Shared;Mode=ReadWriteCreate;Default Timeout=15;";
+        }
+    }
+
+    private static string ExtractPathFromConnectionString(string connStr)
+    {
+        var parts = connStr.Split(';');
+        foreach (var p in parts)
+        {
+            var trimmed = p.Trim();
+            if (trimmed.StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
+            {
+                return trimmed.Substring("Data Source=".Length);
+            }
+        }
+        return "parkflow_local.db";
+    }
+
+    public async Task<string> BackupDatabaseAsync()
+    {
+        if (!File.Exists(DatabasePath) || DatabasePath.Equals(":memory:", StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Empty;
+        }
+
+        var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var backupDir = Path.Combine(localAppData, "ParkFlow", "Backups");
+        if (!Directory.Exists(backupDir))
+        {
+            Directory.CreateDirectory(backupDir);
+        }
+
+        var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        var backupPath = Path.Combine(backupDir, $"parkflow_local_backup_{timestamp}.db");
+
+        await Task.Run(() =>
+        {
+            File.Copy(DatabasePath, backupPath, overwrite: true);
+
+            var walPath = DatabasePath + "-wal";
+            if (File.Exists(walPath))
+            {
+                try { File.Copy(walPath, backupPath + "-wal", overwrite: true); } catch { }
+            }
+
+            var shmPath = DatabasePath + "-shm";
+            if (File.Exists(shmPath))
+            {
+                try { File.Copy(shmPath, backupPath + "-shm", overwrite: true); } catch { }
+            }
+        });
+
+        return backupPath;
     }
 
     public ParkFlowDbContext CreateDbContext()
