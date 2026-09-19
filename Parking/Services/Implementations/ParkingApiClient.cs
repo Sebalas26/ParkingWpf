@@ -37,7 +37,6 @@ public class ParkingApiClient : IApiClientService
     public ParkingApiClient(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _httpClient.Timeout = TimeSpan.FromSeconds(30);
     }
 
     private void ReportConnectionState(bool isOnline)
@@ -156,6 +155,7 @@ public class ParkingApiClient : IApiClientService
         }
         catch (Exception ex)
         {
+            App.LogException(ex, "ParkingApiClient.GetBootstrapAsync");
             System.Diagnostics.Debug.WriteLine($"[ParkingApiClient] GetBootstrapAsync Exception: {ex.Message} -> {ex.StackTrace}");
             return null;
         }

@@ -206,7 +206,10 @@ public class ApiPaymentMethodSyncDto
     public string? DefaultResolutionId { get; set; }
 
     [JsonPropertyName("siigoPaymentMethodId")]
-    public string? SiigoPaymentMethodId { get; set; }
+    public object? RawSiigoPaymentMethodId { get; set; }
+
+    [JsonIgnore]
+    public string? SiigoPaymentMethodId => RawSiigoPaymentMethodId?.ToString();
 
     public bool GetEffectiveActive() => State ?? IsActive;
 }

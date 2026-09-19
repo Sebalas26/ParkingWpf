@@ -146,4 +146,25 @@ public class JsonSerializationTests
         checkOutReq.Should().NotBeNull();
         checkOutReq!.PaymentMethod.Should().Be(PaymentMethod.DebitCard);
     }
+
+    [Fact]
+    public void ApiPaymentMethodSyncDto_DeserializesWithIntOrStringSiigoPaymentMethodId()
+    {
+        var jsonInt = @"{ ""id"": 1, ""name"": ""Efectivo"", ""siigoPaymentMethodId"": 10 }";
+        var jsonStr = @"{ ""id"": 2, ""name"": ""Tarjeta"", ""siigoPaymentMethodId"": ""20"" }";
+        var jsonNull = @"{ ""id"": 3, ""name"": ""Transferencia"", ""siigoPaymentMethodId"": null }";
+
+        var dto1 = JsonSerializer.Deserialize<ApiPaymentMethodSyncDto>(jsonInt, ParkingApiClient.JsonOptions);
+        var dto2 = JsonSerializer.Deserialize<ApiPaymentMethodSyncDto>(jsonStr, ParkingApiClient.JsonOptions);
+        var dto3 = JsonSerializer.Deserialize<ApiPaymentMethodSyncDto>(jsonNull, ParkingApiClient.JsonOptions);
+
+        dto1.Should().NotBeNull();
+        dto1!.SiigoPaymentMethodId.Should().Be("10");
+
+        dto2.Should().NotBeNull();
+        dto2!.SiigoPaymentMethodId.Should().Be("20");
+
+        dto3.Should().NotBeNull();
+        dto3!.SiigoPaymentMethodId.Should().BeNull();
+    }
 }

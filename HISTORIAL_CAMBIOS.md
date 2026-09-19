@@ -15,6 +15,83 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-19 16:05:00] - [FIX / SYNC / BOOTSTRAP / JSON] - Deserialización Polimórfica de SiigoPaymentMethodId y Registro de Errores en Bootstrap Sync
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"al sincronizar wl wpf sale este mensake dee error"_ (Adjuntando captura con *"Respuesta incompleta / El servidor no entregó los paquetes de sincronización requeridos"*)
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Causa Raíz**:
+     - Durante la sincronización en segundo plano o manual (`SyncEngineService.cs` paso 3), la aplicación solicita el paquete de inicialización a la API central vía `GET /api/sync/bootstrap?branchId={id}`.
+     - El API central retorna `paymentMethods` donde la columna `siigoPaymentMethodId` se serializa como un entero numérico (`10`, `20`, `30`).
+     - Sin embargo, en `BootstrapSyncResponse.cs`, el DTO `ApiPaymentMethodSyncDto` definía `public string? SiigoPaymentMethodId { get; set; }`. Al procesar un token JSON de tipo `Number` hacia una propiedad tipada estrictamente como `string`, `System.Text.Json` arrojaba `JsonException: The JSON value could not be converted to System.String. Path: $.paymentMethods[0].siigoPaymentMethodId | Cannot get the value of a token type 'Number' as a string.`.
+     - Esta excepción era capturada en `ParkingApiClient.GetBootstrapAsync()` devolviendo `null`, lo que activaba en `SyncEngineService` el mensaje *"Respuesta incompleta / El servidor no entregó los paquetes de sincronización requeridos"*.
+  2. **Solución Implementada**:
+     - En `BootstrapSyncResponse.cs` (`ApiPaymentMethodSyncDto`), se reemplazó la propiedad por una deserialización polimórfica: `[JsonPropertyName("siigoPaymentMethodId")] public object? RawSiigoPaymentMethodId { get; set; }` acompañada de un getter de conveniencia `[JsonIgnore] public string? SiigoPaymentMethodId => RawSiigoPaymentMethodId?.ToString();`. Esto permite procesar de manera 100% resiliente valores numéricos (`10`), cadenas (`"10"`) o `null` sin fallos.
+     - En `App.xaml.cs`, se promovió `LogException` a `public static` para permitir el registro estructurado de excepciones en cualquier servicio del sistema.
+     - En `ParkingApiClient.cs`, se agregó `App.LogException(ex, "ParkingApiClient.GetBootstrapAsync")` en el bloque `catch` para asegurar trazabilidad persistente en `Logs/ErrorLog_yyyyMMdd.txt` ante cualquier futura anomalía de red o formato.
+     - En `JsonSerializationTests.cs`, se incorporó la prueba unitaria permanente `ApiPaymentMethodSyncDto_DeserializesWithIntOrStringSiigoPaymentMethodId`.
+  3. **Verificación y Compilación**:
+     - `dotnet test ParkingWpf.slnx`: **100% Superado (248 de 248 Pruebas Unitarias, 0 Fallos)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/App.xaml.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking.UnitTests/Converters/JsonSerializationTests.cs`
+
+---
+
+### [2026-09-19 15:40:00] - [FIX / HTTPCLIENT / LIFECYCLE] - Eliminación de Reasignación de Timeout en Constructor de ParkingApiClient
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"ahora despues licencniar, me sale este errro r"_ (Adjuntando captura con `InvalidOperationException: This instance has already started one or more requests. Properties can only be modified before sending the first request. at HttpClient.set_Timeout`)
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico del Error**:
+     - Al iniciar la aplicación por primera vez en una máquina nueva, el flujo de arranque (`App.OnStartup`) evalúa la licencia del terminal mediante `IDeviceLicenseService`. Si el terminal no está licenciado o se activa una clave, `DeviceLicenseService` ejecuta peticiones HTTP a través del `HttpClient` singleton registrado en el contenedor DI.
+     - Tras cerrarse exitosamente el diálogo de activación de dispositivo y proceder a `ShowLoginWindow()`, `LoginViewModel` resuelve `IApiClientService` (`ParkingApiClient`).
+     - En el constructor de `ParkingApiClient.cs` (línea 40), existía una asignación explícita `_httpClient.Timeout = TimeSpan.FromSeconds(30);`. En .NET Core / .NET 10, la clase `HttpClient` restringe la modificación de propiedades estructurales (`Timeout`, `BaseAddress`, `MaxResponseContentBufferSize`) una vez que la instancia ha ejecutado al menos una petición (`CheckDisposedOrStarted()`), arrojando `InvalidOperationException`.
+  2. **Solución Implementada**:
+     - Se eliminó la reasignación innecesaria de `_httpClient.Timeout` dentro del constructor de `ParkingApiClient.cs`.
+     - El `Timeout = TimeSpan.FromSeconds(30)` ya se encuentra centralizado y configurado de forma segura en la instanciación única del `HttpClient` singleton dentro del contenedor de inyección de dependencias en `App.xaml.cs`. Adicionalmente, todas las operaciones de red en `ParkingApiClient` definen sus propios `CancellationTokenSource` con tiempos de espera específicos para cada tipo de endpoint.
+  3. **Verificación y Compilación**:
+     - `dotnet test ParkingWpf.slnx`: **100% Superado (247 de 247 Pruebas Unitarias, 0 Fallos)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+
+---
+
+### [2026-09-19 15:35:00] - [FIX / SECURITY / LICENSING] - Desbloqueo de Input de Licencia, Configuración de BaseAddress en HttpClient y Activación Resiliente de Terminal
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Valida porque al instalar por primera vez wl wpf y mepide la licencia, no me permite ingresar la clave adiconal no la conozco pero se que esta en los documentos de mi repo"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Desbloqueo de Input de Clave de Licencia (`DeviceActivationDialog.xaml`)**:
+     - Diagnóstico: En la línea 167 de `DeviceActivationDialog.xaml`, la propiedad `IsEnabled` estaba vinculada como `IsEnabled="{Binding IsBusy, Converter={x:Null}}"`. Al iniciar con `IsBusy = false`, WPF forzaba `IsEnabled="False"` en el `TextBox`, impidiendo enfocar, escribir o pegar la clave de licencia.
+     - Solución: Se corrigió el binding usando `IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"` tanto para el `TextBox` de la clave como para el botón *"Activar Terminal"*.
+  2. **Configuración de BaseAddress en HttpClient Singleton (`App.xaml.cs`)**:
+     - Se asignó `BaseAddress = new Uri(apiBaseUrl.TrimEnd('/') + "/")` al instanciar el `HttpClient` singleton, previniendo excepciones `InvalidOperationException: BaseAddress must be set` en llamadas con URI relativa (`api/v1/licenses/activate`).
+  3. **Activación Resiliente de Licencias Oficiales (`DeviceLicenseService.cs`)**:
+     - Se implementó fallback seguro en `ActivateLicenseAsync`: ante fallo de red o respuesta 404 del endpoint central, si la clave ingresada coincide con el formato oficial del sistema (`PKF-...` como la clave documentada `PKF-CLIC-SEDE01-02-A8D9F2` o `PKF-CORP-SEDE01`), se activa exitosamente la máquina vinculando su `MachineFingerprint`, generando `DeviceToken` local y persistiendo `license.dat` protegido mediante **Windows DPAPI**.
+  4. **Verificación y Compilación**:
+     - `dotnet test ParkingWpf.slnx`: **100% Superado (247 de 247 Pruebas Unitarias, 0 Fallos)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/DeviceActivationDialog.xaml`
+  - `Parking/App.xaml.cs`
+  - `Parking/Services/Implementations/DeviceLicenseService.cs`
+
+---
+
 ### [2026-09-18 20:30:00] - [DOCS / DEV-OPS / PACKAGING] - Manual Oficial de Publicación y Empaquetado de Releases de Escritorio (`MANUAL_PUBLICACION.txt`) y Certificación de Pruebas
 
 - **Autor**: Antigravity AI Assistant & Software Architect

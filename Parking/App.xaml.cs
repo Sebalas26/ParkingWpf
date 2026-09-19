@@ -127,6 +127,7 @@ public partial class App : Application
 
             return new HttpClient(handler)
             {
+                BaseAddress = new Uri(apiBaseUrl.TrimEnd('/') + "/"),
                 Timeout = TimeSpan.FromSeconds(30)
             };
         });
@@ -274,7 +275,7 @@ public partial class App : Application
         }
     }
 
-    private static void LogException(Exception ex, string source)
+    public static void LogException(Exception ex, string source)
     {
         try
         {

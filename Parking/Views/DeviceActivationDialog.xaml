@@ -164,7 +164,7 @@
                              FontSize="15"
                              FontFamily="Consolas"
                              CharacterCasing="Upper"
-                             IsEnabled="{Binding IsBusy, Converter={x:Null}}"/>
+                             IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"/>
 
                     <TextBlock Text="Formato: PKF-XXXX-XXXX-XXXX (Suministrado en su contrato de servicio)"
                                FontSize="12"
@@ -236,6 +236,7 @@
                             Content="Activar Terminal"
                             Height="42"
                             MinWidth="170"
+                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
                             Command="{Binding ActivateCommand}"/>
                 </Grid>
             </Grid>
