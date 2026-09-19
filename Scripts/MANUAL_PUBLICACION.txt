@@ -1,0 +1,105 @@
+=============================================================================
+ 📦 MANUAL OFICIAL DE PUBLICACIÓN Y DESPLIEGUE - PARKFLOW DESKTOP (WPF)
+=============================================================================
+
+Este documento describe el flujo oficial estandarizado para generar paquetes
+de distribución, compilar instaladores y desplegar nuevas versiones de la
+aplicación de escritorio ParkFlow WPF y su actualizador autónomo ParkFlow.Updater.
+
+-----------------------------------------------------------------------------
+ REQUISITOS PREVIOS EN LA ESTACIÓN DE DESARROLLO / BUILD:
+-----------------------------------------------------------------------------
+ 1. .NET 10 SDK instalado y disponible en PATH (`dotnet --version`).
+ 2. Inno Setup 6 instalado en `C:\Program Files (x86)\Inno Setup 6\ISCC.exe`.
+ 3. PowerShell 5.1 o PowerShell 7+.
+ 4. Credenciales / Token JWT con rol SuperAdmin para el registro en ParkingApi.
+
+=============================================================================
+ PASO 1: GENERAR PAQUETE BINARIO, ARCHIVO ZIP Y MANIFIESTO CRIPTOGRÁFICO
+=============================================================================
+Este paso compila Parking.csproj y ParkFlow.Updater.csproj en modo Release para
+la arquitectura win-x64, excluye archivos de desarrollo (.pdb, .db locales,
+licencias temporales, appsettings.Development.json), empaqueta los binarios en
+un ZIP y genera un hash SHA-256 inmutable junto al manifiesto JSON.
+
+COMANDO (desde la raíz de ParkingWpf):
+  cd c:\Users\migue\source\repos\ParkingWpf
+  .\Scripts\publish-release.ps1 -Version "1.1.0" -IsMandatory $false -ReleaseNotes "Descripción de cambios y mejoras"
+
+PARÁMETROS:
+  -Version:      (Obligatorio) Versión semántica del release (ej: "1.1.0").
+  -IsMandatory:  (Opcional, default: $false) Indica si las terminales deben
+                 forzar la actualización sin permitir omitirla.
+  -ReleaseNotes: (Opcional) Texto explicativo de los cambios de la versión.
+
+ARCHIVOS GENERADOS:
+  - Archivo comprimido:  ParkingWpf\Releases\v1.1.0\ParkFlow_v1.1.0.zip
+  - Manifiesto JSON:     ParkingWpf\Releases\v1.1.0\release_manifest.json
+  - Checksum SHA-256:    Calculado e impreso en consola.
+
+=============================================================================
+ PASO 2: COMPILAR INSTALADOR DE WINDOWS (.EXE) PARA NUEVAS TERMINALES
+=============================================================================
+Este paso utiliza Inno Setup para compilar el asistente de instalación ejecutable
+destinado a clientes nuevos o despliegues desde cero.
+
+COMANDO:
+  & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DMyAppVersion="1.1.0" .\Scripts\installer.iss
+
+QUÉ HACE:
+  Toma los binarios generados en el paso 1 y compila el instalador gráfico con
+  accesos directos, registro de desinstalación y preconfiguración de dependencias.
+
+ARCHIVO GENERADO:
+  - Instalador: ParkingWpf\Output\ParkFlow_Setup_v1.1.0.exe
+
+=============================================================================
+ PASO 3: PUBLICAR LA VERSIÓN EN EL SERVIDOR CENTRAL (PARKING API)
+=============================================================================
+Para que las terminales instaladas detecten y descarguen automáticamente la
+actualización, la nueva versión debe registrarse en el backend central.
+
+OPCIÓN A: SUBIDA AUTOMÁTICA DESDE LA PWA SUPERADMIN (RECOMENDADA)
+-----------------------------------------------------------------
+  1. Inicie sesión en la PWA ParkFlow con credenciales de SuperAdmin.
+  2. Ingrese al módulo de "Versiones de Escritorio" (/dashboard/releases).
+  3. Arrastre o seleccione el archivo `ParkFlow_v1.1.0.zip`.
+  4. Ingrese el número de versión (1.1.0), marque si es obligatoria e indique
+     las notas de versión.
+  5. Haga clic en "Publicar Versión".
+     El backend guardará el archivo en el almacenamiento del servidor, verificará
+     el hash SHA-256 y creará el registro en la base de datos automáticamente.
+
+OPCIÓN B: SUBIDA Y REGISTRO MANUAL (VÍA CONSOLA / POWERSHELL)
+-------------------------------------------------------------
+  1. Transferir el archivo comprimido al servidor (volumen de Releases):
+     scp .\Releases\v1.1.0\ParkFlow_v1.1.0.zip usuario@servidor:/var/parking-api/Releases/
+
+  2. Registrar la versión en la API ejecutando la petición REST con token JWT:
+     $token = "TU_TOKEN_JWT_SUPERADMIN"
+     $headers = @{
+         "Authorization" = "Bearer $token"
+         "Content-Type"  = "application/json"
+     }
+     $body = Get-Content ".\Releases\v1.1.0\release_manifest.json" -Raw
+     Invoke-RestMethod -Uri "https://api.parking-flow.com/api/v1/app-update/releases" `
+         -Method Post -Headers $headers -Body $body
+
+=============================================================================
+ PASO 4: VERIFICACIÓN DE PUBLICACIÓN Y DESPLIEGUE
+=============================================================================
+Verificar que la versión quedó activa consultando el endpoint público de updates:
+
+COMANDO:
+  Invoke-RestMethod -Uri "https://api.parking-flow.com/api/v1/app-update/check?currentVersion=1.0.0" -Method Get
+
+RESPUESTA ESPERADA:
+  {
+    "hasUpdate": true,
+    "latestVersion": "1.1.0",
+    "downloadUrl": "/api/v1/app-update/download/1.1.0",
+    "sha256": "...",
+    "isMandatory": false,
+    "releaseNotes": "Descripción de cambios y mejoras"
+  }
+=============================================================================

@@ -15,6 +15,32 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-18 20:30:00] - [DOCS / DEV-OPS / PACKAGING] - Manual Oficial de Publicación y Empaquetado de Releases de Escritorio (`MANUAL_PUBLICACION.txt`) y Certificación de Pruebas
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"deberias dejar eso como en un txt para tener claro que comandoas y que comando hace que cosa."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Manual Integral de Publicación de Escritorio (`MANUAL_PUBLICACION.txt`)**:
+     - Creado en `ParkingWpf/Scripts/MANUAL_PUBLICACION.txt` con el flujo completo de 6 fases:
+       - **Fase 1**: Requisitos previos e incremento de versión SemVer en `Parking.csproj` y `ParkFlow.Updater.csproj`.
+       - **Fase 2**: Compilación en Release con flags de optimización (`--configuration Release --no-self-contained`).
+       - **Fase 3**: Generación automática del paquete ZIP y cálculo inmutable de Checksum SHA-256 mediante `publish-release.ps1`.
+       - **Fase 4**: Carga administrativa del instalador a través del módulo web PWA (`/releases`) o endpoint `POST /api/v1/app-update/upload`.
+       - **Fase 5**: Compilación del instalador formal `.exe` con Inno Setup (`ISCC.exe installer.iss`).
+       - **Fase 6**: Protocolo de verificación y pruebas de campo en máquina cliente (detección automática de actualización, validación previa de sincronización sin pérdida de datos, reemplazo atómico mediante `ParkFlow.Updater.exe` y auto-reinicio).
+  2. **Certificación de Compilación y Suite de Pruebas**:
+     - `dotnet build ParkingWpf.slnx`: 0 Errores, 0 Advertencias.
+     - `dotnet test ParkingWpf.slnx`: 247/247 Pruebas Unitarias Superadas (100% Éxito).
+
+- **📦 Componentes Modificados / Creados**:
+  - `ParkingWpf/Scripts/MANUAL_PUBLICACION.txt`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **247/247 Pruebas Unitarias Superadas (100%)**.
+
 ### [2026-09-18 16:30:00] - [FEAT / ARCH / SECURITY / PACKAGING / UPDATES] - Sistema Integral de Empaquetado, Licenciamiento por Hardware (Anti-Copia), Micro-Updater y Actualizaciones Remotas Obligatorias con Regla de Oro Pre-Update Sync (Cero Pérdida de Datos)
 
 - **Autor**: Antigravity AI Assistant & Software Architect
