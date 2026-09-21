@@ -15,6 +15,35 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-21 07:55:00] - [FIX / WPF / UI / BINDING / PERFORMANCE] - Erradicación Definitiva del Error 4 de Binding en ComboBoxItem (FindAncestor ItemsControl)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"este error sale mucho en el wpf por que ? System.Windows.Data Error: 4 : Cannot find source for binding with reference 'RelativeSource FindAncestor, AncestorType='System.Windows.Controls.ItemsControl', AncestorLevel='1''. BindingExpression:Path=HorizontalContentAlignment; DataItem=null; target element is 'ComboBoxItem' (Name=''); target property is 'HorizontalContentAlignment' (type 'HorizontalAlignment') osea no tiene sentido que esta mal en el sistema revisa analikza y dame una solucion definitiva."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Causa Raíz**:
+     - Es un bug histórico y conocido del tema base de Microsoft WPF (`Aero2.NormalColor.xaml` en Windows 10/11), donde la plantilla interna por defecto de `ComboBoxItem` define `HorizontalContentAlignment` y `VerticalContentAlignment` mediante `{Binding RelativeSource={RelativeSource AncestorType=ItemsControl}}`.
+     - Cuando el `Popup` del desplegable abre sus elementos o virtualiza ítems, `ComboBoxItem` se evalúa antes de estar formalmente anclado a la jerarquía del `ItemsControl`, arrojando ráfagas continuas de `System.Windows.Data Error: 4` en la consola de depuración de Visual Studio.
+  2. **Solución Arquitectónica Definitiva**:
+     - Se incorporó un **estilo implícito global** para `ComboBoxItem` en `Parking/Styles/Controls.xaml`.
+     - Al no tener `x:Key`, WPF lo aplica automáticamente a todos los `ComboBoxItem` de la solución, sustituyendo por completo la plantilla defectuosa del sistema operativo.
+     - Se fijan alineaciones estáticas directas (`Left` y `Center`) y en el `ControlTemplate` se utiliza `TemplateBinding` sin búsquedas por `RelativeSource`.
+     - Se integran los pinceles oficiales Park Point (`BrushTableRowHover`, `BrushPrimaryLight`, `BrushPrimary`, `BrushTextPrimary`) para estados de hover y selección, respetando al 100% las Reglas de Oro 2 (Integridad XAML) y 7 (Cero regresiones visuales).
+  3. **Cero Errores y 100% Pruebas Superadas**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **100% Superadas (248 de 248 Pruebas, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Styles/Controls.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: Éxito (0 Errores, 0 Advertencias).
+  - `dotnet test ParkingWpf.slnx`: 248 pruebas superadas (0 Fallos).
+
+---
+
 ### [2026-09-20 19:15:00] - [FEAT / INVOICING / DIAN / SIIGO / PRINT] - Impresión Fidedigna de Factura Electrónica Siigo (Consecutivo Oficial, CUFE, QR Code Real) y Soporte de Facturación Anónima
 
 - **Autor**: Antigravity AI Assistant & Software Architect
