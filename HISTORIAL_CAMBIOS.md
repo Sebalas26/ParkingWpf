@@ -15,6 +15,50 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-21 10:50:00] - [FIX / WPF / LIFECYCLE / ACTIVATION / LICENSING] - Corrección de Cierre Prematuro tras Activación de Licencia y Garantía de Redirección a LoginWindow
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Valida porque cuando abro por primera vez mi wpf , ingreso la licencia de instlaacion, pero se cierra el instalador, lo corrrecto deberia ser, yo ingreso la clave del instalador y si es correcto, me deberia de redigidir al login"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Causa Raíz**:
+     - Al arrancar la aplicación por primera vez sin archivo `license.dat`, `App.xaml.cs` (`OnStartup`) instanciaba y desplegaba `DeviceActivationDialog.ShowDialog()`.
+     - Por omisión en WPF, `Application.ShutdownMode` es `ShutdownMode.OnLastWindowClose`. Además, al ser la primera ventana creada, WPF la vinculaba automáticamente de forma implícita a `Application.Current.MainWindow`.
+     - Cuando el técnico/usuario ingresaba la clave de licencia válida y presionaba **"Activar Terminal"**, `DeviceActivationViewModel.ActivateAsync()` guardaba la licencia cifrada en DPAPI y disparaba `ActivationCompleted`.
+     - El diálogo ejecutaba `DialogResult = true; Close();`. En ese momento exacto, la cantidad de ventanas abiertas en `Application.Current.Windows` caía a 0 y la ventana principal inicial se cerraba, lo que provocaba que el despachador de WPF iniciara irreversiblemente `Application.Shutdown()`.
+     - Aunque el código en `OnStartup` continuaba e invocaba `ShowLoginWindow()`, dado que WPF ya había entrado en su secuencia de apagado (`IsShuttingDown = true`), la ventana de Login se destruía inmediatamente y el proceso de Windows terminaba.
+  2. **Solución Arquitectónica Implementada**:
+     - **Modo de Apagado Explícito en Fase de Arranque (`App.xaml.cs`)**:
+       - Al inicio de `OnStartup`, se configuró explícitamente `ShutdownMode = ShutdownMode.OnExplicitShutdown;`. Esto evita que WPF cierre la aplicación cuando un diálogo modal preliminar (como `DeviceActivationDialog`) finaliza su ejecución.
+       - Se desvincula explícitamente `MainWindow = null;` inmediatamente tras el cierre de `DeviceActivationDialog` para evitar referencias huérfanas a la ventana modal cerrada.
+     - **Transición Controlada a la Ventana Principal**:
+       - En `ShowLoginWindow()`, se asigna formalmente `MainWindow = loginWindow;` y se restablece `ShutdownMode = ShutdownMode.OnMainWindowClose;` justo antes de `loginWindow.Show()`.
+       - En `ShowMainShellWindow()`, se mantiene la reasignación `MainWindow = shellWindow;` y `ShutdownMode = ShutdownMode.OnMainWindowClose;` antes de destruir la ventana previa, garantizando transiciones limpias y cierre natural del proceso al salir.
+     - **Preservación del Cierre Cancelado**:
+       - Si el usuario cancela o cierra el diálogo de activación sin autorizar la terminal, la invocación explícita existente a `Shutdown(0); return;` finaliza el proceso de manera limpia y controlada.
+  3. **Pruebas Unitarias Creadas (`DeviceActivationViewModelTests.cs`)**:
+     - Se implementó la suite completa de pruebas unitarias para `DeviceActivationViewModel`:
+       1. `Constructor_InitializesHardwareInformationCorrectly`: Valida la lectura de huella de hardware, nombre de máquina y usuario de Windows.
+       2. `ActivateCommand_WhenLicenseKeyIsEmpty_SetsErrorMessageWithoutCallingService`: Valida que claves vacías o de puros espacios no invoquen el servicio y muestren error.
+       3. `ActivateCommand_WhenActivationFails_SetsErrorMessageAndDoesNotFireCompleted`: Valida el tratamiento de errores de activación del servidor.
+       4. `ActivateCommand_WhenActivationSucceeds_FiresActivationCompletedEvent`: Valida el éxito de la activación y disparo del evento `ActivationCompleted`.
+       5. `CancelCommand_InvokesCancelRequestedEvent`: Valida el disparo del evento `CancelRequested`.
+  4. **Cero Errores y 100% de Pruebas Superadas**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **259 de 259 pruebas unitarias superadas (100%, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/App.xaml.cs`
+  - `Parking.UnitTests/ViewModels/DeviceActivationViewModelTests.cs` (Nuevo)
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: Exitoso (0 Errores, 0 Advertencias).
+  - `dotnet test ParkingWpf.slnx`: 259 pruebas unitarias ejecutadas y superadas (0 Fallos).
+
+---
+
 ### [2026-09-21 09:15:00] - [FIX / FEAT / WPF / CHECKOUT / INVOICING / SECURITY] - Erradicación de Error 4 en ListBoxItem, Blindaje contra Cierre Involuntario de Cobro, Manejo Dinámico de Medios de Pago Electrónicos, Visibilidad de Clientes para Cajeros y Facturación DIAN en Salidas del Turno Actual
 
 - **Autor**: Antigravity AI Assistant & Software Architect

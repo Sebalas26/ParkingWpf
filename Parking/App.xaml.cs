@@ -40,6 +40,9 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Prevenir que WPF apague la aplicación si se cierra un diálogo modal previo a la ventana principal
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
         try
         {
             var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ?? "Development";
@@ -65,6 +68,8 @@ public partial class App : Application
             {
                 var activationDialog = _serviceProvider.GetRequiredService<DeviceActivationDialog>();
                 var activated = activationDialog.ShowDialog();
+                MainWindow = null;
+
                 if (activated != true || !licenseService.HasValidLicense())
                 {
                     Shutdown(0);
@@ -208,6 +213,7 @@ public partial class App : Application
 
         loginWindow.DataContext = loginViewModel;
         MainWindow = loginWindow;
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
         loginWindow.Show();
     }
 
@@ -224,6 +230,7 @@ public partial class App : Application
 
         shellWindow.DataContext = shellViewModel;
         MainWindow = shellWindow;
+        ShutdownMode = ShutdownMode.OnMainWindowClose;
         shellWindow.Show();
 
         await shellViewModel.InitializeAsync();
