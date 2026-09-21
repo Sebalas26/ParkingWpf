@@ -48,6 +48,12 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private string? _branchLogoBase64;
 
     [ObservableProperty]
+    private double _logoMaxHeight = 48;
+
+    [ObservableProperty]
+    private double _logoMaxWidth = 130;
+
+    [ObservableProperty]
     private string _branchName = string.Empty;
 
     [ObservableProperty]
@@ -231,6 +237,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             MonospaceFontSize = 9.5;
             MonospaceTitleFontSize = 13;
             PlateFontSize = 14;
+            LogoMaxHeight = 38;
+            LogoMaxWidth = 100;
         }
         else
         {
@@ -241,9 +249,35 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             MonospaceFontSize = 11;
             MonospaceTitleFontSize = 15;
             PlateFontSize = 16;
+            LogoMaxHeight = 48;
+            LogoMaxWidth = 130;
         }
 
-        BranchLogoBase64 = currentBranch?.LogoBase64;
+        var rawLogo = currentBranch?.LogoBase64;
+        if (string.IsNullOrWhiteSpace(rawLogo))
+        {
+            try
+            {
+                using var db = _connectionManager.CreateDbContext();
+                var branchId = currentBranch?.Id ?? ticket.BranchId;
+                if (branchId > 0)
+                {
+                    rawLogo = db.Branches.Where(b => b.Id == branchId && !string.IsNullOrWhiteSpace(b.LogoBase64)).Select(b => b.LogoBase64).FirstOrDefault();
+                }
+                if (string.IsNullOrWhiteSpace(rawLogo))
+                {
+                    rawLogo = db.Branches.Where(b => !string.IsNullOrWhiteSpace(b.LogoBase64)).Select(b => b.LogoBase64).FirstOrDefault();
+                }
+            }
+            catch { }
+        }
+
+        if (string.IsNullOrWhiteSpace(rawLogo))
+        {
+            rawLogo = "pack://application:,,,/Parking;component/Resources/logo.jpeg";
+        }
+
+        BranchLogoBase64 = rawLogo;
         BranchName = !string.IsNullOrWhiteSpace(currentBranch?.Name) ? currentBranch.Name.ToUpperInvariant() : "PARQUEADERO";
         BranchAddress = !string.IsNullOrWhiteSpace(currentBranch?.Address) ? currentBranch.Address.ToUpperInvariant() : string.Empty;
 

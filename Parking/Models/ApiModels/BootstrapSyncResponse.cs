@@ -968,6 +968,9 @@ public class BootstrapSyncResponse
     [JsonPropertyName("companyNit")]
     public string? CompanyNit { get; set; }
 
+    [JsonPropertyName("companyLogo")]
+    public string? CompanyLogo { get; set; }
+
     [JsonPropertyName("totalCapacity")]
     public int TotalCapacity { get; set; } = 120;
 

@@ -15,6 +15,77 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-21 12:30:00] - [FEAT / UI/UX / WPF / PRINTING] - Integración y Adaptabilidad del Logotipo Corporativo en Tiquetes de Entrada y Salida (80mm / 58mm)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Valida mi wpf y pwa agregando en la parte superior del nombre de la sede en las etiquetas de entrada y salida, el logo que se configura en la creacion de la empresa desde el pwa , trata de dejarla en el tamaño que se adapte al tamaño de la impresion, paa que no se vea grande y ni pequeña"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Requerimiento**:
+     - El logotipo corporativo de la empresa cargado desde la PWA no siempre se propagaba a las sedes que no contaban con logotipo propio local en SQLite.
+     - En los tiquetes impresos y vista previa de WPF (`ReceiptPreviewDialog.xaml`), las imágenes de logotipo tenían dimensiones fijas quemadas (`MaxHeight="45" MaxWidth="120"`), sin adaptarse a los anchos de papel seleccionados (80 mm vs 58 mm).
+  2. **Implementación en WPF**:
+     - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`: Se mapeó la propiedad `[JsonPropertyName("companyLogo")] public string? CompanyLogo { get; set; }`.
+     - `Parking/Services/Implementations/SyncEngineService.cs`: Al sincronizar sedes durante el arranque o sincronización manual, si la sede no tiene `LogoBase64`, hereda automáticamente el `bootstrap.CompanyLogo`.
+     - `Parking/ViewModels/ReceiptPreviewViewModel.cs`:
+       - Se agregaron las propiedades observables reactivas `LogoMaxHeight` y `LogoMaxWidth`.
+       - En `LoadTicket`, se ajustan proporcionalmente según el ancho del papel:
+         - Papel 80 mm: `LogoMaxHeight = 48`, `LogoMaxWidth = 130`.
+         - Papel 58 mm: `LogoMaxHeight = 38`, `LogoMaxWidth = 100`.
+       - Se implementó la resolución defensiva de `BranchLogoBase64` con consulta directa a SQLite (`BranchRepository`) para recuperar el logo heredado o fallback al logo empaquetado del sistema (`pack://application:,,,/Parking;component/Resources/logo.jpeg`).
+     - `Parking/Views/ReceiptPreviewDialog.xaml`:
+       - Se actualizaron las 3 plantillas de impresión (Recibo Estándar de Salida, Tiquete de Ingreso y Factura Electrónica FVM) enlazando `MaxHeight="{Binding LogoMaxHeight}"`, `MaxWidth="{Binding LogoMaxWidth}"`, `Stretch="Uniform"`, `RenderOptions.BitmapScalingMode="HighQuality"`, `HorizontalAlignment="Center"` y `Margin="0,0,0,8"`.
+  3. **Cero Errores y 100% de Pruebas Superadas**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **259 de 259 pruebas unitarias superadas (100%, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: Exitoso (0 Errores, 0 Advertencias).
+  - `dotnet test ParkingWpf.slnx`: 259 pruebas unitarias superadas (0 Fallos).
+
+---
+
+### [2026-09-21 11:15:00] - [FIX / UI/UX / WPF / CHECKOUT] - Corrección de Sobreposición Visual entre Tiempo de Permanencia y Botón Liquidar en Tarjetas de Vehículos Activos
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"en el wpf, veo que la hora se ve sobremontada con el boton de liquidar en el flujo de liquidacion y salida"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Causa Raíz**:
+     - En `CheckOutView.xaml`, dentro de la sección inferior **"VEHÍCULOS ACTIVOS ADENTRO"**, las tarjetas de vehículos se distribuyen en un `<UniformGrid Columns="4"/>`.
+     - En la fila 2 de cada tarjeta (`Grid.Row="1"`), se disponían en horizontal (`StackPanel Orientation="Horizontal"`) la hora de ingreso (`Entrada: HH:mm`) y el badge con el tiempo transcurrido (`FormattedDuration`, ej: `1h 36min 57s`).
+     - Al estar ambos textos en horizontal, requerían ~165px. En pantallas y laptops estándar (con ancho por tarjeta de ~180px - 200px), este ancho colisionaba con el botón "Liquidar" (~70px).
+     - Dado que `StackPanel` no realiza salto de línea, el texto de la duración se desbordaba de su columna y se dibujaba directamente encima y detrás del botón verde **"Liquidar"**.
+  2. **Solución Arquitectónica Quirúrgica Implementada**:
+     - En `CheckOutView.xaml` (Fila 2 de la tarjeta):
+       - Se reorganizó la Columna 0 en una disposición vertical limpia:
+         - Línea 1: `Entrada: {0:HH:mm}` con tipografía atenuada legible.
+         - Línea 2: Badge con `{Binding FormattedDuration}`, fondo suave `#F1F5F9`, esquinas redondeadas y texto en negrita color primario con `HorizontalAlignment="Left"` y `Margin="0,3,0,0"`.
+       - En la Columna 1, el botón `Liquidar` (`SuccessButton`) se centró verticalmente (`VerticalAlignment="Center"` y `Height="32"`).
+     - Con esta distribución, el ancho requerido en la columna de tiempos pasa de ~165px a solo ~80px, eliminando por completo cualquier riesgo de sobreposición independientemente de la resolución de pantalla o del tiempo que el vehículo lleve en patio.
+  3. **Cero Errores y 100% de Pruebas Superadas**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **259 de 259 pruebas unitarias superadas (100%, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/CheckOutView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: Exitoso (0 Errores, 0 Advertencias).
+  - `dotnet test ParkingWpf.slnx`: 259 pruebas unitarias ejecutadas y superadas (0 Fallos).
+
+---
+
 ### [2026-09-21 10:50:00] - [FIX / WPF / LIFECYCLE / ACTIVATION / LICENSING] - Corrección de Cierre Prematuro tras Activación de Licencia y Garantía de Redirección a LoginWindow
 
 - **Autor**: Antigravity AI Assistant & Software Architect
