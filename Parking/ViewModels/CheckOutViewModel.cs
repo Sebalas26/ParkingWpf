@@ -287,6 +287,13 @@ public partial class CheckOutViewModel : ViewModelBase
 
         syncEngine.DataSynchronized += () =>
         {
+            if (SelectedTicket != null)
+            {
+                // Un vehículo está siendo liquidado activamente; no reiniciar el estado del checkout,
+                // medio de pago, resolución o formulario de registro de cliente adquirente.
+                return;
+            }
+
             var dispatcher = System.Windows.Application.Current?.Dispatcher;
             if (dispatcher != null && !dispatcher.CheckAccess())
             {
@@ -642,7 +649,18 @@ public partial class CheckOutViewModel : ViewModelBase
                     }
                     else if (method.ToEnum() == Core.Enums.PaymentMethod.Cash || method.RequiresCashTender || IsCashPayment(method.Name))
                     {
-                        AutoSelectPosResolution();
+                        if (EmitElectronicInvoice || (SelectedResolution?.IsElectronicResolution == true))
+                        {
+                            AutoSelectFvmResolution();
+                        }
+                        else
+                        {
+                            AutoSelectPosResolution();
+                        }
+                    }
+                    else if (EmitElectronicInvoice || (SelectedResolution?.IsElectronicResolution == true))
+                    {
+                        AutoSelectFvmResolution();
                     }
                 }
             }
@@ -659,6 +677,11 @@ public partial class CheckOutViewModel : ViewModelBase
     {
         var targetList = FilteredResolutions.Count > 0 ? FilteredResolutions : AvailableResolutions;
         if (targetList.Count == 0) return;
+
+        if (SelectedResolution != null && SelectedResolution.IsElectronicResolution && targetList.Contains(SelectedResolution))
+        {
+            return;
+        }
 
         var fvmRes = targetList.FirstOrDefault(r => r.IsElectronicResolution
                                                     || (r.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
@@ -678,6 +701,11 @@ public partial class CheckOutViewModel : ViewModelBase
     {
         var targetList = FilteredResolutions.Count > 0 ? FilteredResolutions : AvailableResolutions;
         if (targetList.Count == 0) return;
+
+        if (SelectedResolution != null && !SelectedResolution.IsElectronicResolution && targetList.Contains(SelectedResolution))
+        {
+            return;
+        }
 
         var posRes = targetList.FirstOrDefault(r => !r.IsElectronicResolution &&
                                                    ((r.Prefix?.Equals("POS", StringComparison.OrdinalIgnoreCase) ?? false)
@@ -1208,11 +1236,19 @@ public partial class CheckOutViewModel : ViewModelBase
         if (value)
         {
             _ = LoadCustomersAsync();
+            if (SelectedResolution == null || !SelectedResolution.IsElectronicResolution)
+            {
+                AutoSelectFvmResolution();
+            }
         }
         else
         {
             ShowCustomerWarning = false;
             IsQuickRegisterCustomerOpen = false;
+            if (SelectedResolution != null && SelectedResolution.IsElectronicResolution)
+            {
+                AutoSelectPosResolution();
+            }
         }
         OnPropertyChanged(nameof(IsElectronicInvoicingSectionVisible));
     }
@@ -1359,6 +1395,20 @@ public partial class CheckOutViewModel : ViewModelBase
         }
 
         return isValid;
+    }
+
+    partial void OnSelectedIdentificationTypeOptionChanged(IdentificationTypeOption? value)
+    {
+        if (value?.Id == 31 && !string.IsNullOrWhiteSpace(NewCustomerDocumentNumber))
+        {
+            NewCustomerCheckDigit = CalculateNitCheckDigit(NewCustomerDocumentNumber);
+            NewCustomerCheckDigitError = null;
+        }
+        else if (value?.Id != 31)
+        {
+            NewCustomerCheckDigit = null;
+            NewCustomerCheckDigitError = null;
+        }
     }
 
     partial void OnNewCustomerDocumentNumberChanged(string value)

@@ -15,6 +15,44 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-21 08:30:00] - [FIX / WPF / CHECKOUT / ELECTRONIC INVOICE / SYNC] - Protección de Estado de Salida Vehicular ante Sincronización en Segundo Plano y Preservación de Factura Electrónica y Adquirente
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Valida porque en el wpf, cuando se le quiere dar salida a un vehiculo en el tipo de resolucion despuesde eleegir el tipo de medio, cuando se tiene seleccionado en factura electronica, a los segundos se desmarca la opcion y vuelve a la resolucion POS u otro, no permite crear nuevo usuario"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Causa Raíz**:
+     - `BackgroundSyncScheduler` ejecuta `_syncEngine.PerformFullSyncAsync()` periódicamente cada 20 segundos. Al finalizar, dispara el evento `syncEngine.DataSynchronized`.
+     - En `CheckOutViewModel.cs` (constructor), la suscripción a `syncEngine.DataSynchronized` invocaba incondicionalmente `InitializeAsync()`.
+     - `InitializeAsync()` ejecutaba `EmitElectronicInvoice = ForceElectronicInvoiceOnCheckout;` (restableciéndolo en `false`), `LoadPaymentMethodsAsync()` (reponiendo Efectivo como método por defecto), y `LoadResolutionsAsync()` (disparando `ApplyPaymentMethodResolutionFilter`).
+     - Al cambiar `EmitElectronicInvoice` a `false`, el callback `OnEmitElectronicInvoiceChanged` ejecutaba `IsQuickRegisterCustomerOpen = false;`, cerrando intempestivamente el formulario de registro de cliente adquirente y borrando los datos digitados por el cajero.
+     - Adicionalmente, en `ApplyPaymentMethodResolutionFilter`, al evaluar métodos de pago en efectivo no se verificaba si el cajero ya había marcado voluntariamente la emisión de factura electrónica (`EmitElectronicInvoice` o resolución FE activa), forzando arbitrariamente `AutoSelectPosResolution()`.
+  2. **Solución Arquitectónica Implementada**:
+     - **Blindaje del Evento `DataSynchronized`**: Se agregó una guarda defensiva en el suscriptor de `CheckOutViewModel`: si `SelectedTicket != null` (un vehículo se encuentra en proceso activo de liquidación/salida), se aborta la reinicialización destructiva, preservando intactos el tiquete, método de pago, resolución seleccionada y formulario de cliente.
+     - **Preservación de Facturación Electrónica con Efectivo**: En `ApplyPaymentMethodResolutionFilter`, si `EmitElectronicInvoice || (SelectedResolution?.IsElectronicResolution == true)`, el sistema invoca `AutoSelectFvmResolution()` en lugar de forzar POS.
+     - **Idempotencia en Selección de Resoluciones**: Se adaptaron `AutoSelectFvmResolution()` y `AutoSelectPosResolution()` para que no sobreescriban una resolución válida ya seleccionada por el usuario si cumple con el tipo requerido.
+     - **Sincronización Bidireccional `EmitElectronicInvoice` <-> `SelectedResolution`**: En `OnEmitElectronicInvoiceChanged`, si se activa FE y la resolución actual es POS, se auto-selecciona la resolución electrónica. Si se desmarca FE y la resolución era electrónica, se auto-selecciona la resolución POS.
+     - **Cálculo Automático de Dígito de Verificación (DV)**: Se implementó `OnSelectedIdentificationTypeOptionChanged` para calcular inmediatamente el DV si se selecciona NIT (31) con un documento preexistente, o limpiar el DV al cambiar a otro tipo de documento.
+  3. **Cero Errores y 100% Pruebas Superadas**:
+     - Se crearon 3 pruebas unitarias nuevas en `CheckOutViewModelTests.cs`:
+       1. `DataSynchronized_WhenTicketIsSelected_DoesNotResetCheckoutStateOrCustomerDrawer`
+       2. `ApplyPaymentMethodResolutionFilter_WhenCashAndEmitElectronicInvoiceIsTrue_PreservesElectronicResolution`
+       3. `OnEmitElectronicInvoiceChanged_WhenToggled_SynchronizesSelectedResolution`
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **100% Superadas (251 de 251 Pruebas, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: Éxito (0 Errores, 0 Advertencias).
+  - `dotnet test ParkingWpf.slnx`: 251 pruebas superadas (0 Fallos).
+
+---
+
 ### [2026-09-21 07:55:00] - [FIX / WPF / UI / BINDING / PERFORMANCE] - Erradicación Definitiva del Error 4 de Binding en ComboBoxItem (FindAncestor ItemsControl)
 
 - **Autor**: Antigravity AI Assistant & Software Architect

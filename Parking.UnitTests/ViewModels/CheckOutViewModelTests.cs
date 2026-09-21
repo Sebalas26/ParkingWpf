@@ -531,9 +531,91 @@ public class CheckOutViewModelTests : IDisposable
         vm.SelectedResolution.Should().Be(fvmRes);
     }
 
+    [Fact]
+    public async Task DataSynchronized_WhenTicketIsSelected_DoesNotResetCheckoutStateOrCustomerDrawer()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "XYZ789",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-40)
+        };
+        vm.SelectedTicket = ticket;
+        vm.EmitElectronicInvoice = true;
+        vm.ToggleQuickRegisterCustomerCommand.Execute(null);
+        vm.IsQuickRegisterCustomerOpen.Should().BeTrue();
+
+        // Act - Trigger background sync notification
+        _mockSyncEngine.Raise(m => m.DataSynchronized += null);
+
+        // Assert - State remains untouched
+        vm.SelectedTicket.Should().Be(ticket);
+        vm.EmitElectronicInvoice.Should().BeTrue();
+        vm.IsQuickRegisterCustomerOpen.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ApplyPaymentMethodResolutionFilter_WhenCashAndEmitElectronicInvoiceIsTrue_PreservesElectronicResolution()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var fvmRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FE", Name = "Facturación Electrónica DIAN", IsElectronicResolution = true };
+        var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS Estándar", IsElectronicResolution = false };
+        vm.AvailableResolutions.Add(fvmRes);
+        vm.AvailableResolutions.Add(posRes);
+
+        vm.EmitElectronicInvoice = true;
+        vm.SelectedResolution = fvmRes;
+
+        var cashMethod = new PaymentMethodEntity
+        {
+            Id = 1,
+            Name = "Efectivo",
+            RequiresResolution = false,
+            RequiresCashTender = true
+        };
+
+        // Act
+        vm.SelectedPaymentMethodEntity = cashMethod;
+
+        // Assert - Should NOT downgrade to POS
+        vm.EmitElectronicInvoice.Should().BeTrue();
+        vm.SelectedResolution.Should().Be(fvmRes);
+    }
+
+    [Fact]
+    public void OnEmitElectronicInvoiceChanged_WhenToggled_SynchronizesSelectedResolution()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var fvmRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FE", Name = "Facturación Electrónica DIAN", IsElectronicResolution = true };
+        var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS Estándar", IsElectronicResolution = false };
+        vm.AvailableResolutions.Add(fvmRes);
+        vm.AvailableResolutions.Add(posRes);
+        vm.SelectedResolution = posRes;
+
+        // Act - Cashier enables electronic invoice
+        vm.EmitElectronicInvoice = true;
+
+        // Assert - Switches to electronic resolution
+        vm.SelectedResolution.Should().Be(fvmRes);
+
+        // Act - Cashier disables electronic invoice
+        vm.EmitElectronicInvoice = false;
+
+        // Assert - Switches back to POS
+        vm.SelectedResolution.Should().Be(posRes);
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();
         GC.SuppressFinalize(this);
     }
 }
+
