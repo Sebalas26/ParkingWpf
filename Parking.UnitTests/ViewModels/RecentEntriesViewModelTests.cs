@@ -210,5 +210,8 @@ public class RecentEntriesViewModelTests
         await vm.ConvertTicketToInvoiceCommand.ExecuteAsync(ticket);
 
         _mockTicketService.Verify(s => s.ConvertTicketToInvoiceAsync(ticket.TicketId, customer.CustomerId), Times.Once);
+        ticket.IsElectronicInvoice.Should().BeTrue();
+        ticket.InvoiceNumber.Should().Be("FE-101");
+        _mockTicketService.Verify(s => s.GetCompletedTicketsByShiftAsync(It.IsAny<DateTime>(), It.IsAny<int?>()), Times.Once);
     }
 }

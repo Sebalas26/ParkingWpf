@@ -417,20 +417,48 @@
                         <!-- Operador -->
                         <DataGridTextColumn Header="OPERADOR" Binding="{Binding OperatorName, Mode=OneWay}" MinWidth="130" Width="1.2*"/>
 
-                        <!-- Acción: Reimprimir Recibo -->
-                        <DataGridTemplateColumn Header="ACCIONES" MinWidth="160" Width="Auto">
+                        <!-- Acciones: Facturar DIAN y Reimprimir Recibo -->
+                        <DataGridTemplateColumn Header="ACCIONES" MinWidth="210" Width="Auto">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Button Command="{Binding DataContext.ReprintTicketCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"
-                                            Style="{StaticResource SecondaryButton}"
-                                            Padding="10,5"
-                                            VerticalAlignment="Center">
-                                        <StackPanel Orientation="Horizontal">
-                                            <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushPrimary}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                            <TextBlock Text="Reimprimir Recibo" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                    </Button>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <!-- Facturar DIAN (Visible solo si aún no es Factura Electrónica) -->
+                                        <Button Command="{Binding DataContext.ConvertTicketToInvoiceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Visibility="{Binding IsElectronicInvoice, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                                                Style="{StaticResource SuccessButton}"
+                                                Padding="8,5"
+                                                Margin="0,0,6,0">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Facturar DIAN" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Reimprimir Recibo POS (Si no es FE) -->
+                                        <Button Command="{Binding DataContext.ReprintTicketCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Visibility="{Binding IsElectronicInvoice, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Padding="8,5">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{StaticResource IconPrint}" Fill="{DynamicResource BrushPrimary}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Reimprimir" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+
+                                        <!-- Ver / Reimprimir Factura (Si ya es FE) -->
+                                        <Button Command="{Binding DataContext.ReprintTicketCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Visibility="{Binding IsElectronicInvoice, Converter={StaticResource BoolToVis}}"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Padding="8,5">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushPrimary}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Ver Factura" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>

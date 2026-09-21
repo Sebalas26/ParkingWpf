@@ -407,10 +407,24 @@ public partial class CheckOutViewModel : ViewModelBase
                 .OrderBy(c => c.FullName)
                 .ToListAsync();
 
-            AvailableCustomers.Clear();
-            foreach (var c in customers)
+            if (System.Windows.Application.Current?.Dispatcher != null && !System.Windows.Application.Current.Dispatcher.CheckAccess())
             {
-                AvailableCustomers.Add(c);
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    AvailableCustomers.Clear();
+                    foreach (var c in customers)
+                    {
+                        AvailableCustomers.Add(c);
+                    }
+                });
+            }
+            else
+            {
+                AvailableCustomers.Clear();
+                foreach (var c in customers)
+                {
+                    AvailableCustomers.Add(c);
+                }
             }
         }
         catch { }
@@ -443,15 +457,25 @@ public partial class CheckOutViewModel : ViewModelBase
 
             if (currentBranchId.HasValue)
             {
-                var branchPmIds = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
+                var branchMethods = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
                     db.BranchPaymentMethods
                         .Where(bpm => bpm.BranchId == currentBranchId.Value && bpm.IsActive)
-                        .Select(bpm => bpm.PaymentMethodId)
                 );
+                var branchPmIds = branchMethods.Select(bpm => bpm.PaymentMethodId).ToHashSet();
 
                 methods = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.ToListAsync(
                     db.PaymentMethods.Where(p => p.State && branchPmIds.Contains(p.Id))
                 );
+
+                // Aplicar personalización de RequiresCashTender por sede
+                foreach (var m in methods)
+                {
+                    var bpm = branchMethods.FirstOrDefault(b => b.PaymentMethodId == m.Id);
+                    if (bpm != null)
+                    {
+                        m.RequiresCashTender = bpm.RequiresCashTender;
+                    }
+                }
             }
             else
             {

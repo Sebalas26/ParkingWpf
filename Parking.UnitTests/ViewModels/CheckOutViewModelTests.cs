@@ -612,6 +612,40 @@ public class CheckOutViewModelTests : IDisposable
         vm.SelectedResolution.Should().Be(posRes);
     }
 
+    [Fact]
+    public async Task LoadPaymentMethodsAsync_AppliesBranchOverrideForRequiresCashTender()
+    {
+        // Arrange
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.PaymentMethods.Add(new PaymentMethodEntity
+            {
+                Id = 2,
+                Name = "Tarjeta Débito",
+                State = true,
+                RequiresCashTender = true // Base entity says true
+            });
+            db.BranchPaymentMethods.Add(new BranchPaymentMethodEntity
+            {
+                BranchId = 1,
+                PaymentMethodId = 2,
+                IsActive = true,
+                RequiresCashTender = false // Branch overrides to false
+            });
+            db.SaveChanges();
+        }
+
+        var vm = CreateViewModel();
+
+        // Act
+        await vm.InitializeAsync();
+
+        // Assert
+        var debitMethod = vm.AvailablePaymentMethods.FirstOrDefault(pm => pm.Id == 2);
+        debitMethod.Should().NotBeNull();
+        debitMethod!.RequiresCashTender.Should().BeFalse();
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

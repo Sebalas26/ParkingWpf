@@ -52,8 +52,11 @@ namespace Parking.Views
 
         private void Grid_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            // Close the dialog if the user clicks the dark background outside the modal
-            this.Close();
+            // Close the dialog ONLY if the user clicks directly on the dark backdrop
+            if (e.OriginalSource == sender)
+            {
+                this.Close();
+            }
         }
 
         private void Border_MouseDown(object sender, MouseButtonEventArgs e)

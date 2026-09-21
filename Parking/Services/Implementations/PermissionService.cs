@@ -59,7 +59,11 @@ public class PermissionService : IPermissionService
         { "branches.view_list", new[] { "branches.view", "branches.list" } },
         { "users.view_list", new[] { "users.view", "users.list" } },
         { "roles.view_list", new[] { "roles.view", "roles.list" } },
-        { "audit.view_logs", new[] { "audit.view", "audit.logs" } }
+        { "audit.view_logs", new[] { "audit.view", "audit.logs" } },
+        { "invoicing.customers.view", new[] { "wpf.customers.view", "customers.view", "invoicing.customers", "checkout.process_payment", "checkout.view" } },
+        { "customers.view", new[] { "wpf.customers.view", "invoicing.customers.view", "invoicing.customers", "checkout.process_payment", "checkout.view" } },
+        { "customers.create", new[] { "wpf.customers.create", "invoicing.customers.create", "checkout.process_payment" } },
+        { "customers.edit", new[] { "wpf.customers.edit", "invoicing.customers.edit", "checkout.process_payment" } }
     };
 
     public static PermissionService Current { get; } = new();

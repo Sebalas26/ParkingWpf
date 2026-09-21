@@ -781,8 +781,8 @@
                                         </StackPanel>
                                     </StackPanel>
 
-                                    <!-- Input de Efectivo Recibido en Grande con Billetes Rápidos -->
-                                    <StackPanel Grid.Column="1">
+                                    <!-- Input de Efectivo Recibido en Grande con Billetes Rápidos (Solo cuando requiere devuelta) -->
+                                    <StackPanel Grid.Column="1" Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}}">
                                         <TextBlock Text="MONTO EN EFECTIVO RECIBIDO ($) *" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
                                         <TextBox Text="{Binding AmountTendered, UpdateSourceTrigger=PropertyChanged, StringFormat='{}{0:N0}'}"
                                                  IsEnabled="{Binding SelectedPaymentMethodEntity.RequiresCashTender, FallbackValue=True}"
@@ -796,13 +796,42 @@
                                                  Margin="0,0,0,6"/>
 
                                         <!-- Botones de Billetes Rápidos -->
-                                        <UniformGrid Columns="4" Rows="1" Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}}">
+                                        <UniformGrid Columns="4" Rows="1">
                                             <Button Content="Exacto" Style="{StaticResource CashPresetButton}" Command="{Binding ExactCashCommand}" Background="#E0F2FE" Foreground="#0369A1" FontWeight="Black"/>
                                             <Button Content="$5K" Style="{StaticResource CashPresetButton}" Command="{Binding QuickCashCommand}" CommandParameter="5000"/>
                                             <Button Content="$10K" Style="{StaticResource CashPresetButton}" Command="{Binding QuickCashCommand}" CommandParameter="10000"/>
                                             <Button Content="$50K" Style="{StaticResource CashPresetButton}" Command="{Binding QuickCashCommand}" CommandParameter="50000"/>
                                         </UniformGrid>
                                     </StackPanel>
+
+                                    <!-- Alternativa cuando RequiresCashTender es false (Pago Electrónico / Tarjeta / Transferencia) -->
+                                    <Border Grid.Column="1"
+                                            Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                                            Background="#F0FDF4"
+                                            BorderBrush="#BBF7D0"
+                                            BorderThickness="1.5"
+                                            CornerRadius="10"
+                                            Padding="14,10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Path Grid.Column="0"
+                                                  Data="{StaticResource IconCreditCard}"
+                                                  Fill="#16A34A"
+                                                  Width="28"
+                                                  Height="28"
+                                                  Stretch="Uniform"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,12,0"/>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="PAGO ELECTRÓNICO / SIN DEVUELTA" FontSize="11.5" FontWeight="Black" Foreground="#15803D"/>
+                                                <TextBlock Text="Cobro exacto vía datáfono o transferencia" FontSize="11" Foreground="#166534" Margin="0,2,0,0"/>
+                                                <TextBlock Text="{Binding CalculatedFee, Converter={StaticResource CurrencyConv}, StringFormat='{}Total a debitar: {0}'}" FontSize="13" FontWeight="Bold" Foreground="#15803D" Margin="0,3,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
                                 </Grid>
 
                                 <!-- Fila Inferior: Tarjeta de CAMBIO / DEVUELTA en Grande -->

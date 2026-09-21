@@ -421,7 +421,8 @@ public class AuthService : IAuthService
                 "monitoring.view_occupancy", "monitoring.search_vehicles", "monitoring.force_exit", "monitoring.export", "recent_entries.view", "recent_entries.reprint",
                 "shifts.view_current", "shifts.open", "shifts.blind_count", "shifts.close", "shifts.view_history", "shifts.reprint_closure",
                 "shift.view", "shift.open", "shift.cash_withdrawal", "shift.close", "shift.handover", "shift.history", "shift.export",
-                "analytics.view_dashboard", "analytics.income_reports", "analytics.occupancy_reports", "analytics.audit_reports", "analytics.export", "analytics.view"
+                "analytics.view_dashboard", "analytics.income_reports", "analytics.occupancy_reports", "analytics.audit_reports", "analytics.export", "analytics.view",
+                "invoicing.customers.view", "customers.view", "customers.create", "customers.edit"
             };
         }
 

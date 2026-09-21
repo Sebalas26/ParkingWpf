@@ -17,6 +17,7 @@ public partial class RecentEntriesViewModel : ViewModelBase
     private readonly IParkingTicketService _ticketService;
     private readonly IDialogService _dialogService;
     private readonly IShiftService _shiftService;
+    private readonly ISessionService? _sessionService;
 
     [ObservableProperty]
     private string _searchQuery = string.Empty;
@@ -58,11 +59,13 @@ public partial class RecentEntriesViewModel : ViewModelBase
     public RecentEntriesViewModel(
         IParkingTicketService ticketService,
         IDialogService dialogService,
-        IShiftService shiftService)
+        IShiftService shiftService,
+        ISessionService? sessionService = null)
     {
         _ticketService = ticketService;
         _dialogService = dialogService;
         _shiftService = shiftService;
+        _sessionService = sessionService;
 
         _ticketService.TicketRegistered += (s, e) => _ = LoadEntriesAsync();
         _ticketService.TicketCompleted += (s, e) =>
@@ -162,10 +165,10 @@ public partial class RecentEntriesViewModel : ViewModelBase
 
         try
         {
-            var activeTickets = await _ticketService.GetActiveTicketsAsync();
+            var activeTickets = await _ticketService.GetActiveTicketsAsync() ?? Array.Empty<ParkingTicket>();
 
             var shiftStart = _shiftService.CurrentShift?.StartTimeUtc ?? DateTime.UtcNow.Date;
-            var completedTickets = await _ticketService.GetCompletedTicketsByShiftAsync(shiftStart);
+            var completedTickets = await _ticketService.GetCompletedTicketsByShiftAsync(shiftStart) ?? Array.Empty<ParkingTicket>();
 
             var query = SearchQuery?.Trim() ?? string.Empty;
 
@@ -260,6 +263,12 @@ public partial class RecentEntriesViewModel : ViewModelBase
             var updatedTicket = await _ticketService.ConvertTicketToInvoiceAsync(ticket.TicketId, customer.CustomerId);
             if (updatedTicket != null)
             {
+                ticket.IsElectronicInvoice = updatedTicket.IsElectronicInvoice;
+                ticket.InvoiceNumber = updatedTicket.InvoiceNumber;
+                ticket.Customer = updatedTicket.Customer;
+                ticket.CustomerId = updatedTicket.CustomerId;
+
+                await LoadEntriesAsync();
                 await LoadHistoricalEntriesAsync();
 
                 var invNumber = !string.IsNullOrWhiteSpace(updatedTicket.InvoiceNumber)

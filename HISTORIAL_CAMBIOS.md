@@ -15,6 +15,62 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-21 09:15:00] - [FIX / FEAT / WPF / CHECKOUT / INVOICING / SECURITY] - Erradicación de Error 4 en ListBoxItem, Blindaje contra Cierre Involuntario de Cobro, Manejo Dinámico de Medios de Pago Electrónicos, Visibilidad de Clientes para Cajeros y Facturación DIAN en Salidas del Turno Actual
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"1. System.Windows.Data Error: 4 : Cannot find source for binding with reference 'RelativeSource FindAncestor, AncestorType='System.Windows.Controls.ItemsControl', AncestorLevel='1''. BindingExpression:Path=HorizontalContentAlignment... target element is 'ListBoxItem'"_  
+  > _"2. [Captura de pantalla error HttpRequestException]: al seleccionar método de pago con FE se cierra el modal o se resetea a Efectivo"_  
+  > _"3. En los métodos de pago se tiene configurado si requiere o no devuelta (RequiresCashTender), pero al seleccionar Tarjeta o Transferencia sigue saliendo MONTO EN EFECTIVO RECIBIDO ($) * deshabilitado y oculta la devuelta de forma confusa"_  
+  > _"4. En el menú lateral a los operadores no les sale el botón de Clientes para consultar o crear clientes de facturación"_  
+  > _"5. En la ventana de vehículos en patio en la pestaña de Salidas del turno actual le falta el botón para facturar con DIAN o convertir a factura electrónica si el vehículo ya salió pero vuelve a pedir factura electrónica no se puede porque falta el botón ahí en esa pestaña"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Erradicación Definitiva de Error 4 de Binding en `ListBoxItem` (`Controls.xaml`)**:
+     - Se añadió un `<Style TargetType="{x:Type ListBoxItem}">` implícito y global en `Parking/Styles/Controls.xaml` con `HorizontalContentAlignment="Left"`, `VerticalContentAlignment="Center"`, y `TemplateBinding` directo en su `ControlTemplate`.
+     - Esto anula la herencia defectuosa del tema aero2 de WPF que buscaba `ItemsControl` mediante `RelativeSource FindAncestor`, eliminando por completo los logs rojos de error en la consola de depuración.
+  2. **Blindaje de `CheckOutDialog` contra Cierre Involuntario y Excepciones de Hilo (`CheckOutDialog.xaml.cs`, `CheckOutViewModel.cs`)**:
+     - En `CheckOutDialog.xaml.cs`, el manejador `Grid_MouseDown` cerraba la ventana ante cualquier clic en la grilla contenedora (`this.Close()`). Clics en comboboxes, barras de desplazamiento o controles internos burbujeaban hacia la grilla provocando el cierre intempestivo de la ventana, lo que hacía que `ShowCheckOutDialogAsync` retornara `false` y `CheckOutViewModel` descartara la selección reinicializando a Efectivo. Se corrigió condicionando a `if (e.OriginalSource == sender)` para que solo clics en el backdrop oscuro cierren la ventana.
+     - En `CheckOutViewModel.cs`, la carga de clientes (`LoadCustomersAsync`) y colecciones observables se despachó de forma thread-safe con `App.Current?.Dispatcher?.InvokeAsync` para evitar colisiones de hilo UI al reaccionar a consultas de red asíncronas.
+  3. **Módulo "Clientes" Accesible para Operadores y Cajeros (`PermissionService.cs`, `AuthService.cs`)**:
+     - En `PermissionService.cs`, se mapearon los permisos canónicos `invoicing.customers.view`, `customers.view`, `customers.create` y `customers.edit` con alias hacia las operaciones base operativas `checkout.process_payment` y `checkout.view`.
+     - En `AuthService.cs`, se incluyeron explícitamente en `localPermissions` para las sesiones locales y de contingencia offline.
+     - Con esto, cualquier usuario con rol operativo/cajero visualiza inmediatamente el botón "Clientes" en la barra lateral (`MainShellWindow.xaml`) sin vulnerar el esquema de permisos de la base de datos.
+  4. **Adaptación Dinámica de Cobro según `RequiresCashTender` (`CheckOutDialog.xaml`, `CheckOutViewModel.cs`)**:
+     - En `CheckOutViewModel.cs`, se aplicó la sobreescritura de sede (`BranchPaymentMethodEntity.RequiresCashTender`) sobre la entidad base (`PaymentMethodEntity.RequiresCashTender`) al cargar métodos de pago.
+     - En `CheckOutDialog.xaml`, la columna de recepción de efectivo se configuró reactivamente:
+       - Si `RequiresCashTender == true`: Se visualiza el campo "MONTO EN EFECTIVO RECIBIDO ($) *" con botones de billetes rápidos (`$5K`, `$10K`, `$50K`, `Exacto`) y la tarjeta de "CAMBIO / DEVUELTA AL CLIENTE".
+       - Si `RequiresCashTender == false` (Tarjetas, Transferencias, Datáfono): Se oculta completamente el campo de efectivo y la tarjeta de devuelta, desplegando en su lugar una tarjeta estilizada en verde con el ícono `IconCreditCard`, título "PAGO ELECTRÓNICO / SIN DEVUELTA", descripción de cobro exacto y el valor exacto a debitar.
+  5. **Conversión POS a Factura Electrónica en "Salidas del Turno Actual" (`RecentEntriesView.xaml`, `RecentEntriesViewModel.cs`)**:
+     - En `RecentEntriesView.xaml` (DataGrid de `CompletedEntries` de la pestaña 1), se actualizó la columna de acciones para incluir el botón "Facturar DIAN" con estilo `SuccessButton` e ícono `IconReceipt` (visible cuando `!ticket.IsElectronicInvoice`).
+     - Al estar facturado, conmuta automáticamente a "Ver Factura".
+     - En `RecentEntriesViewModel.cs`, el comando `ConvertTicketToInvoiceCommand` actualiza inmediatamente las propiedades del tiquete en memoria (`IsElectronicInvoice`, `InvoiceNumber`, `Customer`) y recarga concurrentemente tanto `CompletedEntries` como `HistoricalEntries`, logrando que la tabla refleje el cambio de inmediato sin requerir recargar la vista.
+     - Se reforzó la robustez de `LoadEntriesAsync` protegiendo colecciones contra retornos nulos.
+  6. **Cero Errores y 100% de Pruebas Unitarias Superadas**:
+     - Se incorporaron pruebas unitarias en `RecentEntriesViewModelTests.cs` validando la actualización reactiva de tiquetes y recarga del turno.
+     - Se incorporó prueba unitaria en `CheckOutViewModelTests.cs` validando la aplicación de sobreescrituras de sede sobre `RequiresCashTender`.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **252 de 252 pruebas superadas (100%, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Styles/Controls.xaml`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/Views/CheckOutDialog.xaml.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/RecentEntriesView.xaml`
+  - `Parking/ViewModels/RecentEntriesViewModel.cs`
+  - `Parking/Services/Implementations/PermissionService.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `Parking.UnitTests/ViewModels/RecentEntriesViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: Exitoso (0 Errores, 0 Advertencias).
+  - `dotnet test ParkingWpf.slnx`: 252 pruebas unitarias ejecutadas y superadas (0 Fallos).
+
+---
+
 ### [2026-09-21 08:30:00] - [FIX / WPF / CHECKOUT / ELECTRONIC INVOICE / SYNC] - Protección de Estado de Salida Vehicular ante Sincronización en Segundo Plano y Preservación de Factura Electrónica y Adquirente
 
 - **Autor**: Antigravity AI Assistant & Software Architect
