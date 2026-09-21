@@ -457,6 +457,8 @@ public class CheckOutViewModelTests : IDisposable
         vm.NewCustomerFullName = "Cliente Rápido";
         vm.NewCustomerEmail = "cliente@rapido.com";
         vm.NewCustomerPhone = "3109998877";
+        vm.NewCustomerAddress = "Calle 100 # 15-20";
+        vm.NewCustomerCityCode = "11001";
 
         // Act
         await vm.SaveQuickCustomerCommand.ExecuteAsync(null);
@@ -471,6 +473,33 @@ public class CheckOutViewModelTests : IDisposable
         var savedInDb = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(
             db.Customers, c => c.DocumentNumber == "1098765432");
         savedInDb.Should().NotBeNull();
+        savedInDb!.Address.Should().Be("Calle 100 # 15-20");
+        savedInDb.CityCode.Should().Be("11001");
+        savedInDb.StateCode.Should().Be("11");
+    }
+
+    [Fact]
+    public async Task SaveQuickCustomerCommand_WhenAddressOrCityMissing_FailsValidationAndDoesNotSave()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        vm.ToggleQuickRegisterCustomerCommand.Execute(null);
+
+        vm.NewCustomerDocumentNumber = "1098765432";
+        vm.NewCustomerFullName = "Cliente Rápido";
+        vm.NewCustomerEmail = "cliente@rapido.com";
+        vm.NewCustomerAddress = "";
+        vm.NewCustomerCityCode = "";
+
+        // Act
+        await vm.SaveQuickCustomerCommand.ExecuteAsync(null);
+
+        // Assert
+        vm.SelectedCustomer.Should().BeNull();
+        vm.IsQuickRegisterCustomerOpen.Should().BeTrue();
+        vm.NewCustomerAddressError.Should().NotBeNullOrEmpty();
+        vm.NewCustomerCityError.Should().NotBeNullOrEmpty();
     }
 
     [Fact]

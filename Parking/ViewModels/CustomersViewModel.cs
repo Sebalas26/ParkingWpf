@@ -105,6 +105,12 @@ public partial class CustomersViewModel : ViewModelBase
     private string? _formEmailError;
 
     [ObservableProperty]
+    private string? _formAddressError;
+
+    [ObservableProperty]
+    private string? _formCityCodeError;
+
+    [ObservableProperty]
     private string? _formGeneralError;
 
     public bool IsNitSelected => FormIdentificationTypeId == 31;
@@ -303,6 +309,8 @@ public partial class CustomersViewModel : ViewModelBase
         FormDocumentError = null;
         FormFullNameError = null;
         FormEmailError = null;
+        FormAddressError = null;
+        FormCityCodeError = null;
         FormGeneralError = null;
 
         IsFormOpen = true;
@@ -335,6 +343,8 @@ public partial class CustomersViewModel : ViewModelBase
         FormDocumentError = null;
         FormFullNameError = null;
         FormEmailError = null;
+        FormAddressError = null;
+        FormCityCodeError = null;
         FormGeneralError = null;
 
         IsFormOpen = true;
@@ -353,6 +363,8 @@ public partial class CustomersViewModel : ViewModelBase
         FormDocumentError = null;
         FormFullNameError = null;
         FormEmailError = null;
+        FormAddressError = null;
+        FormCityCodeError = null;
         FormGeneralError = null;
 
         var doc = FormDocumentNumber?.Trim() ?? string.Empty;
@@ -373,6 +385,20 @@ public partial class CustomersViewModel : ViewModelBase
         if (string.IsNullOrWhiteSpace(email) || !Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.IgnoreCase))
         {
             FormEmailError = "El correo electrónico es obligatorio para facturación DIAN.";
+            isValid = false;
+        }
+
+        var address = FormAddress?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(address) || address.Length < 4)
+        {
+            FormAddressError = "La dirección fiscal es obligatoria para la DIAN (mínimo 4 caracteres).";
+            isValid = false;
+        }
+
+        var city = FormCityCode?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(city))
+        {
+            FormCityCodeError = "El código DANE del municipio es obligatorio.";
             isValid = false;
         }
 
@@ -397,6 +423,10 @@ public partial class CustomersViewModel : ViewModelBase
             using var db = _connectionManager.CreateDbContext();
             var docClean = FormDocumentNumber.Trim();
             var companyId = _sessionService.CurrentBranch?.CompanyId ?? _sessionService.CurrentUser?.CompanyId ?? 1;
+            var effectiveCityCode = FormCityCode!.Trim();
+            var effectiveStateCode = !string.IsNullOrWhiteSpace(FormStateCode)
+                ? FormStateCode.Trim()
+                : (effectiveCityCode.Length >= 2 ? effectiveCityCode.Substring(0, 2) : "11");
 
             if (IsEditing && FormCustomerId.HasValue)
             {
@@ -411,9 +441,9 @@ public partial class CustomersViewModel : ViewModelBase
                     existing.TradeName = string.IsNullOrWhiteSpace(FormTradeName) ? null : FormTradeName.Trim();
                     existing.Email = FormEmail.Trim();
                     existing.Phone = string.IsNullOrWhiteSpace(FormPhone) ? null : FormPhone.Trim();
-                    existing.Address = string.IsNullOrWhiteSpace(FormAddress) ? null : FormAddress.Trim();
-                    existing.CityCode = string.IsNullOrWhiteSpace(FormCityCode) ? null : FormCityCode.Trim();
-                    existing.StateCode = string.IsNullOrWhiteSpace(FormStateCode) ? null : FormStateCode.Trim();
+                    existing.Address = FormAddress!.Trim();
+                    existing.CityCode = effectiveCityCode;
+                    existing.StateCode = effectiveStateCode;
 
                     await db.SaveChangesAsync();
 
@@ -466,9 +496,9 @@ public partial class CustomersViewModel : ViewModelBase
                     TradeName = string.IsNullOrWhiteSpace(FormTradeName) ? null : FormTradeName.Trim(),
                     Email = FormEmail.Trim(),
                     Phone = string.IsNullOrWhiteSpace(FormPhone) ? null : FormPhone.Trim(),
-                    Address = string.IsNullOrWhiteSpace(FormAddress) ? null : FormAddress.Trim(),
-                    CityCode = string.IsNullOrWhiteSpace(FormCityCode) ? null : FormCityCode.Trim(),
-                    StateCode = string.IsNullOrWhiteSpace(FormStateCode) ? null : FormStateCode.Trim(),
+                    Address = FormAddress!.Trim(),
+                    CityCode = effectiveCityCode,
+                    StateCode = effectiveStateCode,
                     FiscalResponsibilities = "R-99-PN",
                     IsActive = true,
                     CreatedAtUtc = DateTime.UtcNow

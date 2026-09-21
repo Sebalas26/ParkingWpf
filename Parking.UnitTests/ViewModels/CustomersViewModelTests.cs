@@ -137,6 +137,8 @@ public class CustomersViewModelTests
         vm.FormDocumentError.Should().NotBeNullOrEmpty();
         vm.FormFullNameError.Should().NotBeNullOrEmpty();
         vm.FormEmailError.Should().NotBeNullOrEmpty();
+        vm.FormAddressError.Should().NotBeNullOrEmpty();
+        vm.FormCityCodeError.Should().NotBeNullOrEmpty();
         vm.FormGeneralError.Should().NotBeNullOrEmpty();
         vm.IsFormOpen.Should().BeTrue();
     }

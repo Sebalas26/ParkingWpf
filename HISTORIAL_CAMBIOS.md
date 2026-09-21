@@ -15,6 +15,48 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-21 18:30:00] - [FEAT / DIAN / SIIGO / WPF / POS] - Inclusión Obligatoria de Dirección Fiscal y Municipio DANE en Registro Rápido POS y Gestión de Clientes
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"haz la revision en el pos de wpf y pwa para crear un adquirente todos los datos necesarios por ejemplo la direccion no la pide y es obligatoria para la dian... tambien revisa el tema de facturacion electronica con siigo ya se tiene el token funcionando, revisa si ya estamos listos para hacer pruebas de emision..."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Requerimiento**:
+     - El registro rápido de clientes en el módulo de cobro/checkout (`CheckOutDialog.xaml`) carecía de captura de Dirección Fiscal y Municipio DANE, lo cual causaba rechazos de validación tributaria en DIAN / Siigo al emitir factura electrónica.
+     - La vista general de clientes (`CustomersView.xaml`) disponía de los campos pero no los exigía como obligatorios con asteriscos ni bloqueaba el guardado con feedback visual en rojo.
+  2. **Implementación en WPF**:
+     - **`CheckOutViewModel.cs`**:
+       - Adición de colecciones y propiedades observables: `AvailableMunicipalities`, `SelectedDaneMunicipality`, `NewCustomerPersonType`, `NewCustomerAddress`, `NewCustomerAddressError`, `NewCustomerCityCode`, `NewCustomerCityError`.
+       - Implementación de `LoadMunicipalitiesAsync()` para cargar `DaneMunicipalities` desde SQLite local.
+       - Actualización de `ValidateQuickCustomerForm()` para exigir dirección (mínimo 4 caracteres) y municipio DANE.
+       - En `SaveQuickCustomerAsync()`, mapeo de `Address`, `CityCode`, `StateCode` y `PersonType` tanto en el guardado local en SQLite como en el paquete `PendingSyncItem`.
+     - **`CheckOutDialog.xaml`**:
+       - Inclusión de Fila 4 en el drawer de registro rápido con TextBox de `DIRECCIÓN FISCAL *` (estilizado con borde rojo reactivo a `NewCustomerAddressError`) y ComboBox de `MUNICIPIO DANE *` enlazado a `AvailableMunicipalities`.
+     - **`CustomersViewModel.cs` & `CustomersView.xaml`**:
+       - Adición de `FormAddressError` y `FormCityCodeError`. Enforzamiento obligatorio en `ValidateForm()` con derivación segura de `StateCode`.
+       - Inclusión de asteriscos obligatorios y bloques de error en `CustomersView.xaml`.
+     - **`CheckOutViewModelTests.cs` & `CustomersViewModelTests.cs`**:
+       - Actualización de pruebas unitarias existentes y adición de tests que verifican el rechazo cuando faltan dirección o municipio DANE.
+  3. **Cero Errores y 100% de Pruebas Superadas**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **260 de 260 pruebas unitarias superadas (100% Superadas, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/ViewModels/CustomersViewModel.cs`
+  - `Parking/Views/CustomersView.xaml`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `Parking.UnitTests/ViewModels/CustomersViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: Éxito (0 Errores, 0 Advertencias).
+  - `dotnet test ParkingWpf.slnx`: 260 pruebas aprobadas (0 Fallos).
+
+---
+
 ### [2026-09-21 14:55:00] - [FEAT / UI/UX / WPF / BRANDING] - Sustitución de Cabecera del Sidebar: Icono y Nombre de Empresa en lugar de Sede y "SEDE ACTIVA"
 
 - **Autor**: Antigravity AI Assistant & Software Architect

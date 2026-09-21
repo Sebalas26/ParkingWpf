@@ -410,23 +410,33 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                <TextBlock Text="Dirección Fiscal" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                <TextBlock Text="Dirección Fiscal *" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
                                 <TextBox Text="{Binding FormAddress, UpdateSourceTrigger=PropertyChanged}"
                                          Height="36"
                                          Padding="10,6"
                                          Background="{DynamicResource BrushInputBackground}"
                                          BorderBrush="{DynamicResource BrushBorderSubtle}"
                                          Foreground="{DynamicResource BrushTextPrimary}"/>
+                                <TextBlock Text="{Binding FormAddressError}"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource BrushDanger}"
+                                           Margin="0,2,0,0"
+                                           Visibility="{Binding FormAddressError, Converter={StaticResource NullToVis}}"/>
                             </StackPanel>
 
                             <StackPanel Grid.Column="1">
-                                <TextBlock Text="Municipio / Código DANE" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                <TextBlock Text="Municipio / Código DANE *" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
                                 <TextBox Text="{Binding FormCityCode, UpdateSourceTrigger=PropertyChanged}"
                                          Height="36"
                                          Padding="10,6"
                                          Background="{DynamicResource BrushInputBackground}"
                                          BorderBrush="{DynamicResource BrushBorderSubtle}"
                                          Foreground="{DynamicResource BrushTextPrimary}"/>
+                                <TextBlock Text="{Binding FormCityCodeError}"
+                                           FontSize="11"
+                                           Foreground="{DynamicResource BrushDanger}"
+                                           Margin="0,2,0,0"
+                                           Visibility="{Binding FormCityCodeError, Converter={StaticResource NullToVis}}"/>
                             </StackPanel>
                         </Grid>
 

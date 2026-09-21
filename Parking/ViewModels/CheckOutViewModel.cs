@@ -194,6 +194,7 @@ public partial class CheckOutViewModel : ViewModelBase
     public ObservableCollection<BillingResolution> AvailableResolutions { get; } = new();
     public ObservableCollection<BillingResolution> FilteredResolutions { get; } = new();
     public ObservableCollection<Customer> AvailableCustomers { get; } = new();
+    public ObservableCollection<DaneMunicipality> AvailableMunicipalities { get; } = new();
     public List<IdentificationTypeOption> IdentificationTypeOptions { get; } = new()
     {
         new() { Id = 13, Name = "Cédula de Ciudadanía (CC)" },
@@ -240,6 +241,24 @@ public partial class CheckOutViewModel : ViewModelBase
 
     [ObservableProperty]
     private string? _newCustomerPhone;
+
+    [ObservableProperty]
+    private string _newCustomerPersonType = "Person";
+
+    [ObservableProperty]
+    private string _newCustomerAddress = string.Empty;
+
+    [ObservableProperty]
+    private string? _newCustomerAddressError;
+
+    [ObservableProperty]
+    private string _newCustomerCityCode = string.Empty;
+
+    [ObservableProperty]
+    private DaneMunicipality? _selectedDaneMunicipality;
+
+    [ObservableProperty]
+    private string? _newCustomerCityError;
 
     [ObservableProperty]
     private string? _quickCustomerFeedback;
@@ -380,6 +399,7 @@ public partial class CheckOutViewModel : ViewModelBase
         await LoadActiveVehiclesAsync();
         await LoadStoresAsync();
         await LoadResolutionsAsync();
+        await LoadMunicipalitiesAsync();
         if (HasElectronicInvoicingEnabled || (SelectedPaymentMethodEntity?.RequiresResolution == true) || (SelectedResolution?.IsElectronicResolution == true))
         {
             await LoadCustomersAsync();
@@ -424,6 +444,38 @@ public partial class CheckOutViewModel : ViewModelBase
                 foreach (var c in customers)
                 {
                     AvailableCustomers.Add(c);
+                }
+            }
+        }
+        catch { }
+    }
+
+    private async Task LoadMunicipalitiesAsync()
+    {
+        try
+        {
+            using var db = _connectionManager.CreateDbContext();
+            var munis = await db.DaneMunicipalities
+                .OrderBy(m => m.MunicipalityName)
+                .ToListAsync();
+
+            if (System.Windows.Application.Current?.Dispatcher != null && !System.Windows.Application.Current.Dispatcher.CheckAccess())
+            {
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    AvailableMunicipalities.Clear();
+                    foreach (var m in munis)
+                    {
+                        AvailableMunicipalities.Add(m);
+                    }
+                });
+            }
+            else
+            {
+                AvailableMunicipalities.Clear();
+                foreach (var m in munis)
+                {
+                    AvailableMunicipalities.Add(m);
                 }
             }
         }
@@ -1304,15 +1356,25 @@ public partial class CheckOutViewModel : ViewModelBase
         NewCustomerFullNameError = null;
         NewCustomerEmailError = null;
         NewCustomerPhoneError = null;
+        NewCustomerAddressError = null;
+        NewCustomerCityError = null;
 
         if (IsQuickRegisterCustomerOpen)
         {
             SelectedIdentificationTypeOption = IdentificationTypeOptions.FirstOrDefault();
+            NewCustomerPersonType = "Person";
             NewCustomerDocumentNumber = string.Empty;
             NewCustomerCheckDigit = null;
             NewCustomerFullName = string.Empty;
             NewCustomerEmail = string.Empty;
             NewCustomerPhone = string.Empty;
+            NewCustomerAddress = string.Empty;
+            NewCustomerCityCode = string.Empty;
+            SelectedDaneMunicipality = AvailableMunicipalities.FirstOrDefault(m => m.Code == "11001") ?? AvailableMunicipalities.FirstOrDefault();
+            if (SelectedDaneMunicipality != null)
+            {
+                NewCustomerCityCode = SelectedDaneMunicipality.Code;
+            }
         }
     }
 
@@ -1342,6 +1404,8 @@ public partial class CheckOutViewModel : ViewModelBase
         NewCustomerFullNameError = null;
         NewCustomerEmailError = null;
         NewCustomerPhoneError = null;
+        NewCustomerAddressError = null;
+        NewCustomerCityError = null;
 
         var doc = NewCustomerDocumentNumber?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(doc))
@@ -1409,6 +1473,25 @@ public partial class CheckOutViewModel : ViewModelBase
             }
         }
 
+        var address = NewCustomerAddress?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            NewCustomerAddressError = "La dirección fiscal es obligatoria para la DIAN.";
+            isValid = false;
+        }
+        else if (address.Length < 4)
+        {
+            NewCustomerAddressError = "Debe tener al menos 4 caracteres.";
+            isValid = false;
+        }
+
+        var city = NewCustomerCityCode?.Trim() ?? SelectedDaneMunicipality?.Code?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(city))
+        {
+            NewCustomerCityError = "Debe seleccionar el municipio DANE.";
+            isValid = false;
+        }
+
         if (!isValid)
         {
             QuickCustomerFeedback = "Por favor corrija los campos marcados en rojo.";
@@ -1423,15 +1506,39 @@ public partial class CheckOutViewModel : ViewModelBase
 
     partial void OnSelectedIdentificationTypeOptionChanged(IdentificationTypeOption? value)
     {
-        if (value?.Id == 31 && !string.IsNullOrWhiteSpace(NewCustomerDocumentNumber))
+        if (value?.Id == 31)
         {
-            NewCustomerCheckDigit = CalculateNitCheckDigit(NewCustomerDocumentNumber);
-            NewCustomerCheckDigitError = null;
+            NewCustomerPersonType = "Company";
+            if (!string.IsNullOrWhiteSpace(NewCustomerDocumentNumber))
+            {
+                NewCustomerCheckDigit = CalculateNitCheckDigit(NewCustomerDocumentNumber);
+                NewCustomerCheckDigitError = null;
+            }
         }
-        else if (value?.Id != 31)
+        else
         {
+            NewCustomerPersonType = "Person";
             NewCustomerCheckDigit = null;
             NewCustomerCheckDigitError = null;
+        }
+    }
+
+    partial void OnSelectedDaneMunicipalityChanged(DaneMunicipality? value)
+    {
+        if (value != null)
+        {
+            NewCustomerCityCode = value.Code;
+            NewCustomerCityError = null;
+            if (QuickCustomerFeedback != null) QuickCustomerFeedback = null;
+        }
+    }
+
+    partial void OnNewCustomerAddressChanged(string value)
+    {
+        if (NewCustomerAddressError != null && !string.IsNullOrWhiteSpace(value) && value.Trim().Length >= 4)
+        {
+            NewCustomerAddressError = null;
+            if (QuickCustomerFeedback != null) QuickCustomerFeedback = null;
         }
     }
 
@@ -1511,6 +1618,12 @@ public partial class CheckOutViewModel : ViewModelBase
             }
 
             var idType = SelectedIdentificationTypeOption?.Id ?? 13;
+            var selectedMuni = SelectedDaneMunicipality ?? AvailableMunicipalities.FirstOrDefault(m => m.Code == NewCustomerCityCode.Trim());
+            var effectiveCityCode = !string.IsNullOrWhiteSpace(NewCustomerCityCode) 
+                ? NewCustomerCityCode.Trim() 
+                : (selectedMuni?.Code ?? "11001");
+            var effectiveStateCode = selectedMuni?.DepartmentCode ?? (effectiveCityCode.Length >= 2 ? effectiveCityCode.Substring(0, 2) : "11");
+
             var newCustomer = new Customer
             {
                 CustomerId = Guid.NewGuid(),
@@ -1518,10 +1631,13 @@ public partial class CheckOutViewModel : ViewModelBase
                 IdentificationTypeId = idType,
                 DocumentNumber = docClean,
                 CheckDigit = NewCustomerCheckDigit?.Trim(),
-                PersonType = idType == 31 ? "Company" : "Person",
+                PersonType = idType == 31 ? "Company" : NewCustomerPersonType,
                 FullName = NewCustomerFullName.Trim(),
                 Email = NewCustomerEmail.Trim(),
                 Phone = string.IsNullOrWhiteSpace(NewCustomerPhone) ? null : NewCustomerPhone.Trim(),
+                Address = NewCustomerAddress.Trim(),
+                CityCode = effectiveCityCode,
+                StateCode = effectiveStateCode,
                 FiscalResponsibilities = "R-99-PN",
                 IsActive = true,
                 CreatedAtUtc = DateTime.UtcNow
@@ -1555,6 +1671,9 @@ public partial class CheckOutViewModel : ViewModelBase
                     FullName = newCustomer.FullName,
                     Email = newCustomer.Email,
                     Phone = newCustomer.Phone,
+                    Address = newCustomer.Address,
+                    CityCode = newCustomer.CityCode,
+                    StateCode = newCustomer.StateCode,
                     FiscalResponsibilities = newCustomer.FiscalResponsibilities,
                     InitialPlateNumber = SelectedTicket?.PlateNumber?.Trim().ToUpperInvariant()
                 }, ParkingApiClient.JsonOptions),
