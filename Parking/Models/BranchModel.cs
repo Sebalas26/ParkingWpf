@@ -20,6 +20,9 @@ public class BranchModel
     [JsonPropertyName("companyNit")]
     public string? CompanyNit { get; set; }
 
+    [JsonPropertyName("companyLogo")]
+    public string? CompanyLogo { get; set; }
+
     [JsonPropertyName("code")]
     public string Code { get; set; } = string.Empty;
 

@@ -36,12 +36,30 @@ public partial class MainShellViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanOperateTerminal))]
     [NotifyPropertyChangedFor(nameof(IsSuperAdmin))]
+    [NotifyPropertyChangedFor(nameof(CompanyDisplayName))]
+    [NotifyPropertyChangedFor(nameof(CompanyLogoBase64))]
     private UserSessionModel? _currentUser;
 
     public bool IsSuperAdmin => CurrentUser?.IsSuperAdmin == true;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CompanyDisplayName))]
+    [NotifyPropertyChangedFor(nameof(CompanyLogoBase64))]
     private BranchModel? _currentBranch;
+
+    public string CompanyDisplayName =>
+        !string.IsNullOrWhiteSpace(CurrentBranch?.CompanyName)
+            ? CurrentBranch.CompanyName
+            : (!string.IsNullOrWhiteSpace(CurrentUser?.CompanyName)
+                ? CurrentUser.CompanyName
+                : "PARKING FLOW");
+
+    public string? CompanyLogoBase64 =>
+        !string.IsNullOrWhiteSpace(CurrentUser?.CompanyLogo)
+            ? CurrentUser.CompanyLogo
+            : (!string.IsNullOrWhiteSpace(CurrentBranch?.CompanyLogo)
+                ? CurrentBranch.CompanyLogo
+                : CurrentBranch?.LogoBase64);
 
     [ObservableProperty]
     private bool _hasMultipleBranches;
@@ -288,6 +306,10 @@ public partial class MainShellViewModel : ViewModelBase
         _clockTimer.Start();
 
         UpdateClock();
+
+        CurrentUser = _sessionService.CurrentUser;
+        CurrentBranch = _sessionService.CurrentBranch;
+        HasMultipleBranches = _sessionService.HasMultipleBranches;
     }
 
     private bool _isTerminatingSession;

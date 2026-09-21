@@ -65,6 +65,7 @@ public class AuthService : IAuthService
                     CompanyId = apiLogin.CompanyId,
                     CompanyName = apiLogin.CompanyName,
                     CompanyNit = apiLogin.CompanyNit,
+                    CompanyLogo = apiLogin.CompanyLogo ?? apiLogin.Branches?.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.LogoBase64))?.LogoBase64,
                     AllowMultipleSessions = apiLogin.AllowMultipleSessions,
                     MaxActiveSessionsPerUser = apiLogin.MaxActiveSessionsPerUser > 1 ? apiLogin.MaxActiveSessionsPerUser : 1,
                     AllowMultipleOpenShifts = apiLogin.AllowMultipleOpenShifts,
@@ -97,6 +98,10 @@ public class AuthService : IAuthService
                     if (string.IsNullOrWhiteSpace(b.CompanyName) && !string.IsNullOrWhiteSpace(apiLogin.CompanyName))
                     {
                         b.CompanyName = apiLogin.CompanyName;
+                    }
+                    if (string.IsNullOrWhiteSpace(b.CompanyLogo) && !string.IsNullOrWhiteSpace(apiLogin.CompanyLogo))
+                    {
+                        b.CompanyLogo = apiLogin.CompanyLogo;
                     }
                 }
 
@@ -309,6 +314,8 @@ public class AuthService : IAuthService
         }
 
         var localBranches = await localBranchesQuery.ToListAsync();
+        localUserModel.CompanyName = localBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.CompanyName))?.CompanyName;
+        localUserModel.CompanyLogo = localBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.LogoBase64))?.LogoBase64;
         var branchesList = localBranches.Select(b => new BranchModel
         {
             Id = b.Id,

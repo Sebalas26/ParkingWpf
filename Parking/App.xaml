@@ -26,6 +26,7 @@
             <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
             <conv:InverseBooleanConverter x:Key="InverseBoolConv"/>
             <conv:NullToVisibilityConverter x:Key="NullToVis"/>
+            <conv:NullToVisibilityConverter x:Key="InvertedNullToVis" Invert="True"/>
             <conv:DurationConverter x:Key="DurationConv"/>
             <conv:VehicleTypeToStringConverter x:Key="VehicleTypeStrConv"/>
             <conv:VehicleTypeToIconConverter x:Key="VehicleIconConv"/>

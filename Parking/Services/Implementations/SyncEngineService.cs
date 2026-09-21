@@ -296,6 +296,18 @@ public class SyncEngineService : ISyncEngineService
                 }
             }
 
+            if (!string.IsNullOrWhiteSpace(bootstrap.CompanyLogo))
+            {
+                if (_sessionService.CurrentUser != null && string.IsNullOrWhiteSpace(_sessionService.CurrentUser.CompanyLogo))
+                {
+                    _sessionService.CurrentUser.CompanyLogo = bootstrap.CompanyLogo;
+                }
+                if (_sessionService.CurrentBranch != null && string.IsNullOrWhiteSpace(_sessionService.CurrentBranch.CompanyLogo))
+                {
+                    _sessionService.UpdateCurrentBranch(b => b.CompanyLogo = bootstrap.CompanyLogo);
+                }
+            }
+
             if (_sessionService.CurrentUser != null)
             {
                 _sessionService.CurrentUser.RequireOpenShiftToOperate = bootstrap.RequireOpenShiftToOperate;

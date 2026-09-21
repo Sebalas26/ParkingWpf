@@ -15,6 +15,57 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-21 14:55:00] - [FEAT / UI/UX / WPF / BRANDING] - Sustitución de Cabecera del Sidebar: Icono y Nombre de Empresa en lugar de Sede y "SEDE ACTIVA"
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"en el wpf esto no deberia de mostrar el nombre de la sede, tampoco sede activa, solo mmuestra el icono de la empresa y el nombre de la empresa"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Requerimiento**:
+     - En `MainShellWindow.xaml`, la cabecera superior del menú lateral (sidebar) mostraba erróneamente el nombre de la sede (`CurrentBranch.Name`) acompañado del subtítulo estático `"SEDE ACTIVA"`.
+     - Esto generaba redundancia con el encabezado operativo principal (donde ya se indica claramente `"Sede Pepe sierra"`) y omitía la identidad de marca corporativa (nombre y logotipo de la empresa cliente configurada en la plataforma).
+  2. **Implementación en WPF**:
+     - `Parking/Models/ApiModels/TicketApiModels.cs`: Se mapeó la propiedad `CompanyLogo` en el DTO `LoginApiResponse`.
+     - `Parking/Models/UserSessionModel.cs` y `Parking/Models/BranchModel.cs`: Incorporación de `CompanyLogo` para retener el logo corporativo a nivel de sesión de usuario y modelo de sede en memoria.
+     - `Parking/Services/Implementations/AuthService.cs`:
+       - Mapeo defensivo de `CompanyLogo` en login online (`apiLogin.CompanyLogo ?? apiLogin.Branches?.FirstOrDefault(...)?.LogoBase64`).
+       - Fallback offline para sincronizar `CompanyName` y `CompanyLogo` desde las sedes almacenadas en SQLite al iniciar sesión desconectado.
+     - `Parking/Services/Implementations/SyncEngineService.cs`:
+       - En `ProcessBootstrapDataAsync`, asignación reactiva de `bootstrap.CompanyLogo` tanto a `CurrentUser.CompanyLogo` como a la sede activa en memoria.
+     - `Parking/ViewModels/MainShellViewModel.cs`:
+       - Definición de propiedades computadas observables `CompanyDisplayName` (priorizando `CurrentUser.CompanyName`, `CurrentBranch.CompanyName` o fallback `"PARKING FLOW"`) y `CompanyLogoBase64` (priorizando `CurrentUser.CompanyLogo` o `CurrentBranch.CompanyLogo`).
+       - Anotación de dependencias reactivas `[NotifyPropertyChangedFor(nameof(CompanyDisplayName))]` y `[NotifyPropertyChangedFor(nameof(CompanyLogoBase64))]` sobre `_currentUser` y `_currentBranch`.
+       - Inicialización robusta en constructor desde `_sessionService.CurrentUser` y `_sessionService.CurrentBranch`.
+     - `Parking/App.xaml`:
+       - Registro del convertidor `<conv:NullToVisibilityConverter x:Key="InvertedNullToVis" Invert="True"/>`.
+     - `Parking/Views/MainShellWindow.xaml`:
+       - Sustitución de la cabecera del sidebar:
+         - Eliminación de `CurrentBranch.Name` y de la etiqueta `"SEDE ACTIVA"`.
+         - Renderizado dinámico del logotipo de la empresa si `CompanyLogoBase64` está presente (`NullToVis`).
+         - Fallback automático al logotipo 3D corporativo empaquetado (`pack://application:,,,/Parking;component/Resources/logo_completo_3d.png`) si no existe logotipo personalizado (`InvertedNullToVis`).
+         - Tipografía corporativa para el nombre de la empresa mediante `{Binding CompanyDisplayName, FallbackValue='PARKING FLOW'}` con truncamiento elíptico seguro.
+  3. **Cero Errores y 100% de Pruebas Superadas**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **259 de 259 pruebas unitarias superadas (100%, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Models/ApiModels/TicketApiModels.cs`
+  - `Parking/Models/UserSessionModel.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/App.xaml`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: Exitoso (0 Errores, 0 Advertencias).
+  - `dotnet test ParkingWpf.slnx`: 259 pruebas unitarias superadas (0 Fallos).
+
+---
+
 ### [2026-09-21 12:30:00] - [FEAT / UI/UX / WPF / PRINTING] - Integración y Adaptabilidad del Logotipo Corporativo en Tiquetes de Entrada y Salida (80mm / 58mm)
 
 - **Autor**: Antigravity AI Assistant & Software Architect
