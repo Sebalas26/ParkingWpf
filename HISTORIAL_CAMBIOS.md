@@ -15,6 +15,37 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-20 19:15:00] - [FEAT / INVOICING / DIAN / SIIGO / PRINT] - Impresión Fidedigna de Factura Electrónica Siigo (Consecutivo Oficial, CUFE, QR Code Real) y Soporte de Facturación Anónima
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Verifica que el flujo de facturación electrónica con Siigo esté 100% completo, full full full full, desde el checkout en WPF hasta la emisión en Siigo, trayendo CUFE, QR y consecutivo oficial de Siigo impresos en el recibo de ParkFlow, identificando y cerrando todos los huecos técnicos."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Priorización de Factura Oficial de Siigo en Recibo Térmico (`ReceiptPreviewViewModel.cs`)**:
+     - Se corrigió el cálculo de `InvoiceNumberText`: Si el tiquete ya fue facturado por Siigo (`!string.IsNullOrWhiteSpace(ticket.InvoiceNumber)`), se toma dicho consecutivo oficial (ej: `FE-105`) en lugar de sobreescribirlo con el consecutivo de la resolución local.
+     - Se enlaza directamente el CUFE oficial devuelto por Siigo/DIAN (`ticket.Cufe`).
+     - Se prioriza la cadena oficial de validación DIAN (`ticket.QrCodeData`) para la generación del código QR bidimensional del recibo.
+     - Se eliminó el hardcoding de Consumidor Final (`CC 222222222`, `CR 38 19 55 BRR CAMOA`), reemplazándolo por el estándar legal DIAN (`222222222222`) y la dirección de la sede activa.
+  2. **Soporte de Facturación Anónima en Checkout (`CheckOutViewModel.cs`)**:
+     - Se adaptó la validación previa de adquirente: si la empresa tiene `AllowAnonymousInvoice = true` en su sesión (`_sessionService.CurrentUser.AllowAnonymousInvoice`), el cajero puede emitir Factura Electrónica sin obligatoriedad de seleccionar un cliente manual, permitiendo que el cobro fluya y la salida vehicular no se detenga.
+  3. **Mapeo y Sincronización Local (`UserSessionModel.cs`, `BootstrapSyncResponse.cs`, `SyncEngineService.cs`)**:
+     - Sincronización de la bandera `AllowAnonymousInvoice` en el motor de sincronización de inicio (bootstrap) hacia la sesión activa del usuario.
+
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Models/UserSessionModel.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **100% Superado (248/248 Pruebas, 0 Fallos)**.
+
+---
+
 ### [2026-09-19 16:05:00] - [FIX / SYNC / BOOTSTRAP / JSON] - Deserialización Polimórfica de SiigoPaymentMethodId y Registro de Errores en Bootstrap Sync
 
 - **Autor**: Antigravity AI Assistant & Software Architect

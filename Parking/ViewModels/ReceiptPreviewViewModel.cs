@@ -534,9 +534,9 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
             // 5. Datos de Factura vs POS Estándar
             CustomerName = "CONSUMIDOR FINAL";
-            CustomerDocument = "CC 222222222";
-            CustomerNit = "22222222";
-            CustomerAddress = "CR 38 19 55 BRR CAMOA";
+            CustomerDocument = "222222222222";
+            CustomerNit = "222222222222";
+            CustomerAddress = !string.IsNullOrWhiteSpace(BranchAddress) ? BranchAddress : "NO REGISTRADA";
 
             if (ticket.CustomerId.HasValue)
             {
@@ -560,10 +560,28 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 IsFvmInvoice = true;
                 IsStandardExitReceipt = false;
 
-                InvoicePrefix = !string.IsNullOrWhiteSpace(resolution?.Prefix) ? resolution.Prefix : (!string.IsNullOrWhiteSpace(ticket.InvoiceNumber) && ticket.InvoiceNumber.Contains('-') ? ticket.InvoiceNumber.Split('-')[0] : "FE");
-                var currentNum = resolution != null ? resolution.CurrentNumber.ToString() : (!string.IsNullOrWhiteSpace(ticket.InvoiceNumber) ? ticket.InvoiceNumber : ticket.TicketNumber);
-                InvoiceNumberStr = currentNum.PadLeft(8, '0');
-                InvoiceNumberText = $"{InvoicePrefix}- {InvoiceNumberStr}";
+                if (!string.IsNullOrWhiteSpace(ticket.InvoiceNumber))
+                {
+                    InvoiceNumberText = ticket.InvoiceNumber;
+                    if (ticket.InvoiceNumber.Contains('-'))
+                    {
+                        var parts = ticket.InvoiceNumber.Split('-');
+                        InvoicePrefix = parts[0];
+                        InvoiceNumberStr = string.Join("-", parts.Skip(1));
+                    }
+                    else
+                    {
+                        InvoicePrefix = !string.IsNullOrWhiteSpace(resolution?.Prefix) ? resolution.Prefix : "FE";
+                        InvoiceNumberStr = ticket.InvoiceNumber;
+                    }
+                }
+                else
+                {
+                    InvoicePrefix = !string.IsNullOrWhiteSpace(resolution?.Prefix) ? resolution.Prefix : "FE";
+                    var currentNum = resolution != null ? resolution.CurrentNumber.ToString() : ticket.TicketNumber;
+                    InvoiceNumberStr = currentNum.PadLeft(8, '0');
+                    InvoiceNumberText = $"{InvoicePrefix}- {InvoiceNumberStr}";
+                }
 
                 InvoiceDateStr = exitTime.ToString("dd/MM/yy");
                 InvoiceTimeStr = exitTime.ToString("HH:mm:ss");
@@ -580,7 +598,9 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 var toNum = resolution?.ToNumber > 0 ? resolution.ToNumber : 5000000;
                 DianRangeText = $"Autorización del {InvoicePrefix}-{fromNum} hasta {InvoicePrefix}-{toNum}";
 
-                var qrContent = $"NumFac: {InvoicePrefix}-{InvoiceNumberStr}\nFecFac: {InvoiceDateStr} {InvoiceTimeStr}\nNitFac: {BranchNit}\nDocAdq: {CustomerNit}\nValFac: {totalPaid:F2}\nValIva: {iva:F2}\nCUFE: {Cufe}";
+                var qrContent = !string.IsNullOrWhiteSpace(ticket.QrCodeData)
+                    ? ticket.QrCodeData
+                    : $"NumFac: {InvoicePrefix}-{InvoiceNumberStr}\nFecFac: {InvoiceDateStr} {InvoiceTimeStr}\nNitFac: {BranchNit}\nDocAdq: {CustomerNit}\nValFac: {totalPaid:F2}\nValIva: {iva:F2}\nCUFE: {Cufe}";
                 ConsultationQrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(qrContent, 6);
                 ElectronicInvoiceQrImage = ConsultationQrCodeImage;
             }

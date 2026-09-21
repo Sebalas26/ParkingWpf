@@ -35,6 +35,7 @@ public class UserSessionModel
     public bool AllowCreditNotes { get; set; } = false;
     public bool AllowSubscriptionInvoicing { get; set; } = false;
     public bool ForceElectronicInvoiceOnCheckout { get; set; } = false;
+    public bool AllowAnonymousInvoice { get; set; } = false;
 
     public HashSet<string> GrantedPermissions { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 

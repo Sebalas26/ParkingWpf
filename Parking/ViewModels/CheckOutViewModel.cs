@@ -1807,7 +1807,9 @@ public partial class CheckOutViewModel : ViewModelBase
                 ShowResolutionWarning = false;
             }
 
-            if (EmitElectronicInvoice && SelectedCustomer == null)
+            bool customerRequired = EmitElectronicInvoice && SelectedCustomer == null && !(_sessionService.CurrentUser?.AllowAnonymousInvoice ?? false);
+
+            if (customerRequired)
             {
                 ShowCustomerWarning = true;
                 hasValidationError = true;
@@ -1821,11 +1823,11 @@ public partial class CheckOutViewModel : ViewModelBase
             {
                 HasFeedback = true;
                 IsSuccessFeedback = false;
-                FeedbackMessage = (EmitElectronicInvoice && SelectedCustomer == null)
+                FeedbackMessage = customerRequired
                     ? "Debe seleccionar un cliente / adquirente para emitir la Factura Electrónica."
                     : "Por favor seleccione el método de pago y la resolución requeridos.";
 
-                if (EmitElectronicInvoice && SelectedCustomer == null)
+                if (customerRequired)
                 {
                     await _dialogService.ShowAlertAsync(
                         "Adquirente Requerido",

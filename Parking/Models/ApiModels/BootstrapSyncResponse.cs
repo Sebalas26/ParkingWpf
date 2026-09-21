@@ -1004,6 +1004,9 @@ public class BootstrapSyncResponse
     [JsonPropertyName("forceElectronicInvoiceOnCheckout")]
     public bool ForceElectronicInvoiceOnCheckout { get; set; } = false;
 
+    [JsonPropertyName("allowAnonymousInvoice")]
+    public bool AllowAnonymousInvoice { get; set; } = false;
+
     [JsonPropertyName("customers")]
     public List<ApiCustomerSyncDto> Customers { get; set; } = new();
 

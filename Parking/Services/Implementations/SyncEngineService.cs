@@ -311,6 +311,7 @@ public class SyncEngineService : ISyncEngineService
                 _sessionService.CurrentUser.AllowCreditNotes = bootstrap.AllowCreditNotes;
                 _sessionService.CurrentUser.AllowSubscriptionInvoicing = bootstrap.AllowSubscriptionInvoicing;
                 _sessionService.CurrentUser.ForceElectronicInvoiceOnCheckout = bootstrap.ForceElectronicInvoiceOnCheckout;
+                _sessionService.CurrentUser.AllowAnonymousInvoice = bootstrap.AllowAnonymousInvoice;
             }
 
             using var db = _dbManager.CreateDbContext();
