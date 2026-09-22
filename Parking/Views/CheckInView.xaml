@@ -499,6 +499,8 @@
                         </ListBox.ItemsPanel>
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Left"/>
+                                <Setter Property="VerticalContentAlignment" Value="Center"/>
                                 <Setter Property="Margin" Value="0,0,8,8"/>
                                 <Setter Property="Padding" Value="0"/>
                                 <Setter Property="Cursor" Value="Hand"/>

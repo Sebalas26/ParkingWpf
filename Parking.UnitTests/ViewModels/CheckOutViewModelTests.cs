@@ -204,8 +204,8 @@ public class CheckOutViewModelTests : IDisposable
     {
         // Arrange
         var vm = CreateViewModel();
-        var fvmRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FVM", Name = "Facturación Electrónica" };
-        var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS Estándar" };
+        var fvmRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FVM", Name = "Facturación Electrónica", IsElectronicResolution = true };
+        var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS Estándar", IsElectronicResolution = false };
         vm.AvailableResolutions.Add(fvmRes);
         vm.AvailableResolutions.Add(posRes);
 
@@ -213,6 +213,7 @@ public class CheckOutViewModelTests : IDisposable
         {
             Id = 1,
             Name = "Efectivo",
+            RequiresResolution = false,
             RequiresCashTender = true
         };
 
@@ -229,8 +230,8 @@ public class CheckOutViewModelTests : IDisposable
     {
         // Arrange
         var vm = CreateViewModel();
-        var fvmRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FVM", Name = "Facturación Electrónica" };
-        var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS Estándar" };
+        var fvmRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FVM", Name = "Facturación Electrónica", IsElectronicResolution = true };
+        var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS Estándar", IsElectronicResolution = false };
         vm.AvailableResolutions.Add(fvmRes);
         vm.AvailableResolutions.Add(posRes);
 
@@ -238,6 +239,7 @@ public class CheckOutViewModelTests : IDisposable
         {
             Id = 2,
             Name = "Tarjeta de Crédito",
+            RequiresResolution = true,
             RequiresCashTender = false
         };
 
@@ -247,6 +249,60 @@ public class CheckOutViewModelTests : IDisposable
         // Assert
         vm.SelectedResolution.Should().NotBeNull();
         vm.SelectedResolution.Should().Be(fvmRes);
+    }
+
+    [Fact]
+    public void OnSelectedPaymentMethodEntityChanged_WithDefaultResolutionId_SelectsConfiguredElectronicResolution()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var feRes1 = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FE1", Name = "Facturación Electrónica 1", IsElectronicResolution = true };
+        var feRes2 = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FE2", Name = "Facturación Electrónica 2", IsElectronicResolution = true };
+        var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS", IsElectronicResolution = false };
+        vm.AvailableResolutions.Add(feRes1);
+        vm.AvailableResolutions.Add(feRes2);
+        vm.AvailableResolutions.Add(posRes);
+
+        var customPaymentMethod = new PaymentMethodEntity
+        {
+            Id = 3,
+            Name = "Datafono Redeban",
+            RequiresResolution = true,
+            DefaultResolutionId = feRes2.ResolutionId.ToString(),
+            RequiresCashTender = false
+        };
+
+        // Act
+        vm.SelectedPaymentMethodEntity = customPaymentMethod;
+
+        // Assert
+        vm.SelectedResolution.Should().NotBeNull();
+        vm.SelectedResolution.Should().Be(feRes2);
+        vm.IsResolutionLocked.Should().BeTrue();
+        vm.EmitElectronicInvoice.Should().BeTrue();
+    }
+
+    [Fact]
+    public void OnSelectedPaymentMethodEntityChanged_WhenRequiresCashTenderFalse_SetsAmountTenderedToCalculatedFee()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        vm.CalculatedFee = 15000m;
+        vm.AmountTendered = 5000m;
+
+        var electronicPaymentMethod = new PaymentMethodEntity
+        {
+            Id = 4,
+            Name = "Transferencia QR",
+            RequiresCashTender = false
+        };
+
+        // Act
+        vm.SelectedPaymentMethodEntity = electronicPaymentMethod;
+
+        // Assert
+        vm.AmountTendered.Should().Be(15000m);
+        vm.ChangeDue.Should().Be(0m);
     }
 
     [Fact]

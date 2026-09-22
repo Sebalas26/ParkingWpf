@@ -427,30 +427,14 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
         if (IsExitReceipt)
         {
-            // 1. Detectar si la resolución es FVM (Factura Electrónica)
-            bool isFvm = false;
+            // 1. Detectar si el ticket o la resolución es de Facturación Electrónica (100% data-driven)
+            bool isElectronicInvoice = ticket.IsElectronicInvoice;
 
-            if (resolution != null && (
-                (resolution.Prefix?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (resolution.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (resolution.DocumentType?.Contains("Factura Electr", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                (resolution.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                string.Equals(resolution.Prefix, "A1PQ", StringComparison.OrdinalIgnoreCase)))
+            if (!isElectronicInvoice && resolution != null)
             {
-                isFvm = true;
+                isElectronicInvoice = resolution.IsElectronicResolution;
             }
-            else if (!string.IsNullOrWhiteSpace(ticket.ResolutionName) &&
-                (ticket.ResolutionName.Contains("FVM", StringComparison.OrdinalIgnoreCase) ||
-                 ticket.ResolutionName.Contains("Factura Electr", StringComparison.OrdinalIgnoreCase)))
-            {
-                isFvm = true;
-            }
-            else if (!string.IsNullOrWhiteSpace(ticket.InvoiceNumber) &&
-                     ticket.InvoiceNumber.StartsWith("FVM", StringComparison.OrdinalIgnoreCase))
-            {
-                isFvm = true;
-            }
-            else if (ticket.ResolutionId.HasValue)
+            else if (!isElectronicInvoice && ticket.ResolutionId.HasValue)
             {
                 try
                 {
@@ -458,18 +442,14 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                     var dbRes = db.BillingResolutions.FirstOrDefault(r => r.ResolutionId == ticket.ResolutionId.Value);
                     if (dbRes != null)
                     {
-                        isFvm = (dbRes.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                                (dbRes.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                                (dbRes.DocumentType?.Contains("Factura Electr", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                                (dbRes.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                                string.Equals(dbRes.Prefix, "A1PQ", StringComparison.OrdinalIgnoreCase);
+                        isElectronicInvoice = dbRes.IsElectronicResolution;
                     }
                 }
                 catch { }
             }
 
-            IsFvmInvoice = isFvm;
-            IsStandardExitReceipt = !isFvm;
+            IsFvmInvoice = isElectronicInvoice;
+            IsStandardExitReceipt = !isElectronicInvoice;
 
             // 2. Resolver Nombre del Medio de Pago
             string paymentName = string.Empty;
@@ -589,7 +569,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 catch { }
             }
 
-            if (ticket.IsElectronicInvoice || isFvm)
+            if (ticket.IsElectronicInvoice || isElectronicInvoice)
             {
                 IsFvmInvoice = true;
                 IsStandardExitReceipt = false;
@@ -605,16 +585,16 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                     }
                     else
                     {
-                        InvoicePrefix = !string.IsNullOrWhiteSpace(resolution?.Prefix) ? resolution.Prefix : "FE";
+                        InvoicePrefix = !string.IsNullOrWhiteSpace(resolution?.Prefix) ? resolution.Prefix : string.Empty;
                         InvoiceNumberStr = ticket.InvoiceNumber;
                     }
                 }
                 else
                 {
-                    InvoicePrefix = !string.IsNullOrWhiteSpace(resolution?.Prefix) ? resolution.Prefix : "FE";
+                    InvoicePrefix = !string.IsNullOrWhiteSpace(resolution?.Prefix) ? resolution.Prefix : string.Empty;
                     var currentNum = resolution != null ? resolution.CurrentNumber.ToString() : ticket.TicketNumber;
                     InvoiceNumberStr = currentNum.PadLeft(8, '0');
-                    InvoiceNumberText = $"{InvoicePrefix}- {InvoiceNumberStr}";
+                    InvoiceNumberText = string.IsNullOrWhiteSpace(InvoicePrefix) ? InvoiceNumberStr : $"{InvoicePrefix}- {InvoiceNumberStr}";
                 }
 
                 InvoiceDateStr = exitTime.ToString("dd/MM/yy");

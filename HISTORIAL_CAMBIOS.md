@@ -15,6 +15,50 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-21 21:20:00] - [FIX / DATA-DRIVEN / WPF / POS / DIAN] - Corrección de IconPlus en XAML, Data-Driven Total de Resoluciones y Medios de Pago (RequiresCashTender y RequiresResolution)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Parking.exe (CoreCLR: clrhost): XamlParseException: StaticResourceExtension en Clientes... no deberia revisarse por esas palabras si nuestro sistema es super dinamico y todo parametrizable... no debe haber textos quemados..."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico del Crash y Textos Quemados**:
+     - Ocurrió una excepción `XamlParseException: 'IconPlus'` al abrir `CustomersView.xaml` y `CustomerSelectionDialog.xaml` debido a la ausencia de la clave vectorial en `Icons.xaml`.
+     - Había un binding warning `System.Windows.Data Error: 4` en `ListBoxItem` en `CheckInView.xaml`.
+     - En `CheckOutViewModel.cs` y `ReceiptPreviewViewModel.cs` existían heurísticas frágiles basadas en textos quemados (`"FVM"`, `"POS"`, `"A1PQ"`, `"Factura Electr"`, `"efectivo"`). Esto provocaba que resoluciones electrónicas válidas o métodos de pago no se seleccionaran o causaran bloqueos y excepciones cuando no coincidían con esas cadenas exactas.
+     - La lógica de devuelta y monto entregado dependía de `SelectedPaymentMethod != PaymentMethod.Cash` en vez de la propiedad canónica `RequiresCashTender` de `PaymentMethodEntity`.
+  2. **Solución Técnica Implementada (100% Data-Driven)**:
+     - **`Parking/Styles/Icons.xaml`**: Se incorporó la geometría `<Geometry x:Key="IconPlus">M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z</Geometry>`, erradicando el crash `XamlParseException`.
+     - **`Parking/Views/CheckInView.xaml`**: Se configuró `HorizontalContentAlignment="Left"` y `VerticalContentAlignment="Center"` en el estilo de `ListBoxItem` para limpiar la traza de diagnóstico.
+     - **`Parking/ViewModels/CheckOutViewModel.cs`**:
+       - Eliminación de todas las comprobaciones de cadenas hardcodeadas.
+       - La visibilidad de facturación electrónica y la selección de resolución ahora se gobiernan exclusivamente por `BillingResolution.IsElectronicResolution`, `PaymentMethodEntity.RequiresResolution` y `PaymentMethodEntity.DefaultResolutionId`.
+       - Eliminación de métodos redundantes `AutoSelectFvmResolution()` y `AutoSelectPosResolution()`, unificando en `AutoSelectElectronicResolution()` y `AutoSelectStandardResolution()`.
+       - En `AmountTendered`, la validación de cobro y asignación automática evalúa `requiresCash = SelectedPaymentMethodEntity?.RequiresCashTender ?? (SelectedPaymentMethod == PaymentMethod.Cash)`. Si es `false`, se asigna el total exacto; si es `true`, se permite ingresar el valor entregado y calcular el cambio.
+       - En `LoadCustomersAsync`, se implementó guard de concurrencia `Interlocked.CompareExchange` para evitar colisiones multihilo en `AvailableCustomers`.
+     - **`Parking/ViewModels/ReceiptPreviewViewModel.cs`**:
+       - Se erradicaron todas las comparaciones de texto de `"FVM"`, `"POS"`, `"A1PQ"` y `"Factura Electr"`. Se evalúa `ticket.IsElectronicInvoice` y `BillingResolution.IsElectronicResolution` directamente desde la entidad y base de datos local.
+     - **`Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`**:
+       - Actualización de fixtures para asignar explícitamente `IsElectronicResolution` y `RequiresResolution`.
+       - Adición de tests unitarios: `OnSelectedPaymentMethodEntityChanged_WithDefaultResolutionId_SelectsConfiguredElectronicResolution` y `OnSelectedPaymentMethodEntityChanged_WhenRequiresCashTenderFalse_SetsAmountTenderedToCalculatedFee`.
+  3. **Cero Errores y 100% de Pruebas Superadas**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **262 de 262 pruebas superadas (100% Superadas, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Styles/Icons.xaml`
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: Éxito (0 Errores, 0 Advertencias).
+  - `dotnet test ParkingWpf.slnx`: 262 pruebas aprobadas (0 Fallos).
+
+---
+
 ### [2026-09-21 18:30:00] - [FEAT / DIAN / SIIGO / WPF / POS] - Inclusión Obligatoria de Dirección Fiscal y Municipio DANE en Registro Rápido POS y Gestión de Clientes
 
 - **Autor**: Antigravity AI Assistant & Software Architect

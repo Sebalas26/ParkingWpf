@@ -182,7 +182,7 @@ public partial class CheckOutViewModel : ViewModelBase
         HasElectronicInvoicingEnabled ||
         EmitElectronicInvoice ||
         (SelectedPaymentMethodEntity?.RequiresResolution == true) ||
-        (SelectedResolution != null && (SelectedResolution.IsElectronicResolution || (SelectedResolution.Prefix?.Equals("FE", StringComparison.OrdinalIgnoreCase) ?? false) || (SelectedResolution.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)));
+        (SelectedResolution != null && SelectedResolution.IsElectronicResolution);
 
     private readonly DispatcherTimer _agreementPopupTimer;
 
@@ -416,8 +416,15 @@ public partial class CheckOutViewModel : ViewModelBase
         }
     }
 
+    private int _isLoadingCustomers;
+
     private async Task LoadCustomersAsync()
     {
+        if (Interlocked.CompareExchange(ref _isLoadingCustomers, 1, 0) != 0)
+        {
+            return;
+        }
+
         try
         {
             using var db = _connectionManager.CreateDbContext();
@@ -448,6 +455,10 @@ public partial class CheckOutViewModel : ViewModelBase
             }
         }
         catch { }
+        finally
+        {
+            Interlocked.Exchange(ref _isLoadingCustomers, 0);
+        }
     }
 
     private async Task LoadMunicipalitiesAsync()
@@ -561,8 +572,8 @@ public partial class CheckOutViewModel : ViewModelBase
         {
             ShowResolutionWarning = false;
 
-            // Si el medio de pago actual exige FE y se intenta seleccionar una resolución POS
-            if (SelectedPaymentMethodEntity?.RequiresResolution == true && !value.IsElectronicResolution && (value.Prefix?.Contains("POS", StringComparison.OrdinalIgnoreCase) ?? false))
+            // Si el medio de pago actual exige FE y se intenta seleccionar una resolución no electrónica
+            if (SelectedPaymentMethodEntity?.RequiresResolution == true && !value.IsElectronicResolution)
             {
                 _isApplyingResolutionFilter = true;
                 try
@@ -578,11 +589,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 return;
             }
 
-            bool isElectronic = value.IsElectronicResolution ||
-                                (value.Prefix?.Equals("FE", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                                (value.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                                (value.Prefix?.Equals("FM", StringComparison.OrdinalIgnoreCase) ?? false) ||
-                                (value.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false);
+            bool isElectronic = value.IsElectronicResolution;
 
             if (isElectronic)
             {
@@ -639,18 +646,11 @@ public partial class CheckOutViewModel : ViewModelBase
 
             if (method != null && (method.RequiresResolution || !string.IsNullOrWhiteSpace(method.DefaultResolutionId)))
             {
-                var feResolutions = AvailableResolutions.Where(r =>
-                    !r.DocumentType.Contains("POS", StringComparison.OrdinalIgnoreCase) &&
-                    !(r.Prefix?.StartsWith("POS", StringComparison.OrdinalIgnoreCase) ?? false) &&
-                    (r.IsElectronicResolution
-                     || (r.Prefix?.StartsWith("FE", StringComparison.OrdinalIgnoreCase) ?? false)
-                     || (r.Prefix?.StartsWith("FM", StringComparison.OrdinalIgnoreCase) ?? false)
-                     || (r.Prefix?.StartsWith("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                     || (r.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false))).ToList();
+                var feResolutions = AvailableResolutions.Where(r => r.IsElectronicResolution).ToList();
 
                 if (method.RequiresResolution)
                 {
-                    // Si el medio de pago exige FE, SOLO se permiten resoluciones FE (CERO resoluciones tipo POS)
+                    // Si el medio de pago exige Facturación Electrónica, SOLO se permiten resoluciones electrónicas
                     FilteredResolutions.Clear();
                     foreach (var r in feResolutions)
                     {
@@ -676,12 +676,8 @@ public partial class CheckOutViewModel : ViewModelBase
                             targetResolution = feResolutions.FirstOrDefault(r => r.ResolutionId.ToString().Equals(method.DefaultResolutionId, StringComparison.OrdinalIgnoreCase));
                         }
 
-                        // Priorizar FVM por defecto
-                        targetResolution ??= feResolutions.FirstOrDefault(r => r.Prefix?.StartsWith("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                             ?? feResolutions.FirstOrDefault(r => r.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                             ?? feResolutions.FirstOrDefault(r => r.Prefix?.StartsWith("FE", StringComparison.OrdinalIgnoreCase) ?? false)
-                                             ?? feResolutions.FirstOrDefault(r => r.IsElectronicResolution)
-                                             ?? feResolutions.FirstOrDefault();
+                        // Fallback dinámico a la primera resolución electrónica disponible
+                        targetResolution ??= feResolutions.FirstOrDefault();
 
                         SelectedResolution = targetResolution;
                         ShowResolutionWarning = targetResolution == null;
@@ -689,9 +685,9 @@ public partial class CheckOutViewModel : ViewModelBase
                 }
                 else
                 {
-                    var targetList = feResolutions.Count > 0 ? feResolutions : AvailableResolutions.ToList();
+                    // No exige FE de forma obligatoria, pero puede tener resolución por defecto configurada
                     FilteredResolutions.Clear();
-                    foreach (var r in targetList)
+                    foreach (var r in AvailableResolutions)
                     {
                         FilteredResolutions.Add(r);
                     }
@@ -699,10 +695,10 @@ public partial class CheckOutViewModel : ViewModelBase
                     BillingResolution? targetResolution = null;
                     if (!string.IsNullOrWhiteSpace(method.DefaultResolutionId))
                     {
-                        targetResolution = targetList.FirstOrDefault(r => r.ResolutionId.ToString().Equals(method.DefaultResolutionId, StringComparison.OrdinalIgnoreCase));
+                        targetResolution = AvailableResolutions.FirstOrDefault(r => r.ResolutionId.ToString().Equals(method.DefaultResolutionId, StringComparison.OrdinalIgnoreCase));
                     }
 
-                    SelectedResolution = targetResolution ?? targetList.FirstOrDefault();
+                    SelectedResolution = targetResolution ?? AvailableResolutions.FirstOrDefault();
                 }
             }
             else
@@ -719,24 +715,13 @@ public partial class CheckOutViewModel : ViewModelBase
 
                 if (method != null)
                 {
-                    if (IsCardOrElectronicPayment(method.Name))
+                    if (EmitElectronicInvoice || (SelectedResolution?.IsElectronicResolution == true))
                     {
-                        AutoSelectFvmResolution();
+                        AutoSelectElectronicResolution();
                     }
-                    else if (method.ToEnum() == Core.Enums.PaymentMethod.Cash || method.RequiresCashTender || IsCashPayment(method.Name))
+                    else
                     {
-                        if (EmitElectronicInvoice || (SelectedResolution?.IsElectronicResolution == true))
-                        {
-                            AutoSelectFvmResolution();
-                        }
-                        else
-                        {
-                            AutoSelectPosResolution();
-                        }
-                    }
-                    else if (EmitElectronicInvoice || (SelectedResolution?.IsElectronicResolution == true))
-                    {
-                        AutoSelectFvmResolution();
+                        AutoSelectStandardResolution();
                     }
                 }
             }
@@ -749,7 +734,7 @@ public partial class CheckOutViewModel : ViewModelBase
         }
     }
 
-    private void AutoSelectFvmResolution()
+    private void AutoSelectElectronicResolution()
     {
         var targetList = FilteredResolutions.Count > 0 ? FilteredResolutions : AvailableResolutions;
         if (targetList.Count == 0) return;
@@ -759,21 +744,14 @@ public partial class CheckOutViewModel : ViewModelBase
             return;
         }
 
-        var fvmRes = targetList.FirstOrDefault(r => r.IsElectronicResolution
-                                                    || (r.Prefix?.Equals("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                    || (r.Prefix?.Equals("FM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                    || (r.Prefix?.Equals("FE", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                    || (r.DocumentType?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                    || (r.DocumentType?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                    || (r.Name?.Contains("Factura", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                    || (r.Name?.Contains("FVM", StringComparison.OrdinalIgnoreCase) ?? false));
-        if (fvmRes != null)
+        var feRes = targetList.FirstOrDefault(r => r.IsElectronicResolution) ?? targetList.FirstOrDefault();
+        if (feRes != null)
         {
-            SelectedResolution = fvmRes;
+            SelectedResolution = feRes;
         }
     }
 
-    private void AutoSelectPosResolution()
+    private void AutoSelectStandardResolution()
     {
         var targetList = FilteredResolutions.Count > 0 ? FilteredResolutions : AvailableResolutions;
         if (targetList.Count == 0) return;
@@ -783,86 +761,18 @@ public partial class CheckOutViewModel : ViewModelBase
             return;
         }
 
-        var posRes = targetList.FirstOrDefault(r => !r.IsElectronicResolution &&
-                                                   ((r.Prefix?.Equals("POS", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                    || (r.DocumentType?.Contains("POS", StringComparison.OrdinalIgnoreCase) ?? false)
-                                                    || (r.Name?.Contains("POS", StringComparison.OrdinalIgnoreCase) ?? false)));
-        if (posRes != null)
+        var stdRes = targetList.FirstOrDefault(r => !r.IsElectronicResolution) ?? targetList.FirstOrDefault();
+        if (stdRes != null)
         {
-            SelectedResolution = posRes;
+            SelectedResolution = stdRes;
         }
-    }
-
-    private static bool IsCashPayment(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return false;
-        var clean = text.Trim().ToLowerInvariant();
-        return clean.Contains("efectivo") || clean.Contains("cash");
-    }
-
-    private static bool IsCardOrElectronicPayment(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text)) return false;
-
-        // Normalizar texto: minúsculas, sin tildes, sin puntuaciones extrañas
-        var normalized = text.ToLowerInvariant().Normalize(System.Text.NormalizationForm.FormD);
-        var sb = new System.Text.StringBuilder();
-        foreach (var c in normalized)
-        {
-            var unicodeCategory = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
-            if (unicodeCategory != System.Globalization.UnicodeCategory.NonSpacingMark)
-            {
-                if (char.IsLetterOrDigit(c) || char.IsWhiteSpace(c))
-                {
-                    sb.Append(c);
-                }
-                else
-                {
-                    sb.Append(' ');
-                }
-            }
-        }
-
-        var clean = sb.ToString();
-        var words = clean.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-
-        // Palabras clave directas y variaciones ortográficas / abreviaturas comunes
-        string[] cardKeywords = {
-            "tarjeta", "tarj", "tar", "tc", "td",
-            "credito", "credit", "crdto", "cred", "cre",
-            "debito", "debit", "devito", "deb",
-            "datafono", "dataf", "pos", "terminal",
-            "visa", "mastercard", "master", "amex", "american", "diners", "maestro", "discover",
-            "redeban", "credibanco", "bold", "sumup"
-        };
-
-        foreach (var word in words)
-        {
-            foreach (var kw in cardKeywords)
-            {
-                if (word == kw || (word.Length >= 3 && (word.StartsWith(kw) || kw.StartsWith(word))))
-                {
-                    return true;
-                }
-            }
-        }
-
-        foreach (var kw in cardKeywords)
-        {
-            if (clean.Contains(kw))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     [RelayCommand]
     private void SelectResolution(BillingResolution resolution)
     {
         if (resolution == null) return;
-        if (IsResolutionLocked && !resolution.IsElectronicResolution && (resolution.Prefix?.Contains("POS", StringComparison.OrdinalIgnoreCase) ?? false))
+        if (IsResolutionLocked && !resolution.IsElectronicResolution)
         {
             return;
         }
@@ -1314,7 +1224,7 @@ public partial class CheckOutViewModel : ViewModelBase
             _ = LoadCustomersAsync();
             if (SelectedResolution == null || !SelectedResolution.IsElectronicResolution)
             {
-                AutoSelectFvmResolution();
+                AutoSelectElectronicResolution();
             }
         }
         else
@@ -1323,7 +1233,7 @@ public partial class CheckOutViewModel : ViewModelBase
             IsQuickRegisterCustomerOpen = false;
             if (SelectedResolution != null && SelectedResolution.IsElectronicResolution)
             {
-                AutoSelectPosResolution();
+                AutoSelectStandardResolution();
             }
         }
         OnPropertyChanged(nameof(IsElectronicInvoicingSectionVisible));
@@ -1785,7 +1695,8 @@ public partial class CheckOutViewModel : ViewModelBase
 
         CalculatedFee = Math.Max(0m, GrossFee - DiscountAmount);
 
-        if (AmountTendered < CalculatedFee && SelectedPaymentMethod != PaymentMethod.Cash)
+        var requiresCash = SelectedPaymentMethodEntity?.RequiresCashTender ?? (SelectedPaymentMethod == PaymentMethod.Cash);
+        if (AmountTendered < CalculatedFee && !requiresCash)
         {
             AmountTendered = CalculatedFee;
         }
@@ -1893,7 +1804,15 @@ public partial class CheckOutViewModel : ViewModelBase
     private void SelectPaymentMethodEnum(PaymentMethod method)
     {
         SelectedPaymentMethod = method;
-        if (method != PaymentMethod.Cash)
+        var entity = AvailablePaymentMethods.FirstOrDefault(pm => pm.ToEnum() == method);
+        if (entity != null)
+        {
+            SelectedPaymentMethodEntity = entity;
+            return;
+        }
+
+        var requiresCash = method == PaymentMethod.Cash;
+        if (!requiresCash)
         {
             AmountTendered = CalculatedFee;
             ChangeDue = 0m;
@@ -2032,7 +1951,7 @@ public partial class CheckOutViewModel : ViewModelBase
         }
 
         var methodEnum = SelectedPaymentMethodEntity?.ToEnum() ?? PaymentMethod.Cash;
-        var requiresCash = !IsMonthlyTicket && (SelectedPaymentMethodEntity?.RequiresCashTender ?? true);
+        var requiresCash = !IsMonthlyTicket && (SelectedPaymentMethodEntity?.RequiresCashTender ?? (SelectedPaymentMethod == PaymentMethod.Cash));
 
         if (requiresCash && AmountTendered < CalculatedFee)
         {
