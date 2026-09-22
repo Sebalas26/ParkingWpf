@@ -731,6 +731,51 @@ public class CheckOutViewModelTests : IDisposable
         debitMethod!.RequiresCashTender.Should().BeFalse();
     }
 
+    [Fact]
+    public void ApplyPaymentMethodResolutionFilter_WhenSwitchingFromLockedCardToCash_ResetsElectronicInvoice()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var feRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FE", Name = "Facturación Electrónica DIAN", IsElectronicResolution = true };
+        var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS Estándar", IsElectronicResolution = false };
+        vm.AvailableResolutions.Add(feRes);
+        vm.AvailableResolutions.Add(posRes);
+
+        var cardMethod = new PaymentMethodEntity
+        {
+            Id = 2,
+            Name = "Tarjeta Débito",
+            RequiresResolution = true,
+            RequiresCashTender = false
+        };
+
+        var cashMethod = new PaymentMethodEntity
+        {
+            Id = 1,
+            Name = "Efectivo",
+            RequiresResolution = false,
+            RequiresCashTender = true
+        };
+
+        // Act 1 - Select Card: Locks resolution to FE and enables electronic invoice
+        vm.SelectedPaymentMethodEntity = cardMethod;
+
+        vm.IsResolutionLocked.Should().BeTrue();
+        vm.EmitElectronicInvoice.Should().BeTrue();
+        vm.SelectedResolution.Should().Be(feRes);
+
+        // Act 2 - Switch to Cash: Should unlock, reset EmitElectronicInvoice, clear warnings and restore POS resolution
+        vm.SelectedPaymentMethodEntity = cashMethod;
+
+        // Assert
+        vm.IsResolutionLocked.Should().BeFalse();
+        vm.EmitElectronicInvoice.Should().BeFalse();
+        vm.CanToggleElectronicInvoice.Should().BeTrue();
+        vm.ShowResolutionWarning.Should().BeFalse();
+        vm.ShowCustomerWarning.Should().BeFalse();
+        vm.SelectedResolution.Should().Be(posRes);
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

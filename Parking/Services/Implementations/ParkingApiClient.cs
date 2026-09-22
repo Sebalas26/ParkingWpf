@@ -198,6 +198,10 @@ public class ParkingApiClient : IApiClientService
                     // Fallback
                 }
             }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new InvalidOperationException("404_NOT_FOUND");
+            }
 
             return null;
         }
@@ -228,6 +232,14 @@ public class ParkingApiClient : IApiClientService
                 ReportConnectionState(true);
                 return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions, cts.Token);
             }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                throw new InvalidOperationException("404_NOT_FOUND");
+            }
+
+            var errBody = await response.Content.ReadAsStringAsync(cts.Token);
+            System.Diagnostics.Debug.WriteLine($"[ParkingApiClient] CheckOutAsync failed: StatusCode={(int)response.StatusCode} ({response.ReasonPhrase}) for {BaseUrl}/api/tickets/check-out. Body: {errBody}");
             return null;
         }
         catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)

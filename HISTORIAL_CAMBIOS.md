@@ -15,6 +15,40 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-22 07:35:00] - [FIX / CHECKOUT / CASH / DIAN / RESILIENCE] Corrección Definitiva de Bloqueo de Medios de Pago, Auto-reparación SQLite y Detección Defensiva de Resoluciones DIAN
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"revisa los huecos tecnicos de este plan y que si con esto se da la solución completa y definitiva."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Corrección de Casos Críticos en Modal de Cobro (`CheckOutViewModel.cs`)**:
+     - **Problema de Sección DIAN Pegada al Volver a Efectivo**: Al seleccionar un medio que exige FE (como Tarjeta Débito), `IsResolutionLocked` y `EmitElectronicInvoice` se forzaban en `true`. Al regresar a Efectivo, `EmitElectronicInvoice` permanecía encendido si no había un reinicio contextual, bloqueando el cobro en efectivo por falta de adquirente. Se implementó la lógica en el `else` de `ApplyPaymentMethodResolutionFilter`: si `IsResolutionLocked` estaba activo por el método anterior, se restablece `EmitElectronicInvoice = ForceElectronicInvoiceOnCheckout`, se limpian `ShowResolutionWarning` y `ShowCustomerWarning`, y se auto-selecciona la resolución POS estándar; preservando al mismo tiempo `EmitElectronicInvoice` cuando el cajero lo activó voluntariamente (validado con prueba unitaria).
+     - **Detección Defensiva de Resoluciones Electrónicas**: Se creó el método auxiliar `IsElectronicResolutionDefensive(BillingResolution? r)` que valida `r.IsElectronicResolution` y adicionalmente analiza de forma no intrusiva prefijos (`FE`, `SETP`) o tipo de documento (`electrónica`) en caso de bases de datos locales previas sin sincronización completa.
+  2. **Auto-Reparación y Resiliencia SQLite (`DbConnectionManager.cs`)**:
+     - Se incorporó script defensivo en `InitializeDatabaseAsync` post-migración que auto-repara registros de SQLite:
+       - Actualiza `RequiresCashTender = 1` en `PaymentMethods` y `BranchPaymentMethods` para "Efectivo" / "Cash".
+       - Actualiza `IsElectronicResolution = 1` en `BillingResolutions` para prefijos `FE`, `SETP` o documentos electrónicos.
+  3. **Diagnóstico Mejorado en API Client (`ParkingApiClient.cs`)**:
+     - En `CheckOutAsync`, si el servidor responde con código de error HTTP no exitoso, se lee el cuerpo de la respuesta y se emite traza diagnóstica con `System.Diagnostics.Debug.WriteLine` detallando el StatusCode, ReasonPhrase y Body de error de la API.
+  4. **Pruebas Unitarias y Certificación**:
+     - Se añadió nueva prueba de regresión `ApplyPaymentMethodResolutionFilter_WhenSwitchingFromLockedCardToCash_ResetsElectronicInvoice` en `CheckOutViewModelTests.cs`.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **263 de 263 pruebas superadas (100% Superadas, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **✅ Verificación y Compilación**:
+  - `dotnet build ParkingWpf.slnx`: Éxito (0 Errores, 0 Advertencias).
+  - `dotnet test ParkingWpf.slnx`: 263 pruebas aprobadas (0 Fallos).
+
+---
+
 ### [2026-09-21 21:20:00] - [FIX / DATA-DRIVEN / WPF / POS / DIAN] - Corrección de IconPlus en XAML, Data-Driven Total de Resoluciones y Medios de Pago (RequiresCashTender y RequiresResolution)
 
 - **Autor**: Antigravity AI Assistant & Software Architect

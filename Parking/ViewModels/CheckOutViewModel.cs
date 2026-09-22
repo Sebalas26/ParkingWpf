@@ -178,11 +178,27 @@ public partial class CheckOutViewModel : ViewModelBase
 
     public bool CanChangeResolution => !IsResolutionLocked || FilteredResolutions.Count > 1;
 
+    public static bool IsElectronicResolutionDefensive(BillingResolution? r)
+    {
+        if (r == null) return false;
+        if (r.IsElectronicResolution) return true;
+
+        var doc = r.DocumentType ?? string.Empty;
+        var pfx = r.Prefix ?? string.Empty;
+        var name = r.Name ?? string.Empty;
+
+        return doc.IndexOf("electr", StringComparison.OrdinalIgnoreCase) >= 0 ||
+               pfx.Equals("FE", StringComparison.OrdinalIgnoreCase) ||
+               pfx.Equals("SETP", StringComparison.OrdinalIgnoreCase) ||
+               pfx.StartsWith("FE", StringComparison.OrdinalIgnoreCase) ||
+               name.IndexOf("electr", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
     public bool IsElectronicInvoicingSectionVisible =>
         HasElectronicInvoicingEnabled ||
         EmitElectronicInvoice ||
         (SelectedPaymentMethodEntity?.RequiresResolution == true) ||
-        (SelectedResolution != null && SelectedResolution.IsElectronicResolution);
+        (SelectedResolution != null && IsElectronicResolutionDefensive(SelectedResolution));
 
     private readonly DispatcherTimer _agreementPopupTimer;
 
@@ -329,6 +345,7 @@ public partial class CheckOutViewModel : ViewModelBase
 
         _sessionService.ActiveBranchChanged += async _ =>
         {
+            if (SelectedTicket != null) return;
             try { await InitializeAsync(); } catch { }
         };
 
@@ -573,12 +590,12 @@ public partial class CheckOutViewModel : ViewModelBase
             ShowResolutionWarning = false;
 
             // Si el medio de pago actual exige FE y se intenta seleccionar una resolución no electrónica
-            if (SelectedPaymentMethodEntity?.RequiresResolution == true && !value.IsElectronicResolution)
+            if (SelectedPaymentMethodEntity?.RequiresResolution == true && !IsElectronicResolutionDefensive(value))
             {
                 _isApplyingResolutionFilter = true;
                 try
                 {
-                    var validFe = FilteredResolutions.FirstOrDefault(r => r.IsElectronicResolution);
+                    var validFe = FilteredResolutions.FirstOrDefault(r => IsElectronicResolutionDefensive(r));
                     SelectedResolution = validFe;
                     ShowResolutionWarning = validFe == null;
                 }
@@ -589,7 +606,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 return;
             }
 
-            bool isElectronic = value.IsElectronicResolution;
+            bool isElectronic = IsElectronicResolutionDefensive(value);
 
             if (isElectronic)
             {
@@ -646,7 +663,7 @@ public partial class CheckOutViewModel : ViewModelBase
 
             if (method != null && (method.RequiresResolution || !string.IsNullOrWhiteSpace(method.DefaultResolutionId)))
             {
-                var feResolutions = AvailableResolutions.Where(r => r.IsElectronicResolution).ToList();
+                var feResolutions = AvailableResolutions.Where(r => IsElectronicResolutionDefensive(r)).ToList();
 
                 if (method.RequiresResolution)
                 {
@@ -703,9 +720,15 @@ public partial class CheckOutViewModel : ViewModelBase
             }
             else
             {
+                if (IsResolutionLocked)
+                {
+                    EmitElectronicInvoice = ForceElectronicInvoiceOnCheckout;
+                }
                 IsResolutionLocked = false;
                 ResolutionLockReason = string.Empty;
                 CanToggleElectronicInvoice = !ForceElectronicInvoiceOnCheckout;
+                ShowResolutionWarning = false;
+                ShowCustomerWarning = false;
 
                 FilteredResolutions.Clear();
                 foreach (var r in AvailableResolutions)
@@ -715,7 +738,7 @@ public partial class CheckOutViewModel : ViewModelBase
 
                 if (method != null)
                 {
-                    if (EmitElectronicInvoice || (SelectedResolution?.IsElectronicResolution == true))
+                    if (EmitElectronicInvoice)
                     {
                         AutoSelectElectronicResolution();
                     }
@@ -739,12 +762,12 @@ public partial class CheckOutViewModel : ViewModelBase
         var targetList = FilteredResolutions.Count > 0 ? FilteredResolutions : AvailableResolutions;
         if (targetList.Count == 0) return;
 
-        if (SelectedResolution != null && SelectedResolution.IsElectronicResolution && targetList.Contains(SelectedResolution))
+        if (SelectedResolution != null && IsElectronicResolutionDefensive(SelectedResolution) && targetList.Contains(SelectedResolution))
         {
             return;
         }
 
-        var feRes = targetList.FirstOrDefault(r => r.IsElectronicResolution) ?? targetList.FirstOrDefault();
+        var feRes = targetList.FirstOrDefault(r => IsElectronicResolutionDefensive(r)) ?? targetList.FirstOrDefault();
         if (feRes != null)
         {
             SelectedResolution = feRes;
@@ -756,12 +779,12 @@ public partial class CheckOutViewModel : ViewModelBase
         var targetList = FilteredResolutions.Count > 0 ? FilteredResolutions : AvailableResolutions;
         if (targetList.Count == 0) return;
 
-        if (SelectedResolution != null && !SelectedResolution.IsElectronicResolution && targetList.Contains(SelectedResolution))
+        if (SelectedResolution != null && !IsElectronicResolutionDefensive(SelectedResolution) && targetList.Contains(SelectedResolution))
         {
             return;
         }
 
-        var stdRes = targetList.FirstOrDefault(r => !r.IsElectronicResolution) ?? targetList.FirstOrDefault();
+        var stdRes = targetList.FirstOrDefault(r => !IsElectronicResolutionDefensive(r)) ?? targetList.FirstOrDefault();
         if (stdRes != null)
         {
             SelectedResolution = stdRes;
@@ -772,7 +795,7 @@ public partial class CheckOutViewModel : ViewModelBase
     private void SelectResolution(BillingResolution resolution)
     {
         if (resolution == null) return;
-        if (IsResolutionLocked && !resolution.IsElectronicResolution)
+        if (IsResolutionLocked && !IsElectronicResolutionDefensive(resolution))
         {
             return;
         }
@@ -1222,7 +1245,7 @@ public partial class CheckOutViewModel : ViewModelBase
         if (value)
         {
             _ = LoadCustomersAsync();
-            if (SelectedResolution == null || !SelectedResolution.IsElectronicResolution)
+            if (SelectedResolution == null || !IsElectronicResolutionDefensive(SelectedResolution))
             {
                 AutoSelectElectronicResolution();
             }
@@ -1231,7 +1254,7 @@ public partial class CheckOutViewModel : ViewModelBase
         {
             ShowCustomerWarning = false;
             IsQuickRegisterCustomerOpen = false;
-            if (SelectedResolution != null && SelectedResolution.IsElectronicResolution)
+            if (SelectedResolution != null && IsElectronicResolutionDefensive(SelectedResolution))
             {
                 AutoSelectStandardResolution();
             }

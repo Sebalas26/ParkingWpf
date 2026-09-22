@@ -1954,6 +1954,10 @@ public class SyncEngineService : ISyncEngineService
                         }
                     }
                 }
+                catch (InvalidOperationException ex) when (ex.Message == "404_NOT_FOUND")
+                {
+                    item.IsProcessed = true; // Drop 404 items permanently as they can't be resolved
+                }
                 catch (Exception ex)
                 {
                     item.RetryCount++;

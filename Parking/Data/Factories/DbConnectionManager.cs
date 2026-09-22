@@ -316,6 +316,43 @@ public class DbConnectionManager : IDbConnectionManager
                 ");
             }
             catch { }
+
+            // 4. Auto-reparación resiliente de medios de pago y resoluciones para facturación
+            try
+            {
+                // Asegurar que Efectivo requiera arqueo/cambio de dinero en efectivo (RequiresCashTender = 1)
+                await context.Database.ExecuteSqlRawAsync(@"
+                    UPDATE ""PaymentMethods""
+                    SET ""RequiresCashTender"" = 1
+                    WHERE LOWER(""Name"") LIKE '%efectivo%' OR LOWER(""Name"") LIKE '%cash%' OR ""Id"" = 1;
+
+                    UPDATE ""BranchPaymentMethods""
+                    SET ""RequiresCashTender"" = 1
+                    WHERE ""PaymentMethodId"" IN (
+                        SELECT ""Id"" FROM ""PaymentMethods""
+                        WHERE LOWER(""Name"") LIKE '%efectivo%' OR LOWER(""Name"") LIKE '%cash%' OR ""Id"" = 1
+                    );
+                ");
+            }
+            catch { }
+
+            try
+            {
+                // Auto-marcar resoluciones electrónicas si su prefijo o tipo de documento lo indica
+                await context.Database.ExecuteSqlRawAsync(@"
+                    UPDATE ""BillingResolutions""
+                    SET ""IsElectronicResolution"" = 1
+                    WHERE ""IsElectronicResolution"" = 0
+                      AND (
+                          LOWER(""DocumentType"") LIKE '%electr%'
+                          OR UPPER(""Prefix"") = 'FE'
+                          OR UPPER(""Prefix"") = 'SETP'
+                          OR UPPER(""Prefix"") LIKE 'FE%'
+                          OR LOWER(""Name"") LIKE '%electr%'
+                      );
+                ");
+            }
+            catch { }
         }
         catch { }
 

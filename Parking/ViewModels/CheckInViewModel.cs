@@ -193,6 +193,7 @@ public partial class CheckInViewModel : ViewModelBase
 
         _sessionService.ActiveBranchChanged += async _ =>
         {
+            if (!string.IsNullOrWhiteSpace(PlateNumber)) return;
             try { await InitializeAsync(); } catch { }
         };
 
