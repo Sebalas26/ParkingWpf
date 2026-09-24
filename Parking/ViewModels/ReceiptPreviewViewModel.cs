@@ -90,7 +90,16 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private bool _hasAgreement;
 
     [ObservableProperty]
-    private string _agreementDisplayName = string.Empty;
+    private string _agreementDisplayName = "NO APLICA";
+
+    [ObservableProperty]
+    private bool _hasDiscount;
+
+    [ObservableProperty]
+    private string _discountAmountStr = "$ 0";
+
+    [ObservableProperty]
+    private string _subtotalStr = string.Empty;
 
     [ObservableProperty]
     private string _formattedTotalPaid = "$ 0";
@@ -512,9 +521,22 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             PaymentMethodDisplayName = paymentName;
             PaymentMethodName = paymentName.ToUpperInvariant();
 
+            // 3.1 Recargo por Tiquete Extraviado
+            HasLostTicketSurcharge = ticket.IsLostTicket && ticket.LostTicketFee > 0;
+            LostTicketFeeText = HasLostTicketSurcharge ? $"{ticket.LostTicketFee:C0}" : string.Empty;
+
+            // 4. Valor que pagó y % IVA
+            var totalPaid = ticket.NetAmount > 0 ? ticket.NetAmount : (ticket.AmountPaid > 0 ? ticket.AmountPaid : (ticket.TotalAmount > 0 ? ticket.TotalAmount : ticket.GrossAmount));
+            FormattedTotalPaid = $"{totalPaid:C0}";
+            IvaPercentageText = "19%";
+
             // 3. Resolver Convenio si aplica
             HasAgreement = false;
-            AgreementDisplayName = string.Empty;
+            HasDiscount = false;
+            AgreementDisplayName = "NO APLICA";
+            DiscountAmountStr = "$ 0";
+            SubtotalStr = string.Empty;
+
             if (ticket.DiscountAmount > 0)
             {
                 string? agreementName = null;
@@ -532,24 +554,12 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 catch { }
 
                 HasAgreement = true;
-                if (!string.IsNullOrWhiteSpace(agreementName))
-                {
-                    AgreementDisplayName = $"{agreementName} (-{ticket.DiscountAmount:C0})";
-                }
-                else
-                {
-                    AgreementDisplayName = $"Descuento (-{ticket.DiscountAmount:C0})";
-                }
+                HasDiscount = true;
+                AgreementDisplayName = !string.IsNullOrWhiteSpace(agreementName) ? agreementName.ToUpperInvariant() : "CONVENIO APLICADO";
+                DiscountAmountStr = $"- {ticket.DiscountAmount:C0}";
+                var gross = ticket.GrossAmount > totalPaid ? ticket.GrossAmount : (totalPaid + ticket.DiscountAmount);
+                SubtotalStr = $"{gross:N0}";
             }
-
-            // 3.1 Recargo por Tiquete Extraviado
-            HasLostTicketSurcharge = ticket.IsLostTicket && ticket.LostTicketFee > 0;
-            LostTicketFeeText = HasLostTicketSurcharge ? $"{ticket.LostTicketFee:C0}" : string.Empty;
-
-            // 4. Valor que pagó y % IVA
-            var totalPaid = ticket.NetAmount > 0 ? ticket.NetAmount : (ticket.AmountPaid > 0 ? ticket.AmountPaid : (ticket.TotalAmount > 0 ? ticket.TotalAmount : ticket.GrossAmount));
-            FormattedTotalPaid = $"{totalPaid:C0}";
-            IvaPercentageText = "19%";
 
             var paid = ticket.AmountPaid > 0 ? ticket.AmountPaid : totalPaid;
             AmountPaidStr = $"{paid:N0}";
