@@ -151,13 +151,14 @@
                                 </Grid>
 
                                 <!-- 3. Bloque Central de la Placa -->
-                                <TextBlock Text="{Binding Ticket.PlateNumber, StringFormat='{}PLACA:  {0}'}"
-                                           FontSize="16"
-                                           FontWeight="Black"
-                                           FontFamily="{StaticResource FontFamilyMonospace}"
-                                           Foreground="#000000"
-                                           HorizontalAlignment="Center"
-                                           Margin="0,4,0,8"/>
+                                <Border BorderBrush="#000000" BorderThickness="2" CornerRadius="4" Padding="6,4" HorizontalAlignment="Center" Margin="0,4,0,8">
+                                    <TextBlock Text="{Binding Ticket.PlateNumber, StringFormat='{}PLACA:  {0}'}"
+                                               FontSize="16"
+                                               FontWeight="Black"
+                                               FontFamily="{StaticResource FontFamilyMonospace}"
+                                               Foreground="#000000"
+                                               HorizontalAlignment="Center"/>
+                                </Border>
 
                                 <!-- Entrada, Salida, Tiempo -->
                                 <Grid Margin="0,1">
@@ -225,13 +226,33 @@
                                 <!-- Línea discontinua a la derecha -->
                                 <TextBlock Text="-----------------------" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Right" Margin="0,1"/>
 
-                                <Grid Margin="0,2,0,6">
+                                <Grid Margin="0,2,0,4">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="TOTAL:" FontSize="14" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                     <TextBlock Grid.Column="1" Text="{Binding TotalStr}" FontSize="14" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <!-- Pagado -->
+                                <Grid Margin="0,1" Visibility="{Binding HasAmountPaid, Converter={StaticResource BoolToVis}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="PAGADO:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding AmountPaidStr, StringFormat='{}${0}'}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <!-- Cambio -->
+                                <Grid Margin="0,1,0,6" Visibility="{Binding HasChange, Converter={StaticResource BoolToVis}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="CAMBIO:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ChangeGivenStr, StringFormat='{}${0}'}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
@@ -303,28 +324,28 @@
                                     <TextBlock Grid.Column="1" Text="{Binding InvoiceNumberText}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
-                                <!-- Fecha y Hora -->
-                                <Grid Margin="0,2,0,6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="FECHA:   " FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding InvoiceDateStr}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding InvoiceTimeStr}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                </Grid>
+                                <!-- Fecha y Hora contiguas -->
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,6">
+                                    <TextBlock Text="FECHA: " FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Text="{Binding InvoiceDateStr}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,8,0"/>
+                                    <TextBlock Text="{Binding InvoiceTimeStr}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </StackPanel>
 
                                 <!-- Placa del Vehículo -->
-                                <TextBlock Text="{Binding Ticket.PlateNumber, StringFormat='{}PLACA:  {0}'}"
-                                           FontSize="16"
-                                           FontWeight="Black"
-                                           FontFamily="{StaticResource FontFamilyMonospace}"
-                                           Foreground="#000000"
-                                           HorizontalAlignment="Center"
-                                           Margin="0,4,0,6"/>
+                                <Border BorderBrush="#000000" BorderThickness="2" CornerRadius="4" Padding="6,4" HorizontalAlignment="Center" Margin="0,4,0,4">
+                                    <TextBlock Text="{Binding Ticket.PlateNumber, StringFormat='{}PLACA:  {0}'}"
+                                               FontSize="16"
+                                               FontWeight="Black"
+                                               FontFamily="{StaticResource FontFamilyMonospace}"
+                                               Foreground="#000000"
+                                               HorizontalAlignment="Center"/>
+                                </Border>
 
-                                <TextBlock Text="{Binding FormattedRateText}" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2,0,8"/>
+                                <!-- Tipo de Vehículo y Tarifa -->
+                                <StackPanel HorizontalAlignment="Center" Margin="0,0,0,6">
+                                    <TextBlock Text="{Binding VehicleTypeName, StringFormat='{}VEHÍCULO: {0}'}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding FormattedRateText}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,0" Visibility="{Binding FormattedRateText, Converter={StaticResource NullToVis}}"/>
+                                </StackPanel>
 
                                 <!-- Código de Barras / QR -->
                                 <Image Source="{Binding BarcodeImage}"
@@ -370,14 +391,6 @@
                                        RenderOptions.BitmapScalingMode="NearestNeighbor"
                                        HorizontalAlignment="Center"
                                        Margin="0,2,0,3"/>
-
-                                <TextBlock Text="{Binding ConsultationDomainText}"
-                                           FontSize="8.5"
-                                           FontWeight="Bold"
-                                           FontFamily="{StaticResource FontFamilyMonospace}"
-                                           Foreground="#000000"
-                                           HorizontalAlignment="Center"
-                                           Margin="0,0,0,1"/>
 
                                 <TextBlock Text="Estado, tiempo y cobro en tiempo real"
                                            FontSize="8"
@@ -467,13 +480,14 @@
                                 </Grid>
 
                                 <!-- 3. Bloque Central de la Placa -->
-                                <TextBlock Text="{Binding Ticket.PlateNumber, StringFormat='{}PLACA:  {0}'}"
-                                           FontSize="16"
-                                           FontWeight="Black"
-                                           FontFamily="{StaticResource FontFamilyMonospace}"
-                                           Foreground="#000000"
-                                           HorizontalAlignment="Center"
-                                           Margin="0,4,0,8"/>
+                                <Border BorderBrush="#000000" BorderThickness="2" CornerRadius="4" Padding="6,4" HorizontalAlignment="Center" Margin="0,4,0,8">
+                                    <TextBlock Text="{Binding Ticket.PlateNumber, StringFormat='{}PLACA:  {0}'}"
+                                               FontSize="16"
+                                               FontWeight="Black"
+                                               FontFamily="{StaticResource FontFamilyMonospace}"
+                                               Foreground="#000000"
+                                               HorizontalAlignment="Center"/>
+                                </Border>
 
                                 <!-- Entrada, Salida, Tiempo -->
                                 <Grid Margin="0,1">
@@ -550,6 +564,26 @@
                                     <TextBlock Grid.Column="1" Text="{Binding TotalStr}" FontSize="14" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
+                                <!-- Pagado -->
+                                <Grid Margin="0,1" Visibility="{Binding HasAmountPaid, Converter={StaticResource BoolToVis}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="PAGADO:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding AmountPaidStr, StringFormat='{}${0}'}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <!-- Cambio -->
+                                <Grid Margin="0,1,0,6" Visibility="{Binding HasChange, Converter={StaticResource BoolToVis}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="CAMBIO:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ChangeGivenStr, StringFormat='{}${0}'}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,8"/>
 
                                 <!-- 5. QR Code y Bloque Atendido Por (2 Columnas) -->
@@ -600,13 +634,7 @@
                                 <TextBlock Text="{Binding DianResolutionText}" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
                                 <TextBlock Text="{Binding DianRangeText}" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
                                 <TextBlock Text="ESTA FACTURA DE VENTA SE ASIMILA EN TODOS" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="SUS EFECTOS LEGALES A LA LETRA DE CAMBIO ART. 774 CC" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="Factura electrónica o por computador generada por" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                                <TextBlock Text="Mersoft S.A.S NIT 901.190.597-7" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="Software MERLIN" FontSize="9" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="www.merlin.com.co" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="Proveedor tecnológico The factory HKA Colombia SAS" FontSize="8" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2,0,0"/>
-                                <TextBlock Text="NIT 900390126-6" FontSize="8" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,8"/>
+                                <TextBlock Text="SUS EFECTOS LEGALES A LA LETRA DE CAMBIO ART. 774 CC" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,8"/>
 
                             </StackPanel>
 

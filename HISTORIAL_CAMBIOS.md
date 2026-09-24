@@ -15,6 +15,33 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-23 23:35:00] - [FEATURE / TICKETS / ESTANDARIZACION] Estandarización de Tiquetes Térmicos (Entrada/Salida), Caja de Placa, Tipo de Vehículo/Tarifa, Pagado/Cambio y Eliminación de MERLIN
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Ayudame a estandarizar el diseño de las etiquetas de entrada y salida, tanto como para wpf , como para pwa, las que estan en el pwa son las que seran las definitivas, asi que replicalas en el wpf, la de entrada y la salida ,adicional veo que en el tiquete de salida hay unos temas relacionados a un software e informacion de merlin, eso no lo quiero , asi que borrame todo lo relacionado a ello en mi etiqeta. adicional en el tiquete de salida falta el dato de lo pagado y el cambio que se le dio (si aplica). adicional en el tiquete de entrada, la fecha y hora debe quedar junto con el texto de fecha. agregale a esa etiqueta de entrada, la tarifa del tipo de vehiculo que haya selecccionado para dar ingreso"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Estandarización Visual idéntica a PWA (`ReceiptPreviewDialog.xaml`)**:
+     - Se envolvió la placa del vehículo en un `Border` con esquinas redondeadas (`BorderThickness="2" CornerRadius="4" Padding="6,4"`) en todas las plantillas (Ingreso, POS estándar y Factura electrónica FVM).
+     - Se unificó `FECHA:` en el tiquete de ingreso para mostrar fecha y hora contiguas en un solo `StackPanel Orientation="Horizontal"`.
+     - Se incorporó el bloque descriptivo del vehículo y tarifa bajo la placa: `VEHÍCULO: {VehicleTypeName}` y `TARIFA: {FormattedRateText}`.
+     - En el bloque QR de entrada, se suprimió la URL de texto plano repetida para limpiar la etiqueta conforme al estándar maestro de PWA.
+  2. **Inclusión de Pagado y Cambio en Tiquetes de Salida (`ReceiptPreviewViewModel.cs`, `ReceiptPreviewDialog.xaml`)**:
+     - Se implementaron las propiedades observables `AmountPaidStr`, `HasAmountPaid`, `ChangeGivenStr` y `HasChange`.
+     - En `LoadTicket`, se calculan y formatean `AmountPaid` y `ChangeGiven` a partir de la entidad `ParkingTicket` y el total liquidado, renderizándose condicionalmente bajo el `TOTAL:`.
+     - Se añadió la resolución de `VehicleTypeName` a partir de `rate?.DisplayName` de la sede o el enum `VehicleType`.
+  3. **Erradicación de Menciones Externas (MERLIN / Mersoft / The Factory HKA)**:
+     - Se removieron por completo los bloques de texto de *"Factura electrónica o por computador generada por Mersoft S.A.S NIT 901.190.597-7"*, *"Software MERLIN"*, *"www.merlin.com.co"* y *"Proveedor tecnológico The factory HKA Colombia SAS NIT 900390126-6"*.
+  4. **Pruebas Unitarias y Certificación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **263 de 263 pruebas superadas (100% Superadas, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
 ### [2026-09-22 07:35:00] - [FIX / CHECKOUT / CASH / DIAN / RESILIENCE] Corrección Definitiva de Bloqueo de Medios de Pago, Auto-reparación SQLite y Detección Defensiva de Resoluciones DIAN
 
 - **Autor**: Antigravity AI Assistant & Software Architect

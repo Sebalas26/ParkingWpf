@@ -69,6 +69,21 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private string _formattedRateText = string.Empty;
 
     [ObservableProperty]
+    private string _vehicleTypeName = string.Empty;
+
+    [ObservableProperty]
+    private string _amountPaidStr = string.Empty;
+
+    [ObservableProperty]
+    private bool _hasAmountPaid;
+
+    [ObservableProperty]
+    private string _changeGivenStr = string.Empty;
+
+    [ObservableProperty]
+    private bool _hasChange;
+
+    [ObservableProperty]
     private string _paymentMethodDisplayName = "Efectivo";
 
     [ObservableProperty]
@@ -356,6 +371,11 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         }
         catch { }
 
+        var vType = ticket.VehicleType;
+        VehicleTypeName = !string.IsNullOrWhiteSpace(rate?.DisplayName)
+            ? rate.DisplayName.ToUpperInvariant()
+            : (vType == VehicleType.Car ? "AUTOMÓVIL" : (vType == VehicleType.Motorcycle ? "MOTOCICLETA" : vType.ToString().ToUpperInvariant()));
+
         var hourRate = (rate != null && rate.HourRate > 0) ? rate.HourRate : ticket.HourlyRate;
         var minuteRate = rate?.MinuteRate ?? 0m;
         var fullDayRate = rate?.FullDayRate ?? 0m;
@@ -519,6 +539,14 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             FormattedTotalPaid = $"{totalPaid:C0}";
             IvaPercentageText = "19%";
 
+            var paid = ticket.AmountPaid > 0 ? ticket.AmountPaid : totalPaid;
+            AmountPaidStr = $"{paid:N0}";
+            HasAmountPaid = paid > 0;
+
+            var change = ticket.ChangeGiven > 0 ? ticket.ChangeGiven : (paid > totalPaid ? paid - totalPaid : 0m);
+            ChangeGivenStr = $"{change:N0}";
+            HasChange = change > 0;
+
             var exitTime = ticket.ExitTime ?? (ticket.ExitTimeUtc.HasValue ? ticket.ExitTimeUtc.Value.ToLocalTime() : DateTime.Now);
             var entryTime = ticket.EntryTime != default ? ticket.EntryTime : (ticket.CreatedAtUtc != default ? ticket.CreatedAtUtc.ToLocalTime() : DateTime.Now);
 
@@ -644,6 +672,10 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             // Tiquete de Entrada
             IsFvmInvoice = false;
             IsStandardExitReceipt = false;
+            AmountPaidStr = string.Empty;
+            HasAmountPaid = false;
+            ChangeGivenStr = string.Empty;
+            HasChange = false;
             InvoiceNumberText = ticket.TicketNumber;
             InvoiceDateStr = (ticket.EntryTime != default ? ticket.EntryTime : DateTime.Now).ToString("dd/MM/yy");
             InvoiceTimeStr = (ticket.EntryTime != default ? ticket.EntryTime : DateTime.Now).ToString("HH:mm:ss");
