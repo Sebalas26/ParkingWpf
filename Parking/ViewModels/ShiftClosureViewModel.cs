@@ -314,6 +314,11 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private async Task SelectRelieveModeAsync()
     {
         IsRelieveModeSelected = true;
+        if (SelectedShiftToRelieve == null && OtherActiveShifts.Count > 0)
+        {
+            SelectedShiftToRelieve = OtherActiveShifts.FirstOrDefault();
+        }
+
         if (SelectedShiftToRelieve != null)
         {
             await UpdateSelectedShiftSummaryAsync(SelectedShiftToRelieve);
@@ -322,6 +327,12 @@ public partial class ShiftClosureViewModel : ViewModelBase
         {
             ActualCashCounted = SelectedShiftToRelieveSummary.ExpectedCash;
             RecalculateDifference();
+        }
+
+        // Si hay una única caja activa en la sede, abrir de inmediato el diálogo de relevo con contraseña y conteo
+        if (OtherActiveShifts.Count == 1 && SelectedShiftToRelieve != null)
+        {
+            await TakeOverShiftAsync();
         }
     }
 
@@ -566,17 +577,19 @@ public partial class ShiftClosureViewModel : ViewModelBase
             return;
         }
 
-        var cashToHandover = ActualCashCounted > 0 ? ActualCashCounted : Summary.ExpectedCash;
+        var currentShiftId = _shiftService.CurrentShift?.ShiftId;
+        var outgoingOperatorName = OperatorName;
 
         // Abrir Modal de Recepción y Firma con Contraseña del Operador Receptor
-        var authenticatedReceiver = await ShiftHandoverAuthDialog.ShowAuthAsync(
+        var authResult = await ShiftHandoverAuthDialog.ShowAuthAsync(
             System.Windows.Application.Current.MainWindow,
             _authService,
             SelectedHandoverUser,
-            OperatorName,
-            cashToHandover);
+            outgoingOperatorName,
+            Summary.ExpectedCash,
+            ActualCashCounted > 0 ? ActualCashCounted : Summary.ExpectedCash);
 
-        if (authenticatedReceiver == null)
+        if (authResult == null)
         {
             return; // Cancelado o contraseña inválida
         }
@@ -588,21 +601,27 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
         try
         {
+            var verifiedCash = authResult.VerifiedCashAmount;
+            var note = string.IsNullOrWhiteSpace(Notes)
+                ? $"Relevo entregado por {outgoingOperatorName} a {SelectedHandoverUser.FullName}. Base entregada: ${verifiedCash:N0}"
+                : $"{Notes} (Relevo entregado a {SelectedHandoverUser.FullName})";
+
+            // Cambiar de inmediato la sesión activa al operador receptor autenticado
+            _authService.SwitchCurrentUser(authResult.Session);
+
             // Cerrar turno saliente y abrir inmediatamente el nuevo turno
             await _shiftService.HandoverAndOpenNextShiftAsync(
-                ActualCashCounted,
-                Notes,
+                verifiedCash,
+                note,
                 SelectedHandoverUser.UserId,
                 SelectedHandoverUser.FullName,
-                cashToHandover);
-
-            // Cambiar de inmediato la sesión activa al operador entrante
-            _authService.SwitchCurrentUser(authenticatedReceiver);
+                verifiedCash,
+                currentShiftId);
 
             await _dialogService.ShowAlertAsync(
                 "Entrega de Turno Exitosa",
                 $"El turno ha sido entregado exitosamente a {SelectedHandoverUser.FullName}.\n" +
-                $"El nuevo turno ha quedado abierto con base de ${cashToHandover:N0}.",
+                $"El nuevo turno ha quedado abierto con base de ${verifiedCash:N0}.",
                 DialogNotificationType.Success);
 
             ActualCashCounted = 0m;
@@ -632,7 +651,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private async Task TakeOverShiftAsync()
     {
         HasFeedback = false;
-        var targetShift = SelectedShiftToRelieve ?? await _shiftService.GetActiveShiftAsync();
+        var targetShift = SelectedShiftToRelieve ?? OtherActiveShifts.FirstOrDefault() ?? await _shiftService.GetActiveShiftAsync();
         if (targetShift == null)
         {
             HasFeedback = true;
@@ -641,47 +660,77 @@ public partial class ShiftClosureViewModel : ViewModelBase
             return;
         }
 
+        if (_authService.CurrentUser == null)
+        {
+            HasFeedback = true;
+            IsSuccessFeedback = false;
+            FeedbackMessage = "No hay una sesión activa para relevar el turno.";
+            return;
+        }
+
         var summary = SelectedShiftToRelieveSummary ?? await _shiftService.GetShiftSummaryByIdAsync(targetShift.ShiftId);
-        var currentUserId = _authService.CurrentUser?.UserId ?? Guid.NewGuid();
-        var currentFullName = _authService.CurrentUser?.FullName ?? "Operador";
 
-        var confirmed = await _dialogService.ShowConfirmationAsync(
-            "Confirmar Recepción de Turno y Caja",
-            $"¿Deseas asumir el turno y recibir la caja '{targetShift.CashRegisterName}'?\n\n" +
-            $"• Turno Saliente: {targetShift.OperatorName}\n" +
-            $"• Saldo Esperado en Sistema: ${summary.ExpectedCash:N0}\n" +
-            $"• Efectivo Contado en Gaveta: ${ActualCashCounted:N0}\n" +
-            $"• Diferencia de Arqueo: ${CashDifference:N0}\n\n" +
-            $"Se cerrará formalmente el turno de '{targetShift.OperatorName}' y se abrirá tu nuevo turno a nombre de '{currentFullName}' con base de ${ActualCashCounted:N0}.",
-            DialogNotificationType.Question,
-            "Recibir Caja e Iniciar",
-            "Cancelar");
+        // Obtener la entidad User del operador entrante (usuario actualmente en sesión)
+        using var db = _connectionManager.CreateDbContext();
+        var incomingUser = await db.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.UserId == _authService.CurrentUser.UserId ||
+                                     (u.Username != null && _authService.CurrentUser.Username != null && u.Username.ToLower() == _authService.CurrentUser.Username.ToLower()));
 
-        if (!confirmed) return;
+        if (incomingUser == null)
+        {
+            incomingUser = new User
+            {
+                UserId = _authService.CurrentUser.UserId,
+                Username = _authService.CurrentUser.Username ?? "operador",
+                FullName = _authService.CurrentUser.FullName ?? "Operador",
+                IsActive = true
+            };
+        }
+
+        var initialCounted = ActualCashCounted > 0 ? ActualCashCounted : summary.ExpectedCash;
+
+        // Abrir Modal de Recepción, Verificación de Efectivo y Firma con Contraseña del Operador Entrante
+        var authResult = await ShiftHandoverAuthDialog.ShowAuthAsync(
+            System.Windows.Application.Current.MainWindow,
+            _authService,
+            incomingUser,
+            targetShift.OperatorName,
+            summary.ExpectedCash,
+            initialCounted);
+
+        if (authResult == null)
+        {
+            return; // Cancelado o autenticación no superada
+        }
 
         IsBusy = true;
-        BusyMessage = "Cerrando turno anterior e iniciando tu nuevo turno...";
+        BusyMessage = $"Relevando caja '{targetShift.CashRegisterName}' e iniciando tu turno...";
 
         try
         {
+            var verifiedCash = authResult.VerifiedCashAmount;
             var note = string.IsNullOrWhiteSpace(Notes)
-                ? $"Relevo de '{targetShift.CashRegisterName}' asumido por {currentFullName}. Base recibida: ${ActualCashCounted:N0}"
-                : $"{Notes} (Relevo de '{targetShift.CashRegisterName}' asumido por {currentFullName})";
+                ? $"Relevo de '{targetShift.CashRegisterName}' asumido por {incomingUser.FullName}. Base recibida: ${verifiedCash:N0}"
+                : $"{Notes} (Relevo de '{targetShift.CashRegisterName}' asumido por {incomingUser.FullName})";
+
+            // Sincronizar y recargar sesión activa con la matriz de permisos
+            _authService.SwitchCurrentUser(authResult.Session);
 
             await _shiftService.HandoverAndOpenNextShiftAsync(
-                ActualCashCounted,
+                verifiedCash,
                 note,
-                currentUserId,
-                currentFullName,
-                ActualCashCounted,
+                incomingUser.UserId,
+                incomingUser.FullName,
+                verifiedCash,
                 targetShift.ShiftId,
                 targetShift.CashRegisterName);
 
             await _dialogService.ShowAlertAsync(
                 "Turno Asumido con Éxito",
                 $"Has recibido la caja '{targetShift.CashRegisterName}' correctamente.\n\n" +
-                $"• Base Inicial de tu Turno: ${ActualCashCounted:N0}\n" +
-                $"• Operador a Cargo: {currentFullName}\n\n" +
+                $"• Base Inicial de tu Turno: ${verifiedCash:N0}\n" +
+                $"• Operador a Cargo: {incomingUser.FullName}\n\n" +
                 $"Ya puedes comenzar a registrar ingresos y cobros en el parqueadero.",
                 DialogNotificationType.Success);
 

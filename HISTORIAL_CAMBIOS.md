@@ -15,6 +15,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+<<<<<<< HEAD
 ### [2026-09-24 14:15:00] - [FEATURE / TICKETS / THERMAL / HOMOLOGACION] Inclusión de Convenio, Descuento, Subtotal y Tarifa en Tiquetes de Entrada y Salida (WPF & PWA)
 
 - **Autor**: Antigravity AI Assistant & Software Architect
@@ -47,11 +48,49 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `Parking/Views/ReceiptPreviewDialog.xaml`
   - `Parking.UnitTests/ViewModels/ReceiptPreviewViewModelTests.cs`
   - `HISTORIAL_CAMBIOS.md`
+=======
+### [2026-09-24 11:20:00] - [FIX / SECURITY / RELEVO / SHIFTS] Corrección Integral del Botón y Flujo de Relevo de Turno y Caja en WPF con Verificación de Efectivo, Firma con Contraseña y Cambio Dinámico de Sesión
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+
+  > _"necesito que revises el boton relevar que esta en el WPF no esta funcionando como deberia ser, pues ese boton aparece cuando la caja esta abierta e ingresa otra perosna que no tiene caja abierta entonces el tiene la opción de abrir caja nueva o relevar , pero esa funcion de relevar lo que e tenia es que cuando seleccione eso abria la modal le pedia verificar el dinero en caja y colocar la contraseña para que el sistema se logue y cambie al nuevo usuario si me explico, por eos la caja guarda un registor que se cerro con la opcion de revelar y quedo abierta por el nuevo usuario. analiza como esta eso y dame el informe tecnico y plan de ejecucción si algo esta mal revisar punto por punto . recuerda las reglas que se tienen en el wpf para la IA ."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Causa Raíz**:
+     - Previamente, el botón `SelectRelieveModeCommand` ("Relevar Caja Existente") únicamente conmutaba el flag booleano `IsRelieveModeSelected = true`, dejando la vista estática sin desplegar el modal.
+     - A su vez, `TakeOverShiftAsync` ("Recibir Caja e Iniciar Mi Turno") ejecutaba un simple `_dialogService.ShowConfirmationAsync` (alerta Sí/No) que no solicitaba la contraseña del operador ni permitía verificar o ajustar el efectivo contado, sin transferir ni conmutar la sesión ni los permisos en `_authService` y `_sessionService`.
+     - El diálogo `ShiftHandoverAuthDialog` solo contemplaba la modalidad saliente, con un campo de efectivo estático y solo captura de contraseña.
+  2. **Modernización de `ShiftHandoverAuthDialog` (`ShiftHandoverAuthDialog.xaml`, `ShiftHandoverAuthDialog.xaml.cs`)**:
+     - Se transformó la sección 3 en un arqueo interactivo completo:
+       - Visualización del balance esperado en sistema (`ExpectedCashText`).
+       - Input editable de conteo físico (`CashCountedTextBox` con `ModernTextBox`, validación numérica y formateo dinámico).
+       - Cálculo en tiempo real de la diferencia (`CashDifferenceText`: Cuadrado en verde, Sobrante en verde, Faltante en rojo).
+       - Sección de autenticación con contraseña del operador entrante (`ReceiverPasswordBox`).
+     - Se introdujo `ShiftHandoverAuthResult { Session, VerifiedCashAmount }` como resultado fuertemente tipado de `ShowAuthAsync`.
+  3. **Conexión en `ShiftClosureViewModel` (`ShiftClosureViewModel.cs`)**:
+     - `SelectRelieveModeAsync`: Si la sede tiene una única caja activa (`OtherActiveShifts.Count == 1`), dispara directamente `TakeOverShiftAsync()`, abriendo de inmediato el modal interactivo de relevo.
+     - `TakeOverShiftAsync`: Resuelve la entidad `User` del operador entrante, despliega `ShiftHandoverAuthDialog.ShowAuthAsync`, invoca `_authService.SwitchCurrentUser(authResult.Session)` para actualizar la sesión activa y la matriz de permisos (`_permissionService.LoadPermissions`), ejecuta `_shiftService.HandoverAndOpenNextShiftAsync` con el efectivo verificado y redirige a `CheckInViewModel`.
+     - `HandoverShiftAsync`: Actualizado para utilizar `authResult.Session` y `authResult.VerifiedCashAmount`, garantizando consistencia absoluta en ambos flujos de entrega y toma de relevo.
+  4. **Persistencia y Trazabilidad en Base de Datos**:
+     - Se preserva el registro de cierre del turno saliente (`WorkShift` con `Status = 1`, `HandoverToUserId`, `HandoverToUserName`, `ActualCashCounted`, `CashDifference`), abriendo simultáneamente el nuevo turno (`Status = 0`, `BaseAmount = VerifiedCashAmount`, `OperatorName = handoverToUserName`).
+  5. **Pruebas Unitarias y Certificación**:
+     - Se agregaron 2 nuevas pruebas unitarias en `EfShiftServiceTests.cs` cubriendo `HandoverAndOpenNextShiftAsync` con balance verificado y cierre específico.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **265 de 265 pruebas superadas (100% Superadas, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ShiftHandoverAuthDialog.xaml`
+  - `Parking/Views/ShiftHandoverAuthDialog.xaml.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
+>>>>>>> 7c3c026669464b38808c5517acfd66fb0e4d4f40
 
 ### [2026-09-24 11:00:00] - [FEATURE / TICKETS / THERMAL / HOMOLOGACION] Corrección y Normalización Canónica de Tipo de Vehículo en Tiquetes Térmicos (Eliminación de 'CAR')
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"-en las etiquetas de entrada, ajustame proque me esta mostrando vehiculo: car y eso no existe , solo dejame el tipo de vehiculo correcto del vehiculo que ingrese, esto dejamelo aplicado para la etiqueta de wpf y pwa"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -76,8 +115,9 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Ayudame a eliminar en los tiquetes de salida esto , aplica para wpf y pwa"_
-  > *(Con imagen adjunta señalando la etiqueta "Cant Items: 1" junto al código QR)*
+  > _(Con imagen adjunta señalando la etiqueta "Cant Items: 1" junto al código QR)_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Remoción de Etiqueta Estática en Tiquetes de Salida (`ReceiptPreviewDialog.xaml`)**:
@@ -97,6 +137,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Ayudame a estandarizar el diseño de las etiquetas de entrada y salida, tanto como para wpf , como para pwa, las que estan en el pwa son las que seran las definitivas, asi que replicalas en el wpf, la de entrada y la salida ,adicional veo que en el tiquete de salida hay unos temas relacionados a un software e informacion de merlin, eso no lo quiero , asi que borrame todo lo relacionado a ello en mi etiqeta. adicional en el tiquete de salida falta el dato de lo pagado y el cambio que se le dio (si aplica). adicional en el tiquete de entrada, la fecha y hora debe quedar junto con el texto de fecha. agregale a esa etiqueta de entrada, la tarifa del tipo de vehiculo que haya selecccionado para dar ingreso"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -110,7 +151,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - En `LoadTicket`, se calculan y formatean `AmountPaid` y `ChangeGiven` a partir de la entidad `ParkingTicket` y el total liquidado, renderizándose condicionalmente bajo el `TOTAL:`.
      - Se añadió la resolución de `VehicleTypeName` a partir de `rate?.DisplayName` de la sede o el enum `VehicleType`.
   3. **Erradicación de Menciones Externas (MERLIN / Mersoft / The Factory HKA)**:
-     - Se removieron por completo los bloques de texto de *"Factura electrónica o por computador generada por Mersoft S.A.S NIT 901.190.597-7"*, *"Software MERLIN"*, *"www.merlin.com.co"* y *"Proveedor tecnológico The factory HKA Colombia SAS NIT 900390126-6"*.
+     - Se removieron por completo los bloques de texto de _"Factura electrónica o por computador generada por Mersoft S.A.S NIT 901.190.597-7"_, _"Software MERLIN"_, _"www.merlin.com.co"_ y _"Proveedor tecnológico The factory HKA Colombia SAS NIT 900390126-6"_.
   4. **Pruebas Unitarias y Certificación**:
      - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
      - `dotnet test ParkingWpf.slnx`: **263 de 263 pruebas superadas (100% Superadas, 0 Fallos)**.
@@ -124,6 +165,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"revisa los huecos tecnicos de este plan y que si con esto se da la solución completa y definitiva."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -158,6 +200,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Parking.exe (CoreCLR: clrhost): XamlParseException: StaticResourceExtension en Clientes... no deberia revisarse por esas palabras si nuestro sistema es super dinamico y todo parametrizable... no debe haber textos quemados..."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -202,6 +245,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"haz la revision en el pos de wpf y pwa para crear un adquirente todos los datos necesarios por ejemplo la direccion no la pide y es obligatoria para la dian... tambien revisa el tema de facturacion electronica con siigo ya se tiene el token funcionando, revisa si ya estamos listos para hacer pruebas de emision..."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -244,6 +288,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"en el wpf esto no deberia de mostrar el nombre de la sede, tampoco sede activa, solo mmuestra el icono de la empresa y el nombre de la empresa"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -295,6 +340,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Valida mi wpf y pwa agregando en la parte superior del nombre de la sede en las etiquetas de entrada y salida, el logo que se configura en la creacion de la empresa desde el pwa , trata de dejarla en el tamaño que se adapte al tamaño de la impresion, paa que no se vea grande y ni pequeña"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -333,6 +379,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"en el wpf, veo que la hora se ve sobremontada con el boton de liquidar en el flujo de liquidacion y salida"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -366,6 +413,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Valida porque cuando abro por primera vez mi wpf , ingreso la licencia de instlaacion, pero se cierra el instalador, lo corrrecto deberia ser, yo ingreso la clave del instalador y si es correcto, me deberia de redigidir al login"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -410,9 +458,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"1. System.Windows.Data Error: 4 : Cannot find source for binding with reference 'RelativeSource FindAncestor, AncestorType='System.Windows.Controls.ItemsControl', AncestorLevel='1''. BindingExpression:Path=HorizontalContentAlignment... target element is 'ListBoxItem'"_  
   > _"2. [Captura de pantalla error HttpRequestException]: al seleccionar método de pago con FE se cierra el modal o se resetea a Efectivo"_  
-  > _"3. En los métodos de pago se tiene configurado si requiere o no devuelta (RequiresCashTender), pero al seleccionar Tarjeta o Transferencia sigue saliendo MONTO EN EFECTIVO RECIBIDO ($) * deshabilitado y oculta la devuelta de forma confusa"_  
+  > _"3. En los métodos de pago se tiene configurado si requiere o no devuelta (RequiresCashTender), pero al seleccionar Tarjeta o Transferencia sigue saliendo MONTO EN EFECTIVO RECIBIDO ($) \* deshabilitado y oculta la devuelta de forma confusa"_  
   > _"4. En el menú lateral a los operadores no les sale el botón de Clientes para consultar o crear clientes de facturación"_  
   > _"5. En la ventana de vehículos en patio en la pestaña de Salidas del turno actual le falta el botón para facturar con DIAN o convertir a factura electrónica si el vehículo ya salió pero vuelve a pedir factura electrónica no se puede porque falta el botón ahí en esa pestaña"_
 
@@ -430,7 +479,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   4. **Adaptación Dinámica de Cobro según `RequiresCashTender` (`CheckOutDialog.xaml`, `CheckOutViewModel.cs`)**:
      - En `CheckOutViewModel.cs`, se aplicó la sobreescritura de sede (`BranchPaymentMethodEntity.RequiresCashTender`) sobre la entidad base (`PaymentMethodEntity.RequiresCashTender`) al cargar métodos de pago.
      - En `CheckOutDialog.xaml`, la columna de recepción de efectivo se configuró reactivamente:
-       - Si `RequiresCashTender == true`: Se visualiza el campo "MONTO EN EFECTIVO RECIBIDO ($) *" con botones de billetes rápidos (`$5K`, `$10K`, `$50K`, `Exacto`) y la tarjeta de "CAMBIO / DEVUELTA AL CLIENTE".
+       - Si `RequiresCashTender == true`: Se visualiza el campo "MONTO EN EFECTIVO RECIBIDO ($) \*" con botones de billetes rápidos (`$5K`, `$10K`, `$50K`, `Exacto`) y la tarjeta de "CAMBIO / DEVUELTA AL CLIENTE".
        - Si `RequiresCashTender == false` (Tarjetas, Transferencias, Datáfono): Se oculta completamente el campo de efectivo y la tarjeta de devuelta, desplegando en su lugar una tarjeta estilizada en verde con el ícono `IconCreditCard`, título "PAGO ELECTRÓNICO / SIN DEVUELTA", descripción de cobro exacto y el valor exacto a debitar.
   5. **Conversión POS a Factura Electrónica en "Salidas del Turno Actual" (`RecentEntriesView.xaml`, `RecentEntriesViewModel.cs`)**:
      - En `RecentEntriesView.xaml` (DataGrid de `CompletedEntries` de la pestaña 1), se actualizó la columna de acciones para incluir el botón "Facturar DIAN" con estilo `SuccessButton` e ícono `IconReceipt` (visible cuando `!ticket.IsElectronicInvoice`).
@@ -466,6 +515,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Valida porque en el wpf, cuando se le quiere dar salida a un vehiculo en el tipo de resolucion despuesde eleegir el tipo de medio, cuando se tiene seleccionado en factura electronica, a los segundos se desmarca la opcion y vuelve a la resolucion POS u otro, no permite crear nuevo usuario"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -504,6 +554,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"este error sale mucho en el wpf por que ? System.Windows.Data Error: 4 : Cannot find source for binding with reference 'RelativeSource FindAncestor, AncestorType='System.Windows.Controls.ItemsControl', AncestorLevel='1''. BindingExpression:Path=HorizontalContentAlignment; DataItem=null; target element is 'ComboBoxItem' (Name=''); target property is 'HorizontalContentAlignment' (type 'HorizontalAlignment') osea no tiene sentido que esta mal en el sistema revisa analikza y dame una solucion definitiva."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -533,6 +584,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Verifica que el flujo de facturación electrónica con Siigo esté 100% completo, full full full full, desde el checkout en WPF hasta la emisión en Siigo, trayendo CUFE, QR y consecutivo oficial de Siigo impresos en el recibo de ParkFlow, identificando y cerrando todos los huecos técnicos."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -564,14 +616,15 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
-  > _"al sincronizar wl wpf sale este mensake dee error"_ (Adjuntando captura con *"Respuesta incompleta / El servidor no entregó los paquetes de sincronización requeridos"*)
+
+  > _"al sincronizar wl wpf sale este mensake dee error"_ (Adjuntando captura con _"Respuesta incompleta / El servidor no entregó los paquetes de sincronización requeridos"_)
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Diagnóstico y Causa Raíz**:
      - Durante la sincronización en segundo plano o manual (`SyncEngineService.cs` paso 3), la aplicación solicita el paquete de inicialización a la API central vía `GET /api/sync/bootstrap?branchId={id}`.
      - El API central retorna `paymentMethods` donde la columna `siigoPaymentMethodId` se serializa como un entero numérico (`10`, `20`, `30`).
      - Sin embargo, en `BootstrapSyncResponse.cs`, el DTO `ApiPaymentMethodSyncDto` definía `public string? SiigoPaymentMethodId { get; set; }`. Al procesar un token JSON de tipo `Number` hacia una propiedad tipada estrictamente como `string`, `System.Text.Json` arrojaba `JsonException: The JSON value could not be converted to System.String. Path: $.paymentMethods[0].siigoPaymentMethodId | Cannot get the value of a token type 'Number' as a string.`.
-     - Esta excepción era capturada en `ParkingApiClient.GetBootstrapAsync()` devolviendo `null`, lo que activaba en `SyncEngineService` el mensaje *"Respuesta incompleta / El servidor no entregó los paquetes de sincronización requeridos"*.
+     - Esta excepción era capturada en `ParkingApiClient.GetBootstrapAsync()` devolviendo `null`, lo que activaba en `SyncEngineService` el mensaje _"Respuesta incompleta / El servidor no entregó los paquetes de sincronización requeridos"_.
   2. **Solución Implementada**:
      - En `BootstrapSyncResponse.cs` (`ApiPaymentMethodSyncDto`), se reemplazó la propiedad por una deserialización polimórfica: `[JsonPropertyName("siigoPaymentMethodId")] public object? RawSiigoPaymentMethodId { get; set; }` acompañada de un getter de conveniencia `[JsonIgnore] public string? SiigoPaymentMethodId => RawSiigoPaymentMethodId?.ToString();`. Esto permite procesar de manera 100% resiliente valores numéricos (`10`), cadenas (`"10"`) o `null` sin fallos.
      - En `App.xaml.cs`, se promovió `LogException` a `public static` para permitir el registro estructurado de excepciones en cualquier servicio del sistema.
@@ -593,6 +646,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"ahora despues licencniar, me sale este errro r"_ (Adjuntando captura con `InvalidOperationException: This instance has already started one or more requests. Properties can only be modified before sending the first request. at HttpClient.set_Timeout`)
 
 - **🤖 Resumen Técnico para la IA**:
@@ -616,12 +670,13 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Valida porque al instalar por primera vez wl wpf y mepide la licencia, no me permite ingresar la clave adiconal no la conozco pero se que esta en los documentos de mi repo"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Desbloqueo de Input de Clave de Licencia (`DeviceActivationDialog.xaml`)**:
      - Diagnóstico: En la línea 167 de `DeviceActivationDialog.xaml`, la propiedad `IsEnabled` estaba vinculada como `IsEnabled="{Binding IsBusy, Converter={x:Null}}"`. Al iniciar con `IsBusy = false`, WPF forzaba `IsEnabled="False"` en el `TextBox`, impidiendo enfocar, escribir o pegar la clave de licencia.
-     - Solución: Se corrigió el binding usando `IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"` tanto para el `TextBox` de la clave como para el botón *"Activar Terminal"*.
+     - Solución: Se corrigió el binding usando `IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"` tanto para el `TextBox` de la clave como para el botón _"Activar Terminal"_.
   2. **Configuración de BaseAddress en HttpClient Singleton (`App.xaml.cs`)**:
      - Se asignó `BaseAddress = new Uri(apiBaseUrl.TrimEnd('/') + "/")` al instanciar el `HttpClient` singleton, previniendo excepciones `InvalidOperationException: BaseAddress must be set` en llamadas con URI relativa (`api/v1/licenses/activate`).
   3. **Activación Resiliente de Licencias Oficiales (`DeviceLicenseService.cs`)**:
@@ -641,6 +696,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"deberias dejar eso como en un txt para tener claro que comandoas y que comando hace que cosa."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -667,6 +723,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Segundo tengo un problema complejo complejo pero es que es reee complejo todalmente complejo, por que se requiere ahora si como se va hacer para empaquetar la publicación del wpf que se pueda actualizar antes me habias mencionado que se iba hacer por un endpoint que iba a escuchar el wpf desde la misma api donde diga si tiene actualizacion pendiente y que obligue al usuario a actualizar la aplicación pero que eso debería ir firmado y todo y que como se iba a crear el instalador del wpf que tuviera una credencial para eso no que se permita instalar en cualquier dispositivo si me explico. creo que con este contexto la tienes clarisima para crear un plan de trabajo pero recuerda que esas actualizaciones no pueden ddañar la bd por que siempre va a existir informacion y todo y que sucede antes de actualizar como regla debe tener todo sincronizado todo es todo para evitar riesgos de perdida de información. listo con esto analiza y dame plan completo."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -732,6 +789,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Y el modulo de clientes de la facturacion electronica recuerda que cuando se da salida desde el wpf se crea los clientes ese modulo debe estar tanto en el wpf como en la pwa logico todo por permisos como se tiene el estandar completo si me hago entender."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -743,9 +801,9 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
      - Formularios 100% limpios con directiva de cero datos quemados (`placeholder` exclusivamente).
      - Cero comentarios en el código nuevo (política estricta Clean Code).
   2. **Tercera Pestaña en Monitoreo de Patio (`RecentEntriesView.xaml`, `RecentEntriesViewModel.cs`)**:
-     - Agregada pestaña *"Histórico Facturación Electrónica"* con selector de rango de fechas (*Desde* - *Hasta*) y buscador en vivo por placa, tiquete o factura.
-     - Botón de acción contextual: Para tiquetes POS liquidados, botón *"Facturar DIAN"* que abre el diálogo modal `CustomerSelectionDialog.xaml` para asociar un cliente fiscal existente o registrarlo en caliente y convertir el comprobante a Factura Electrónica oficial.
-     - Para tiquetes ya convertidos, botón *"Ver Factura"* para reimpresión inmediata con `ReceiptPreviewDialog`.
+     - Agregada pestaña _"Histórico Facturación Electrónica"_ con selector de rango de fechas (_Desde_ - _Hasta_) y buscador en vivo por placa, tiquete o factura.
+     - Botón de acción contextual: Para tiquetes POS liquidados, botón _"Facturar DIAN"_ que abre el diálogo modal `CustomerSelectionDialog.xaml` para asociar un cliente fiscal existente o registrarlo en caliente y convertir el comprobante a Factura Electrónica oficial.
+     - Para tiquetes ya convertidos, botón _"Ver Factura"_ para reimpresión inmediata con `ReceiptPreviewDialog`.
   3. **Extensión de Capas de Servicio y Clientes API (`IApiClientService`, `ParkingApiClient`, `IParkingTicketService`, `EfParkingTicketService`, `IDialogService`, `DialogService`)**:
      - Métodos implementados: `ConvertTicketToInvoiceAsync`, `GetCustomersAsync`, `UpdateCustomerAsync`, `DeleteCustomerAsync`, `GetHistoricalTicketsAsync` y `ShowCustomerSelectionDialogAsync`.
   4. **Certificación de Pruebas Unitarias (`Parking.UnitTests`)**:
@@ -782,6 +840,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Ayudame con algo, en mi wpf: En el modulo de vehiculos en patio y salidas, me esta saliendo este error - novedad de aplicacion [ArgumentException: Parameter 'parameter' (object) cannot be of type System.String, as the command type requires an argument of type System.Int32]"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -810,6 +869,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Ayudame con estos siguientes ajustes: WPF: En la pantalla de salida de vehiculos, ajustame los vehiculos activos adentro para que se vean por filas de 4 elementos y no de a 3 como actualmente esta... Cuando estoy en detalle de liquidacion y cobro , elijo fvm y crear un nuevo cliente , alli veo que los campos de texto se ven cortado a lo verticulal... Cuando le doy salida a un vehiculo, noto que el tiempo de cobro todavia sigue contabilizando... ayuda a implementar la detencion del tiempo y cobro en un tiempo de gracia de 5 minutos, si llegase a pasarse del tiempo, que salga aviso de supero el teimpo de pago, al aceptar en el cobro le aumenta en el tiempo y cobro esos 5 minutos que espero... Elimina que al darle salida a un vehiculo, e muestra un mensaje de pago procead... En la pantalla de vehiculos en patio, separala en dos submodulos o pestañas una llamada activos y la otra completados en el turno... ajusta que al escribir en el buscador busque sin necesidad de darle al boton de buscar y si se borra el texto del buscador se borre la busqueda y muestre todos los vehiculos... En la pantalla de visualizacion de impresion, que al darle enter imprima y cierre la ventana, y con esc cierre la ventana... En la pantalla de cierre de turno, en la tarjeta de descuento por convenios... que muestre es la cantidad de tiquetes que se le aplico convenio mas no el valor en dinero... En resoluciones al elegir FVM que no muestre la resolucion POS sino la de factura electronica... revisate en todo el proyecto los modulos donde aparezca la palabra siigo, la idea es eliminar ese nombre que es visible para el cliente y cambiarlo por un nombre neutro acorde al sistema"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -866,6 +926,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"listo mira esos errores, segundo tengo algo que analisis por que hay cosas que no estan sincronizando en vivo de acciones que se hacen desde el pwa hasta el wpf, por que ejemplo le cambie el nombre al usuario y no se actualizo en vivo en el wpf, ni dando actualizar... ejemplo desde la pwa inactive el usuario eso deberia sacar al usuario de donde este logueado así sea la pwa o el wpf... si le quito permisos al rol para que no este en el wpf deberia sacarlo si tengo una sesion abierta en la sesion en el wpf... ahora volviendo a la imagen que te mostre es que cuando selecciono un medio de pago que tiene regla exigente facturación electronica y se revienta el sistema"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -903,6 +964,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"se crasheo si ves empieza a titilear en la primera imagen vez como se rompe y despues como en la segunda muestra todo ese errores. como se rompe se rompio es cuando apenas despues de la modal que de existe una caja abierta y que se quiere relevar o abrir otra hay se crasheo de una . otra cosa cuando hago una salida de un vehciulo desde el wpf no esta siendo reactivo el tema de que le avise a la pwa que se fue que paso si funciona perfecto desde la pwa hacia el wpf estoy logueado con mi usaurio en la pwa y pues con otro usuario desde el wpf y pues yo como jefe saque un carro y de una se actualizo en el wpf bien pero lo hice al reves y yo estaba en la visual de activos y pues mirando la sede pero nada me toco utilizar el boton de actualizar para que sucediera entonces no se que paso hay ? has el plan"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -931,9 +993,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"en el modulo de ingreso de vehiculos que la hora sea un poco mas grande y que las tarifas se carguen de acuerdo a lo parametrizado de la sede desde la pwa /configuracion /editar sede
-  en la pantalla de ingreso de vehiculos que permita ingresar el vehiculo si ya tengo diligenciada la placa en el cuadro, porque al perder el foco y no estar en ese cuadro, la accion de enter no sirve, ej: si ingreso la placa y pongo el mouse en la categoria del vehiculo, al oprimir el enter ya no me sirve para ingresar el vehiculo
-  El logo de wpf reemplazalo por el logo_completo_3d.png"_
+  > en la pantalla de ingreso de vehiculos que permita ingresar el vehiculo si ya tengo diligenciada la placa en el cuadro, porque al perder el foco y no estar en ese cuadro, la accion de enter no sirve, ej: si ingreso la placa y pongo el mouse en la categoria del vehiculo, al oprimir el enter ya no me sirve para ingresar el vehiculo
+  > El logo de wpf reemplazalo por el logo_completo_3d.png"_
 
 - **🤖 Resumen Técnico para la IA**:
   1. **Nuevo Logo 3D Oficial en Barra Lateral (`MainShellWindow.xaml` & `Parking.csproj`)**:
@@ -965,6 +1028,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"1. Mira el error que me arrojo cuando intente hacer que ingrese con otro usuario y ya se tiene una caja abierta... fallo esa excepción. 2. En la segunda imagen los inputs no tienen validación ni nada. 3. La facturación electrónica debe funcionar bien en online pero si el sistema está offline debe almacenar que se solicitó la factura electrónica para después enviarlas. 4. No está funcionando la sincronización automática: si le di salida a un vehículo desde la PWA y estoy logueado en la sede desde el WPF no se sincroniza en tiempo real por debajo y en la parte superior debe aparecer animando 'Sincronizando...'. 5. En la PWA en companies no está la opción para parametrizar el logo si se quiere colocar uno o dejar el que tiene por defecto para que aparezca en el tiquete o factura. 6. Se tiene en 0 el tiempo de gracia en la sede pero sigue aplicando 15 minutos."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -981,7 +1045,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   4. **Sincronización Automática en Tiempo Real (PWA -> WPF) e Indicador Visual Animado**:
      - En `SignalRClientService.cs`, se corrigió un defecto crítico en `StartAsync()` que recreaba una instancia de conexión separada no iniciada dentro de `OnConfigUpdateRequired`, descartando todos los eventos entrantes del Hub SignalR (`TicketCheckedOut`, `TicketCheckedIn`, `ShiftOpened`, `ShiftClosed`).
      - `BackgroundSyncScheduler.cs`: Intervalo reducido de 5 minutos a 20 segundos para sincronización en segundo plano ultrarrápida.
-     - `MainShellViewModel.cs` & `MainShellWindow.xaml`: La píldora de sincronización en el topbar ahora muestra un icono giratorio continuo (`IconSync`) y texto dinámico *"Sincronizando..."* durante cualquier ciclo activo de SignalR o BackgroundSync, reactivando la ocupación en patio sin requerir clics manuales.
+     - `MainShellViewModel.cs` & `MainShellWindow.xaml`: La píldora de sincronización en el topbar ahora muestra un icono giratorio continuo (`IconSync`) y texto dinámico _"Sincronizando..."_ durante cualquier ciclo activo de SignalR o BackgroundSync, reactivando la ocupación en patio sin requerir clics manuales.
   5. **Visualización de Logotipo en Tiquetes y Facturas**:
      - En `ReceiptPreviewViewModel.cs` y `ReceiptPreviewDialog.xaml`: Integrado soporte de logotipo corporativo en tiquetes de entrada, comprobantes de pago/salida y facturas electrónicas FVM mediante `Base64ToImageConverter` vinculado a `BranchLogoBase64`.
   6. **Período de Gracia Estricto de Sede ($0 Real)**:
@@ -1016,6 +1080,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"En parqueaderos con múltiples taquillas/cajas (ej: taquilla norte y taquilla sur, o entrada y salida), cuando un usuario inicia sesión en una sede donde ya existe un turno abierto de otro usuario (ej: Sebalas o Pacho), el sistema no debe asumir indebidamente la caja ajena sin autorización ni forzar el relevo sin opción. Debe permitir al operador elegir con total libertad entre: (1) Tomar el relevo de la caja abierta existente en la sede (contando el efectivo en gaveta y asumiendo la custodia), o (2) Abrir una nueva caja / turno independiente para operar en paralelo con su propio identificador de caja y base inicial."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -1033,7 +1098,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
        - `CloseSpecificShiftAsync(Guid shiftId, ...)`: Cierra directamente un turno específico en el backend y en SQLite local sin afectar el turno personal del usuario logueado.
        - `HandoverAndOpenNextShiftAsync(...)`: Soporta `shiftIdToClose` y `newCashRegisterName` para cerrar específicamente la caja seleccionada y abrir la nueva caja en un flujo transaccional.
   3. **Lógica de Decisión y Navegación en `MainShellViewModel`**:
-     - Al iniciar sesión o cambiar de sede, si el usuario no tiene turno activo personal pero existen otras cajas operando en la sede (`GetActiveShiftsByBranchAsync`), se navega a `ShiftClosureViewModel` y se notifica con un mensaje informativo: *"Cajas Activas en la Sede: Existen cajas operando actualmente en esta sede. Puedes relevar una existente o abrir una nueva caja independiente."*.
+     - Al iniciar sesión o cambiar de sede, si el usuario no tiene turno activo personal pero existen otras cajas operando en la sede (`GetActiveShiftsByBranchAsync`), se navega a `ShiftClosureViewModel` y se notifica con un mensaje informativo: _"Cajas Activas en la Sede: Existen cajas operando actualmente en esta sede. Puedes relevar una existente o abrir una nueva caja independiente."_.
   4. **Panel de Decisión y Switcher en `ShiftClosureViewModel` & `ShiftClosureView.xaml`**:
      - Propiedades observables añadidas: `OtherActiveShifts`, `SelectedShiftToRelieve`, `HasOtherActiveShifts`, `IsRelieveModeSelected`, `NewCashRegisterName`, `SelectedShiftToRelieveSummary`, `IsRelieveSectionVisible`, `IsOpenNewRegisterSectionVisible`.
      - Modo Relevo: Permite seleccionar en un `ComboBox` la caja a recibir, muestra el desglose financiero en tiempo real (`SelectedShiftToRelieveSummary`), captura el efectivo contado en gaveta (`ActualCashCounted`), calcula la diferencia de arqueo en tiempo real (`CashDifference`) y permite asumir la caja (`TakeOverShiftCommand`) o cerrarla directamente (`CloseOtherShiftDirectCommand` para administradores).
@@ -1061,6 +1126,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Bloquear la resolución y evitar que se pueda pasar a POS cuando el medio de pago exige FE (tanto en WPF como en PWA) y explicar y solucionar por qué no se muestra la búsqueda ni creación rápida de cliente en el diálogo de cobro cuando se activa una resolución FE o medio de pago con FE exigida."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -1113,6 +1179,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"revisa esto por que no es claro que aun existan codigos quemados si ya todo es dinamico eso ya deberia esatr claro desde que el rol tenga el permiso para operar en el wpf deberia ser claro el poder hacerlo no deberiá existir otro error ni nada. si me hago entender y valida si este plan tiene algun hueco tecnico o algo mas se esta pasando apra que la sincronziación no se cumpla"_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -1160,6 +1227,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Ayudame a ajustar los datos de la impresion de entrada._
   > _- Que el nit sea el de empresa configurada al crearla desde el pwa_
   > _- Los telefonos mostrados deben ser el que se configure desde el pwa cuando se crea una sede_
@@ -1191,6 +1259,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"Tengo el siguiente problema en la PWA en el modulo de activos cuando se tiene la siguiente validación si la empresa tiene configurado lo de cajas, si la caja de esa sede no esta abierta pues dice que se debe abrir caja eso esta super bien bien pero entonces tenemos el siguiente error ya la caja esta abierta en la sede por un usuario x si de mi empresa entonces yo o cualquier otra persona que tenga acceso a la pwa de mi empresa y permisos al modulo de activos entonces el ingresa en la parte de arriba ya esta seleccionada la sede entonces el va le da ingresar vehiculo y le sale que no tiene caja abierta pero como te decia la caja ya esta abierta de esa sede deberia dejar ingresar el vehiculo y que el wpf si esta en linea automaticamente le aparezca recuerda que en WPF ya no sale esa alerta de sincronización si no lo hace automatico, si no llegase a estar en linea y posible el wpf tambien le dio ingreso que sucede el toma el mas viejo desde el ingreso del vehiculo pero tiene que ser exactamente igual los datos"_
 
 - **🤖 Resumen Técnico para la IA**:
