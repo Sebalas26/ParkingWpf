@@ -372,9 +372,21 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         catch { }
 
         var vType = ticket.VehicleType;
-        VehicleTypeName = !string.IsNullOrWhiteSpace(rate?.DisplayName)
-            ? rate.DisplayName.ToUpperInvariant()
-            : (vType == VehicleType.Car ? "AUTOMÓVIL" : (vType == VehicleType.Motorcycle ? "MOTOCICLETA" : vType.ToString().ToUpperInvariant()));
+        string resolvedName = rate?.DisplayName?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(resolvedName) || resolvedName.Equals("Car", StringComparison.OrdinalIgnoreCase))
+        {
+            resolvedName = vType switch
+            {
+                VehicleType.Car => "AUTOMÓVIL",
+                VehicleType.Motorcycle => "MOTOCICLETA",
+                VehicleType.Truck => "VEHÍCULO PESADO",
+                VehicleType.Van => "FURGÓN",
+                VehicleType.Bicycle => "BICICLETA",
+                VehicleType.Suv => "CAMIONETA / SUV",
+                _ => "AUTOMÓVIL"
+            };
+        }
+        VehicleTypeName = resolvedName.ToUpperInvariant();
 
         var hourRate = (rate != null && rate.HourRate > 0) ? rate.HourRate : ticket.HourlyRate;
         var minuteRate = rate?.MinuteRate ?? 0m;

@@ -15,6 +15,30 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-24 11:00:00] - [FEATURE / TICKETS / THERMAL / HOMOLOGACION] Corrección y Normalización Canónica de Tipo de Vehículo en Tiquetes Térmicos (Eliminación de 'CAR')
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"-en las etiquetas de entrada, ajustame proque me esta mostrando vehiculo: car y eso no existe , solo dejame el tipo de vehiculo correcto del vehiculo que ingrese, esto dejamelo aplicado para la etiqueta de wpf y pwa"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Normalización Canónica de Tipo de Vehículo (`ReceiptPreviewViewModel.cs`)**:
+     - En `LoadTicket`, se refinó la asignación de `VehicleTypeName`: si `rate?.DisplayName` es nulo, vacío o `"Car"` (insensible a mayúsculas), se evalúa exhaustivamente el enum `VehicleType` para mapear al término en español correspondiente:
+       - `VehicleType.Car` -> `"AUTOMÓVIL"`
+       - `VehicleType.Motorcycle` -> `"MOTOCICLETA"`
+       - `VehicleType.Truck` -> `"VEHÍCULO PESADO"`
+       - `VehicleType.Van` -> `"FURGÓN"`
+       - `VehicleType.Bicycle` -> `"BICICLETA"`
+       - `VehicleType.Suv` -> `"CAMIONETA / SUV"`
+     - Si la tarifa de la sede tiene configurado un nombre descriptivo en español, se preserva en mayúsculas (`rate.DisplayName.ToUpperInvariant()`), garantizando que jamás se despliegue `"CAR"` o valores crudos en inglés.
+  2. **Verificación y Pruebas Unitarias**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **263 de 263 pruebas superadas (100% Superadas, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
 ### [2026-09-23 23:50:00] - [CLEANUP / TICKETS / THERMAL / HOMOLOGACION] Eliminación de 'Cant Items: 1' en Tiquetes Térmicos de Salida (WPF y PWA)
 
 - **Autor**: Antigravity AI Assistant & Software Architect
