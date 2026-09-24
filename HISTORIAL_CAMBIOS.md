@@ -15,6 +15,27 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-23 23:50:00] - [CLEANUP / TICKETS / THERMAL / HOMOLOGACION] Eliminación de 'Cant Items: 1' en Tiquetes Térmicos de Salida (WPF y PWA)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Ayudame a eliminar en los tiquetes de salida esto , aplica para wpf y pwa"_
+  > *(Con imagen adjunta señalando la etiqueta "Cant Items: 1" junto al código QR)*
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Remoción de Etiqueta Estática en Tiquetes de Salida (`ReceiptPreviewDialog.xaml`)**:
+     - Se eliminó el bloque `<TextBlock Text="Cant Items: 1" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,10"/>` de las dos plantillas de salida:
+       - Plantilla de Recibo de Salida Estándar (POS / Check-Out).
+       - Plantilla de Factura de Venta Electrónica (Resolución FVM / DIAN).
+     - El `StackPanel` contenedor (`VerticalAlignment="Center"`) ahora alinea verticalmente el bloque `Atendido por:` y el nombre del operador de forma armónica junto a la imagen del código QR sin márgenes residuales.
+  2. **Verificación y Pruebas Unitarias**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **263 de 263 pruebas superadas (100% Superadas, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
 ### [2026-09-23 23:35:00] - [FEATURE / TICKETS / ESTANDARIZACION] Estandarización de Tiquetes Térmicos (Entrada/Salida), Caja de Placa, Tipo de Vehículo/Tarifa, Pagado/Cambio y Eliminación de MERLIN
 
 - **Autor**: Antigravity AI Assistant & Software Architect

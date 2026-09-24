@@ -273,7 +273,6 @@
                                            VerticalAlignment="Center"/>
 
                                     <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="Cant Items: 1" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,10"/>
                                         <TextBlock Text="Atendido por:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                         <TextBlock Text="{Binding AttendedBy}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                     </StackPanel>
@@ -602,7 +601,6 @@
                                            VerticalAlignment="Center"/>
 
                                     <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="Cant Items: 1" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,10"/>
                                         <TextBlock Text="Atendido por:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                         <TextBlock Text="{Binding AttendedBy}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                     </StackPanel>
