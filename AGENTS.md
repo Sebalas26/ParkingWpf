@@ -109,3 +109,13 @@ Este documento define las **Reglas de Oro y Estándares Obligatorios** para cual
 3. **Validaciones Claras de Obligatoriedad**:
    - Si un campo es obligatorio, debe validar activamente y notificar en pantalla si el usuario omite su ingreso, permitiendo ingresar `0` si la regla de negocio no aplica para esa sede.
 
+
+---
+
+## 🛑 REGLA DE ORO: PREVENCIÓN CRÍTICA DE FUGA DE DATOS (TENANCY LEAK)
+> [!CAUTION]
+> **PROHIBICIÓN ESTRICTA DE LISTADOS GLOBALES SIN FILTRO DE COMPAÑÍA O SEDE**:
+> Jamás realizar consultas a la base de datos (locales o remotas) para obtener listas de usuarios, vehículos o transacciones sin aplicar explícitamente el filtro de la compañía (CompanyId) o sede (BranchId) actual.
+
+1. **Filtrado Obligatorio en Origen**: Toda consulta LINQ o SQL que recupere colecciones (ej. db.Users.Where(...)) DEBE incluir obligatoriamente la validación de pertenencia al Tenant actual (ej. u.CompanyId == _sessionService.CurrentUser.CompanyId).
+2. **Cero Suposiciones de Sincronización**: No asumas que la base de datos local SQLite solo contiene datos de una empresa. Si el usuario tiene múltiples accesos o sincroniza globales, los datos se mezclarán. El filtro debe ser a nivel de código de consulta siempre.

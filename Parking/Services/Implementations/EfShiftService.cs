@@ -39,6 +39,18 @@ public class EfShiftService : IShiftService
         _authService = authService;
         _sessionService = sessionService;
         _serviceProvider = serviceProvider;
+
+        _sessionService.UserSessionChanged += async user =>
+        {
+            await RefreshCurrentShiftAsync();
+            ShiftStateChanged?.Invoke();
+        };
+
+        _sessionService.ActiveBranchChanged += async branch =>
+        {
+            await RefreshCurrentShiftAsync();
+            ShiftStateChanged?.Invoke();
+        };
     }
 
     private int? CurrentBranchId => _sessionService.CurrentBranch?.Id ?? _sessionService.CurrentBranchId;

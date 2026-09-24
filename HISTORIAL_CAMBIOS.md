@@ -1,5 +1,27 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-24 15:34:00] - [BUGFIX / UI & SECURITY] Reparación de Tenancy Leak Crítico en Relevo de Turnos (WPF) y Corrección Visual PWA
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Bueno tengo el siguiente problema desde la configuración de roles, sale lo siguiente esas palabras en ingles no se por que van hay los permisos eso no tiene sentido y eso de arriba que eso de abrir barra eso que pasa ? no tiene sentido. lo otro lo que hicimos del cambio de relevar no esta funcionando como debería ser y como lo planteamos no se que sucede pero siguen fallando los ajustes debemos mejorar los agentes para la revisión por que hacemos unas cosas y fallan , segundo los usuarios a relevar deben ser solo los de la compañia actual por que estan saliendo de otras compañias que sucedio eso hay es un error critico algo que debería estar en todos los proyectos como regla fundamental..."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Solución Visual en Matriz de Permisos (PWA)**:
+     - Se eliminó el renderizado del código técnico (`action.slug`) bajo el nombre de los permisos en el frontend Angular (`roles-tab.component.ts`), lo que confundía a los usuarios.
+     - Se removieron explícitamente los permisos de hardware (`checkin.manual_barrier` y `checkout.manual_barrier`) de la agrupación de módulos WEB (`PWA_MODULES_DEFINITIONS`), dejándolos únicamente para los roles de Escritorio (WPF POS).
+  2. **Reparación de Fuga de Tenancy en Relevo de Caja (WPF)**:
+     - **Causa Raíz**: En `ShiftClosureViewModel.cs` (método `LoadShiftDataAsync`), si fallaba la consulta al API para obtener los usuarios de la sede o esta devolvía 0, el fallback local consultaba `db.Users.Where(u => u.IsActive)` SIN aplicar un filtro de Compañía. Dado que el sistema sincroniza todos los usuarios configurados localmente, esto exponía usuarios de otras compañías en el mismo equipo local.
+     - **Solución**: Se implementó el filtro estricto de seguridad `u.CompanyId == _sessionService.CurrentUser.CompanyId` para bloquear la lectura de operadores cruzados entre inquilinos.
+  3. **Generación de Regla Fundamental Multi-Proyecto**:
+     - Se añadió la regla **PREVENCIÓN CRÍTICA DE FUGA DE DATOS (TENANCY LEAK)** en los 3 repositorios (API, WPF, PWA) dentro de `AGENTS.md` prohibiendo estrictamente realizar `Select` o `Where` a listas sin un filtro de compañía en código.
+
+- **`📦 Componentes Modificados`**:
+  - `ParkingWpf`: `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `ParkingWpf`: `AGENTS.md`
+  - `ParkingPWA`: `src/app/features/settings/tabs/roles-tab.component.ts`
+  - `ParkingPWA`: `AGENTS.md`
+  - `ParkingApi`: `AGENTS.md`
+
 **Proyecto**: ParkFlow Desktop (WPF) & API Central  
 **Fecha de Creación**: 2026-08-24
 
@@ -14,6 +36,22 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 3. **Componentes / Módulos Modificados** (archivos afectados).
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
+
+### [2026-09-24 15:15:00] - [FIX] Ocultamiento de Botón Relevar para Usuarios Sin Caja Activa
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"The 'Relevar' button in the WPF client, which erroneously appears for users without an open cash drawer. It should trigger a modal to verify cash and handle user authentication/re-login."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico**: Al cerrar sesión un usuario, `EfShiftService` conservaba su turno en caché porque no estaba suscrito a `UserSessionChanged`. Al ingresar un nuevo usuario sin turno, `HasActiveShift` daba `true` debido al caché obsoleto. Adicionalmente, en `ShiftClosureViewModel.LoadShiftDataAsync()`, la variable `IsShiftOwner` se asignaba incondicionalmente a `true` (incluso en el bloque `else`), mostrando erróneamente los controles del "Dueño del Turno" al usuario entrante.
+  2. **Solución**:
+     - En `EfShiftService.cs`, se suscribieron los eventos `UserSessionChanged` y `ActiveBranchChanged` para forzar `RefreshCurrentShiftAsync()`.
+     - En `ShiftClosureViewModel.cs`, se corrigió la lógica de `IsShiftOwner` usando el id del usuario real del turno vs el logueado.
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+- **✅ Verificación y Compilación**: Pruebas superadas (265 Pasan) y `dotnet build` sin errores.
 
 ### [2026-09-24 11:20:00] - [FIX / SECURITY / RELEVO / SHIFTS] Corrección Integral del Botón y Flujo de Relevo de Turno y Caja en WPF con Verificación de Efectivo, Firma con Contraseña y Cambio Dinámico de Sesión
 

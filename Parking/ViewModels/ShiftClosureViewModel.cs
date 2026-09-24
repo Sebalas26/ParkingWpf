@@ -824,9 +824,14 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
             if (HasActiveShift)
             {
+                var serverUserId = _authService.CurrentUser?.ServerUserId;
+                var shiftOperatorLower = active!.OperatorName?.ToLower() ?? "";
+
+                IsShiftOwner = (active.UserId == serverUserId) || 
+                               (!serverUserId.HasValue && !string.IsNullOrWhiteSpace(currentUsername) && shiftOperatorLower.Contains(currentUsername));
+
                 ActiveShiftOperatorName = active!.OperatorName ?? "Operador Anterior";
                 ActiveShiftStartTime = active.StartTimeUtc.ToLocalTime();
-                IsShiftOwner = true;
 
                 Summary = await _shiftService.GetCurrentShiftSummaryAsync();
                 ActualCashCounted = Summary.ExpectedCash;
@@ -858,7 +863,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
             }
             else
             {
-                IsShiftOwner = true;
+                IsShiftOwner = false;
                 ActiveShiftOperatorName = string.Empty;
                 ActiveShiftStartTime = null;
                 CurrentShiftWithdrawals = new List<CashWithdrawal>();
@@ -1025,10 +1030,11 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
             if (branchUsers.Count == 0)
             {
+                var companyId = _sessionService.CurrentUser?.CompanyId;
                 branchUsers = await db.Users
                     .Include(u => u.Role)
                     .AsNoTracking()
-                    .Where(u => u.IsActive)
+                    .Where(u => u.IsActive && (companyId == null || u.CompanyId == companyId))
                     .OrderBy(u => u.FullName)
                     .ToListAsync();
             }
