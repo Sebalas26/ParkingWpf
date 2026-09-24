@@ -15,6 +15,42 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 4. **Tipo de Cambio**: `[FIX]`, `[FEAT]`, `[UI/UX]`, `[REFACTOR]`, `[PERF]`, `[SECURITY]`.
 5. **Descripción Detallada** del problema resuelto o característica incorporada.
 
+### [2026-09-24 11:20:00] - [FIX / SECURITY / RELEVO / SHIFTS] Corrección Integral del Botón y Flujo de Relevo de Turno y Caja en WPF con Verificación de Efectivo, Firma con Contraseña y Cambio Dinámico de Sesión
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"necesito que revises el boton relevar que esta en el WPF no esta funcionando como deberia ser, pues ese boton aparece cuando la caja esta abierta e ingresa otra perosna que no tiene caja abierta entonces el tiene la opción de abrir caja nueva o relevar , pero esa funcion de relevar lo que e tenia es que cuando seleccione eso abria la modal le pedia verificar el dinero en caja y colocar la contraseña para que el sistema se logue y cambie al nuevo usuario si me explico, por eos la caja guarda un registor que se cerro con la opcion de revelar y quedo abierta por el nuevo usuario. analiza como esta eso y dame el informe tecnico y plan de ejecucción si algo esta mal revisar punto por punto . recuerda las reglas que se tienen en el wpf para la IA ."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Causa Raíz**:
+     - Previamente, el botón `SelectRelieveModeCommand` ("Relevar Caja Existente") únicamente conmutaba el flag booleano `IsRelieveModeSelected = true`, dejando la vista estática sin desplegar el modal.
+     - A su vez, `TakeOverShiftAsync` ("Recibir Caja e Iniciar Mi Turno") ejecutaba un simple `_dialogService.ShowConfirmationAsync` (alerta Sí/No) que no solicitaba la contraseña del operador ni permitía verificar o ajustar el efectivo contado, sin transferir ni conmutar la sesión ni los permisos en `_authService` y `_sessionService`.
+     - El diálogo `ShiftHandoverAuthDialog` solo contemplaba la modalidad saliente, con un campo de efectivo estático y solo captura de contraseña.
+  2. **Modernización de `ShiftHandoverAuthDialog` (`ShiftHandoverAuthDialog.xaml`, `ShiftHandoverAuthDialog.xaml.cs`)**:
+     - Se transformó la sección 3 en un arqueo interactivo completo:
+       - Visualización del balance esperado en sistema (`ExpectedCashText`).
+       - Input editable de conteo físico (`CashCountedTextBox` con `ModernTextBox`, validación numérica y formateo dinámico).
+       - Cálculo en tiempo real de la diferencia (`CashDifferenceText`: Cuadrado en verde, Sobrante en verde, Faltante en rojo).
+       - Sección de autenticación con contraseña del operador entrante (`ReceiverPasswordBox`).
+     - Se introdujo `ShiftHandoverAuthResult { Session, VerifiedCashAmount }` como resultado fuertemente tipado de `ShowAuthAsync`.
+  3. **Conexión en `ShiftClosureViewModel` (`ShiftClosureViewModel.cs`)**:
+     - `SelectRelieveModeAsync`: Si la sede tiene una única caja activa (`OtherActiveShifts.Count == 1`), dispara directamente `TakeOverShiftAsync()`, abriendo de inmediato el modal interactivo de relevo.
+     - `TakeOverShiftAsync`: Resuelve la entidad `User` del operador entrante, despliega `ShiftHandoverAuthDialog.ShowAuthAsync`, invoca `_authService.SwitchCurrentUser(authResult.Session)` para actualizar la sesión activa y la matriz de permisos (`_permissionService.LoadPermissions`), ejecuta `_shiftService.HandoverAndOpenNextShiftAsync` con el efectivo verificado y redirige a `CheckInViewModel`.
+     - `HandoverShiftAsync`: Actualizado para utilizar `authResult.Session` y `authResult.VerifiedCashAmount`, garantizando consistencia absoluta en ambos flujos de entrega y toma de relevo.
+  4. **Persistencia y Trazabilidad en Base de Datos**:
+     - Se preserva el registro de cierre del turno saliente (`WorkShift` con `Status = 1`, `HandoverToUserId`, `HandoverToUserName`, `ActualCashCounted`, `CashDifference`), abriendo simultáneamente el nuevo turno (`Status = 0`, `BaseAmount = VerifiedCashAmount`, `OperatorName = handoverToUserName`).
+  5. **Pruebas Unitarias y Certificación**:
+     - Se agregaron 2 nuevas pruebas unitarias en `EfShiftServiceTests.cs` cubriendo `HandoverAndOpenNextShiftAsync` con balance verificado y cierre específico.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **265 de 265 pruebas superadas (100% Superadas, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/Views/ShiftHandoverAuthDialog.xaml`
+  - `Parking/Views/ShiftHandoverAuthDialog.xaml.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
 ### [2026-09-23 23:50:00] - [CLEANUP / TICKETS / THERMAL / HOMOLOGACION] Eliminación de 'Cant Items: 1' en Tiquetes Térmicos de Salida (WPF y PWA)
 
 - **Autor**: Antigravity AI Assistant & Software Architect

@@ -464,6 +464,97 @@ public class EfShiftServiceTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task HandoverAndOpenNextShiftAsync_ClosesOutgoingShiftAndOpensIncomingShiftWithVerifiedCashBase()
+    {
+        // Arrange
+        var service = CreateService();
+        var outgoingShift = await service.OpenShiftAsync(50000m, "Turno Mañana", "Caja 1");
+        var incomingUserId = Guid.NewGuid();
+        var incomingUserName = "Carlos Relevo";
+        var verifiedCashAmount = 85000m;
+
+        // Act
+        var nextShift = await service.HandoverAndOpenNextShiftAsync(
+            actualCashCounted: verifiedCashAmount,
+            notes: "Relevo entregado con balance cuadrado",
+            handoverToUserId: incomingUserId,
+            handoverToUserName: incomingUserName,
+            newShiftBaseAmount: verifiedCashAmount);
+
+        // Assert
+        nextShift.Should().NotBeNull();
+        nextShift.Status.Should().Be(0); // Nuevo turno activo
+        nextShift.BaseAmount.Should().Be(verifiedCashAmount);
+        nextShift.OperatorName.Should().Be(incomingUserName);
+        nextShift.CashRegisterName.Should().Be("Caja 1");
+        service.CurrentShift.Should().Be(nextShift);
+
+        // Verificar en base de datos que el turno saliente quedó cerrado con handover
+        using var db = _connectionManager.CreateDbContext();
+        var closedShift = await db.WorkShifts.FindAsync(outgoingShift.ShiftId);
+        closedShift.Should().NotBeNull();
+        closedShift!.Status.Should().Be(1); // Cerrado
+        closedShift.ActualCashCounted.Should().Be(verifiedCashAmount);
+        closedShift.HandoverToUserId.Should().Be(incomingUserId);
+        closedShift.HandoverToUserName.Should().Be(incomingUserName);
+    }
+
+    [Fact]
+    public async Task HandoverAndOpenNextShiftAsync_SpecificShiftId_ClosesTargetShiftAndOpensNewShiftForIncomingOperator()
+    {
+        // Arrange
+        var service = CreateService();
+        var targetShiftId = Guid.NewGuid();
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.WorkShifts.Add(new WorkShift
+            {
+                ShiftId = targetShiftId,
+                BranchId = 1,
+                CompanyId = 5,
+                UserId = 12,
+                OperatorName = "Operador Antiguo",
+                CashRegisterName = "Caja Secundaria",
+                Status = 0,
+                BaseAmount = 40000m,
+                StartTimeUtc = DateTime.UtcNow.AddHours(-4)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var incomingUserId = Guid.NewGuid();
+        var incomingUserName = "María Auxiliar";
+        var verifiedCash = 62000m;
+
+        // Act
+        var newShift = await service.HandoverAndOpenNextShiftAsync(
+            actualCashCounted: verifiedCash,
+            notes: "Relevo asumido por María",
+            handoverToUserId: incomingUserId,
+            handoverToUserName: incomingUserName,
+            newShiftBaseAmount: verifiedCash,
+            shiftIdToClose: targetShiftId,
+            newCashRegisterName: "Caja Secundaria");
+
+        // Assert
+        newShift.Should().NotBeNull();
+        newShift.Status.Should().Be(0);
+        newShift.BaseAmount.Should().Be(verifiedCash);
+        newShift.OperatorName.Should().Be(incomingUserName);
+        newShift.CashRegisterName.Should().Be("Caja Secundaria");
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            var dbTarget = await db.WorkShifts.FindAsync(targetShiftId);
+            dbTarget.Should().NotBeNull();
+            dbTarget!.Status.Should().Be(1);
+            dbTarget.HandoverToUserId.Should().Be(incomingUserId);
+            dbTarget.HandoverToUserName.Should().Be(incomingUserName);
+            dbTarget.ActualCashCounted.Should().Be(verifiedCash);
+        }
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

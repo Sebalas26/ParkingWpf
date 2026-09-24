@@ -122,23 +122,40 @@
                 </Grid>
             </Border>
 
-            <!-- 3. Cash Transfer Amount Banner -->
+            <!-- 3. Cash Verification Section -->
             <Border Grid.Row="2"
                     Background="{DynamicResource BrushSurfaceElevated}"
                     BorderBrush="{DynamicResource BrushBorderMedium}"
                     BorderThickness="1"
-                    CornerRadius="10"
-                    Padding="14,10"
+                    CornerRadius="12"
+                    Padding="16,12"
                     Margin="0,0,0,16">
-                <Grid>
-                    <StackPanel VerticalAlignment="Center">
-                        <TextBlock Text="EFECTIVO A ENTREGAR EN GAVETA" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}"/>
-                        <TextBlock x:Name="CashAmountText" Text="$0" FontSize="20" FontWeight="Black" Foreground="{DynamicResource BrushSuccess}" Margin="0,2,0,0"/>
-                    </StackPanel>
-                    <Border HorizontalAlignment="Right" VerticalAlignment="Center" Width="32" Height="32" CornerRadius="16" Background="{DynamicResource BrushSuccessBg}">
-                        <Path Data="{StaticResource IconCash}" Fill="{DynamicResource BrushSuccess}" Width="14" Height="14" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                    </Border>
-                </Grid>
+                <StackPanel>
+                    <Grid Margin="0,0,0,8">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="SALDO ESPERADO EN SISTEMA" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}"/>
+                            <TextBlock x:Name="ExpectedCashText" Text="$0" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <Border HorizontalAlignment="Right" VerticalAlignment="Center" Width="30" Height="30" CornerRadius="15" Background="{DynamicResource BrushSuccessBg}">
+                            <Path Data="{StaticResource IconCash}" Fill="{DynamicResource BrushSuccess}" Width="13" Height="13" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </Grid>
+
+                    <TextBlock Text="EFECTIVO FÍSICO CONTADO EN GAVETA ($) *" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
+                    <TextBox x:Name="CashCountedTextBox"
+                             Height="38"
+                             FontSize="16"
+                             FontWeight="Bold"
+                             Style="{StaticResource ModernTextBox}"
+                             TextChanged="CashCountedTextBox_TextChanged"
+                             Margin="0,0,0,6"/>
+
+                    <!-- Diferencia de Arqueo Dinámica -->
+                    <Grid>
+                        <TextBlock Text="Diferencia de Arqueo:" FontSize="11" Foreground="{DynamicResource BrushTextSecondary}" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="CashDifferenceText" Text="$0 (Cuadrado)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushSuccess}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+                </StackPanel>
             </Border>
 
             <!-- 4. Receiver Password Field & Error Banner -->
