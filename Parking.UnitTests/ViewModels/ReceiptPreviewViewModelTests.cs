@@ -152,4 +152,65 @@ public class ReceiptPreviewViewModelTests
         vm.FormattedRateText.Should().Contain("$ 40 / MIN");
         vm.FormattedRateText.Should().NotBe("TARIFA: $ 0 / HORA");
     }
+
+    [Fact]
+    public void LoadTicket_ExitTicket_WithAgreement_ShowsAgreementNameAndDiscount()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket
+        {
+            TicketNumber = "PKF-C1-20260924-010",
+            PlateNumber = "ABC123",
+            VehicleType = VehicleType.Car,
+            HourlyRate = 3000m,
+            GrossAmount = 10000m,
+            DiscountAmount = 3000m,
+            NetAmount = 7000m,
+            AmountPaid = 7000m,
+            ExitTimeUtc = DateTime.UtcNow,
+            Status = TicketStatus.Completed
+        };
+
+        // Act
+        vm.LoadTicket(ticket);
+
+        // Assert
+        vm.IsExitReceipt.Should().BeTrue();
+        vm.HasAgreement.Should().BeTrue();
+        vm.HasDiscount.Should().BeTrue();
+        vm.DiscountAmountStr.Should().Contain("3.000");
+        vm.AgreementDisplayName.Should().NotBe("NO APLICA");
+        vm.SubtotalStr.Should().Contain("10.000");
+    }
+
+    [Fact]
+    public void LoadTicket_ExitTicket_WithoutAgreement_ShowsNoAplicaAndZeroDiscount()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket
+        {
+            TicketNumber = "PKF-C1-20260924-011",
+            PlateNumber = "XYZ789",
+            VehicleType = VehicleType.Car,
+            HourlyRate = 3000m,
+            GrossAmount = 6000m,
+            DiscountAmount = 0m,
+            NetAmount = 6000m,
+            AmountPaid = 6000m,
+            ExitTimeUtc = DateTime.UtcNow,
+            Status = TicketStatus.Completed
+        };
+
+        // Act
+        vm.LoadTicket(ticket);
+
+        // Assert
+        vm.IsExitReceipt.Should().BeTrue();
+        vm.HasAgreement.Should().BeFalse();
+        vm.HasDiscount.Should().BeFalse();
+        vm.AgreementDisplayName.Should().Be("NO APLICA");
+        vm.DiscountAmountStr.Should().Be("$ 0");
+    }
 }

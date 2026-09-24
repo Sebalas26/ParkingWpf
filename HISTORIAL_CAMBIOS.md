@@ -3,6 +3,7 @@
 ## 📅 Entrada: [2026-09-24 15:34:00] - [BUGFIX / UI & SECURITY] Reparación de Tenancy Leak Crítico en Relevo de Turnos (WPF) y Corrección Visual PWA
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Bueno tengo el siguiente problema desde la configuración de roles, sale lo siguiente esas palabras en ingles no se por que van hay los permisos eso no tiene sentido y eso de arriba que eso de abrir barra eso que pasa ? no tiene sentido. lo otro lo que hicimos del cambio de relevar no esta funcionando como debería ser y como lo planteamos no se que sucede pero siguen fallando los ajustes debemos mejorar los agentes para la revisión por que hacemos unas cosas y fallan , segundo los usuarios a relevar deben ser solo los de la compañia actual por que estan saliendo de otras compañias que sucedio eso hay es un error critico algo que debería estar en todos los proyectos como regla fundamental..."_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -41,6 +42,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 
 - **Autor**: Antigravity AI Assistant & Software Architect
 - **💬 Prompt Original del Usuario**:
+
   > _"The 'Relevar' button in the WPF client, which erroneously appears for users without an open cash drawer. It should trigger a modal to verify cash and handle user authentication/re-login."_
 
 - **🤖 Resumen Técnico para la IA**:
@@ -52,6 +54,40 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `Parking/Services/Implementations/EfShiftService.cs`
   - `Parking/ViewModels/ShiftClosureViewModel.cs`
 - **✅ Verificación y Compilación**: Pruebas superadas (265 Pasan) y `dotnet build` sin errores.
+
+### [2026-09-24 14:15:00] - [FEATURE / TICKETS / THERMAL / HOMOLOGACION] Inclusión de Convenio, Descuento, Subtotal y Tarifa en Tiquetes de Entrada y Salida (WPF & PWA)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+
+  > _"Ayudame a agregar que en los tiquetes de salida de pwa y wpf, se le adicione en los campos de pago , que se le adicione el convenio, si aplica o no, y cuando fue el descuento. Adicional en la impresion de entrada y salida, tanto para wpf y pwa, adicionales la tarifa del tipo de vehiculo seleccionado"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Liquidación y Descuento en Tiquetes de Salida (`ReceiptPreviewViewModel.cs`)**:
+     - Se crearon las propiedades observables `HasDiscount` (bool), `DiscountAmountStr` (string) y `SubtotalStr` (string) para soportar la visualización condicional de importes brutos y rebajas.
+     - En `LoadTicket`, cuando el tiquete es de salida:
+       - Si `ticket.DiscountAmount > 0`, se calcula el subtotal bruto (`subtotal = totalPaid + DiscountAmount`), se asigna `HasDiscount = true`, `SubtotalStr = $"$ {subtotal:N0}"`, `DiscountAmountStr = $"- $ {ticket.DiscountAmount:N0}"` y `AgreementDisplayName` se formatea con el nombre del convenio o `"CONVENIO APLICADO"`.
+       - Si no cuenta con descuento o convenio, se formatea explícitamente `AgreementDisplayName = "NO APLICA"`, `DiscountAmountStr = "$ 0"` y `HasDiscount = false`.
+  2. **Plantillas Térmicas XAML (`ReceiptPreviewDialog.xaml`)**:
+     - **Tiquetes de Salida (Template C / POS y Template B / FVM)**:
+       - Se agregaron debajo del recuadro de la placa los campos de `VEHÍCULO:` (`{Binding VehicleTypeName}`) y `TARIFA:` (`{Binding FormattedRateText}`).
+       - En la sección de liquidación/pago, se incorporaron:
+         - `SUBTOTAL:` (`{Binding SubtotalStr}`) con visibilidad condicional ligada a `HasDiscount`.
+         - `CONVENIO:` (`{Binding AgreementDisplayName}`).
+         - `DESCUENTO:` (`{Binding DiscountAmountStr}`).
+     - **Tiquetes de Entrada (Template A)**:
+       - Se garantizó la presencia y correcta presentación de `VEHÍCULO:` y `TARIFA:` homologados en formato idéntico.
+  3. **Pruebas Unitarias Automatizadas (`ReceiptPreviewViewModelTests.cs`)**:
+     - Se crearon dos nuevas pruebas unitarias:
+       - `LoadTicket_ExitTicket_WithAgreement_ShowsAgreementNameAndDiscount`: Valida que con convenio y descuento > 0 se expongan `HasDiscount = true`, `AgreementDisplayName`, `DiscountAmountStr` negativo y `SubtotalStr` bruto correcto.
+       - `LoadTicket_ExitTicket_WithoutAgreement_ShowsNoAplicaAndZeroDiscount`: Valida que sin convenio se muestre `"NO APLICA"`, `DiscountAmountStr = "$ 0"` y `HasDiscount = false`.
+     - Ejecución de `dotnet test ParkingWpf.slnx`: **265 de 265 pruebas superadas (100% Superadas, 0 Fallos)**.
+
+- **📦 Componentes Modificados**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking.UnitTests/ViewModels/ReceiptPreviewViewModelTests.cs`
+  - # `HISTORIAL_CAMBIOS.md`
 
 ### [2026-09-24 11:20:00] - [FIX / SECURITY / RELEVO / SHIFTS] Corrección Integral del Botón y Flujo de Relevo de Turno y Caja en WPF con Verificación de Efectivo, Firma con Contraseña y Cambio Dinámico de Sesión
 
@@ -88,6 +124,7 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `Parking/Views/ShiftHandoverAuthDialog.xaml.cs`
   - `Parking/ViewModels/ShiftClosureViewModel.cs`
   - `Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
+    > > > > > > > 7c3c026669464b38808c5517acfd66fb0e4d4f40
 
 ### [2026-09-24 11:00:00] - [FEATURE / TICKETS / THERMAL / HOMOLOGACION] Corrección y Normalización Canónica de Tipo de Vehículo en Tiquetes Térmicos (Eliminación de 'CAR')
 

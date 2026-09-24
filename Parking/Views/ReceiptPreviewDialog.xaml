@@ -151,7 +151,7 @@
                                 </Grid>
 
                                 <!-- 3. Bloque Central de la Placa -->
-                                <Border BorderBrush="#000000" BorderThickness="2" CornerRadius="4" Padding="6,4" HorizontalAlignment="Center" Margin="0,4,0,8">
+                                <Border BorderBrush="#000000" BorderThickness="2" CornerRadius="4" Padding="6,4" HorizontalAlignment="Center" Margin="0,4,0,4">
                                     <TextBlock Text="{Binding Ticket.PlateNumber, StringFormat='{}PLACA:  {0}'}"
                                                FontSize="16"
                                                FontWeight="Black"
@@ -159,6 +159,12 @@
                                                Foreground="#000000"
                                                HorizontalAlignment="Center"/>
                                 </Border>
+
+                                <!-- Tipo de Vehículo y Tarifa -->
+                                <StackPanel HorizontalAlignment="Center" Margin="0,0,0,6">
+                                    <TextBlock Text="{Binding VehicleTypeName, StringFormat='{}VEHÍCULO: {0}'}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding FormattedRateText}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,0" Visibility="{Binding FormattedRateText, Converter={StaticResource NullToVis}}"/>
+                                </StackPanel>
 
                                 <!-- Entrada, Salida, Tiempo -->
                                 <Grid Margin="0,1">
@@ -204,7 +210,34 @@
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
 
-                                <!-- 4. Liquidación Económica (Base Gravable, IVA 19%, TOTAL) -->
+                                <!-- 4. Liquidación Económica (Subtotal, Convenio, Descuento, Base Gravable, IVA 19%, TOTAL) -->
+                                <Grid Margin="0,2" Visibility="{Binding HasDiscount, Converter={StaticResource BoolToVis}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="SUBTOTAL:" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding SubtotalStr, StringFormat='{}${0}'}" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="CONVENIO:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding AgreementDisplayName}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="DESCUENTO:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding DiscountAmountStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
                                 <Grid Margin="0,2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
@@ -479,7 +512,7 @@
                                 </Grid>
 
                                 <!-- 3. Bloque Central de la Placa -->
-                                <Border BorderBrush="#000000" BorderThickness="2" CornerRadius="4" Padding="6,4" HorizontalAlignment="Center" Margin="0,4,0,8">
+                                <Border BorderBrush="#000000" BorderThickness="2" CornerRadius="4" Padding="6,4" HorizontalAlignment="Center" Margin="0,4,0,4">
                                     <TextBlock Text="{Binding Ticket.PlateNumber, StringFormat='{}PLACA:  {0}'}"
                                                FontSize="16"
                                                FontWeight="Black"
@@ -487,6 +520,12 @@
                                                Foreground="#000000"
                                                HorizontalAlignment="Center"/>
                                 </Border>
+
+                                <!-- Tipo de Vehículo y Tarifa -->
+                                <StackPanel HorizontalAlignment="Center" Margin="0,0,0,6">
+                                    <TextBlock Text="{Binding VehicleTypeName, StringFormat='{}VEHÍCULO: {0}'}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding FormattedRateText}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,0" Visibility="{Binding FormattedRateText, Converter={StaticResource NullToVis}}"/>
+                                </StackPanel>
 
                                 <!-- Entrada, Salida, Tiempo -->
                                 <Grid Margin="0,1">
@@ -532,7 +571,34 @@
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
 
-                                <!-- 4. Liquidación Fiscal (Base Gravable, IVA 19%, TOTAL) -->
+                                <!-- 4. Liquidación Fiscal (Subtotal, Convenio, Descuento, Base Gravable, IVA 19%, TOTAL) -->
+                                <Grid Margin="0,2" Visibility="{Binding HasDiscount, Converter={StaticResource BoolToVis}}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="SUBTOTAL:" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding SubtotalStr, StringFormat='{}${0}'}" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="CONVENIO:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding AgreementDisplayName}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="DESCUENTO:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding DiscountAmountStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
                                 <Grid Margin="0,2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
