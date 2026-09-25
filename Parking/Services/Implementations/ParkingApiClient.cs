@@ -766,30 +766,70 @@ public class ParkingApiClient : IApiClientService
         }
     }
 
-    public async Task<bool> UpdateCustomerAsync(Guid customerId, CreateCustomerApiRequest request)
+    public async Task<CustomerApiUpdateResult> UpdateCustomerAsync(Guid customerId, CreateCustomerApiRequest request)
     {
-        if (request == null) return false;
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+        if (request == null) return new CustomerApiUpdateResult { Success = false, ErrorMessage = "La solicitud no puede ser nula." };
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         try
         {
-            var url = $"{BaseUrl}/api/customers/{customerId}";
+            var url = request.CompanyId.HasValue
+                ? $"{BaseUrl}/api/customers/{customerId}?companyId={request.CompanyId.Value}"
+                : $"{BaseUrl}/api/customers/{customerId}";
+
             var response = await _httpClient.PutAsJsonAsync(url, request, JsonOptions, cts.Token);
             CheckUnauthorized(response);
+
             if (response.IsSuccessStatusCode)
             {
                 ReportConnectionState(true);
-                return true;
+                var customer = await response.Content.ReadFromJsonAsync<CustomerApiResponse>(JsonOptions, cts.Token);
+                return new CustomerApiUpdateResult
+                {
+                    Success = true,
+                    Customer = customer
+                };
             }
-            return false;
+
+            string? errorMessage = null;
+            try
+            {
+                var errorObj = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions, cts.Token);
+                if (errorObj.TryGetProperty("message", out var msgProp))
+                {
+                    errorMessage = msgProp.GetString();
+                }
+                else if (errorObj.TryGetProperty("errors", out var errorsProp))
+                {
+                    errorMessage = errorsProp.ToString();
+                }
+            }
+            catch
+            {
+                errorMessage = await response.Content.ReadAsStringAsync(cts.Token);
+            }
+
+            return new CustomerApiUpdateResult
+            {
+                Success = false,
+                ErrorMessage = !string.IsNullOrWhiteSpace(errorMessage) ? errorMessage : $"Error del servidor ({response.StatusCode})"
+            };
         }
         catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
         {
             ReportConnectionState(false);
-            return false;
+            return new CustomerApiUpdateResult
+            {
+                Success = false,
+                ErrorMessage = $"Fallo de conexión con el servidor: {ex.Message}"
+            };
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            return new CustomerApiUpdateResult
+            {
+                Success = false,
+                ErrorMessage = ex.Message
+            };
         }
     }
 

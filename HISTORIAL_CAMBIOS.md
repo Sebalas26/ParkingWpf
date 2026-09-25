@@ -1,5 +1,6 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+<<<<<<< HEAD
 ## 📅 Entrada: [2026-09-25 11:35:00] - [FEATURE / UX / BILLING] ComboBox de Clientes con Búsqueda por Cédula y Menú de 8 Ítems, Bloqueo de MouseWheel en Facturación, Observaciones de 50 Caracteres, DV Condicional a NIT y Paginador Dinámico (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
@@ -54,10 +55,42 @@
   - `dotnet test ParkingWpf.slnx` -> **289 Pasadas, 0 Fallidas (100% Superadas)**.
 
 ---
+=======
+## 📅 Entrada: [2026-09-25 10:55:00] - [FEATURE / CUSTOMERS / SIIGO] Sincronización de Edición de Clientes con Siigo API y Retroalimentación Detallada al Operador (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"en el modulo de clientes se tiene el boton de editar el cliente si me explico se debe ahcer en BD y tambien ir a Siigo a editar dime que necesitas para tener eso claro el body que se debe enviar [...] Solo lo estas mostradno para la PWA y el WPF que tambien tienen esos modulos que sucede hay ? por que no lo tomaste encuenta."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Tipado y DTOs de Respuesta API (`CustomerApiModels.cs`)**:
+     - Se añadió la propiedad `[JsonPropertyName("siigoCustomerId")] public Guid? SiigoCustomerId { get; set; }` a `CustomerApiResponse` para recibir el identificador asignado por Siigo tras la creación o actualización.
+     - Se introdujo la clase de contrato `CustomerApiUpdateResult` con `Success`, `ErrorMessage`, `Customer` y operador de conversión implícita a `bool` para preservar total retrocompatibilidad con llamadas preexistentes.
+  2. **Contrato y Cliente API (`IApiClientService.cs` & `ParkingApiClient.cs`)**:
+     - Se actualizó la firma de `UpdateCustomerAsync(Guid customerId, CreateCustomerApiRequest request)` para retornar `Task<CustomerApiUpdateResult>`.
+     - `ParkingApiClient.cs` ahora incluye el parámetro de aislamiento multi-empresa `?companyId={request.CompanyId.Value}` y realiza captura granular de errores HTTP (`400 Bad Request`, `502 Bad Gateway`) deserializando los mensajes y detalles enviados por el API/Siigo en vez de retornar un booleano genérico silencioso.
+  3. **Persistencia Local Offline-First y Diálogo de Notificación (`CustomersViewModel.cs`)**:
+     - En `SaveCustomerAsync` para edición, los cambios se persisten primero en SQLite local garantizando resiliencia offline.
+     - Se invoca `UpdateCustomerAsync` contra la nube; si la respuesta de la nube incluye `SiigoCustomerId` (asignado o actualizado), se persiste de inmediato en la base de datos local SQLite (`existing.SiigoCustomerId = ...`).
+     - Se eliminó el `catch { }` vacío. Si el servidor central o Siigo reportan una inconsistencia (ej: "Municipio inválido", "Error en Siigo"), se alerta al operador mediante `_dialogService.ShowAlertAsync(..., DialogNotificationType.Warning)` con el mensaje descriptivo exacto, manteniendo la trazabilidad e impidiendo que el operador asuma erróneamente que la factura o tercero se sincronizó en Siigo cuando fue rechazado.
+  4. **Compilación y Certificación**:
+     - `dotnet test ParkingWpf.slnx`: **284/284 pruebas superadas al 100% (0 fallos)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Models/ApiModels/CustomerApiModels.cs`
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/ViewModels/CustomersViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+=======
+>>>>>>> 260b19a2421f427b5de4514688f970eb26e4efa2
 
 ## 📅 Entrada: [2026-09-25 09:40:00] - [BUGFIX / SYNC / RATES] Corrección de DbUpdateConcurrencyException en Sincronización de Tarifas, Branch-Scoped Purge y Protección de Integridad en SQLite
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"ahora veo este error: The database operation was expected to affect 1 row(s), but actually affected 0 row(s); data may have been modified or deleted since entities were loaded"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -134,7 +167,7 @@
   - `Parking/ViewModels/ShiftClosureViewModel.cs`
   - `Parking.UnitTests/Security/AuthServiceOfflineTests.cs`
   - `Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
->>>>>>> 558bec4ae4f8b6d47d0c1620c3d34bd18f69ce23
+    > > > > > > > 558bec4ae4f8b6d47d0c1620c3d34bd18f69ce23
 
 ## 📅 Entrada: [2026-09-25 08:25:00] - [FEATURE / OFFLINE / RATES] Contingencia y Persistencia Multi-Sede de Tarifas Vehiculares en SQLite y Fallback Jerárquico en Modo Offline
 

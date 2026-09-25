@@ -101,9 +101,21 @@ public class CustomerApiResponse
     [JsonPropertyName("fiscalResponsibilities")]
     public string FiscalResponsibilities { get; set; } = "R-99-PN";
 
+    [JsonPropertyName("siigoCustomerId")]
+    public Guid? SiigoCustomerId { get; set; }
+
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; }
 
     [JsonPropertyName("plateNumbers")]
     public List<string> PlateNumbers { get; set; } = new();
+}
+
+public class CustomerApiUpdateResult
+{
+    public bool Success { get; set; }
+    public string? ErrorMessage { get; set; }
+    public CustomerApiResponse? Customer { get; set; }
+
+    public static implicit operator bool(CustomerApiUpdateResult? result) => result?.Success ?? false;
 }
