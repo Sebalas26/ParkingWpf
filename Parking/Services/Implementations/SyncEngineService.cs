@@ -833,10 +833,8 @@ public class SyncEngineService : ISyncEngineService
                 var incomingVehicleTypes = bootstrap.Rates.Select(r => r.GetVehicleType()).ToHashSet();
                 var localRates = await db.VehicleRates.ToListAsync(ct);
 
-                // 1. Eliminar tarifas obsoletas que ya no existan en el backend (estrictamente por RateId)
-                var ratesToDelete = currentBranchId.HasValue
-                    ? localRates.Where(r => (r.BranchId == currentBranchId.Value || r.BranchId == null) && !incomingRateIds.Contains(r.RateId)).ToList()
-                    : localRates.Where(r => !incomingRateIds.Contains(r.RateId)).ToList();
+                // 1. Eliminar tarifas obsoletas que ya no existan en el backend (estrictamente por RateId en el catálogo sincronizado)
+                var ratesToDelete = localRates.Where(r => !incomingRateIds.Contains(r.RateId)).ToList();
 
                 if (ratesToDelete.Count > 0)
                 {
@@ -845,16 +843,12 @@ public class SyncEngineService : ISyncEngineService
                     localRates = await db.VehicleRates.ToListAsync(ct);
                 }
 
-                // 2. Upsert por RateId canónico (evitando colisiones por VehicleType compartido)
+                // 2. Upsert por RateId canónico (evitando colisiones y preservando BranchId original)
                 foreach (var rate in bootstrap.Rates)
                 {
                     var rateId = rate.GetRateId();
                     var vehicleType = rate.GetVehicleType();
-                    if (currentBranchId.HasValue && rate.GetBranchId().HasValue && rate.GetBranchId()!.Value != currentBranchId.Value)
-                    {
-                        continue;
-                    }
-                    var targetBranchId = currentBranchId ?? rate.GetBranchId();
+                    var targetBranchId = rate.GetBranchId();
 
                     // Omitir registros de plantilla general sin sede que tengan tarifa 0 (catálogo no asignado a la sede)
                     if (!rate.GetBranchId().HasValue && rate.GetHourRate() == 0 && rate.GetMinuteRate() == 0)
