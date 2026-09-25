@@ -1015,6 +1015,86 @@ public class CheckOutViewModelTests : IDisposable
         vm.FormattedNotes.Should().Be("Dejó llaves en administración");
     }
 
+    [Fact]
+    public void ExitNotes_TruncatesTo50Characters()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+
+        // Act
+        vm.ExitNotes = "123456789012345678901234567890123456789012345678901234567890"; // 60 chars
+
+        // Assert
+        vm.ExitNotes.Should().HaveLength(50);
+        vm.ExitNotes.Should().Be("12345678901234567890123456789012345678901234567890");
+    }
+
+    [Fact]
+    public void ExitNotes_CleansOnCancelSelection()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        vm.ExitNotes = "Observación de prueba";
+
+        // Act
+        vm.CancelSelectionCommand.Execute(null);
+
+        // Assert
+        vm.ExitNotes.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void IsNitDocumentType_TogglesCorrectly_AndCleansCheckDigitWhenNotNit()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var ccOption = vm.IdentificationTypeOptions.First(o => o.Id == 13);
+        var nitOption = vm.IdentificationTypeOptions.First(o => o.Id == 31);
+
+        // Act & Assert 1: NIT
+        vm.SelectedIdentificationTypeOption = nitOption;
+        vm.IsNitDocumentType.Should().BeTrue();
+        vm.NewCustomerDocumentNumber = "900123456";
+        vm.NewCustomerCheckDigit.Should().NotBeNullOrEmpty();
+
+        // Act & Assert 2: CC
+        vm.SelectedIdentificationTypeOption = ccOption;
+        vm.IsNitDocumentType.Should().BeFalse();
+        vm.NewCustomerCheckDigit.Should().BeNull();
+        vm.NewCustomerCheckDigitError.Should().BeNull();
+    }
+
+    [Fact]
+    public void ApplyCustomerFilter_FiltersByDocumentNumberAndFullName()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var c1 = new Customer { CustomerId = Guid.NewGuid(), FullName = "Carlos Perez", DocumentNumber = "10102020" };
+        var c2 = new Customer { CustomerId = Guid.NewGuid(), FullName = "Maria Gomez", DocumentNumber = "1030679725" };
+        var c3 = new Customer { CustomerId = Guid.NewGuid(), FullName = "Inversiones SAS", DocumentNumber = "900123456" };
+
+        vm.AvailableCustomers.Add(c1);
+        vm.AvailableCustomers.Add(c2);
+        vm.AvailableCustomers.Add(c3);
+        vm.ApplyCustomerFilter();
+
+        vm.FilteredAvailableCustomers.Should().HaveCount(3);
+
+        // Act 1: Buscar por cédula
+        vm.CustomerSearchText = "10306";
+        vm.FilteredAvailableCustomers.Should().ContainSingle();
+        vm.FilteredAvailableCustomers.First().FullName.Should().Be("Maria Gomez");
+
+        // Act 2: Buscar por nombre
+        vm.CustomerSearchText = "Inversiones";
+        vm.FilteredAvailableCustomers.Should().ContainSingle();
+        vm.FilteredAvailableCustomers.First().DocumentNumber.Should().Be("900123456");
+
+        // Act 3: Limpiar búsqueda
+        vm.CustomerSearchText = string.Empty;
+        vm.FilteredAvailableCustomers.Should().HaveCount(3);
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

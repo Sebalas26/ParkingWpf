@@ -97,6 +97,12 @@ public partial class CheckInViewModel : ViewModelBase
     private string _recentEntriesPageIndicator = "Pág. 1 de 1";
 
     [ObservableProperty]
+    private bool _canShowPreviousRecentEntriesPage;
+
+    [ObservableProperty]
+    private bool _canShowNextRecentEntriesPage;
+
+    [ObservableProperty]
     private IReadOnlyList<ParkingTicket> _recentEntries = new List<ParkingTicket>();
 
     partial void OnNotesChanged(string? value)
@@ -321,6 +327,8 @@ public partial class CheckInViewModel : ViewModelBase
 
         HasRecentEntriesPagination = RecentEntriesTotalPages > 1;
         RecentEntriesPageIndicator = $"Pág. {RecentEntriesCurrentPage} de {RecentEntriesTotalPages}";
+        CanShowPreviousRecentEntriesPage = RecentEntriesCurrentPage > 1;
+        CanShowNextRecentEntriesPage = RecentEntriesCurrentPage < RecentEntriesTotalPages;
         RecentEntries = _allRecentEntries
             .Skip((RecentEntriesCurrentPage - 1) * RecentEntriesPageSize)
             .Take(RecentEntriesPageSize)

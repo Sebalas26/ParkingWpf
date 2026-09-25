@@ -141,6 +141,14 @@ public partial class CheckOutViewModel : ViewModelBase
     [ObservableProperty]
     private string? _exitNotes;
 
+    partial void OnExitNotesChanged(string? value)
+    {
+        if (value != null && value.Length > 50)
+        {
+            ExitNotes = value.Substring(0, 50);
+        }
+    }
+
     [ObservableProperty]
     private bool _hasAgreementDiscount;
 
@@ -265,6 +273,7 @@ public partial class CheckOutViewModel : ViewModelBase
     public ObservableCollection<BillingResolution> AvailableResolutions { get; } = new();
     public ObservableCollection<BillingResolution> FilteredResolutions { get; } = new();
     public ObservableCollection<Customer> AvailableCustomers { get; } = new();
+    public ObservableCollection<Customer> FilteredAvailableCustomers { get; } = new();
     public ObservableCollection<DaneMunicipality> AvailableMunicipalities { get; } = new();
     public List<IdentificationTypeOption> IdentificationTypeOptions { get; } = new()
     {
@@ -290,10 +299,16 @@ public partial class CheckOutViewModel : ViewModelBase
     private Customer? _selectedCustomer;
 
     [ObservableProperty]
+    private string _customerSearchText = string.Empty;
+
+    [ObservableProperty]
     private bool _showCustomerWarning;
 
     [ObservableProperty]
     private bool _isQuickRegisterCustomerOpen;
+
+    [ObservableProperty]
+    private bool _isNitDocumentType;
 
     [ObservableProperty]
     private IdentificationTypeOption? _selectedIdentificationTypeOption;
@@ -525,6 +540,7 @@ public partial class CheckOutViewModel : ViewModelBase
                     {
                         AvailableCustomers.Add(c);
                     }
+                    ApplyCustomerFilter();
                 });
             }
             else
@@ -534,6 +550,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 {
                     AvailableCustomers.Add(c);
                 }
+                ApplyCustomerFilter();
             }
         }
         catch { }
@@ -1321,6 +1338,8 @@ public partial class CheckOutViewModel : ViewModelBase
             IsQuickRegisterCustomerOpen = false;
             QuickCustomerFeedback = null;
 
+            ExitNotes = string.Empty;
+
             if (HasElectronicInvoicingEnabled)
             {
                 await LoadCustomersAsync();
@@ -1329,15 +1348,21 @@ public partial class CheckOutViewModel : ViewModelBase
                     var cleanPlate = value.PlateNumber.Trim().ToUpperInvariant();
                     var match = AvailableCustomers.FirstOrDefault(c => c.Vehicles.Any(v => v.PlateNumber.Trim().ToUpperInvariant() == cleanPlate));
                     SelectedCustomer = match;
+                    CustomerSearchText = match?.DisplayText ?? string.Empty;
+                    ApplyCustomerFilter();
                 }
                 else
                 {
                     SelectedCustomer = null;
+                    CustomerSearchText = string.Empty;
+                    ApplyCustomerFilter();
                 }
             }
             else
             {
                 SelectedCustomer = null;
+                CustomerSearchText = string.Empty;
+                ApplyCustomerFilter();
             }
 
             var dialogResult = await _dialogService.ShowCheckOutDialogAsync(this);
@@ -1406,7 +1431,14 @@ public partial class CheckOutViewModel : ViewModelBase
     {
         if (value != null)
         {
-            ShowCustomerWarning = false;
+            if (CustomerSearchText != value.DisplayText)
+            {
+                CustomerSearchText = value.DisplayText;
+            }
+            if (ShowCustomerWarning)
+            {
+                ShowCustomerWarning = false;
+            }
         }
     }
 
@@ -1435,6 +1467,7 @@ public partial class CheckOutViewModel : ViewModelBase
         if (IsQuickRegisterCustomerOpen)
         {
             SelectedIdentificationTypeOption = IdentificationTypeOptions.FirstOrDefault();
+            IsNitDocumentType = SelectedIdentificationTypeOption?.Id == 31;
             NewCustomerPersonType = "Person";
             NewCustomerDocumentNumber = string.Empty;
             NewCustomerCheckDigit = null;
@@ -1506,10 +1539,10 @@ public partial class CheckOutViewModel : ViewModelBase
                 isValid = false;
             }
         }
-        else if (!string.IsNullOrWhiteSpace(dv) && !Regex.IsMatch(dv, @"^[0-9]{1}$"))
+        else
         {
-            NewCustomerCheckDigitError = "El DV debe ser un dígito (0-9).";
-            isValid = false;
+            NewCustomerCheckDigit = null;
+            NewCustomerCheckDigitError = null;
         }
 
         var name = NewCustomerFullName?.Trim() ?? string.Empty;
@@ -1579,7 +1612,8 @@ public partial class CheckOutViewModel : ViewModelBase
 
     partial void OnSelectedIdentificationTypeOptionChanged(IdentificationTypeOption? value)
     {
-        if (value?.Id == 31)
+        IsNitDocumentType = value?.Id == 31;
+        if (IsNitDocumentType)
         {
             NewCustomerPersonType = "Company";
             if (!string.IsNullOrWhiteSpace(NewCustomerDocumentNumber))
@@ -1622,10 +1656,49 @@ public partial class CheckOutViewModel : ViewModelBase
             NewCustomerDocumentError = null;
             if (QuickCustomerFeedback != null) QuickCustomerFeedback = null;
         }
-        if (SelectedIdentificationTypeOption?.Id == 31 && !string.IsNullOrWhiteSpace(value))
+        if (IsNitDocumentType && !string.IsNullOrWhiteSpace(value))
         {
             NewCustomerCheckDigit = CalculateNitCheckDigit(value);
             NewCustomerCheckDigitError = null;
+        }
+        else if (!IsNitDocumentType)
+        {
+            NewCustomerCheckDigit = null;
+            NewCustomerCheckDigitError = null;
+        }
+    }
+
+    partial void OnCustomerSearchTextChanged(string value)
+    {
+        ApplyCustomerFilter();
+        if (SelectedCustomer != null && SelectedCustomer.DisplayText != value && SelectedCustomer.DocumentNumber != value)
+        {
+            SelectedCustomer = null;
+        }
+    }
+
+    public void ApplyCustomerFilter()
+    {
+        var query = CustomerSearchText?.Trim() ?? string.Empty;
+        FilteredAvailableCustomers.Clear();
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            foreach (var c in AvailableCustomers)
+            {
+                FilteredAvailableCustomers.Add(c);
+            }
+        }
+        else
+        {
+            var matches = AvailableCustomers
+                .Where(c => (!string.IsNullOrEmpty(c.DocumentNumber) && c.DocumentNumber.Contains(query, StringComparison.OrdinalIgnoreCase))
+                         || (!string.IsNullOrEmpty(c.FullName) && c.FullName.Contains(query, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
+
+            foreach (var c in matches)
+            {
+                FilteredAvailableCustomers.Add(c);
+            }
         }
     }
 
@@ -1764,6 +1837,7 @@ public partial class CheckOutViewModel : ViewModelBase
             }
 
             AvailableCustomers.Add(newCustomer);
+            ApplyCustomerFilter();
             SelectedCustomer = newCustomer;
             IsQuickRegisterCustomerOpen = false;
             QuickCustomerFeedback = null;
@@ -2473,6 +2547,8 @@ public partial class CheckOutViewModel : ViewModelBase
         HasFeedback = false;
         FeedbackMessage = null;
         SelectedCustomer = null;
+        CustomerSearchText = string.Empty;
+        ApplyCustomerFilter();
         EmitElectronicInvoice = ForceElectronicInvoiceOnCheckout;
         ShowCustomerWarning = false;
         IsQuickRegisterCustomerOpen = false;

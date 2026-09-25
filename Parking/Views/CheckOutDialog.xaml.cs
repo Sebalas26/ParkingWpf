@@ -12,6 +12,10 @@ namespace Parking.Views
             DataContextChanged += CheckOutDialog_DataContextChanged;
             Closed += (s, e) =>
             {
+                if (DataContext is Parking.ViewModels.CheckOutViewModel checkoutVm)
+                {
+                    checkoutVm.ExitNotes = string.Empty;
+                }
                 if (DataContext is System.ComponentModel.INotifyPropertyChanged vm)
                 {
                     vm.PropertyChanged -= ViewModel_PropertyChanged;

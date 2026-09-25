@@ -1,6 +1,60 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
-<<<<<<< HEAD
+## 📅 Entrada: [2026-09-25 11:35:00] - [FEATURE / UX / BILLING] ComboBox de Clientes con Búsqueda por Cédula y Menú de 8 Ítems, Bloqueo de MouseWheel en Facturación, Observaciones de 50 Caracteres, DV Condicional a NIT y Paginador Dinámico (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"ajustame estas cosas del wpf:_
+  > _- Esta lista de liquidacion de salida y cobro, en el campo de emitir factura electronica, el campo de cliente deberia ser un campo que permita buscar tambien escribiendo la cedula, mas alla de que muestre la lista que tambien la quiero ver, eso si, si hay muchos datos de clientes, no quiero que se aumente en tamaño la lista, si no que muetres max 8 y ahi para ver los demas, con el scroll en esa lista,_
+  > _-Tambien bloqueame que si pongo el mouse cursor encima de los campos de donde me salen las opciones de metodo de pago y resolucion, al scrollear me cambia de opciones cuando no tengo desplegada la opcion , esto puede generar errores de facturacion porque me cambia las oopciones sin yo hacerlas_
+  > _- en el campo de observaciones /novedades dejame el campo editable max hasta 50 caracteres y que al cenrrar modal e ingresar de nuevo me limpie ese campo_
+  > _-adcional cuando quiero crear un nuevo cliente, veo que sale por defecto campo de dv, pero eso saldria solo y exclusivamente si elijo tip doc = NIT, si no? ocultalo_
+  > _-en la pantalla de ingreso de vehiculos en ultimos vehiculos ingresados, veo que el paginador muestra los botones de anterior y siguiente, pero si estoy en 1 de 2 (no deberia mostrar btn anterior) , si esto en 2 de 2 (no mostrar el de siguiente)"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **ComboBox de Clientes con Búsqueda por Cédula/Nombre y Límite de 8 Ítems (`Controls.xaml`, `Customer.cs`, `CheckOutDialog.xaml`, `CheckOutViewModel.cs`)**:
+     - Se enriqueció `ModernComboBox` en `Controls.xaml` incorporando soporte para `IsEditable="True"` con `PART_EditableTextBox` integrado con tipografía estándar, borde y fondo consistente.
+     - Se fijó `MaxDropDownHeight="300"`, garantizando que se muestren un máximo de 8 elementos visibles y se active la barra de scroll vertical (`ScrollViewer`) para los demás.
+     - En `Customer.cs`, se agregó la propiedad `DisplayText` (`Nombre - Doc: Número`) y sobreescritura de `ToString()` para despliegue limpio.
+     - En `CheckOutViewModel.cs`, se implementó `FilteredAvailableCustomers`, `CustomerSearchText`, `OnCustomerSearchTextChanged` y `ApplyCustomerFilter()` permitiendo filtrar en tiempo real tanto por número de documento como por nombre completo.
+  2. **Bloqueo de Cambio por Rueda del Ratón (`MouseWheel`) en ComboBoxes Cerrados (`ComboBoxHelper.cs`, `Controls.xaml`)**:
+     - Se creó el helper y attached behavior `ComboBoxHelper.DisableWheelWhenClosed` en `Parking.Core.Helpers`.
+     - Si la lista desplegable está cerrada (`!IsDropDownOpen`), se intercepta `PreviewMouseWheel`, marcando `e.Handled = true` y propagando el evento de scroll directamente al contenedor padre (`ScrollViewer`), evitando cambios involuntarios de `SelectedIndex` en **Método de Pago** y **Resolución / Doc** al scrollear la ventana de cobro.
+  3. **Observaciones de Salida Limitadas a 50 Caracteres y Limpieza Automática (`CheckOutDialog.xaml`, `CheckOutDialog.xaml.cs`, `CheckOutViewModel.cs`)**:
+     - En `CheckOutDialog.xaml`, se asignó `MaxLength="50"`.
+     - En `CheckOutViewModel.cs`, se incorporó `OnExitNotesChanged` truncando defensivamente cualquier entrada pegada a 50 caracteres, y se resetea `ExitNotes = string.Empty` al abrir el modal para cualquier tiquete (`OnSelectedTicketChanged`), al cancelar (`CancelSelection`), y al procesar el pago (`ProcessPayment`).
+     - En `CheckOutDialog.xaml.cs`, se vinculó el evento `Closed` limpiando `ExitNotes` para garantizar cero residuos al cerrar la ventana con 'X' o clic afuera.
+  4. **Campo DV Exclusivo para Tipo de Documento NIT (`CheckOutDialog.xaml`, `CheckOutViewModel.cs`)**:
+     - En `CheckOutViewModel.cs`, se introdujo `IsNitDocumentType`, reactiva a `SelectedIdentificationTypeOption?.Id == 31`. Si no es NIT, `NewCustomerCheckDigit` y sus errores se resetean a `null`.
+     - En `CheckOutDialog.xaml`, la grilla se ajustó con columnas `1.3*`, `8`, `1.7*`, `Auto`: el campo DV está condicionado a `Visibility="{Binding IsNitDocumentType, Converter={StaticResource BoolToVis}}"`. Cuando no es NIT, el campo DV desaparece y el campo "Número Documento" se expande fluidamente sin dejar huecos.
+  5. **Paginador de Ingresos Dinámico con Ocultamiento de Botones (`CheckInView.xaml`, `CheckInViewModel.cs`)**:
+     - En `CheckInViewModel.cs`, se agregaron las propiedades reactivas `CanShowPreviousRecentEntriesPage` y `CanShowNextRecentEntriesPage`.
+     - En `CheckInView.xaml`, el botón Anterior se oculta (`Visibility="Collapsed"`) en la página 1; el botón Siguiente se oculta en la última página.
+     - El `TextBlock` del indicador de página se configuró con `Grid.ColumnSpan="3" HorizontalAlignment="Center"` manteniéndose 100% centrado con respecto a toda la tarjeta sin importar qué botón esté oculto.
+  6. **Certificación y Pruebas Unitarias**:
+     - Nuevas pruebas en `CheckInViewModelTests.cs` validando la visibilidad condicional de botones del paginador en página 1, intermedia y final.
+     - Nuevas pruebas en `CheckOutViewModelTests.cs` validando truncado de 50 caracteres en observaciones, reseteo al cancelar, toggle y saneamiento de DV para NIT vs CC, y filtrado reactivo de clientes por cédula y nombre.
+     - Compilación limpia: **0 Errores, 0 Advertencias**.
+     - Suite completa de pruebas unitarias: **289 / 289 Superadas al 100% (0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Core/Helpers/ComboBoxHelper.cs` (Nuevo)
+  - `Parking/Entities/Customer.cs`
+  - `Parking/Styles/Controls.xaml`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/Views/CheckOutDialog.xaml.cs`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking.UnitTests/ViewModels/CheckInViewModelTests.cs`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **289 Pasadas, 0 Fallidas (100% Superadas)**.
+
+---
+
 ## 📅 Entrada: [2026-09-25 09:40:00] - [BUGFIX / SYNC / RATES] Corrección de DbUpdateConcurrencyException en Sincronización de Tarifas, Branch-Scoped Purge y Protección de Integridad en SQLite
 
 - **`💬 Prompt Original del Usuario`**:
@@ -34,7 +88,7 @@
   - `dotnet test ParkingWpf.slnx` -> **279 Pasadas, 0 Fallidas (100% Superadas)**.
 
 ---
-=======
+
 ## 📅 Entrada: [2026-09-25 08:45:00] - [BUGFIX / ARCHITECTURE / RBAC] Cierre Integral de Huecos Técnicos en Relevo de Turnos, Autenticación Local y Señales de Concurrencia (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
@@ -117,11 +171,7 @@
   - `HISTORIAL_CAMBIOS.md`
 
 - **`✅ Verificación y Compilación`**:
-  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
-    <<<<<<< HEAD
-  - # `dotnet test ParkingWpf.slnx` -> **283 Pasadas, 0 Fallidas (100% Superadas)**.
   - `dotnet test ParkingWpf.slnx` -> **278 Pasadas, 0 Fallidas (100% Superadas)**.
-    > > > > > > > b1f090b26c0a1430cfcde5dc02172786ae998ba5
 
 ---
 

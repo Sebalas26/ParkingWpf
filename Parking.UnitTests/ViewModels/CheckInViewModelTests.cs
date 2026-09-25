@@ -207,6 +207,8 @@ public class CheckInViewModelTests
         vm.RecentEntriesPageIndicator.Should().Be("Pág. 1 de 3");
         vm.PreviousRecentEntriesPageCommand.CanExecute(null).Should().BeFalse();
         vm.NextRecentEntriesPageCommand.CanExecute(null).Should().BeTrue();
+        vm.CanShowPreviousRecentEntriesPage.Should().BeFalse();
+        vm.CanShowNextRecentEntriesPage.Should().BeTrue();
     }
 
     [Fact]
@@ -239,6 +241,8 @@ public class CheckInViewModelTests
         vm.RecentEntriesPageIndicator.Should().Be("Pág. 2 de 3");
         vm.PreviousRecentEntriesPageCommand.CanExecute(null).Should().BeTrue();
         vm.NextRecentEntriesPageCommand.CanExecute(null).Should().BeTrue();
+        vm.CanShowPreviousRecentEntriesPage.Should().BeTrue();
+        vm.CanShowNextRecentEntriesPage.Should().BeTrue();
 
         // Act - Avanzar a Página 3 (Última)
         vm.NextRecentEntriesPageCommand.Execute(null);
@@ -249,6 +253,8 @@ public class CheckInViewModelTests
         vm.RecentEntriesPageIndicator.Should().Be("Pág. 3 de 3");
         vm.PreviousRecentEntriesPageCommand.CanExecute(null).Should().BeTrue();
         vm.NextRecentEntriesPageCommand.CanExecute(null).Should().BeFalse();
+        vm.CanShowPreviousRecentEntriesPage.Should().BeTrue();
+        vm.CanShowNextRecentEntriesPage.Should().BeFalse();
 
         // Act - Retroceder a Página 2
         vm.PreviousRecentEntriesPageCommand.Execute(null);
@@ -256,5 +262,7 @@ public class CheckInViewModelTests
         // Assert - De vuelta a Página 2
         vm.RecentEntriesCurrentPage.Should().Be(2);
         vm.RecentEntriesPageIndicator.Should().Be("Pág. 2 de 3");
+        vm.CanShowPreviousRecentEntriesPage.Should().BeTrue();
+        vm.CanShowNextRecentEntriesPage.Should().BeTrue();
     }
 }
