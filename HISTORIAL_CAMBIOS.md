@@ -1,5 +1,67 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-25 15:52:00] - [BUGFIX / UI / UX / AUTOCOMPLETE / COMBOBOX] Corrección de Sobreescritura y Borrado del Primer Caracter al Buscar Cliente en Checkout (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"valida porque cuando estoy consultando el cliente, voy escribiendo la cedula o nombre, se me pone un 0 al escribir numero y al escribir letras, se me borra la primera letra"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz de Sobreescritura en ComboBox**:
+     - Al tipear el primer caracter (ej: el "1" de una cédula o la primera letra de un nombre), `CheckOutViewModel` activaba `IsCustomerDropDownOpen = true` para desplegar las coincidencias.
+     - En WPF, el método interno `ComboBox.OnDropDownOpened` ejecuta incondicionalmente `EditableTextBoxSite.SelectAll()`.
+     - Esto provocaba que el primer caracter ingresado quedara sombreado y seleccionado en `PART_EditableTextBox`. Al ingresar inmediatamente el segundo caracter (ej: "0" o la siguiente letra), el nuevo caracter sobreescribía al primero, dejando solo el "0" o borrando la letra inicial.
+  2. **Implementación de la Propiedad Adjunta `AutoMoveCaretToEnd` (`ComboBoxHelper.cs`)**:
+     - Se añadió `AutoMoveCaretToEndProperty` en `Parking.Core.Helpers.ComboBoxHelper`.
+     - Maneja `DropDownOpened` y `PART_EditableTextBox.SelectionChanged`, neutralizando de forma síncrona y mediante el despachador (`DispatcherPriority.Input`) el `SelectAll()` automático de WPF.
+     - Posiciona el cursor estrictamente al final del texto tipeado (`SelectionStart = Text.Length`, `SelectionLength = 0`), permitiendo una escritura fluida y continua sin mutilación de caracteres.
+  3. **Activación Global y Remoción de Interferencias (`Controls.xaml`, `CheckOutDialog.xaml`)**:
+     - Se activó `<Setter Property="helpers:ComboBoxHelper.AutoMoveCaretToEnd" Value="True"/>` en el estilo `ModernComboBox`.
+     - En `CheckOutDialog.xaml`, se removió `TextSearch.TextPath="DisplayText"` para evitar que el motor de TextSearch nativo de WPF intente autocompletar prefijos o alterar la selección mientras el operador escribe.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Core/Helpers/ComboBoxHelper.cs`
+  - `Parking/Styles/Controls.xaml`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx` ➔ **309 Pasadas, 0 Fallidas (100% Superadas)**.
+  - `dotnet build ParkingWpf.slnx` ➔ **0 Errores, 0 Advertencias**.
+
+---
+
+## 📅 Entrada: [2026-09-25 15:35:00] - [BUGFIX / UI / UX / DIALOGS] Corrección de Recorte Inferior de Texto en Cuadros de Conteo y Arqueo de Caja (ShiftHandoverAuthDialog y ShiftClosureView) (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"ajustame el cuadro del cierre de caja en el wpf para que no se vea el cuadro cortado con el texto"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz de Clipping**:
+     - En `ShiftHandoverAuthDialog.xaml` (diálogo modal de entrega de turno y custodia de caja), `CashCountedTextBox` tenía `Height="38"` con `FontSize="16"` y `FontWeight="Bold"`.
+     - El estilo base `ModernTextBox` en `Controls.xaml` establecía `Padding="12,10"` (20px verticales), dejando solo 18px de altura disponible. Al carecer de centrado vertical, el `ScrollViewer` interno recortaba la base de los números (`250.000`), mutilando la base del "2", la curvatura inferior del "5", los ceros y los puntos.
+  2. **Refactorización Global de `ModernTextBox` (`Parking/Styles/Controls.xaml`)**:
+     - Se añadió `VerticalContentAlignment="Center"`.
+     - Se ajustó el padding por defecto a `Padding="12,8"`.
+     - Se agregó `VerticalAlignment="Center"` al elemento plantilla `<ScrollViewer x:Name="PART_ContentHost" .../>` garantizando que todo cuadro de texto mantenga su contenido centrado sin truncamientos verticales.
+  3. **Ajuste en Diálogo de Traspaso de Custodia (`ShiftHandoverAuthDialog.xaml`)**:
+     - Se aumentó la altura de `CashCountedTextBox` de `38` a `Height="44"` con `Padding="12,6"` y `VerticalContentAlignment="Center"`.
+     - Se mejoró el espaciado interno de la tarjeta de arqueo a `Padding="16,14"` y márgenes balanceados entre saldo esperado, efectivo contado y diferencia de arqueo.
+     - Se incrementó el `MaxHeight` del contenedor de la ventana a `660` para asegurar integridad visual con escalado DPI de pantalla.
+  4. **Paridad en Vista General de Cierre (`ShiftClosureView.xaml`)**:
+     - Se asignó `Height="44"`, `Padding="12,6"` y `VerticalContentAlignment="Center"` a los campos de conteo físico de efectivo de las secciones de cierre y relevo.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Styles/Controls.xaml`
+  - `Parking/Views/ShiftHandoverAuthDialog.xaml`
+  - `Parking/Views/ShiftClosureView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx` ➔ **309 Pasadas, 0 Fallidas (100% Superadas)**.
+  - `dotnet build ParkingWpf.slnx` ➔ **0 Errores, 0 Advertencias**.
+
+---
+
 ## 📅 Entrada: [2026-09-25 14:35:00] - [BUGFIX / UI / UX / CHECKOUT] Corrección de Selección de Cliente en Checkout (WPF) y Auto-despliegue Reactivo de Resultados al Escribir
 
 - **`💬 Prompt Original del Usuario`**:
