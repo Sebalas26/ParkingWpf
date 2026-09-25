@@ -354,31 +354,12 @@ public class DbConnectionManager : IDbConnectionManager
             }
             catch { }
 
-            // 5. Auto-sanación defensiva de tarifas para sedes sin parametrización local en contingencia offline
+            // 5. Sanación y depuración preventiva de tarifas vacías en SQLite
             try
             {
                 await context.Database.ExecuteSqlRawAsync(@"
-                    INSERT INTO ""VehicleRates"" (""RateId"", ""BranchId"", ""VehicleType"", ""DayOfWeek"", ""DisplayName"", ""HourRate"", ""MinuteRate"", ""FullDayRate"", ""NightRate"", ""GracePeriodMinutes"", ""IconKey"", ""IsActive"", ""UpdatedAtUtc"")
-                    SELECT 
-                        lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6))),
-                        b.""Id"",
-                        src.""VehicleType"",
-                        src.""DayOfWeek"",
-                        src.""DisplayName"",
-                        src.""HourRate"",
-                        src.""MinuteRate"",
-                        src.""FullDayRate"",
-                        src.""NightRate"",
-                        src.""GracePeriodMinutes"",
-                        src.""IconKey"",
-                        1,
-                        CURRENT_TIMESTAMP
-                    FROM ""Branches"" b
-                    JOIN ""VehicleRates"" src ON src.""BranchId"" IS NOT NULL AND src.""BranchId"" != b.""Id"" AND src.""IsActive"" = 1 AND (src.""HourRate"" > 0 OR src.""MinuteRate"" > 0)
-                    WHERE NOT EXISTS (
-                        SELECT 1 FROM ""VehicleRates"" vr WHERE vr.""BranchId"" = b.""Id"" AND vr.""VehicleType"" = src.""VehicleType""
-                    )
-                    GROUP BY b.""Id"", src.""VehicleType"";
+                    DELETE FROM ""VehicleRates""
+                    WHERE ""BranchId"" IS NULL AND ""HourRate"" = 0 AND ""MinuteRate"" = 0;
                 ");
             }
             catch { }

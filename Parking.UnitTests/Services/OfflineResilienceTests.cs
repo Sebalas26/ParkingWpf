@@ -450,6 +450,91 @@ public class OfflineResilienceTests : IDisposable
     }
 
     [Fact]
+    public async Task SyncEngineService_SyncRates_SingleBranchBootstrap_DoesNotPurgeOtherBranchRates()
+    {
+        // Arrange: Pre-poblar SQLite con tarifas de Sede 1 y Sede 2
+        var rateSede1Id = Guid.NewGuid();
+        var rateSede2Id = Guid.NewGuid();
+
+        using (var dbInit = _connectionManager.CreateDbContext())
+        {
+            dbInit.VehicleRates.Add(new VehicleRate
+            {
+                RateId = rateSede1Id,
+                BranchId = 1,
+                VehicleType = VehicleType.Car,
+                DisplayName = "Carro Sede 1",
+                HourRate = 4500m,
+                MinuteRate = 75m,
+                IsActive = true
+            });
+            dbInit.VehicleRates.Add(new VehicleRate
+            {
+                RateId = rateSede2Id,
+                BranchId = 2,
+                VehicleType = VehicleType.Car,
+                DisplayName = "Carro Sede 2 Anterior",
+                HourRate = 4800m,
+                MinuteRate = 80m,
+                IsActive = true
+            });
+            await dbInit.SaveChangesAsync();
+        }
+
+        _mockSessionService.Setup(s => s.CurrentBranchId).Returns(2);
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = 2, Name = "Pepe sierra" });
+
+        // Simular que el servidor (nube) solo entrega tarifas de la Sede 2 con un nuevo precio
+        var updatedRateSede2Id = Guid.NewGuid();
+        var bootstrapSingleBranch = new BootstrapSyncResponse
+        {
+            Branches = new List<ApiBranchSyncDto> { new() { Id = 2, Name = "Pepe sierra" } },
+            Rates = new List<ApiVehicleRateSyncDto>
+            {
+                new()
+                {
+                    RawRateId = updatedRateSede2Id,
+                    BranchId = 2,
+                    DisplayName = "Carro Sede 2 Actualizado",
+                    VehicleType = "Car",
+                    HourRate = 5000m,
+                    MinuteRate = 90m,
+                    IsActive = true
+                }
+            }
+        };
+
+        _mockApiClient.Setup(a => a.PingAsync()).ReturnsAsync(true);
+        _mockApiClient.Setup(a => a.GetBootstrapAsync(2)).ReturnsAsync(bootstrapSingleBranch);
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        // Act: Sincronizar con paquete de solo Sede 2
+        var result = await syncEngine.PerformFullSyncAsync();
+
+        // Assert: La sincronización no debe fallar con DbUpdateConcurrencyException
+        result.Should().BeTrue();
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            // Sede 1 debe preservarse intacta
+            var branch1Rates = await db.VehicleRates.Where(r => r.BranchId == 1).ToListAsync();
+            branch1Rates.Should().HaveCount(1);
+            branch1Rates[0].DisplayName.Should().Be("Carro Sede 1");
+
+            // Sede 2 debe actualizarse
+            var branch2Rates = await db.VehicleRates.Where(r => r.BranchId == 2).ToListAsync();
+            branch2Rates.Should().HaveCount(1);
+            branch2Rates[0].DisplayName.Should().Be("Carro Sede 2 Actualizado");
+            branch2Rates[0].HourRate.Should().Be(5000m);
+        }
+    }
+
+    [Fact]
     public async Task SyncEngineService_SyncRoles_WithCustomRole_DoesNotThrowRoleIdCollision()
     {
         // Arrange: Simular que la base de datos local ya tiene un rol 'Cajero' creado durante el login
