@@ -328,12 +328,6 @@ public partial class ShiftClosureViewModel : ViewModelBase
             ActualCashCounted = SelectedShiftToRelieveSummary.ExpectedCash;
             RecalculateDifference();
         }
-
-        // Si hay una única caja activa en la sede, abrir de inmediato el diálogo de relevo con contraseña y conteo
-        if (OtherActiveShifts.Count == 1 && SelectedShiftToRelieve != null)
-        {
-            await TakeOverShiftAsync();
-        }
     }
 
     [RelayCommand]

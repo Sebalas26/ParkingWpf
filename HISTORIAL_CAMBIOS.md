@@ -1,5 +1,6 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+<<<<<<< HEAD
 ## 📅 Entrada: [2026-09-25 09:40:00] - [BUGFIX / SYNC / RATES] Corrección de DbUpdateConcurrencyException en Sincronización de Tarifas, Branch-Scoped Purge y Protección de Integridad en SQLite
 
 - **`💬 Prompt Original del Usuario`**:
@@ -33,10 +34,58 @@
   - `dotnet test ParkingWpf.slnx` -> **279 Pasadas, 0 Fallidas (100% Superadas)**.
 
 ---
+=======
+## 📅 Entrada: [2026-09-25 08:45:00] - [BUGFIX / ARCHITECTURE / RBAC] Cierre Integral de Huecos Técnicos en Relevo de Turnos, Autenticación Local y Señales de Concurrencia (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"Revisar completamente si existen huecos tecnicos y si es claro las validaciones que se deben realizar para garantizar el desarrollo"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Asignación de RoleId y UserId en Login Online (`AuthService.cs`) - Hueco 1**:
+     - Al autenticar en línea con el API, `UserSessionModel` recibía `ServerRoleId`, pero su `RoleId` (tipo `Guid`) permanecía en `Guid.Empty`.
+     - Se vinculó `userModel.RoleId = targetRole.RoleId` y `userModel.UserId = localUser.UserId` inmediatamente tras resolver/crear la entidad en SQLite local.
+  2. **Priorización de GrantedPermissions en Cambio de Sesión (`AuthService.cs`) - Hueco 2**:
+     - En `SwitchCurrentUser`, se prioriza `newUser.GrantedPermissions` si contiene elementos asignados dinámicamente, evitando quedar sin permisos o con desfases si la tabla `RolePermissions` en SQLite aún no ha sincronizado.
+  3. **Validación Local de Credenciales en Relevo de Turnos (`AuthService.cs`) - Hueco 3**:
+     - Se refactorizó `ValidateCredentialsAsync` para autenticar localmente contra SQLite usando verificación defensiva BCrypt (y fallback SHA-256 legacy).
+     - Esto evita la creación innecesaria de sesiones y tokens en el API central durante el modal de relevo `ShiftHandoverAuthDialog`, erradicando expulsiones prematuras o involuntarias del operador mediante SignalR (`UserSessionTerminated`).
+  4. **Supresión de Evento Intermedio en Cierre de Turno por Relevo (`IShiftService.cs`, `EfShiftService.cs`) - Hueco 4**:
+     - Se agregó el parámetro `bool suppressEvent = false` al contrato `CloseSpecificShiftAsync`.
+     - `HandoverAndOpenNextShiftAsync` invoca dicho método con `suppressEvent: true`, emitiendo `ShiftStateChanged` únicamente al finalizar la inserción del nuevo turno. Esto elimina parpadeos y falsas recargas de "Sin turno activo" en la UI.
+  5. **Resolución Estricta de UserId sin Fallback Arbitrario (`EfShiftService.cs`) - Hueco 5**:
+     - Se eliminó el fallback inseguro `?? 1` en la apertura de turno de relevo.
+     - Se implementó resolución defensiva buscando el ID del operador en turnos previos en SQLite o sesión activa; si no es posible resolver un ID válido, se arroja explícitamente `InvalidOperationException` protegiendo la trazabilidad del sistema.
+  6. **Cumplimiento Estricto de RBAC 100% Basado en Datos (`AuthService.cs`) - Huecos 6 y 7**:
+     - Se erradicó toda comparación de cadenas de texto contra nombres de rol (`localRoleName.Contains("Admin")` o `u.Role.Name == "Administrador"`).
+     - La condición de administrador se evalúa exclusivamente a través del campo booleano `IsAdmin` en `AuthService` y `ValidateAdminAuthorizationAsync`.
+  7. **Control Defensivo de Excepciones del Servidor Central (`EfShiftService.cs`) - Hueco 8**:
+     - Se reemplazó el `catch { }` vacío en `OpenShiftAsync` del API dentro de `HandoverAndOpenNextShiftAsync`.
+     - Si el servidor central rechaza la apertura por validación de negocio, la excepción se propaga adecuadamente hacia el ViewModel. Los fallos de red se registran defensivamente permitiendo continuar localmente.
+  8. **Eliminación de Disparo Automático de Relevo (`ShiftClosureViewModel.cs`) - Hueco 9**:
+     - Se eliminó la auto-ejecución de `TakeOverShiftAsync` dentro de `SelectRelieveModeAsync`, requiriendo que el operador entrante visualice el balance, ingrese el conteo y presione conscientemente el botón de confirmación.
+  9. **Afinamiento de Desconexión Concurrente por Token (`MainShellViewModel.cs`)**:
+     - En `UserSessionTerminated`, si la notificación especifica un `SessionToken`, la desconexión evalúa estrictamente `matchesToken`, evitando que otros clientes del mismo usuario sean expulsados erróneamente.
+  10. **Pruebas Unitarias Automatizadas**:
+      - Se incorporaron 4 pruebas unitarias en `AuthServiceOfflineTests.cs` (asignación de RoleId, prioridad de GrantedPermissions, validación local sin API y pureza RBAC en administradores).
+      - Se incorporaron 2 pruebas unitarias en `EfShiftServiceTests.cs` (emisión única de ShiftStateChanged y rechazo de UserId no resuelto).
+      - Compilación limpia con `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+      - Total de pruebas en `Parking.UnitTests`: **283/283 pruebas superadas al 100% (0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Contracts/IShiftService.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking.UnitTests/Security/AuthServiceOfflineTests.cs`
+  - `Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
+>>>>>>> 558bec4ae4f8b6d47d0c1620c3d34bd18f69ce23
 
 ## 📅 Entrada: [2026-09-25 08:25:00] - [FEATURE / OFFLINE / RATES] Contingencia y Persistencia Multi-Sede de Tarifas Vehiculares en SQLite y Fallback Jerárquico en Modo Offline
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"valida porque el wpf cuando me logeo offline, no me carga tarifas vehiculares si el deberia de almacenarlo local en bd para tener la contigencia en caso de que no tenga internet, pueda seguir operando"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -69,7 +118,10 @@
 
 - **`✅ Verificación y Compilación`**:
   - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+    <<<<<<< HEAD
+  - # `dotnet test ParkingWpf.slnx` -> **283 Pasadas, 0 Fallidas (100% Superadas)**.
   - `dotnet test ParkingWpf.slnx` -> **278 Pasadas, 0 Fallidas (100% Superadas)**.
+    > > > > > > > b1f090b26c0a1430cfcde5dc02172786ae998ba5
 
 ---
 
@@ -314,7 +366,6 @@
   - `dotnet test ParkingWpf.slnx`: **100% Superado (271 Pruebas pasadas, 0 Fallos, 0 Omitidas)**.
 
 ---
-
 
 - **`💬 Prompt Original del Usuario`**:
 

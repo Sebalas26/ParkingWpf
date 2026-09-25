@@ -555,6 +555,54 @@ public class EfShiftServiceTests : IDisposable
         }
     }
 
+    [Fact]
+    public async Task HandoverAndOpen_EmitsShiftStateChanged_OnlyOnce()
+    {
+        // Arrange
+        var service = CreateService();
+        await service.OpenShiftAsync(50000m, "Turno Principal", "Caja 1");
+        int eventCount = 0;
+        service.ShiftStateChanged += () => eventCount++;
+
+        // Act
+        await service.HandoverAndOpenNextShiftAsync(
+            actualCashCounted: 75000m,
+            notes: "Relevo sin parpadeo",
+            handoverToUserId: Guid.NewGuid(),
+            handoverToUserName: "Operador Relevo",
+            newShiftBaseAmount: 75000m);
+
+        // Assert: solo debe emitirse una única vez al final del proceso completo
+        eventCount.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task HandoverAndOpen_ThrowsWhenUserIdCannotBeResolved()
+    {
+        // Arrange
+        _mockAuthService.Setup(a => a.CurrentUser).Returns(new UserSessionModel
+        {
+            ServerUserId = null,
+            Username = "usuario_sin_id",
+            FullName = "Usuario Sin Id"
+        });
+        var service = CreateService();
+
+        // Act & Assert
+        Func<Task> act = async () =>
+        {
+            await service.HandoverAndOpenNextShiftAsync(
+                actualCashCounted: 50000m,
+                notes: "Prueba sin user id",
+                handoverToUserId: Guid.NewGuid(),
+                handoverToUserName: "Desconocido Total",
+                newShiftBaseAmount: 50000m);
+        };
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*No se pudo resolver el identificador de usuario*");
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

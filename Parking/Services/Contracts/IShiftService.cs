@@ -19,7 +19,7 @@ public interface IShiftService
     Task<ShiftSummaryModel> GetCurrentShiftSummaryAsync();
     Task<ShiftSummaryModel> GetShiftSummaryByIdAsync(Guid shiftId);
     Task<WorkShift?> CloseShiftAsync(decimal actualCashCounted, string? notes = null, Guid? handoverToUserId = null, string? handoverToUserName = null);
-    Task<WorkShift?> CloseSpecificShiftAsync(Guid shiftId, decimal actualCashCounted, string? notes = null, Guid? handoverToUserId = null, string? handoverToUserName = null);
+    Task<WorkShift?> CloseSpecificShiftAsync(Guid shiftId, decimal actualCashCounted, string? notes = null, Guid? handoverToUserId = null, string? handoverToUserName = null, bool suppressEvent = false);
     Task<WorkShift> HandoverAndOpenNextShiftAsync(decimal actualCashCounted, string? notes, Guid handoverToUserId, string handoverToUserName, decimal newShiftBaseAmount, Guid? shiftIdToClose = null, string? newCashRegisterName = null);
     Task<CashWithdrawal> RegisterCashWithdrawalAsync(Guid shiftId, decimal amount, string reason, string authorizedByAdminName, string cashierName);
     Task<IReadOnlyList<CashWithdrawal>> GetShiftCashWithdrawalsAsync(Guid shiftId);

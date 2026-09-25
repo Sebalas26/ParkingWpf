@@ -629,7 +629,7 @@ public class EfShiftService : IShiftService
         return await CloseSpecificShiftAsync(activeShift.ShiftId, actualCashCounted, notes, handoverToUserId, handoverToUserName);
     }
 
-    public async Task<WorkShift?> CloseSpecificShiftAsync(Guid shiftId, decimal actualCashCounted, string? notes = null, Guid? handoverToUserId = null, string? handoverToUserName = null)
+    public async Task<WorkShift?> CloseSpecificShiftAsync(Guid shiftId, decimal actualCashCounted, string? notes = null, Guid? handoverToUserId = null, string? handoverToUserName = null, bool suppressEvent = false)
     {
         var request = new CloseShiftApiRequest
         {
@@ -687,11 +687,14 @@ public class EfShiftService : IShiftService
             _shiftDbLock.Release();
         }
 
-        if (CurrentShift?.ShiftId == shiftId)
+        if (!suppressEvent)
         {
-            CurrentShift = null;
+            if (CurrentShift?.ShiftId == shiftId)
+            {
+                CurrentShift = null;
+            }
+            ShiftStateChanged?.Invoke();
         }
-        ShiftStateChanged?.Invoke();
         return closedShift;
     }
 
@@ -707,10 +710,10 @@ public class EfShiftService : IShiftService
         var branchId = CurrentBranchId;
         var targetShiftId = shiftIdToClose ?? CurrentShift?.ShiftId;
 
-        // 1. Cerrar el turno saliente
+        // 1. Cerrar el turno saliente suprimiendo eventos intermedios para evitar parpadeos en UI
         if (targetShiftId.HasValue)
         {
-            await CloseSpecificShiftAsync(targetShiftId.Value, actualCashCounted, notes, handoverToUserId, handoverToUserName);
+            await CloseSpecificShiftAsync(targetShiftId.Value, actualCashCounted, notes, handoverToUserId, handoverToUserName, suppressEvent: true);
         }
 
         // Obtener el nombre de la caja anterior si no se especificó uno nuevo
@@ -725,13 +728,35 @@ public class EfShiftService : IShiftService
             }
         }
 
+        // Resolver estrictamente el UserId numérico del operador receptor (sin fallback a SuperAdmin '1')
+        int? resolvedUserId = _authService.CurrentUser?.ServerUserId;
+        if (!resolvedUserId.HasValue || resolvedUserId.Value <= 0)
+        {
+            using var dbLookup = _connectionManager.CreateDbContext();
+            var previousShift = await dbLookup.WorkShifts
+                .AsNoTracking()
+                .Where(s => s.OperatorName == handoverToUserName && s.UserId > 0)
+                .OrderByDescending(s => s.StartTimeUtc)
+                .FirstOrDefaultAsync();
+
+            if (previousShift != null)
+            {
+                resolvedUserId = previousShift.UserId;
+            }
+        }
+
+        if (!resolvedUserId.HasValue || resolvedUserId.Value <= 0)
+        {
+            throw new InvalidOperationException($"No se pudo resolver el identificador de usuario para el operador receptor '{handoverToUserName}'. No es posible abrir el turno de relevo sin un usuario válido.");
+        }
+
         // 2. Abrir inmediatamente el nuevo turno a nombre del operador receptor
         var nextShift = new WorkShift
         {
             ShiftId = Guid.NewGuid(),
             BranchId = branchId,
             CompanyId = _sessionService.CurrentCompanyId,
-            UserId = _authService.CurrentUser?.ServerUserId ?? 1,
+            UserId = resolvedUserId.Value,
             OperatorName = handoverToUserName,
             CashRegisterName = registerName,
             StartTimeUtc = DateTime.UtcNow,
@@ -751,7 +776,7 @@ public class EfShiftService : IShiftService
                 {
                     BranchId = branchId.Value,
                     CompanyId = _sessionService.CurrentCompanyId,
-                    UserId = _authService.CurrentUser?.ServerUserId,
+                    UserId = resolvedUserId.Value,
                     CashRegisterName = registerName,
                     BaseAmount = newShiftBaseAmount,
                     Notes = nextShift.Notes
@@ -762,7 +787,16 @@ public class EfShiftService : IShiftService
                     nextShift.IsSynchronized = true;
                 }
             }
-            catch { }
+            catch (InvalidOperationException ex) when (!ex.Message.Contains("Proxy") && !ex.Message.Contains("<html"))
+            {
+                // El servidor central rechazó activamente la apertura de turno (regla de negocio / validación)
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Fallo de red u offline transitorio: registrar advertencia y continuar en local
+                System.Diagnostics.Debug.WriteLine($"[EfShiftService.HandoverAndOpenNextShiftAsync] Advertencia al sincronizar turno con API: {ex.Message}");
+            }
         }
 
         await _shiftDbLock.WaitAsync();
