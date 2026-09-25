@@ -179,10 +179,12 @@ public class AuthService : IAuthService
                     // Asegurar persistencia de sedes de la empresa/usuario para disponibilidad offline
                     if (branches != null && branches.Count > 0)
                     {
-                        var existingBranchIds = await localDb.Branches.Select(b => b.Id).ToListAsync();
+                        var existingBranches = await localDb.Branches.ToListAsync();
+                        var existingBranchIds = existingBranches.Select(b => b.Id).ToHashSet();
                         foreach (var b in branches)
                         {
-                            if (!existingBranchIds.Contains(b.Id))
+                            var existing = existingBranches.FirstOrDefault(eb => eb.Id == b.Id);
+                            if (existing == null)
                             {
                                 localDb.Branches.Add(new Branch
                                 {
@@ -214,6 +216,21 @@ public class AuthService : IAuthService
                                     NightStayMinMinutes = b.NightStayMinMinutes,
                                     IsActive = b.IsActive
                                 });
+                            }
+                            else
+                            {
+                                if (string.IsNullOrWhiteSpace(existing.CompanyName) && !string.IsNullOrWhiteSpace(b.CompanyName ?? apiLogin.CompanyName))
+                                {
+                                    existing.CompanyName = b.CompanyName ?? apiLogin.CompanyName;
+                                }
+                                if (string.IsNullOrWhiteSpace(existing.CompanyNit) && !string.IsNullOrWhiteSpace(b.CompanyNit ?? apiLogin.CompanyNit))
+                                {
+                                    existing.CompanyNit = b.CompanyNit ?? apiLogin.CompanyNit;
+                                }
+                                if (string.IsNullOrWhiteSpace(existing.LogoBase64) && !string.IsNullOrWhiteSpace(b.LogoBase64 ?? apiLogin.CompanyLogo))
+                                {
+                                    existing.LogoBase64 = b.LogoBase64 ?? apiLogin.CompanyLogo;
+                                }
                             }
                         }
                     }
@@ -324,14 +341,88 @@ public class AuthService : IAuthService
         }
 
         var localBranches = await localBranchesQuery.ToListAsync();
-        localUserModel.CompanyName = localBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.CompanyName))?.CompanyName;
-        localUserModel.CompanyLogo = localBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.LogoBase64))?.LogoBase64;
+
+        // Resolver datos corporativos consolidados de la compañía desde las sedes locales de SQLite
+        var resolvedCompanyName = localBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.CompanyName))?.CompanyName;
+        var resolvedCompanyNit = localBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.CompanyNit))?.CompanyNit;
+        var resolvedCompanyLogo = localBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.LogoBase64))?.LogoBase64;
+        var resolvedCompanyPhone = localBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.Phone))?.Phone;
+        var resolvedCompanyEmail = !string.IsNullOrWhiteSpace(user.Email) ? user.Email : null;
+
+        // Búsqueda de rescate en la tabla Branches si las sedes activas filtradas tenían campos en blanco
+        if (string.IsNullOrWhiteSpace(resolvedCompanyName))
+        {
+            resolvedCompanyName = await db.Branches
+                .Where(b => !string.IsNullOrWhiteSpace(b.CompanyName))
+                .Select(b => b.CompanyName)
+                .FirstOrDefaultAsync();
+        }
+        if (string.IsNullOrWhiteSpace(resolvedCompanyNit))
+        {
+            resolvedCompanyNit = await db.Branches
+                .Where(b => !string.IsNullOrWhiteSpace(b.CompanyNit))
+                .Select(b => b.CompanyNit)
+                .FirstOrDefaultAsync();
+        }
+        if (string.IsNullOrWhiteSpace(resolvedCompanyLogo))
+        {
+            resolvedCompanyLogo = await db.Branches
+                .Where(b => !string.IsNullOrWhiteSpace(b.LogoBase64))
+                .Select(b => b.LogoBase64)
+                .FirstOrDefaultAsync();
+        }
+        if (string.IsNullOrWhiteSpace(resolvedCompanyPhone))
+        {
+            resolvedCompanyPhone = await db.Branches
+                .Where(b => !string.IsNullOrWhiteSpace(b.Phone))
+                .Select(b => b.Phone)
+                .FirstOrDefaultAsync();
+        }
+
+        // Auto-curación en SQLite: si alguna sede local carece de CompanyName o CompanyNit pero los conocemos, actualizarlos
+        bool dbBranchesUpdated = false;
+        foreach (var b in localBranches)
+        {
+            if (string.IsNullOrWhiteSpace(b.CompanyName) && !string.IsNullOrWhiteSpace(resolvedCompanyName))
+            {
+                b.CompanyName = resolvedCompanyName;
+                dbBranchesUpdated = true;
+            }
+            if (string.IsNullOrWhiteSpace(b.CompanyNit) && !string.IsNullOrWhiteSpace(resolvedCompanyNit))
+            {
+                b.CompanyNit = resolvedCompanyNit;
+                dbBranchesUpdated = true;
+            }
+            if (string.IsNullOrWhiteSpace(b.LogoBase64) && !string.IsNullOrWhiteSpace(resolvedCompanyLogo))
+            {
+                b.LogoBase64 = resolvedCompanyLogo;
+                dbBranchesUpdated = true;
+            }
+        }
+        if (dbBranchesUpdated)
+        {
+            try
+            {
+                await db.SaveChangesAsync();
+            }
+            catch { }
+        }
+
+        localUserModel.CompanyName = resolvedCompanyName;
+        localUserModel.CompanyNit = resolvedCompanyNit;
+        localUserModel.CompanyLogo = resolvedCompanyLogo;
+        localUserModel.CompanyPhone = resolvedCompanyPhone;
+        localUserModel.CompanyEmail = resolvedCompanyEmail;
+
         var branchesList = localBranches.Select(b => new BranchModel
         {
             Id = b.Id,
             CompanyId = b.CompanyId,
-            CompanyName = b.CompanyName,
-            CompanyNit = b.CompanyNit,
+            CompanyName = !string.IsNullOrWhiteSpace(b.CompanyName) ? b.CompanyName : resolvedCompanyName,
+            CompanyNit = !string.IsNullOrWhiteSpace(b.CompanyNit) ? b.CompanyNit : resolvedCompanyNit,
+            CompanyEmail = resolvedCompanyEmail,
+            CompanyPhone = resolvedCompanyPhone,
+            CompanyLogo = resolvedCompanyLogo,
             Code = b.Code,
             Name = b.Name,
             Address = b.Address,
@@ -339,7 +430,7 @@ public class AuthService : IAuthService
             City = b.City,
             TotalCapacity = b.TotalCapacity,
             Notes = b.Notes,
-            LogoBase64 = b.LogoBase64,
+            LogoBase64 = !string.IsNullOrWhiteSpace(b.LogoBase64) ? b.LogoBase64 : resolvedCompanyLogo,
             PaperWidth = b.PaperWidth > 0 ? b.PaperWidth : 80,
             DefaultInitialCash = b.DefaultInitialCash,
             AllowChargeByMinute = b.AllowChargeByMinute,

@@ -282,6 +282,16 @@ public class SyncEngineService : ISyncEngineService
                 {
                     _sessionService.UpdateCurrentBranch(b => b.CompanyNit = bootstrap.CompanyNit);
                 }
+                if (_sessionService.UserBranches != null)
+                {
+                    foreach (var ub in _sessionService.UserBranches)
+                    {
+                        if (string.IsNullOrWhiteSpace(ub.CompanyNit))
+                        {
+                            ub.CompanyNit = bootstrap.CompanyNit;
+                        }
+                    }
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(bootstrap.CompanyName))
@@ -293,6 +303,16 @@ public class SyncEngineService : ISyncEngineService
                 if (_sessionService.CurrentBranch != null && string.IsNullOrWhiteSpace(_sessionService.CurrentBranch.CompanyName))
                 {
                     _sessionService.UpdateCurrentBranch(b => b.CompanyName = bootstrap.CompanyName);
+                }
+                if (_sessionService.UserBranches != null)
+                {
+                    foreach (var ub in _sessionService.UserBranches)
+                    {
+                        if (string.IsNullOrWhiteSpace(ub.CompanyName))
+                        {
+                            ub.CompanyName = bootstrap.CompanyName;
+                        }
+                    }
                 }
             }
 
@@ -306,6 +326,16 @@ public class SyncEngineService : ISyncEngineService
                 {
                     _sessionService.UpdateCurrentBranch(b => b.CompanyLogo = bootstrap.CompanyLogo);
                 }
+                if (_sessionService.UserBranches != null)
+                {
+                    foreach (var ub in _sessionService.UserBranches)
+                    {
+                        if (string.IsNullOrWhiteSpace(ub.CompanyLogo))
+                        {
+                            ub.CompanyLogo = bootstrap.CompanyLogo;
+                        }
+                    }
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(bootstrap.CompanyEmail))
@@ -318,6 +348,16 @@ public class SyncEngineService : ISyncEngineService
                 {
                     _sessionService.UpdateCurrentBranch(b => b.CompanyEmail = bootstrap.CompanyEmail);
                 }
+                if (_sessionService.UserBranches != null)
+                {
+                    foreach (var ub in _sessionService.UserBranches)
+                    {
+                        if (string.IsNullOrWhiteSpace(ub.CompanyEmail))
+                        {
+                            ub.CompanyEmail = bootstrap.CompanyEmail;
+                        }
+                    }
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(bootstrap.CompanyPhone))
@@ -329,6 +369,16 @@ public class SyncEngineService : ISyncEngineService
                 if (_sessionService.CurrentBranch != null)
                 {
                     _sessionService.UpdateCurrentBranch(b => b.CompanyPhone = bootstrap.CompanyPhone);
+                }
+                if (_sessionService.UserBranches != null)
+                {
+                    foreach (var ub in _sessionService.UserBranches)
+                    {
+                        if (string.IsNullOrWhiteSpace(ub.CompanyPhone))
+                        {
+                            ub.CompanyPhone = bootstrap.CompanyPhone;
+                        }
+                    }
                 }
             }
 
@@ -580,6 +630,9 @@ public class SyncEngineService : ISyncEngineService
                 foreach (var br in bootstrap.Branches)
                 {
                     var existingBranch = localBranches.FirstOrDefault(b => b.Id == br.Id);
+                    var effectiveCompanyName = !string.IsNullOrWhiteSpace(br.CompanyName) ? br.CompanyName : bootstrap.CompanyName;
+                    var effectiveCompanyNit = !string.IsNullOrWhiteSpace(br.CompanyNit) ? br.CompanyNit : bootstrap.CompanyNit;
+
                     if (existingBranch != null)
                     {
                         if (br.CompanyId.HasValue && br.CompanyId.Value > 0)
@@ -591,6 +644,14 @@ public class SyncEngineService : ISyncEngineService
                         existingBranch.Address = br.Address;
                         existingBranch.Phone = br.Phone;
                         existingBranch.City = br.City;
+                        if (!string.IsNullOrWhiteSpace(effectiveCompanyName))
+                        {
+                            existingBranch.CompanyName = effectiveCompanyName;
+                        }
+                        if (!string.IsNullOrWhiteSpace(effectiveCompanyNit))
+                        {
+                            existingBranch.CompanyNit = effectiveCompanyNit;
+                        }
                         existingBranch.TotalCapacity = br.TotalCapacity;
                         existingBranch.Notes = br.Notes;
                         existingBranch.LogoBase64 = !string.IsNullOrWhiteSpace(br.LogoBase64) ? br.LogoBase64 : bootstrap.CompanyLogo;
@@ -620,6 +681,8 @@ public class SyncEngineService : ISyncEngineService
                         {
                             Id = br.Id,
                             CompanyId = br.CompanyId,
+                            CompanyName = effectiveCompanyName,
+                            CompanyNit = effectiveCompanyNit,
                             Code = br.Code,
                             Name = br.Name,
                             Address = br.Address,
@@ -659,6 +722,8 @@ public class SyncEngineService : ISyncEngineService
                             b.Address = br.Address;
                             b.Phone = br.Phone;
                             b.City = br.City;
+                            if (!string.IsNullOrWhiteSpace(effectiveCompanyName)) b.CompanyName = effectiveCompanyName;
+                            if (!string.IsNullOrWhiteSpace(effectiveCompanyNit)) b.CompanyNit = effectiveCompanyNit;
                             b.PaperWidth = br.PaperWidth > 0 ? br.PaperWidth : 80;
                             b.DefaultInitialCash = br.DefaultInitialCash ?? 0;
                             b.AllowChargeByMinute = br.AllowChargeByMinute;
@@ -682,6 +747,18 @@ public class SyncEngineService : ISyncEngineService
                                 b.CompanyId = br.CompanyId.Value;
                             }
                         });
+                    }
+
+                    var userBranch = _sessionService.UserBranches?.FirstOrDefault(ub => ub.Id == br.Id);
+                    if (userBranch != null)
+                    {
+                        userBranch.TotalCapacity = br.TotalCapacity;
+                        userBranch.Name = br.Name;
+                        userBranch.Address = br.Address;
+                        userBranch.Phone = br.Phone;
+                        userBranch.City = br.City;
+                        if (!string.IsNullOrWhiteSpace(effectiveCompanyName)) userBranch.CompanyName = effectiveCompanyName;
+                        if (!string.IsNullOrWhiteSpace(effectiveCompanyNit)) userBranch.CompanyNit = effectiveCompanyNit;
                     }
                 }
                 await db.SaveChangesAsync(ct);

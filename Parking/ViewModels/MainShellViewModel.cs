@@ -54,37 +54,63 @@ public partial class MainShellViewModel : ViewModelBase
     private BranchModel? _currentBranch;
 
     public string CompanyDisplayName =>
-        !string.IsNullOrWhiteSpace(CurrentBranch?.CompanyName)
-            ? CurrentBranch.CompanyName
-            : (!string.IsNullOrWhiteSpace(CurrentUser?.CompanyName)
-                ? CurrentUser.CompanyName
-                : "PARKING FLOW");
+        !string.IsNullOrWhiteSpace(CurrentUser?.CompanyName)
+            ? CurrentUser.CompanyName
+            : (!string.IsNullOrWhiteSpace(CurrentBranch?.CompanyName)
+                ? CurrentBranch.CompanyName
+                : (_sessionService.UserBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.CompanyName))?.CompanyName ?? "PARKING FLOW"));
 
     public string? CompanyLogoBase64 =>
         !string.IsNullOrWhiteSpace(CurrentUser?.CompanyLogo)
             ? CurrentUser.CompanyLogo
             : (!string.IsNullOrWhiteSpace(CurrentBranch?.CompanyLogo)
                 ? CurrentBranch.CompanyLogo
-                : CurrentBranch?.LogoBase64);
+                : (!string.IsNullOrWhiteSpace(CurrentBranch?.LogoBase64)
+                    ? CurrentBranch.LogoBase64
+                    : _sessionService.UserBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.LogoBase64))?.LogoBase64));
 
-    public string? CompanyNit =>
-        !string.IsNullOrWhiteSpace(CurrentBranch?.CompanyNit)
-            ? CurrentBranch.CompanyNit
-            : CurrentUser?.CompanyNit;
+    public string? CompanyNit
+    {
+        get
+        {
+            var nit = !string.IsNullOrWhiteSpace(CurrentUser?.CompanyNit)
+                ? CurrentUser.CompanyNit
+                : (!string.IsNullOrWhiteSpace(CurrentBranch?.CompanyNit)
+                    ? CurrentBranch.CompanyNit
+                    : _sessionService.UserBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.CompanyNit))?.CompanyNit);
+            return string.IsNullOrWhiteSpace(nit) ? null : nit;
+        }
+    }
 
-    public string? CompanyEmail =>
-        !string.IsNullOrWhiteSpace(CurrentBranch?.CompanyEmail)
-            ? CurrentBranch.CompanyEmail
-            : (!string.IsNullOrWhiteSpace(CurrentUser?.CompanyEmail)
+    public string? CompanyEmail
+    {
+        get
+        {
+            var email = !string.IsNullOrWhiteSpace(CurrentUser?.CompanyEmail)
                 ? CurrentUser.CompanyEmail
-                : (CurrentUser?.Username?.Contains('@') == true ? CurrentUser.Username : null));
+                : (!string.IsNullOrWhiteSpace(CurrentBranch?.CompanyEmail)
+                    ? CurrentBranch.CompanyEmail
+                    : (_sessionService.UserBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.CompanyEmail))?.CompanyEmail
+                       ?? (CurrentUser?.Username?.Contains('@') == true ? CurrentUser.Username : null)));
+            return string.IsNullOrWhiteSpace(email) ? null : email;
+        }
+    }
 
-    public string? CompanyPhone =>
-        !string.IsNullOrWhiteSpace(CurrentBranch?.Phone)
-            ? CurrentBranch.Phone
-            : (!string.IsNullOrWhiteSpace(CurrentBranch?.CompanyPhone)
-                ? CurrentBranch.CompanyPhone
-                : CurrentUser?.CompanyPhone);
+    public string? CompanyPhone
+    {
+        get
+        {
+            var phone = !string.IsNullOrWhiteSpace(CurrentUser?.CompanyPhone)
+                ? CurrentUser.CompanyPhone
+                : (!string.IsNullOrWhiteSpace(CurrentBranch?.CompanyPhone)
+                    ? CurrentBranch.CompanyPhone
+                    : (_sessionService.UserBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.CompanyPhone))?.CompanyPhone
+                       ?? (!string.IsNullOrWhiteSpace(CurrentBranch?.Phone)
+                           ? CurrentBranch.Phone
+                           : _sessionService.UserBranches.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.Phone))?.Phone)));
+            return string.IsNullOrWhiteSpace(phone) ? null : phone;
+        }
+    }
 
     [ObservableProperty]
     private bool _hasMultipleBranches;

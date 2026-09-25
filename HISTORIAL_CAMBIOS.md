@@ -1,6 +1,125 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
-<<<<<<< HEAD
+## 📅 Entrada: [2026-09-25 14:35:00] - [BUGFIX / UI / UX / CHECKOUT] Corrección de Selección de Cliente en Checkout (WPF) y Auto-despliegue Reactivo de Resultados al Escribir
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"ayudame con esto, veo que ahora al filtrar cliente, ya no me selecciona cuando lo encuentro, es decir lo busco, me sale pero al clickearlo, no me permite seleecionarlo_
+  > _aadicional ayudame a mejorar ese filtro, porque yo escribo la cedula pero para ver los resulados, tengo que desplegar la lista y laconsulta y lista deberia de salir cuando yo ya empiece a ingresar un caracter, ahi si me deberia de salir el filtro ya con la busquedad de los clientes que se puedan relacionar., esto me gustaria que quedara en el pwa y wpf"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz de Deselección en WPF**:
+     - Al seleccionar un cliente en el `ComboBox` editable de `CheckOutDialog.xaml`, WPF asignaba `SelectedItem = customer` y sincronizaba el `TextBox` con `customer.ToString()` (`DisplayText`).
+     - Esto disparaba `OnCustomerSearchTextChanged` -> `ApplyCustomerFilter()`.
+     - `ApplyCustomerFilter` comparaba únicamente `FullName` y `DocumentNumber` contra la cadena completa `DisplayText` (`"NOMBRE - Doc: 12345"`), resultando en 0 coincidencias y vaciando `FilteredAvailableCustomers`.
+     - Por comportamiento nativo de WPF, al vaciarse el `ItemsSource`, el `SelectedItem` se reseteaba automáticamente a `null`, reactivando la advertencia `⚠️ Seleccione o cree cliente`.
+  2. **Bandera de Protección de Selección e Invarianza de Item (`CheckOutViewModel.cs`)**:
+     - Se introdujo `_isUpdatingCustomerSelection` en `CheckOutViewModel.cs` para inhibir el ciclo de refiltrado reactivo cuando la selección proviene de la interacción del usuario o asignación programática.
+     - En `OnSelectedCustomerChanged`: al asignarse un cliente, se actualiza el texto, se desactiva `ShowCustomerWarning`, se cierra el desplegable (`IsCustomerDropDownOpen = false`) y se asegura que el cliente permanezca en `FilteredAvailableCustomers`.
+     - En `ApplyCustomerFilter`: se añadió búsqueda contra `DisplayText` y preservación explícita de `SelectedCustomer` para prevenir deselecciones no deseadas por vaciado de lista.
+  3. **Auto-despliegue Reactivo al Escribir (`CheckOutViewModel.cs`, `CheckOutDialog.xaml`)**:
+     - Se añadió la propiedad observable `IsCustomerDropDownOpen`.
+     - En `OnCustomerSearchTextChanged`: al ingresar texto (`!string.IsNullOrWhiteSpace(value)`), si existen coincidencias (`FilteredAvailableCustomers.Count > 0`), se activa `IsCustomerDropDownOpen = true`, desplegando automáticamente la lista de resultados sin necesidad de hacer clic en la flecha de ComboBox.
+     - En `CheckOutDialog.xaml`: se enlazó `IsDropDownOpen="{Binding IsCustomerDropDownOpen, Mode=TwoWay}"` y `TextSearch.TextPath="DisplayText"`.
+  4. **Pruebas Unitarias Automatizadas (`CheckOutViewModelTests.cs`)**:
+     - Se añadió la prueba `CustomerSelection_WhenSelectedFromList_RetainsSelectionAndClosesDropDown` validando que la selección retenga el cliente, cierre el desplegable y mantenga la lista intacta.
+     - Se actualizaron las aserciones de `ApplyCustomerFilter_FiltersByDocumentNumberAndFullName` validando el estado de `IsCustomerDropDownOpen`.
+     - Total pruebas unitarias: **309 / 309 superadas al 100% (0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx` ➔ **309 Pasadas, 0 Fallidas (100% Superadas)**.
+  - `dotnet build ParkingWpf.slnx` ➔ **0 Errores, 0 Advertencias**.
+
+---
+
+## 📅 Entrada: [2026-09-25 13:10:00] - [FEATURE / REDESIGN / BILLING] Rediseño de Tiquete Térmico: Hora 12h sin Segundos (AM/PM), QR Centrado, Atendido por Reubicado y Tipo de Documento Dinámico (CC/NIT/CE/TI/PAS/DIE) (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Quisiera que en la impresiones de tiqueres de entrada y salida de wpf y pwa, en el diseño quiero que en la hora no tenga segundos y no tenga formato 24 horas, muestra el AM o PM_
+  > _En el tiquete de salida, el QR de la factura electronca dejamelo centrrado y el atentido porf quiero que lo pongas debajo del total, encima de la linea separadora_
+  > _- Asi mismo en la seccion de factura electronica, veo que dice siempre NIT y es un cliente CC, asi que ponga ese dato de acuerdo al tipo de identificacion del cliente seleccionado"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Formato de Hora 12 Horas con AM/PM y sin Segundos (`ReceiptPreviewViewModel.cs`)**:
+     - Se reemplazó el formato militar de 24 horas con segundos (`"HH:mm:ss"`) por el formato de 12 horas `"hh:mm tt"` con `CultureInfo.InvariantCulture` en `ExitTimeStr`, `EntryTimeStr` e `InvoiceTimeStr`.
+     - Ahora los horarios se imprimen y previsualizan limpios como `11:13 AM`, `12:21 AM`, etc., tanto en tiquetes de ingreso como en recibos POS y facturas electrónicas FVM.
+  2. **Etiqueta Dinámica del Tipo de Identificación de Cliente (`ReceiptPreviewViewModel.cs`, `ReceiptPreviewDialog.xaml`)**:
+     - Se añadió la propiedad observable `CustomerIdTypeLabel` con fallback `"NIT:"`.
+     - Se implementó `ResolveIdTypeLabel(int idType, string? personType)` mapeando códigos DIAN y secuenciales: 13/1 ➔ `"CC:"`, 31/3 ➔ `"NIT:"`, 22/2 ➔ `"CE:"`, 12 ➔ `"TI:"`, 41/4 ➔ `"PAS:"`, 42/5 ➔ `"DIE:"`.
+     - En `ReceiptPreviewDialog.xaml`, tanto para POS Estándar (línea 140) como para Factura Electrónica FVM (línea 501), se vinculó `Text="{Binding CustomerIdTypeLabel}"` en lugar de la constante quemada `"NIT:"`.
+  3. **Reestructuración de Layout en Tiquetes de Salida (`ReceiptPreviewDialog.xaml`)**:
+     - Se reubicó el bloque `Atendido por: [Operador]` colocándolo inmediatamente debajo de la liquidación económica (`PAGADO` / `CAMBIO` / `TOTAL`), justo encima de la línea divisoria continua (`<Rectangle Height="1" .../>`).
+     - Se eliminó la cuadrícula de 2 columnas donde compartían fila el QR y el operador, y se centró el código QR de consulta/factura (`ConsultationQrCodeImage`) horizontalmente en el ancho del tiquete (`HorizontalAlignment="Center"`).
+  4. **Pruebas Unitarias y Certificación**:
+     - Se incorporó la prueba `LoadTicket_FormatsTimesIn12HourFormat_WithAmPmAndNoSeconds` validando que horas como `00:21:39` y `11:13:44` generen `"12:21 AM"` y `"11:13 AM"`.
+     - Se incorporó la prueba parametrizada `ResolveIdTypeLabel_ReturnsExpectedPrefix` validando exhaustivamente la resolución de prefijos para CC, NIT, CE, TI, PAS, DIE y fallbacks por tipo de persona.
+     - Compilación: **0 Errores, 0 Advertencias**.
+     - Pruebas unitarias: **308 / 308 Superadas al 100% (0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking.UnitTests/ViewModels/ReceiptPreviewViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx` ➔ **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` ➔ **308 Pasadas, 0 Fallidas (100% Superadas)**.
+
+---
+
+## 📅 Entrada: [2026-09-25 12:20:00] - [BUGFIX / ARCHITECTURE / OFFLINE / MULTI-SEDE] Consistencia y Completitud de Datos Corporativos de Marca (Parkgo, NIT, Teléfono, Email, Logo) en Modo Offline y Multi-Sede con Auto-Curación en SQLite (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"cuando me logeo offline, encuentro que los datos del parqueadero no se muestran completos, asi mismo cada vez que camio de sede me muestra en uno unos datos y en otro otros datos, ajustalo porque deben estar iguaels y completos"_
+  > _"analiza y mira si hay huecos tecnicos"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico del Fallo de Consistencia en Modo Offline y Cambio de Sede**:
+     - En `AuthService.cs` (`AuthenticateAsync` offline), al generar `localUserModel`, únicamente se rescataba `CompanyName` y `LogoBase64` de la primera sede local. Las propiedades corporativas críticas `CompanyNit`, `CompanyPhone` y `CompanyEmail` nunca se asignaban, permaneciendo en `null`.
+     - Al alternar entre sedes, `MainShellViewModel.CompanyNit` evaluaba `CurrentBranch?.CompanyNit ?? CurrentUser?.CompanyNit`. Como la sede `Sede 136` (Id 1) tenía `CompanyNit = ""` en SQLite y `CurrentUser.CompanyNit` era `null`, el convertidor `NullToVis` ocultaba por completo el bloque del NIT en la barra lateral. Por su parte, la sede `Pepe sierra` (Id 2) sí contaba con `CompanyNit = "9088777777"`, provocando que el NIT apareciera y desapareciera arbitrariamente entre sedes de la misma empresa.
+     - `CompanyPhone` evaluaba prioritariamente el teléfono físico de patio (`CurrentBranch?.Phone`) por encima del corporativo (`CompanyPhone`), ocasionando que el número cambiara entre sedes en el bloque institucional de marca.
+  2. **Resolución Consolidada y Auto-Curación (Self-Healing) en `AuthService.cs`**:
+     - Se implementó la resolución jerárquica de datos corporativos (`resolvedCompanyName`, `resolvedCompanyNit`, `resolvedCompanyLogo`, `resolvedCompanyPhone`, `resolvedCompanyEmail`) examinando las sedes activas de la compañía en SQLite local con fallback defensivo a la tabla general `Branches`.
+     - Se añadió un mecanismo de auto-curación (self-healing) que actualiza y persiste en SQLite local (`db.Branches`) los campos `CompanyName`, `CompanyNit` y `LogoBase64` si alguna sede de la empresa los tenía vacíos o incompletos.
+     - En el login online, al persistir sedes en SQLite, si la sede ya existía previamente, ahora actualiza sus campos corporativos en blanco en lugar de omitirlos.
+  3. **Propagación e Invarianza Corporativa en `SessionService.cs`**:
+     - En `SetSession`: se calcula el perfil corporativo unificado a partir de `CurrentUser` y de la colección `_userBranches`, propagándolo a `CurrentUser` y a **todas** las sedes de la lista.
+     - En `SetActiveBranch`: se garantiza que al activar cualquier sede física, esta herede y conserve íntegros los datos institucionales de la marca (`CompanyName`, `CompanyNit`, `CompanyEmail`, `CompanyPhone`, `CompanyLogo`).
+  4. **Sincronización Multi-Sede y Resiliencia Null-Safe en `SyncEngineService.cs`**:
+     - Al procesar el `bootstrap`, se propagan los metadatos corporativos (`CompanyNit`, `CompanyName`, `CompanyLogo`, `CompanyEmail`, `CompanyPhone`) tanto a `CurrentUser` como a todas las sedes en `_sessionService.UserBranches` con chequeos null-safe defensivos para entornos de testing y mocks.
+     - En el paso de sincronización de sedes, se actualizan y persisten `CompanyName` y `CompanyNit` tanto en sedes existentes como en nuevas inserciones en SQLite local.
+  5. **Refactorización de Getters de Identidad Corporativa en `MainShellViewModel.cs`**:
+     - `CompanyDisplayName`, `CompanyLogoBase64`, `CompanyNit`, `CompanyEmail` y `CompanyPhone` ahora priorizan los datos consolidados de la compañía (`CurrentUser`), con fallback a la sede activa (`CurrentBranch`) y a la colección de sedes (`UserBranches`).
+     - Al alternar entre sedes, los 5 getters conservan sus datos completos, consistentes e invariantes, garantizando una experiencia visual corporativa sólida sin oscilaciones ni desapariciones de NIT.
+  6. **Certificación y Pruebas Unitarias**:
+     - Nueva prueba unitaria en `AuthServiceOfflineTests.cs`: `AuthenticateAsync_Offline_ResolvesAndHealsCorporateDataConsistentlyAcrossBranches` validando resolución offline y auto-curación en SQLite.
+     - Nueva suite en `SessionServiceCorporateConsistencyTests.cs` validando propagación de datos corporativos a todas las sedes y preservación en `SetActiveBranch`.
+     - Nueva suite en `MainShellCorporateGettersTests.cs` validando consistencia e invariabilidad de getters en `MainShellViewModel` ante cambios de sede activa.
+     - Compilación: **0 Errores, 0 Advertencias**.
+     - Pruebas unitarias: **294 / 294 Superadas al 100% (0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/Services/Implementations/SessionService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking.UnitTests/Security/AuthServiceOfflineTests.cs`
+  - `Parking.UnitTests/Services/SessionServiceCorporateConsistencyTests.cs` (Nuevo)
+  - `Parking.UnitTests/ViewModels/MainShellCorporateGettersTests.cs` (Nuevo)
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **294 Pasadas, 0 Fallidas (100% Superadas)**.
+
+---
+
 ## 📅 Entrada: [2026-09-25 11:35:00] - [FEATURE / UX / BILLING] ComboBox de Clientes con Búsqueda por Cédula y Menú de 8 Ítems, Bloqueo de MouseWheel en Facturación, Observaciones de 50 Caracteres, DV Condicional a NIT y Paginador Dinámico (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
@@ -55,7 +174,6 @@
   - `dotnet test ParkingWpf.slnx` -> **289 Pasadas, 0 Fallidas (100% Superadas)**.
 
 ---
-=======
 ## 📅 Entrada: [2026-09-25 10:55:00] - [FEATURE / CUSTOMERS / SIIGO] Sincronización de Edición de Clientes con Siigo API y Retroalimentación Detallada al Operador (WPF)
 
 - **`💬 Prompt Original del Usuario`**:

@@ -302,6 +302,11 @@ public partial class CheckOutViewModel : ViewModelBase
     private string _customerSearchText = string.Empty;
 
     [ObservableProperty]
+    private bool _isCustomerDropDownOpen;
+
+    private bool _isUpdatingCustomerSelection;
+
+    [ObservableProperty]
     private bool _showCustomerWarning;
 
     [ObservableProperty]
@@ -1431,13 +1436,21 @@ public partial class CheckOutViewModel : ViewModelBase
     {
         if (value != null)
         {
-            if (CustomerSearchText != value.DisplayText)
+            _isUpdatingCustomerSelection = true;
+            try
             {
                 CustomerSearchText = value.DisplayText;
-            }
-            if (ShowCustomerWarning)
-            {
                 ShowCustomerWarning = false;
+                IsCustomerDropDownOpen = false;
+
+                if (!FilteredAvailableCustomers.Contains(value))
+                {
+                    FilteredAvailableCustomers.Insert(0, value);
+                }
+            }
+            finally
+            {
+                _isUpdatingCustomerSelection = false;
             }
         }
     }
@@ -1670,10 +1683,25 @@ public partial class CheckOutViewModel : ViewModelBase
 
     partial void OnCustomerSearchTextChanged(string value)
     {
+        if (_isUpdatingCustomerSelection)
+        {
+            return;
+        }
+
         ApplyCustomerFilter();
+
         if (SelectedCustomer != null && SelectedCustomer.DisplayText != value && SelectedCustomer.DocumentNumber != value)
         {
             SelectedCustomer = null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            IsCustomerDropDownOpen = FilteredAvailableCustomers.Count > 0;
+        }
+        else
+        {
+            IsCustomerDropDownOpen = false;
         }
     }
 
@@ -1692,8 +1720,16 @@ public partial class CheckOutViewModel : ViewModelBase
         {
             var matches = AvailableCustomers
                 .Where(c => (!string.IsNullOrEmpty(c.DocumentNumber) && c.DocumentNumber.Contains(query, StringComparison.OrdinalIgnoreCase))
-                         || (!string.IsNullOrEmpty(c.FullName) && c.FullName.Contains(query, StringComparison.OrdinalIgnoreCase)))
+                         || (!string.IsNullOrEmpty(c.FullName) && c.FullName.Contains(query, StringComparison.OrdinalIgnoreCase))
+                         || (!string.IsNullOrEmpty(c.DisplayText) && c.DisplayText.Contains(query, StringComparison.OrdinalIgnoreCase)))
                 .ToList();
+
+            if (SelectedCustomer != null && !matches.Contains(SelectedCustomer) &&
+                (SelectedCustomer.DisplayText.Equals(query, StringComparison.OrdinalIgnoreCase) || 
+                 SelectedCustomer.DocumentNumber.Equals(query, StringComparison.OrdinalIgnoreCase)))
+            {
+                matches.Insert(0, SelectedCustomer);
+            }
 
             foreach (var c in matches)
             {

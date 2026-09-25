@@ -1084,15 +1084,47 @@ public class CheckOutViewModelTests : IDisposable
         vm.CustomerSearchText = "10306";
         vm.FilteredAvailableCustomers.Should().ContainSingle();
         vm.FilteredAvailableCustomers.First().FullName.Should().Be("Maria Gomez");
+        vm.IsCustomerDropDownOpen.Should().BeTrue();
 
         // Act 2: Buscar por nombre
         vm.CustomerSearchText = "Inversiones";
         vm.FilteredAvailableCustomers.Should().ContainSingle();
         vm.FilteredAvailableCustomers.First().DocumentNumber.Should().Be("900123456");
+        vm.IsCustomerDropDownOpen.Should().BeTrue();
 
         // Act 3: Limpiar búsqueda
         vm.CustomerSearchText = string.Empty;
         vm.FilteredAvailableCustomers.Should().HaveCount(3);
+        vm.IsCustomerDropDownOpen.Should().BeFalse();
+    }
+
+    [Fact]
+    public void CustomerSelection_WhenSelectedFromList_RetainsSelectionAndClosesDropDown()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var c1 = new Customer { CustomerId = Guid.NewGuid(), FullName = "Sebastian Redondo", DocumentNumber = "1018504647" };
+        var c2 = new Customer { CustomerId = Guid.NewGuid(), FullName = "Maria Gomez", DocumentNumber = "1030679725" };
+
+        vm.AvailableCustomers.Add(c1);
+        vm.AvailableCustomers.Add(c2);
+        vm.ApplyCustomerFilter();
+
+        // Act 1: Tipear cédula abre dropdown y filtra
+        vm.CustomerSearchText = "1018";
+        vm.FilteredAvailableCustomers.Should().ContainSingle();
+        vm.IsCustomerDropDownOpen.Should().BeTrue();
+
+        // Act 2: Seleccionar cliente desde la lista (simula clic de usuario en ComboBox)
+        vm.SelectedCustomer = c1;
+
+        // Assert
+        vm.SelectedCustomer.Should().NotBeNull();
+        vm.SelectedCustomer.Should().Be(c1);
+        vm.CustomerSearchText.Should().Be(c1.DisplayText);
+        vm.IsCustomerDropDownOpen.Should().BeFalse();
+        vm.FilteredAvailableCustomers.Should().Contain(c1);
+        vm.ShowCustomerWarning.Should().BeFalse();
     }
 
     public void Dispose()

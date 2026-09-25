@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
@@ -121,6 +122,9 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _customerNit = "22222222";
+
+    [ObservableProperty]
+    private string _customerIdTypeLabel = "NIT:";
 
     [ObservableProperty]
     private string _customerAddress = "CR 38 19 55 BRR CAMOA";
@@ -572,9 +576,9 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             var exitTime = ticket.ExitTime ?? (ticket.ExitTimeUtc.HasValue ? ticket.ExitTimeUtc.Value.ToLocalTime() : DateTime.Now);
             var entryTime = ticket.EntryTime != default ? ticket.EntryTime : (ticket.CreatedAtUtc != default ? ticket.CreatedAtUtc.ToLocalTime() : DateTime.Now);
 
-            ExitTimeStr = exitTime.ToString("HH:mm:ss");
+            ExitTimeStr = exitTime.ToString("hh:mm tt", CultureInfo.InvariantCulture);
             ExitDateStr = exitTime.ToString("dd/MM/yy");
-            EntryTimeStr = entryTime.ToString("HH:mm:ss");
+            EntryTimeStr = entryTime.ToString("hh:mm tt", CultureInfo.InvariantCulture);
             EntryDateStr = entryTime.ToString("dd/MM/yy");
 
             var duration = exitTime - entryTime;
@@ -600,6 +604,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             CustomerName = "CONSUMIDOR FINAL";
             CustomerDocument = "222222222222";
             CustomerNit = "222222222222";
+            CustomerIdTypeLabel = "NIT:";
             CustomerAddress = !string.IsNullOrWhiteSpace(BranchAddress) ? BranchAddress : "NO REGISTRADA";
 
             if (ticket.CustomerId.HasValue)
@@ -613,6 +618,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                         CustomerName = cust.FullName.ToUpperInvariant();
                         CustomerDocument = $"{cust.DocumentNumber}{(string.IsNullOrWhiteSpace(cust.CheckDigit) ? "" : "-" + cust.CheckDigit)}";
                         CustomerNit = cust.DocumentNumber;
+                        CustomerIdTypeLabel = ResolveIdTypeLabel(cust.IdentificationTypeId, cust.PersonType);
                         CustomerAddress = !string.IsNullOrWhiteSpace(cust.Address) ? cust.Address.ToUpperInvariant() : "NO REGISTRADA";
                     }
                 }
@@ -648,7 +654,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 }
 
                 InvoiceDateStr = exitTime.ToString("dd/MM/yy");
-                InvoiceTimeStr = exitTime.ToString("HH:mm:ss");
+                InvoiceTimeStr = exitTime.ToString("hh:mm tt", CultureInfo.InvariantCulture);
 
                 Cufe = !string.IsNullOrWhiteSpace(ticket.Cufe)
                     ? ticket.Cufe
@@ -676,7 +682,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 InvoiceNumberText = $"{InvoicePrefix}- {InvoiceNumberStr}";
 
                 InvoiceDateStr = exitTime.ToString("dd/MM/yy");
-                InvoiceTimeStr = exitTime.ToString("HH:mm:ss");
+                InvoiceTimeStr = exitTime.ToString("hh:mm tt", CultureInfo.InvariantCulture);
 
                 Cufe = string.Empty;
                 DianResolutionText = string.Empty;
@@ -700,7 +706,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             HasChange = false;
             InvoiceNumberText = ticket.TicketNumber;
             InvoiceDateStr = (ticket.EntryTime != default ? ticket.EntryTime : DateTime.Now).ToString("dd/MM/yy");
-            InvoiceTimeStr = (ticket.EntryTime != default ? ticket.EntryTime : DateTime.Now).ToString("HH:mm:ss");
+            InvoiceTimeStr = (ticket.EntryTime != default ? ticket.EntryTime : DateTime.Now).ToString("hh:mm tt", CultureInfo.InvariantCulture);
             BarcodeImage = Services.Implementations.BarcodeGeneratorService.GenerateCode128(ticket.PlateNumber);
 
             var pwaBase = _configuration?["PwaSettings:BaseUrl"]?.TrimEnd('/') ?? "https://www.parking-flow.com";
@@ -754,6 +760,20 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         {
             IsPrinting = false;
         }
+    }
+
+    public static string ResolveIdTypeLabel(int idType, string? personType = null)
+    {
+        return idType switch
+        {
+            13 or 1 => "CC:",
+            31 or 3 => "NIT:",
+            22 or 2 => "CE:",
+            12 => "TI:",
+            41 or 4 => "PAS:",
+            42 or 5 => "DIE:",
+            _ => string.Equals(personType, "Company", StringComparison.OrdinalIgnoreCase) ? "NIT:" : "CC:"
+        };
     }
 
     [RelayCommand]

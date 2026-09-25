@@ -213,4 +213,58 @@ public class ReceiptPreviewViewModelTests
         vm.AgreementDisplayName.Should().Be("NO APLICA");
         vm.DiscountAmountStr.Should().Be("$ 0");
     }
+
+    [Fact]
+    public void LoadTicket_FormatsTimesIn12HourFormat_WithAmPmAndNoSeconds()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var entryTime = new DateTime(2026, 9, 25, 0, 21, 39); // 12:21 AM
+        var exitTime = new DateTime(2026, 9, 25, 11, 13, 44); // 11:13 AM
+        var ticket = new ParkingTicket
+        {
+            TicketNumber = "PKF-TEST-001",
+            PlateNumber = "PPD33",
+            VehicleType = VehicleType.Car,
+            HourlyRate = 3000m,
+            GrossAmount = 162500m,
+            NetAmount = 162500m,
+            AmountPaid = 162500m,
+            EntryTimeUtc = entryTime.ToUniversalTime(),
+            ExitTimeUtc = exitTime.ToUniversalTime(),
+            CreatedAtUtc = entryTime.ToUniversalTime(),
+            Status = TicketStatus.Completed
+        };
+
+        // Act
+        vm.LoadTicket(ticket);
+
+        // Assert
+        vm.EntryTimeStr.Should().Be("12:21 AM");
+        vm.ExitTimeStr.Should().Be("11:13 AM");
+        vm.InvoiceTimeStr.Should().Be("11:13 AM");
+    }
+
+    [Theory]
+    [InlineData(13, null, "CC:")]
+    [InlineData(1, null, "CC:")]
+    [InlineData(31, null, "NIT:")]
+    [InlineData(3, null, "NIT:")]
+    [InlineData(22, null, "CE:")]
+    [InlineData(2, null, "CE:")]
+    [InlineData(12, null, "TI:")]
+    [InlineData(41, null, "PAS:")]
+    [InlineData(4, null, "PAS:")]
+    [InlineData(42, null, "DIE:")]
+    [InlineData(5, null, "DIE:")]
+    [InlineData(99, "Company", "NIT:")]
+    [InlineData(99, "Person", "CC:")]
+    public void ResolveIdTypeLabel_ReturnsExpectedPrefix(int idType, string? personType, string expectedPrefix)
+    {
+        // Act
+        var result = ReceiptPreviewViewModel.ResolveIdTypeLabel(idType, personType);
+
+        // Assert
+        result.Should().Be(expectedPrefix);
+    }
 }

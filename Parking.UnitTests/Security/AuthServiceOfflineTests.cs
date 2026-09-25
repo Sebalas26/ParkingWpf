@@ -309,4 +309,104 @@ public class AuthServiceOfflineTests : IDisposable
         Assert.NotNull(resultReal); // Aceptado porque IsAdmin es true
         Assert.Equal("admin_real", resultReal.Username);
     }
+
+    [Fact]
+    public async Task AuthenticateAsync_Offline_ResolvesAndHealsCorporateDataConsistentlyAcrossBranches()
+    {
+        // Arrange: API central caída
+        _apiClientMock.Setup(a => a.LoginAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ThrowsAsync(new HttpRequestException("API Offline"));
+
+        var password = "offlinePassword123";
+        var passwordHash = DbConnectionManager.HashPassword(password);
+
+        using (var db = _dbManager.CreateDbContext())
+        {
+            var role = new Role
+            {
+                RoleId = Guid.NewGuid(),
+                Name = "Operador",
+                Description = "Operador Caja"
+            };
+            db.Roles.Add(role);
+
+            var user = new User
+            {
+                UserId = Guid.NewGuid(),
+                Username = "cajero_multi_sede",
+                FullName = "Operador Multi Sede",
+                Email = "contacto@parkgo.com",
+                PasswordHash = passwordHash,
+                RoleId = role.RoleId,
+                CompanyId = 1,
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+            db.Users.Add(user);
+
+            // Sede 1 (Pepe sierra): tiene CompanyName y CompanyNit completos
+            var branch1 = new Branch
+            {
+                Id = 1,
+                CompanyId = 1,
+                CompanyName = "Parkgo",
+                CompanyNit = "9088777777",
+                Phone = "3102207910",
+                Name = "Pepe sierra",
+                Code = "PS01",
+                IsActive = true
+            };
+            // Sede 2 (Sede 136): CompanyName y CompanyNit están vacíos
+            var branch2 = new Branch
+            {
+                Id = 2,
+                CompanyId = 1,
+                CompanyName = "",
+                CompanyNit = "",
+                Phone = "3188088885",
+                Name = "Sede 136",
+                Code = "S136",
+                IsActive = true
+            };
+            db.Branches.AddRange(branch1, branch2);
+            await db.SaveChangesAsync();
+        }
+
+        var authService = new AuthService(
+            _dbManager,
+            _apiClientMock.Object,
+            _sessionServiceMock.Object,
+            _permissionServiceMock.Object);
+
+        // Act
+        var result = await authService.AuthenticateAsync("cajero_multi_sede", password);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.True(result.Success);
+        Assert.NotNull(result.User);
+        Assert.Equal("Parkgo", result.User.CompanyName);
+        Assert.Equal("9088777777", result.User.CompanyNit);
+        Assert.Equal("contacto@parkgo.com", result.User.CompanyEmail);
+        Assert.Equal("3102207910", result.User.CompanyPhone);
+
+        // Ambas sedes deben tener datos corporativos completos y consistentes
+        Assert.Equal(2, result.Branches.Count);
+        foreach (var b in result.Branches)
+        {
+            Assert.Equal("Parkgo", b.CompanyName);
+            Assert.Equal("9088777777", b.CompanyNit);
+            Assert.Equal("contacto@parkgo.com", b.CompanyEmail);
+            Assert.Equal("3102207910", b.CompanyPhone);
+        }
+
+        // Auto-curación en SQLite: Sede 2 debe haberse curado en la base de datos local
+        using (var verifyDb = _dbManager.CreateDbContext())
+        {
+            var healedBranch2 = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions.FirstOrDefaultAsync(verifyDb.Branches, b => b.Id == 2);
+            Assert.NotNull(healedBranch2);
+            Assert.Equal("Parkgo", healedBranch2.CompanyName);
+            Assert.Equal("9088777777", healedBranch2.CompanyNit);
+        }
+    }
 }
