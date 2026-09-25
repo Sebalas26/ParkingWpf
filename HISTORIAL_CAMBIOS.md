@@ -1,5 +1,33 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-25 10:55:00] - [FEATURE / CUSTOMERS / SIIGO] Sincronización de Edición de Clientes con Siigo API y Retroalimentación Detallada al Operador (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"en el modulo de clientes se tiene el boton de editar el cliente si me explico se debe ahcer en BD y tambien ir a Siigo a editar dime que necesitas para tener eso claro el body que se debe enviar [...] Solo lo estas mostradno para la PWA y el WPF que tambien tienen esos modulos que sucede hay ? por que no lo tomaste encuenta."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Tipado y DTOs de Respuesta API (`CustomerApiModels.cs`)**:
+     - Se añadió la propiedad `[JsonPropertyName("siigoCustomerId")] public Guid? SiigoCustomerId { get; set; }` a `CustomerApiResponse` para recibir el identificador asignado por Siigo tras la creación o actualización.
+     - Se introdujo la clase de contrato `CustomerApiUpdateResult` con `Success`, `ErrorMessage`, `Customer` y operador de conversión implícita a `bool` para preservar total retrocompatibilidad con llamadas preexistentes.
+  2. **Contrato y Cliente API (`IApiClientService.cs` & `ParkingApiClient.cs`)**:
+     - Se actualizó la firma de `UpdateCustomerAsync(Guid customerId, CreateCustomerApiRequest request)` para retornar `Task<CustomerApiUpdateResult>`.
+     - `ParkingApiClient.cs` ahora incluye el parámetro de aislamiento multi-empresa `?companyId={request.CompanyId.Value}` y realiza captura granular de errores HTTP (`400 Bad Request`, `502 Bad Gateway`) deserializando los mensajes y detalles enviados por el API/Siigo en vez de retornar un booleano genérico silencioso.
+  3. **Persistencia Local Offline-First y Diálogo de Notificación (`CustomersViewModel.cs`)**:
+     - En `SaveCustomerAsync` para edición, los cambios se persisten primero en SQLite local garantizando resiliencia offline.
+     - Se invoca `UpdateCustomerAsync` contra la nube; si la respuesta de la nube incluye `SiigoCustomerId` (asignado o actualizado), se persiste de inmediato en la base de datos local SQLite (`existing.SiigoCustomerId = ...`).
+     - Se eliminó el `catch { }` vacío. Si el servidor central o Siigo reportan una inconsistencia (ej: "Municipio inválido", "Error en Siigo"), se alerta al operador mediante `_dialogService.ShowAlertAsync(..., DialogNotificationType.Warning)` con el mensaje descriptivo exacto, manteniendo la trazabilidad e impidiendo que el operador asuma erróneamente que la factura o tercero se sincronizó en Siigo cuando fue rechazado.
+  4. **Compilación y Certificación**:
+     - `dotnet test ParkingWpf.slnx`: **284/284 pruebas superadas al 100% (0 fallos)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Models/ApiModels/CustomerApiModels.cs`
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/ViewModels/CustomersViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
 ## 📅 Entrada: [2026-09-25 08:45:00] - [BUGFIX / ARCHITECTURE / RBAC] Cierre Integral de Huecos Técnicos en Relevo de Turnos, Autenticación Local y Señales de Concurrencia (WPF)
 
 - **`💬 Prompt Original del Usuario`**:

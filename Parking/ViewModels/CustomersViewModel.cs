@@ -447,9 +447,10 @@ public partial class CustomersViewModel : ViewModelBase
 
                     await db.SaveChangesAsync();
 
+                    CustomerApiUpdateResult? apiResult = null;
                     try
                     {
-                        await _apiClient.UpdateCustomerAsync(existing.CustomerId, new CreateCustomerApiRequest
+                        apiResult = await _apiClient.UpdateCustomerAsync(existing.CustomerId, new CreateCustomerApiRequest
                         {
                             CustomerId = existing.CustomerId,
                             CompanyId = existing.CompanyId,
@@ -466,12 +467,35 @@ public partial class CustomersViewModel : ViewModelBase
                             StateCode = existing.StateCode,
                             FiscalResponsibilities = existing.FiscalResponsibilities
                         });
+
+                        if (apiResult?.Customer?.SiigoCustomerId.HasValue == true)
+                        {
+                            existing.SiigoCustomerId = apiResult.Customer.SiigoCustomerId.Value;
+                            await db.SaveChangesAsync();
+                        }
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        apiResult = new CustomerApiUpdateResult
+                        {
+                            Success = false,
+                            ErrorMessage = ex.Message
+                        };
+                    }
 
                     IsFormOpen = false;
                     await LoadCustomersAsync();
-                    await _dialogService.ShowAlertAsync("Cliente Actualizado", $"Los datos de '{existing.FullName}' fueron actualizados correctamente.", DialogNotificationType.Success);
+
+                    if (apiResult != null && !apiResult.Success && !string.IsNullOrWhiteSpace(apiResult.ErrorMessage))
+                    {
+                        await _dialogService.ShowAlertAsync("Aviso de Sincronización Siigo",
+                            $"Los datos del cliente se guardaron localmente, pero el servidor o Siigo reportó una inconsistencia:\n{apiResult.ErrorMessage}",
+                            DialogNotificationType.Warning);
+                    }
+                    else
+                    {
+                        await _dialogService.ShowAlertAsync("Cliente Actualizado", $"Los datos de '{existing.FullName}' fueron actualizados correctamente.", DialogNotificationType.Success);
+                    }
                 }
             }
             else
