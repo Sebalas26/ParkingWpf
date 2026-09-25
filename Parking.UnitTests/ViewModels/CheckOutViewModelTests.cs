@@ -776,6 +776,245 @@ public class CheckOutViewModelTests : IDisposable
         vm.SelectedResolution.Should().Be(posRes);
     }
 
+    [Fact]
+    public void ToggleSelectAgreement_RequiresPurchase_InitializesCleanAndRequiresPurchaseAmount()
+    {
+        // Arrange
+        _mockPricingCalculator.Setup(p => p.GetRate(VehicleType.Car, It.IsAny<DayOfWeek?>()))
+            .Returns(new VehicleRate { VehicleType = VehicleType.Car, HourRate = 5000m });
+        _mockPricingCalculator.Setup(p => p.CalculateFee(VehicleType.Car, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 0, false))
+            .Returns(10000m);
+
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            TicketNumber = "PKF-AG1",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-30)
+        };
+        vm.SelectedTicket = ticket;
+
+        var agreement = new CommercialAgreement
+        {
+            AgreementId = Guid.NewGuid(),
+            Name = "Exito 20% Dcto",
+            MinPurchaseAmount = 50000m,
+            DiscountPercentage = 20m,
+            DiscountType = 0
+        };
+
+        // Act
+        vm.ToggleSelectAgreementCommand.Execute(agreement);
+
+        // Assert - REGLA DE ORO: Formulario 100% limpio (NO pre-llenar con MinPurchaseAmount)
+        vm.CustomerPurchaseAmount.Should().Be(0m);
+        vm.CustomerPurchaseAmountText.Should().BeEmpty();
+        vm.AgreementRequiresPurchase.Should().BeTrue();
+        vm.AgreementMinPurchaseMet.Should().BeFalse();
+        vm.IsAgreementEligible.Should().BeFalse();
+        vm.DiscountAmount.Should().Be(0m);
+        vm.CalculatedFee.Should().Be(10000m);
+        vm.AgreementMinPurchaseStatusText.Should().Be("⚠️ Monto insuficiente");
+        vm.AgreementMinPurchaseTooltipStatusText.Should().Be("⚠️ Pendiente");
+        vm.IsAgreementTooltipOpen.Should().BeFalse();
+    }
+
+    [Fact]
+    public void RecalculateLiveFee_WhenPurchaseAmountIsSufficient_AppliesDiscount()
+    {
+        // Arrange
+        _mockPricingCalculator.Setup(p => p.GetRate(VehicleType.Car, It.IsAny<DayOfWeek?>()))
+            .Returns(new VehicleRate { VehicleType = VehicleType.Car, HourRate = 5000m });
+        _mockPricingCalculator.Setup(p => p.CalculateFee(VehicleType.Car, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 0, false))
+            .Returns(10000m);
+
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            TicketNumber = "PKF-AG2",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-30)
+        };
+        vm.SelectedTicket = ticket;
+
+        var agreement = new CommercialAgreement
+        {
+            AgreementId = Guid.NewGuid(),
+            Name = "Exito 20% Dcto",
+            MinPurchaseAmount = 50000m,
+            DiscountPercentage = 20m,
+            DiscountType = 0
+        };
+
+        vm.ToggleSelectAgreementCommand.Execute(agreement);
+
+        // Act - User types purchase amount into CustomerPurchaseAmountText
+        vm.CustomerPurchaseAmountText = "60000";
+
+        // Assert
+        vm.CustomerPurchaseAmount.Should().Be(60000m);
+        vm.AgreementMinPurchaseMet.Should().BeTrue();
+        vm.IsAgreementEligible.Should().BeTrue();
+        vm.DiscountAmount.Should().Be(2000m); // 20% of 10000m
+        vm.CalculatedFee.Should().Be(8000m);
+        vm.AgreementMinPurchaseStatusText.Should().Be("✓ Cumple compra mínima");
+        vm.AgreementMinPurchaseTooltipStatusText.Should().Be("✓ Cumplida");
+        vm.AgreementRuleStatusTitle.Should().Contain("✓ Convenio aplicado");
+    }
+
+    [Fact]
+    public async Task RecalculateLiveFee_WhenStayExceedsMaxHours_DeniesDiscountAndFlagsExceeded()
+    {
+        // Arrange
+        _mockPricingCalculator.Setup(p => p.GetRate(VehicleType.Car, It.IsAny<DayOfWeek?>()))
+            .Returns(new VehicleRate { VehicleType = VehicleType.Car, HourRate = 5000m });
+        _mockPricingCalculator.Setup(p => p.CalculateFee(VehicleType.Car, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 0, false))
+            .Returns(15000m);
+
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            TicketNumber = "PKF-AG3",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-180) // 3 hours stay
+        };
+        vm.SelectedTicket = ticket;
+
+        var agreement = new CommercialAgreement
+        {
+            AgreementId = Guid.NewGuid(),
+            Name = "Cine Colombia 2h Max",
+            MaxHoursApplicable = 2, // 120 minutes allowed max
+            DiscountPercentage = 50m,
+            MinPurchaseAmount = 0m
+        };
+
+        // Act
+        await vm.ToggleSelectAgreementCommand.ExecuteAsync(agreement);
+
+        // Assert - El convenio debe ser bloqueado y desmarcado inmediatamente, notificando al operador
+        vm.SelectedAgreement.Should().BeNull();
+        vm.HasAgreementDiscount.Should().BeFalse();
+        vm.DiscountAmount.Should().Be(0m);
+        vm.CalculatedFee.Should().Be(15000m);
+        _mockDialogService.Verify(d => d.ShowAlertAsync(
+            It.Is<string>(s => s.Contains("Convenio")),
+            It.Is<string>(s => s.Contains("supera el tiempo")),
+            DialogNotificationType.Warning), Times.Once);
+    }
+
+    [Fact]
+    public void RecalculateLiveFee_FreeTimeAgreement_EvaluatesMinPurchaseAndCalculatesFeeDifference()
+    {
+        // Arrange
+        _mockPricingCalculator.Setup(p => p.GetRate(VehicleType.Car, It.IsAny<DayOfWeek?>()))
+            .Returns(new VehicleRate { VehicleType = VehicleType.Car, HourRate = 5000m });
+        _mockPricingCalculator.Setup(p => p.CalculateFee(VehicleType.Car, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 0, false))
+            .Returns(8000m);
+        _mockPricingCalculator.Setup(p => p.CalculateFee(VehicleType.Car, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 60, false))
+            .Returns(2000m); // After 60 free minutes, fee drops to 2000m
+
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            TicketNumber = "PKF-AG4",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-50)
+        };
+        vm.SelectedTicket = ticket;
+
+        var agreement = new CommercialAgreement
+        {
+            AgreementId = Guid.NewGuid(),
+            Name = "Gimnasio 1 Hora Gratis",
+            DiscountType = 2, // Free time
+            FreeHours = 1,
+            MinPurchaseAmount = 25000m
+        };
+
+        // Act 1: Initial selection without purchase amount
+        vm.ToggleSelectAgreementCommand.Execute(agreement);
+
+        // Assert 1: Not eligible until purchase amount met
+        vm.IsAgreementEligible.Should().BeFalse();
+        vm.DiscountAmount.Should().Be(0m);
+        vm.CalculatedFee.Should().Be(8000m);
+
+        // Act 2: Fulfill purchase amount
+        vm.CustomerPurchaseAmountText = "30000";
+
+        // Assert 2: Discount is fee difference (8000 - 2000 = 6000)
+        vm.IsAgreementEligible.Should().BeTrue();
+        vm.DiscountAmount.Should().Be(6000m);
+        vm.CalculatedFee.Should().Be(2000m);
+    }
+
+    [Fact]
+    public void MoreDataPopup_ToggleAndCloseCommands_ChangePopupState()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        vm.IsMoreDataPopupOpen.Should().BeFalse();
+
+        // Act 1: Toggle to open
+        vm.ToggleMoreDataPopupCommand.Execute(null);
+        vm.IsMoreDataPopupOpen.Should().BeTrue();
+
+        // Act 2: Toggle to close
+        vm.ToggleMoreDataPopupCommand.Execute(null);
+        vm.IsMoreDataPopupOpen.Should().BeFalse();
+
+        // Act 3: Open then call Close
+        vm.ToggleMoreDataPopupCommand.Execute(null);
+        vm.IsMoreDataPopupOpen.Should().BeTrue();
+        vm.CloseMoreDataPopupCommand.Execute(null);
+        vm.IsMoreDataPopupOpen.Should().BeFalse();
+    }
+
+    [Fact]
+    public void FormattedCustomerPhoneAndNotes_WhenEmptyOrNull_ReturnNA()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+
+        // Without SelectedTicket
+        vm.FormattedCustomerPhone.Should().Be("N/A");
+        vm.FormattedNotes.Should().Be("N/A");
+
+        // With SelectedTicket with null/empty values
+        vm.SelectedTicket = new ParkingTicket
+        {
+            CustomerPhone = null,
+            Notes = "   "
+        };
+
+        // Assert
+        vm.FormattedCustomerPhone.Should().Be("N/A");
+        vm.FormattedNotes.Should().Be("N/A");
+    }
+
+    [Fact]
+    public void FormattedCustomerPhoneAndNotes_WhenProvided_ReturnValues()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+
+        // Act
+        vm.SelectedTicket = new ParkingTicket
+        {
+            CustomerPhone = "3001234567",
+            Notes = "Dejó llaves en administración"
+        };
+
+        // Assert
+        vm.FormattedCustomerPhone.Should().Be("3001234567");
+        vm.FormattedNotes.Should().Be("Dejó llaves en administración");
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

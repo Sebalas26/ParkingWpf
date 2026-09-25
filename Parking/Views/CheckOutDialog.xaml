@@ -87,12 +87,13 @@
                 </Grid.RowDefinitions>
 
                 <!-- Detalle desplazable -->
-                <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+                <ScrollViewer x:Name="DialogScrollViewer" Grid.Row="0" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
                     <StackPanel Margin="0,0,4,0">
                         <!-- Header con Placa Seleccionada -->
                         <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
@@ -106,7 +107,121 @@
                                 </StackPanel>
                             </StackPanel>
 
-                            <Button Grid.Column="1"
+                            <!-- Enlace "Ver más datos" con Popup Flotante -->
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,16,0">
+                                <Button x:Name="BtnVerMasDatos"
+                                        Command="{Binding ToggleMoreDataPopupCommand}"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Padding="6,4"
+                                        Cursor="Hand">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <TextBlock Text="Ver más datos"
+                                                       FontSize="13"
+                                                       FontWeight="Bold"
+                                                       Foreground="#0284C7"
+                                                       TextDecorations="Underline"/>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
+
+                                <Popup x:Name="MoreDataPopup"
+                                       IsOpen="{Binding IsMoreDataPopupOpen, Mode=TwoWay}"
+                                       PlacementTarget="{Binding ElementName=BtnVerMasDatos}"
+                                       Placement="Bottom"
+                                       StaysOpen="False"
+                                       AllowsTransparency="True">
+                                    <Border Background="#FFFFFF"
+                                            BorderBrush="#CBD5E1"
+                                            BorderThickness="1"
+                                            CornerRadius="10"
+                                            Padding="16"
+                                            Width="320"
+                                            Margin="8">
+                                        <Border.Effect>
+                                            <DropShadowEffect BlurRadius="16" ShadowDepth="4" Direction="270" Opacity="0.18" Color="#0F172A"/>
+                                        </Border.Effect>
+                                        <StackPanel>
+                                            <!-- Cabecera Popup -->
+                                            <Grid Margin="0,0,0,12">
+                                                <TextBlock Text="Datos Adicionales de Ingreso"
+                                                           FontSize="14"
+                                                           FontWeight="Bold"
+                                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                                           VerticalAlignment="Center"/>
+                                                <Button Command="{Binding CloseMoreDataPopupCommand}"
+                                                        HorizontalAlignment="Right"
+                                                        Background="Transparent"
+                                                        BorderThickness="0"
+                                                        Padding="4"
+                                                        Cursor="Hand"
+                                                        ToolTip="Cerrar">
+                                                    <Button.Template>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="#F1F5F9" CornerRadius="12" Width="24" Height="24">
+                                                                <Path Data="{StaticResource IconClose}"
+                                                                      Fill="#64748B"
+                                                                      Width="10"
+                                                                      Height="10"
+                                                                      Stretch="Uniform"
+                                                                      HorizontalAlignment="Center"
+                                                                      VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Button.Template>
+                                                </Button>
+                                            </Grid>
+
+                                            <Border Height="1" Background="#F1F5F9" Margin="0,0,0,12"/>
+
+                                            <!-- Teléfono del Conductor -->
+                                            <TextBlock Text="TELÉFONO DEL CONDUCTOR"
+                                                       FontSize="11"
+                                                       FontWeight="Bold"
+                                                       Foreground="{DynamicResource BrushTextMuted}"
+                                                       Margin="0,0,0,4"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                                <Path Data="{StaticResource IconPhone}"
+                                                      Fill="{DynamicResource BrushPrimary}"
+                                                      Width="13"
+                                                      Height="13"
+                                                      Stretch="Uniform"
+                                                      VerticalAlignment="Center"
+                                                      Margin="0,0,6,0"/>
+                                                <TextBlock Text="{Binding FormattedCustomerPhone}"
+                                                           FontSize="13.5"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource BrushTextPrimary}"/>
+                                            </StackPanel>
+
+                                            <!-- Observaciones de Entrada -->
+                                            <TextBlock Text="OBSERVACIONES / NOTAS DE ENTRADA"
+                                                       FontSize="11"
+                                                       FontWeight="Bold"
+                                                       Foreground="{DynamicResource BrushTextMuted}"
+                                                       Margin="0,0,0,4"/>
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{StaticResource IconNotes}"
+                                                      Fill="{DynamicResource BrushPrimary}"
+                                                      Width="13"
+                                                      Height="13"
+                                                      Stretch="Uniform"
+                                                      VerticalAlignment="Top"
+                                                      Margin="0,2,6,0"/>
+                                                <TextBlock Text="{Binding FormattedNotes}"
+                                                           FontSize="13"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                                           TextWrapping="Wrap"
+                                                           MaxWidth="260"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </Popup>
+                            </StackPanel>
+
+                            <Button Grid.Column="2"
                                     Content="Cancelar Selección"
                                     Click="CancelButton_Click"
                                     Background="{DynamicResource BrushDangerBg}"
@@ -201,172 +316,105 @@
                             </Grid>
                         </Border>
 
-                        <!-- Sección de Convenios y Comercios Aliados con Logos como Botón + Ojo Informativo -->
-                        <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="12" Padding="14,10" Margin="0,0,0,16">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,8">
+                        <!-- Total Neto y Módulo de Caja Mejorado (Reorganizado de primeras debajo de la hora de ingreso) -->
+                        <Border Background="#F8FAFC" BorderBrush="{DynamicResource BrushBorderMedium}" BorderThickness="1.5" CornerRadius="12" Padding="16" Margin="0,0,0,16">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- Fila Superior: Total a Pagar e Input de Efectivo -->
+                                <Grid Grid.Row="0" Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="1*"/>
+                                        <ColumnDefinition Width="1.35*"/>
                                     </Grid.ColumnDefinitions>
-                                    
-                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Path Data="{StaticResource IconStore}" Fill="{DynamicResource BrushPrimary}" Width="15" Height="15" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                        <TextBlock Text="CONVENIOS Y COMERCIOS ALIADOS"
-                                                   FontSize="12"
-                                                   FontWeight="Bold"
-                                                   Foreground="{DynamicResource BrushTextPrimary}"
-                                                   VerticalAlignment="Center"/>
-                                        <TextBlock Text="(Clic en el logo para aplicar descuento)"
-                                                   FontSize="11"
-                                                   Foreground="{DynamicResource BrushTextMuted}"
-                                                   Margin="8,0,0,0"
-                                                   VerticalAlignment="Center"/>
+
+                                    <!-- Total a Cobrar en Grande -->
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,14,0">
+                                        <TextBlock Text="TOTAL NETO A PAGAR" FontSize="13" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}"/>
+                                        <TextBlock Text="{Binding CalculatedFee, Converter={StaticResource CurrencyConv}}" FontSize="34" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" Margin="0,2,0,0"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0" Visibility="{Binding IsLostTicket, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="{Binding LostTicketFee, Converter={StaticResource CurrencyConv}, StringFormat='{}Incluye tiquete extraviado: +{0}'}"
+                                                       FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushWarningText}"/>
+                                        </StackPanel>
                                     </StackPanel>
 
-                                    <!-- Badge de Descuento si hay uno seleccionado -->
+                                    <!-- Input de Efectivo Recibido en Grande con Billetes Rápidos (Solo cuando requiere devuelta) -->
+                                    <StackPanel Grid.Column="1" Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}}">
+                                        <TextBlock Text="MONTO EN EFECTIVO RECIBIDO ($) *" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
+                                        <TextBox Text="{Binding AmountTendered, UpdateSourceTrigger=PropertyChanged, StringFormat='{}{0:N0}'}"
+                                                 IsEnabled="{Binding SelectedPaymentMethodEntity.RequiresCashTender, FallbackValue=True}"
+                                                 Style="{StaticResource ModernTextBox}"
+                                                 Height="48"
+                                                 FontSize="26"
+                                                 FontWeight="Black"
+                                                 FontFamily="{StaticResource FontFamilyMonospace}"
+                                                 HorizontalContentAlignment="Center"
+                                                 VerticalContentAlignment="Center"
+                                                 Margin="0,0,0,6"/>
+
+                                        <!-- Botones de Billetes Rápidos -->
+                                        <UniformGrid Columns="4" Rows="1">
+                                            <Button Content="Exacto" Style="{StaticResource CashPresetButton}" Command="{Binding ExactCashCommand}" Background="#E0F2FE" Foreground="#0369A1" FontWeight="Black"/>
+                                            <Button Content="$5K" Style="{StaticResource CashPresetButton}" Command="{Binding QuickCashCommand}" CommandParameter="5000"/>
+                                            <Button Content="$10K" Style="{StaticResource CashPresetButton}" Command="{Binding QuickCashCommand}" CommandParameter="10000"/>
+                                            <Button Content="$50K" Style="{StaticResource CashPresetButton}" Command="{Binding QuickCashCommand}" CommandParameter="50000"/>
+                                        </UniformGrid>
+                                    </StackPanel>
+
+                                    <!-- Alternativa cuando RequiresCashTender es false (Pago Electrónico / Tarjeta / Transferencia) -->
                                     <Border Grid.Column="1"
-                                            Visibility="{Binding HasAgreementDiscount, Converter={StaticResource BoolToVis}}"
-                                            Background="#FEF3C7"
-                                            BorderBrush="#FDE68A"
-                                            BorderThickness="1"
-                                            CornerRadius="8"
-                                            Padding="8,3"
-                                            VerticalAlignment="Center">
-                                        <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding SelectedAgreement.Name, StringFormat='{}Descuento: {0}'}" FontSize="12" FontWeight="Bold" Foreground="#B45309" Margin="0,0,6,0"/>
-                                            <TextBlock Text="{Binding DiscountAmount, Converter={StaticResource CurrencyConv}, StringFormat='{}-{0}'}" FontSize="13" FontWeight="Black" Foreground="#B45309"/>
-                                        </StackPanel>
+                                            Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                                            Background="#F0FDF4"
+                                            BorderBrush="#BBF7D0"
+                                            BorderThickness="1.5"
+                                            CornerRadius="10"
+                                            Padding="14,10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Path Grid.Column="0"
+                                                  Data="{StaticResource IconCreditCard}"
+                                                  Fill="#16A34A"
+                                                  Width="28"
+                                                  Height="28"
+                                                  Stretch="Uniform"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,12,0"/>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="PAGO ELECTRÓNICO / SIN DEVUELTA" FontSize="11.5" FontWeight="Black" Foreground="#15803D"/>
+                                                <TextBlock Text="Cobro exacto vía datáfono o transferencia" FontSize="11" Foreground="#166534" Margin="0,2,0,0"/>
+                                                <TextBlock Text="{Binding CalculatedFee, Converter={StaticResource CurrencyConv}, StringFormat='{}Total a debitar: {0}'}" FontSize="13" FontWeight="Bold" Foreground="#15803D" Margin="0,3,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
                                     </Border>
                                 </Grid>
 
-                                <!-- Galería de Botones de Convenios -->
-                                <ItemsControl ItemsSource="{Binding BranchAgreements}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel Orientation="Horizontal"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid Margin="0,0,12,6">
-                                                <!-- Botón Principal con Logo del Convenio -->
-                                                <Button Command="{Binding DataContext.ToggleSelectAgreementCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}"
-                                                        Padding="0"
-                                                        Cursor="Hand"
-                                                        Height="50"
-                                                        MinWidth="85">
-                                                    <Button.Template>
-                                                        <ControlTemplate TargetType="Button">
-                                                            <Border x:Name="btnBorder"
-                                                                    Background="#FFFFFF"
-                                                                    BorderBrush="{DynamicResource BrushBorderMedium}"
-                                                                    BorderThickness="1.5"
-                                                                    CornerRadius="10"
-                                                                    Padding="8,4"
-                                                                    SnapsToDevicePixels="True">
-                                                                <Grid>
-                                                                    <Image Source="{Binding ImageUrl, Converter={StaticResource Base64ToImageConv}}"
-                                                                           Stretch="Uniform"
-                                                                           Height="36"
-                                                                           RenderOptions.BitmapScalingMode="HighQuality"
-                                                                           HorizontalAlignment="Center"
-                                                                           VerticalAlignment="Center"/>
-                                                                    <Path x:Name="selectedCheck"
-                                                                          Data="{StaticResource IconCheck}"
-                                                                          Fill="{DynamicResource BrushPrimary}"
-                                                                          Width="14" Height="14"
-                                                                          Stretch="Uniform"
-                                                                          HorizontalAlignment="Left"
-                                                                          VerticalAlignment="Top"
-                                                                          Margin="0,0,0,0"
-                                                                          Visibility="Collapsed"/>
-                                                                </Grid>
-                                                            </Border>
-                                                            <ControlTemplate.Triggers>
-                                                                <DataTrigger Value="True">
-                                                                    <DataTrigger.Binding>
-                                                                        <MultiBinding Converter="{StaticResource EqualityConv}">
-                                                                            <Binding Path="AgreementId"/>
-                                                                            <Binding Path="DataContext.SelectedAgreement.AgreementId" RelativeSource="{RelativeSource AncestorType=Window}"/>
-                                                                        </MultiBinding>
-                                                                    </DataTrigger.Binding>
-                                                                    <Setter TargetName="btnBorder" Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
-                                                                    <Setter TargetName="btnBorder" Property="BorderThickness" Value="2.5"/>
-                                                                    <Setter TargetName="btnBorder" Property="Background" Value="#EBF6F8"/>
-                                                                    <Setter TargetName="selectedCheck" Property="Visibility" Value="Visible"/>
-                                                                </DataTrigger>
-                                                                <Trigger Property="IsMouseOver" Value="True">
-                                                                    <Setter TargetName="btnBorder" Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
-                                                                </Trigger>
-                                                            </ControlTemplate.Triggers>
-                                                        </ControlTemplate>
-                                                    </Button.Template>
-                                                </Button>
-
-                                                <!-- Botón Icono Ojo en la Esquina Superior Derecha -->
-                                                <Button Command="{Binding DataContext.ShowAgreementDetailsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}"
-                                                        ToolTip="Ver descripción y reglas del convenio"
-                                                        HorizontalAlignment="Right"
-                                                        VerticalAlignment="Top"
-                                                        Margin="0,-5,-5,0"
-                                                        Width="22"
-                                                        Height="22"
-                                                        Cursor="Hand"
-                                                        Background="{DynamicResource BrushPrimary}"
-                                                        BorderThickness="0">
-                                                    <Button.Template>
-                                                        <ControlTemplate TargetType="Button">
-                                                            <Border Background="{TemplateBinding Background}" CornerRadius="11" SnapsToDevicePixels="True">
-                                                                <Path Data="{StaticResource IconEye}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                            </Border>
-                                                        </ControlTemplate>
-                                                    </Button.Template>
-                                                </Button>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Tiquete Extraviado / Dañado -->
-                        <Border Background="#F8FAFC"
-                                BorderBrush="{DynamicResource BrushBorderMedium}"
-                                BorderThickness="1.5"
-                                CornerRadius="12"
-                                Padding="14,10"
-                                Margin="0,0,0,16">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-
-                                <CheckBox Grid.Column="0"
-                                          IsChecked="{Binding IsLostTicket, Mode=TwoWay}"
-                                          VerticalAlignment="Center"
-                                          Margin="0,0,12,0"/>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Tiquete Extraviado / Dañado" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                    <TextBlock Text="Marque esta opción si el usuario no presenta el tiquete físico de ingreso."
-                                               FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
-                                </StackPanel>
-
-                                <Border Grid.Column="2"
-                                        Visibility="{Binding HasLostTicketFee, Converter={StaticResource BoolToVis}}"
-                                        Background="{DynamicResource BrushWarningBg}"
-                                        BorderBrush="{DynamicResource BrushWarning}"
-                                        BorderThickness="1"
-                                        CornerRadius="8"
-                                        Padding="8,3"
-                                        VerticalAlignment="Center">
-                                    <TextBlock Text="{Binding LostTicketFee, Converter={StaticResource CurrencyConv}, StringFormat='{}Recargo: +{0}'}"
-                                               FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushWarningText}"/>
+                                <!-- Fila Inferior: Tarjeta de CAMBIO / DEVUELTA en Grande -->
+                                <Border Grid.Row="1"
+                                        Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}}"
+                                        Background="#b2e5f3ff" BorderBrush="#36c8f1ff" BorderThickness="1.5" CornerRadius="10" Padding="14,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="CAMBIO / DEVUELTA AL CLIENTE" FontSize="13" FontWeight="Black" Foreground="#166534"/>
+                                            <TextBlock Text="Entregar este valor al conductor" FontSize="12" Foreground="#15803D" Margin="0,1,0,0"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1"
+                                                    Text="{Binding ChangeDue, Converter={StaticResource CurrencyConv}}"
+                                                    FontSize="28"
+                                                    FontWeight="Black"
+                                                    FontFamily="{StaticResource FontFamilyMonospace}"
+                                                    Foreground="#15803D"
+                                                    VerticalAlignment="Center"/>
+                                    </Grid>
                                 </Border>
                             </Grid>
                         </Border>
@@ -797,105 +845,288 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Total Neto y Módulo de Caja Mejorado -->
-                        <Border Background="#F8FAFC" BorderBrush="{DynamicResource BrushBorderMedium}" BorderThickness="1.5" CornerRadius="12" Padding="16" Margin="0,0,0,16">
-                            <Grid>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-
-                                <!-- Fila Superior: Total a Pagar e Input de Efectivo -->
-                                <Grid Grid.Row="0" Margin="0,0,0,12">
+                        <!-- Sección de Convenios y Comercios Aliados con Logos como Botón + Ojo Informativo -->
+                        <Border BorderBrush="{DynamicResource BrushBorderSubtle}" BorderThickness="1" CornerRadius="12" Padding="14,10" Margin="0,0,0,16">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="1*"/>
-                                        <ColumnDefinition Width="1.35*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-
-                                    <!-- Total a Cobrar en Grande -->
-                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,14,0">
-                                        <TextBlock Text="TOTAL NETO A PAGAR" FontSize="13" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}"/>
-                                        <TextBlock Text="{Binding CalculatedFee, Converter={StaticResource CurrencyConv}}" FontSize="34" FontWeight="Black" Foreground="{DynamicResource BrushPrimary}" Margin="0,2,0,0"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0" Visibility="{Binding IsLostTicket, Converter={StaticResource BoolToVis}}">
-                                            <TextBlock Text="{Binding LostTicketFee, Converter={StaticResource CurrencyConv}, StringFormat='{}Incluye tiquete extraviado: +{0}'}"
-                                                       FontSize="10.5" FontWeight="SemiBold" Foreground="{DynamicResource BrushWarningText}"/>
-                                        </StackPanel>
+                                    
+                                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Path Data="{StaticResource IconStore}" Fill="{DynamicResource BrushPrimary}" Width="15" Height="15" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                        <TextBlock Text="CONVENIOS Y COMERCIOS ALIADOS"
+                                                   FontSize="12"
+                                                   FontWeight="Bold"
+                                                   Foreground="{DynamicResource BrushTextPrimary}"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Text="(Clic en el logo para aplicar descuento)"
+                                                   FontSize="11"
+                                                   Foreground="{DynamicResource BrushTextMuted}"
+                                                   Margin="8,0,0,0"
+                                                   VerticalAlignment="Center"/>
                                     </StackPanel>
 
-                                    <!-- Input de Efectivo Recibido en Grande con Billetes Rápidos (Solo cuando requiere devuelta) -->
-                                    <StackPanel Grid.Column="1" Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}}">
-                                        <TextBlock Text="MONTO EN EFECTIVO RECIBIDO ($) *" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
-                                        <TextBox Text="{Binding AmountTendered, UpdateSourceTrigger=PropertyChanged, StringFormat='{}{0:N0}'}"
-                                                 IsEnabled="{Binding SelectedPaymentMethodEntity.RequiresCashTender, FallbackValue=True}"
-                                                 Style="{StaticResource ModernTextBox}"
-                                                 Height="48"
-                                                 FontSize="26"
-                                                 FontWeight="Black"
-                                                 FontFamily="{StaticResource FontFamilyMonospace}"
-                                                 HorizontalContentAlignment="Center"
-                                                 VerticalContentAlignment="Center"
-                                                 Margin="0,0,0,6"/>
-
-                                        <!-- Botones de Billetes Rápidos -->
-                                        <UniformGrid Columns="4" Rows="1">
-                                            <Button Content="Exacto" Style="{StaticResource CashPresetButton}" Command="{Binding ExactCashCommand}" Background="#E0F2FE" Foreground="#0369A1" FontWeight="Black"/>
-                                            <Button Content="$5K" Style="{StaticResource CashPresetButton}" Command="{Binding QuickCashCommand}" CommandParameter="5000"/>
-                                            <Button Content="$10K" Style="{StaticResource CashPresetButton}" Command="{Binding QuickCashCommand}" CommandParameter="10000"/>
-                                            <Button Content="$50K" Style="{StaticResource CashPresetButton}" Command="{Binding QuickCashCommand}" CommandParameter="50000"/>
-                                        </UniformGrid>
-                                    </StackPanel>
-
-                                    <!-- Alternativa cuando RequiresCashTender es false (Pago Electrónico / Tarjeta / Transferencia) -->
+                                    <!-- Badge de Descuento si hay uno seleccionado -->
                                     <Border Grid.Column="1"
-                                            Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
-                                            Background="#F0FDF4"
-                                            BorderBrush="#BBF7D0"
-                                            BorderThickness="1.5"
-                                            CornerRadius="10"
-                                            Padding="14,10">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto"/>
-                                                <ColumnDefinition Width="*"/>
-                                            </Grid.ColumnDefinitions>
-                                            <Path Grid.Column="0"
-                                                  Data="{StaticResource IconCreditCard}"
-                                                  Fill="#16A34A"
-                                                  Width="28"
-                                                  Height="28"
-                                                  Stretch="Uniform"
-                                                  VerticalAlignment="Center"
-                                                  Margin="0,0,12,0"/>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                                <TextBlock Text="PAGO ELECTRÓNICO / SIN DEVUELTA" FontSize="11.5" FontWeight="Black" Foreground="#15803D"/>
-                                                <TextBlock Text="Cobro exacto vía datáfono o transferencia" FontSize="11" Foreground="#166534" Margin="0,2,0,0"/>
-                                                <TextBlock Text="{Binding CalculatedFee, Converter={StaticResource CurrencyConv}, StringFormat='{}Total a debitar: {0}'}" FontSize="13" FontWeight="Bold" Foreground="#15803D" Margin="0,3,0,0"/>
-                                            </StackPanel>
-                                        </Grid>
+                                            Visibility="{Binding HasAgreementDiscount, Converter={StaticResource BoolToVis}}"
+                                            Background="#FEF3C7"
+                                            BorderBrush="#FDE68A"
+                                            BorderThickness="1"
+                                            CornerRadius="8"
+                                            Padding="8,3"
+                                            VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding SelectedAgreement.Name, StringFormat='{}Descuento: {0}'}" FontSize="12" FontWeight="Bold" Foreground="#B45309" Margin="0,0,6,0"/>
+                                            <TextBlock Text="{Binding DiscountAmount, Converter={StaticResource CurrencyConv}, StringFormat='{}-{0}'}" FontSize="13" FontWeight="Black" Foreground="#B45309"/>
+                                        </StackPanel>
                                     </Border>
                                 </Grid>
 
-                                <!-- Fila Inferior: Tarjeta de CAMBIO / DEVUELTA en Grande -->
-                                <Border Grid.Row="1"
-                                        Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}}"
-                                        Background="#b2e5f3ff" BorderBrush="#36c8f1ff" BorderThickness="1.5" CornerRadius="10" Padding="14,8">
+                                <!-- Galería de Botones de Convenios -->
+                                <ItemsControl ItemsSource="{Binding BranchAgreements}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,12,6">
+                                                <!-- Botón Principal con Logo del Convenio -->
+                                                <Button Command="{Binding DataContext.ToggleSelectAgreementCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        Padding="0"
+                                                        Cursor="Hand"
+                                                        Height="50"
+                                                        MinWidth="85">
+                                                    <Button.Template>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="btnBorder"
+                                                                    Background="#FFFFFF"
+                                                                    BorderBrush="{DynamicResource BrushBorderMedium}"
+                                                                    BorderThickness="1.5"
+                                                                    CornerRadius="10"
+                                                                    Padding="8,4"
+                                                                    SnapsToDevicePixels="True">
+                                                                <Grid>
+                                                                    <Image Source="{Binding ImageUrl, Converter={StaticResource Base64ToImageConv}}"
+                                                                           Stretch="Uniform"
+                                                                           Height="36"
+                                                                           RenderOptions.BitmapScalingMode="HighQuality"
+                                                                           HorizontalAlignment="Center"
+                                                                           VerticalAlignment="Center"/>
+                                                                    <Path x:Name="selectedCheck"
+                                                                          Data="{StaticResource IconCheck}"
+                                                                          Fill="{DynamicResource BrushPrimary}"
+                                                                          Width="14" Height="14"
+                                                                          Stretch="Uniform"
+                                                                          HorizontalAlignment="Left"
+                                                                          VerticalAlignment="Top"
+                                                                          Margin="0,0,0,0"
+                                                                          Visibility="Collapsed"/>
+                                                                </Grid>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <DataTrigger Value="True">
+                                                                    <DataTrigger.Binding>
+                                                                        <MultiBinding Converter="{StaticResource EqualityConv}">
+                                                                            <Binding Path="AgreementId"/>
+                                                                            <Binding Path="DataContext.SelectedAgreement.AgreementId" RelativeSource="{RelativeSource AncestorType=Window}"/>
+                                                                        </MultiBinding>
+                                                                    </DataTrigger.Binding>
+                                                                    <Setter TargetName="btnBorder" Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
+                                                                    <Setter TargetName="btnBorder" Property="BorderThickness" Value="2.5"/>
+                                                                    <Setter TargetName="btnBorder" Property="Background" Value="#EBF6F8"/>
+                                                                    <Setter TargetName="selectedCheck" Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="btnBorder" Property="BorderBrush" Value="{DynamicResource BrushPrimary}"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Button.Template>
+                                                </Button>
+
+                                                <!-- Botón Icono Ojo en la Esquina Superior Derecha -->
+                                                <Button Command="{Binding DataContext.ShowAgreementDetailsCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}"
+                                                        ToolTip="Ver descripción y reglas del convenio"
+                                                        HorizontalAlignment="Right"
+                                                        VerticalAlignment="Top"
+                                                        Margin="0,-5,-5,0"
+                                                        Width="22"
+                                                        Height="22"
+                                                        Cursor="Hand"
+                                                        Background="{DynamicResource BrushPrimary}"
+                                                        BorderThickness="0">
+                                                    <Button.Template>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border Background="{TemplateBinding Background}" CornerRadius="11" SnapsToDevicePixels="True">
+                                                                <Path Data="{StaticResource IconEye}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+                                                        </ControlTemplate>
+                                                    </Button.Template>
+                                                </Button>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- Captura de Monto de Compra en Aliado Comercial (Solo si convenio exige compra mínima) -->
+                                <Border Visibility="{Binding AgreementRequiresPurchase, Converter={StaticResource BoolToVis}}"
+                                        Background="#F8FAFC"
+                                        BorderBrush="{DynamicResource BrushBorderMedium}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="10,8"
+                                        Margin="0,8,0,0">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <Grid Grid.Row="0" Margin="0,0,0,6">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="VALOR DE COMPRA EN ALIANZA *"
+                                                           FontSize="10.5"
+                                                           FontWeight="Bold"
+                                                           Foreground="{DynamicResource BrushTextSecondary}"/>
+                                                <TextBlock Text="{Binding SelectedAgreement.MinPurchaseAmount, StringFormat=' (Mínimo: ${0:N0})'}"
+                                                           FontSize="10.5"
+                                                           Foreground="{DynamicResource BrushTextMuted}"/>
+                                            </StackPanel>
+
+                                            <!-- Badge estado de compra -->
+                                            <Border Grid.Column="1"
+                                                    Background="{Binding AgreementMinPurchaseBadgeBg}"
+                                                    CornerRadius="4"
+                                                    Padding="6,2">
+                                                <TextBlock Text="{Binding AgreementMinPurchaseStatusText}"
+                                                           Foreground="{Binding AgreementMinPurchaseBadgeFg}"
+                                                           FontSize="10"
+                                                           FontWeight="Bold"/>
+                                            </Border>
+                                        </Grid>
+
+                                        <!-- Input de Monto con Placeholder 'Ej: 50000' -->
+                                        <Grid Grid.Row="1">
+                                            <TextBox Text="{Binding CustomerPurchaseAmountText, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                     Style="{StaticResource QuickCustomerTextBox}"
+                                                     Height="36"
+                                                     FontSize="13"
+                                                     FontWeight="SemiBold"
+                                                     Padding="28,4,8,4"/>
+                                            <!-- Prefijo $ -->
+                                            <TextBlock Text="$"
+                                                       Foreground="{DynamicResource BrushTextMuted}"
+                                                       FontSize="13"
+                                                       FontWeight="Bold"
+                                                       HorizontalAlignment="Left"
+                                                       VerticalAlignment="Center"
+                                                       Margin="10,0,0,0"
+                                                       IsHitTestVisible="False"/>
+                                            <!-- Placeholder 'Ej: 50000' visible si está vacío -->
+                                            <TextBlock Text="Ej: 50000"
+                                                       Foreground="#94A3B8"
+                                                       FontSize="13"
+                                                       HorizontalAlignment="Left"
+                                                       VerticalAlignment="Center"
+                                                       Margin="28,0,0,0"
+                                                       IsHitTestVisible="False">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CustomerPurchaseAmountText}" Value="">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Banner Informativo del Estado de la Regla del Convenio -->
+                                <Border Visibility="{Binding HasAgreementDiscount, Converter={StaticResource BoolToVis}}"
+                                        Background="#F8FAFC"
+                                        BorderBrush="{Binding AgreementRuleStatusBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="10,6"
+                                        Margin="0,8,0,0">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
                                             <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                            <TextBlock Text="CAMBIO / DEVUELTA AL CLIENTE" FontSize="13" FontWeight="Black" Foreground="#166534"/>
-                                            <TextBlock Text="Entregar este valor al conductor" FontSize="12" Foreground="#15803D" Margin="0,1,0,0"/>
+                                        <Path Grid.Column="0"
+                                              Data="{StaticResource IconInfo}"
+                                              Fill="{Binding AgreementRuleStatusBrush}"
+                                              Width="14" Height="14"
+                                              Stretch="Uniform"
+                                              VerticalAlignment="Center"
+                                              Margin="0,0,8,0"/>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding AgreementRuleStatusTitle}"
+                                                       Foreground="{Binding AgreementRuleStatusBrush}"
+                                                       FontSize="11.5"
+                                                       FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding AgreementRuleStatusSubtitle}"
+                                                       Visibility="{Binding AgreementRuleStatusSubtitleVisibility}"
+                                                       Foreground="#DC2626"
+                                                       FontSize="10.5"
+                                                       Margin="0,2,0,0"
+                                                       TextWrapping="Wrap"/>
                                         </StackPanel>
-                                        <TextBlock Grid.Column="1"
-                                                   Text="{Binding ChangeDue, Converter={StaticResource CurrencyConv}}"
-                                                   FontSize="28"
-                                                   FontWeight="Black"
-                                                   FontFamily="{StaticResource FontFamilyMonospace}"
-                                                   Foreground="#15803D"
-                                                   VerticalAlignment="Center"/>
                                     </Grid>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Tiquete Extraviado / Dañado -->
+                        <Border Background="#F8FAFC"
+                                BorderBrush="{DynamicResource BrushBorderMedium}"
+                                BorderThickness="1.5"
+                                CornerRadius="12"
+                                Padding="14,10"
+                                Margin="0,0,0,16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <CheckBox Grid.Column="0"
+                                          IsChecked="{Binding IsLostTicket, Mode=TwoWay}"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,12,0"/>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Tiquete Extraviado / Dañado" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                    <TextBlock Text="Marque esta opción si el usuario no presenta el tiquete físico de ingreso."
+                                               FontSize="11" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
+                                </StackPanel>
+
+                                <Border Grid.Column="2"
+                                        Visibility="{Binding HasLostTicketFee, Converter={StaticResource BoolToVis}}"
+                                        Background="{DynamicResource BrushWarningBg}"
+                                        BorderBrush="{DynamicResource BrushWarning}"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Padding="8,3"
+                                        VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding LostTicketFee, Converter={StaticResource CurrencyConv}, StringFormat='{}Recargo: +{0}'}"
+                                               FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushWarningText}"/>
                                 </Border>
                             </Grid>
                         </Border>

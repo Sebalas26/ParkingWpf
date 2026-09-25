@@ -9,6 +9,52 @@ namespace Parking.Views
         {
             InitializeComponent();
             Loaded += CheckOutDialog_Loaded;
+            DataContextChanged += CheckOutDialog_DataContextChanged;
+            Closed += (s, e) =>
+            {
+                if (DataContext is System.ComponentModel.INotifyPropertyChanged vm)
+                {
+                    vm.PropertyChanged -= ViewModel_PropertyChanged;
+                }
+            };
+        }
+
+        private void CheckOutDialog_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (e.OldValue is System.ComponentModel.INotifyPropertyChanged oldVm)
+            {
+                oldVm.PropertyChanged -= ViewModel_PropertyChanged;
+            }
+            if (e.NewValue is System.ComponentModel.INotifyPropertyChanged newVm)
+            {
+                newVm.PropertyChanged += ViewModel_PropertyChanged;
+            }
+        }
+
+        private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(Parking.ViewModels.CheckOutViewModel.SelectedAgreement))
+            {
+                if (DataContext is Parking.ViewModels.CheckOutViewModel vm && vm.SelectedAgreement != null)
+                {
+                    Dispatcher.InvokeAsync(async () =>
+                    {
+                        await System.Threading.Tasks.Task.Delay(100);
+                        DialogScrollViewer?.ScrollToVerticalOffset(DialogScrollViewer.VerticalOffset + 180);
+                    });
+                }
+            }
+            else if (e.PropertyName == nameof(Parking.ViewModels.CheckOutViewModel.SelectedResolution))
+            {
+                if (DataContext is Parking.ViewModels.CheckOutViewModel vm && vm.SelectedResolution != null)
+                {
+                    Dispatcher.InvokeAsync(async () =>
+                    {
+                        await System.Threading.Tasks.Task.Delay(100);
+                        DialogScrollViewer?.ScrollToVerticalOffset(DialogScrollViewer.VerticalOffset + 180);
+                    });
+                }
+            }
         }
 
         private void CheckOutDialog_Loaded(object sender, RoutedEventArgs e)

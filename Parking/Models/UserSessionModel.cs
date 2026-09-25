@@ -19,6 +19,8 @@ public class UserSessionModel
     public int? CompanyId { get; set; }
     public string? CompanyName { get; set; }
     public string? CompanyNit { get; set; }
+    public string? CompanyEmail { get; set; }
+    public string? CompanyPhone { get; set; }
     public string? CompanyLogo { get; set; }
     public bool AllowMultipleSessions { get; set; }
     public int MaxActiveSessionsPerUser { get; set; } = 1;

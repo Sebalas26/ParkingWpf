@@ -308,6 +308,30 @@ public class SyncEngineService : ISyncEngineService
                 }
             }
 
+            if (!string.IsNullOrWhiteSpace(bootstrap.CompanyEmail))
+            {
+                if (_sessionService.CurrentUser != null)
+                {
+                    _sessionService.CurrentUser.CompanyEmail = bootstrap.CompanyEmail;
+                }
+                if (_sessionService.CurrentBranch != null)
+                {
+                    _sessionService.UpdateCurrentBranch(b => b.CompanyEmail = bootstrap.CompanyEmail);
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(bootstrap.CompanyPhone))
+            {
+                if (_sessionService.CurrentUser != null)
+                {
+                    _sessionService.CurrentUser.CompanyPhone = bootstrap.CompanyPhone;
+                }
+                if (_sessionService.CurrentBranch != null)
+                {
+                    _sessionService.UpdateCurrentBranch(b => b.CompanyPhone = bootstrap.CompanyPhone);
+                }
+            }
+
             if (_sessionService.CurrentUser != null)
             {
                 _sessionService.CurrentUser.RequireOpenShiftToOperate = bootstrap.RequireOpenShiftToOperate;

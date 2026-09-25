@@ -159,4 +159,102 @@ public class CheckInViewModelTests
         vm.IsPreClosingAlertVisible.Should().BeFalse();
         vm.PreClosingAlertMessage.Should().BeNull();
     }
+
+    [Fact]
+    public void Notes_WhenExceeding50Characters_TruncatesTo50Characters()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var longNotes = "Esta es una observación de prueba que supera claramente los cincuenta caracteres permitidos.";
+
+        // Act
+        vm.Notes = longNotes;
+
+        // Assert
+        vm.Notes.Should().NotBeNull();
+        vm.Notes!.Length.Should().Be(50);
+        vm.Notes.Should().Be(longNotes.Substring(0, 50));
+    }
+
+    [Fact]
+    public async Task RecentEntries_Pagination_SplitsIntoPagesOf4AndUpdatesIndicator()
+    {
+        // Arrange
+        var tickets = new List<ParkingTicket>();
+        for (int i = 1; i <= 9; i++)
+        {
+            tickets.Add(new ParkingTicket
+            {
+                TicketId = Guid.NewGuid(),
+                TicketNumber = $"TK-{i:D3}",
+                PlateNumber = $"ABC{i:D3}",
+                EntryTimeUtc = DateTime.UtcNow.AddMinutes(-i * 10),
+                VehicleType = VehicleType.Car
+            });
+        }
+        _mockTicketService.Setup(s => s.GetActiveTicketsAsync()).ReturnsAsync(tickets);
+
+        var vm = CreateViewModel();
+
+        // Act
+        await vm.RefreshRecentEntriesAndOccupancyAsync();
+
+        // Assert
+        vm.RecentEntriesTotalPages.Should().Be(3);
+        vm.RecentEntriesCurrentPage.Should().Be(1);
+        vm.HasRecentEntriesPagination.Should().BeTrue();
+        vm.RecentEntries.Should().HaveCount(4);
+        vm.RecentEntriesPageIndicator.Should().Be("Pág. 1 de 3");
+        vm.PreviousRecentEntriesPageCommand.CanExecute(null).Should().BeFalse();
+        vm.NextRecentEntriesPageCommand.CanExecute(null).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RecentEntries_NavigationCommands_MoveBetweenPagesCorrectly()
+    {
+        // Arrange
+        var tickets = new List<ParkingTicket>();
+        for (int i = 1; i <= 9; i++)
+        {
+            tickets.Add(new ParkingTicket
+            {
+                TicketId = Guid.NewGuid(),
+                TicketNumber = $"TK-{i:D3}",
+                PlateNumber = $"ABC{i:D3}",
+                EntryTimeUtc = DateTime.UtcNow.AddMinutes(-i * 10),
+                VehicleType = VehicleType.Car
+            });
+        }
+        _mockTicketService.Setup(s => s.GetActiveTicketsAsync()).ReturnsAsync(tickets);
+
+        var vm = CreateViewModel();
+        await vm.RefreshRecentEntriesAndOccupancyAsync();
+
+        // Act - Avanzar a Página 2
+        vm.NextRecentEntriesPageCommand.Execute(null);
+
+        // Assert - Página 2
+        vm.RecentEntriesCurrentPage.Should().Be(2);
+        vm.RecentEntries.Should().HaveCount(4);
+        vm.RecentEntriesPageIndicator.Should().Be("Pág. 2 de 3");
+        vm.PreviousRecentEntriesPageCommand.CanExecute(null).Should().BeTrue();
+        vm.NextRecentEntriesPageCommand.CanExecute(null).Should().BeTrue();
+
+        // Act - Avanzar a Página 3 (Última)
+        vm.NextRecentEntriesPageCommand.Execute(null);
+
+        // Assert - Página 3
+        vm.RecentEntriesCurrentPage.Should().Be(3);
+        vm.RecentEntries.Should().HaveCount(1);
+        vm.RecentEntriesPageIndicator.Should().Be("Pág. 3 de 3");
+        vm.PreviousRecentEntriesPageCommand.CanExecute(null).Should().BeTrue();
+        vm.NextRecentEntriesPageCommand.CanExecute(null).Should().BeFalse();
+
+        // Act - Retroceder a Página 2
+        vm.PreviousRecentEntriesPageCommand.Execute(null);
+
+        // Assert - De vuelta a Página 2
+        vm.RecentEntriesCurrentPage.Should().Be(2);
+        vm.RecentEntriesPageIndicator.Should().Be("Pág. 2 de 3");
+    }
 }

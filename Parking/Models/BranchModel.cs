@@ -20,6 +20,12 @@ public class BranchModel
     [JsonPropertyName("companyNit")]
     public string? CompanyNit { get; set; }
 
+    [JsonPropertyName("companyEmail")]
+    public string? CompanyEmail { get; set; }
+
+    [JsonPropertyName("companyPhone")]
+    public string? CompanyPhone { get; set; }
+
     [JsonPropertyName("companyLogo")]
     public string? CompanyLogo { get; set; }
 

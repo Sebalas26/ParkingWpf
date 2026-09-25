@@ -588,12 +588,21 @@
 
                         <StackPanel Grid.Column="0" Margin="0,0,8,0">
                             <TextBlock Text="TELÉFONO DEL CONDUCTOR (OPCIONAL)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding PhoneNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}" Height="38"/>
+                            <TextBox Text="{Binding PhoneNumber, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource ModernTextBox}"
+                                     Height="42"
+                                     Padding="10,8"
+                                     VerticalContentAlignment="Center"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Margin="8,0,0,0">
                             <TextBlock Text="OBSERVACIONES / NOTAS (OPCIONAL)" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ModernTextBox}" Height="38"/>
+                            <TextBox Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource ModernTextBox}"
+                                     Height="42"
+                                     Padding="10,8"
+                                     VerticalContentAlignment="Center"
+                                     MaxLength="50"/>
                         </StackPanel>
                     </Grid>
 
@@ -911,6 +920,53 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
+
+                        <!-- Barra de Paginación de Entradas Recientes -->
+                        <Grid Margin="0,8,0,0" Visibility="{Binding HasRecentEntriesPagination, Converter={StaticResource BoolToVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Button Grid.Column="0"
+                                    Command="{Binding PreviousRecentEntriesPageCommand}"
+                                    Style="{StaticResource OutlineButton}"
+                                    Height="28"
+                                    Padding="8,2"
+                                    FontSize="12"
+                                    VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource IconChevronLeft}"
+                                          Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          Width="10" Height="10" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <TextBlock Text="Anterior" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding RecentEntriesPageIndicator}"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{DynamicResource BrushTextSecondary}"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+
+                            <Button Grid.Column="2"
+                                    Command="{Binding NextRecentEntriesPageCommand}"
+                                    Style="{StaticResource OutlineButton}"
+                                    Height="28"
+                                    Padding="8,2"
+                                    FontSize="12"
+                                    VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Siguiente" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <Path Data="{StaticResource IconChevronRight}"
+                                          Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                          Width="10" Height="10" Stretch="Uniform" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
                     </StackPanel>
                 </Border>
             </StackPanel>

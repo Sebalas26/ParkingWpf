@@ -58,6 +58,27 @@ public partial class CheckOutViewModel : ViewModelBase
     private ParkingTicket? _selectedTicket;
 
     [ObservableProperty]
+    private bool _isMoreDataPopupOpen;
+
+    public string FormattedCustomerPhone =>
+        !string.IsNullOrWhiteSpace(SelectedTicket?.CustomerPhone) ? SelectedTicket.CustomerPhone : "N/A";
+
+    public string FormattedNotes =>
+        !string.IsNullOrWhiteSpace(SelectedTicket?.Notes) ? SelectedTicket.Notes : "N/A";
+
+    [RelayCommand]
+    private void ToggleMoreDataPopup()
+    {
+        IsMoreDataPopupOpen = !IsMoreDataPopupOpen;
+    }
+
+    [RelayCommand]
+    private void CloseMoreDataPopup()
+    {
+        IsMoreDataPopupOpen = false;
+    }
+
+    [ObservableProperty]
     private bool _isMonthlyTicket;
 
     [ObservableProperty]
@@ -157,6 +178,39 @@ public partial class CheckOutViewModel : ViewModelBase
     private string _popupDiscountSummary = string.Empty;
 
     [ObservableProperty]
+    private bool _isAgreementTooltipOpen;
+
+    [ObservableProperty]
+    private bool _isAgreementEligible;
+
+    [ObservableProperty]
+    private bool _agreementRequiresPurchase;
+
+    [ObservableProperty]
+    private bool _agreementMinPurchaseMet = true;
+
+    [ObservableProperty]
+    private bool _agreementMaxTimeMet = true;
+
+    [ObservableProperty]
+    private int _agreementTotalStayMinutes;
+
+    [ObservableProperty]
+    private int _agreementMaxAllowedMinutes;
+
+    [ObservableProperty]
+    private string _agreementBenefitText = string.Empty;
+
+    [ObservableProperty]
+    private string _agreementEligibilityBannerText = string.Empty;
+
+    [ObservableProperty]
+    private string _agreementEligibilityBannerStatus = string.Empty;
+
+    [ObservableProperty]
+    private string _customerPurchaseAmountText = string.Empty;
+
+    [ObservableProperty]
     private BillingResolution? _selectedResolution;
 
     [ObservableProperty]
@@ -201,6 +255,7 @@ public partial class CheckOutViewModel : ViewModelBase
         (SelectedResolution != null && IsElectronicResolutionDefensive(SelectedResolution));
 
     private readonly DispatcherTimer _agreementPopupTimer;
+    private readonly DispatcherTimer _agreementTooltipTimer;
 
     public ObservableCollection<ParkingTicket> ActiveVehicles { get; } = new();
     public ObservableCollection<Store> AvailableStores { get; } = new();
@@ -357,12 +412,22 @@ public partial class CheckOutViewModel : ViewModelBase
 
         _agreementPopupTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromSeconds(6)
+            Interval = TimeSpan.FromSeconds(4)
         };
         _agreementPopupTimer.Tick += (s, e) =>
         {
             _agreementPopupTimer.Stop();
             IsAgreementPopupOpen = false;
+        };
+
+        _agreementTooltipTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(4)
+        };
+        _agreementTooltipTimer.Tick += (s, e) =>
+        {
+            _agreementTooltipTimer.Stop();
+            IsAgreementTooltipOpen = false;
         };
 
         _ticketService.TicketRegistered += (s, t) => _ = LoadActiveVehiclesAsync();
@@ -1017,7 +1082,7 @@ public partial class CheckOutViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void ToggleSelectAgreement(CommercialAgreement? agreement)
+    private async Task ToggleSelectAgreementAsync(CommercialAgreement? agreement)
     {
         if (agreement == null) return;
 
@@ -1025,14 +1090,43 @@ public partial class CheckOutViewModel : ViewModelBase
         {
             SelectedAgreement = null;
             HasAgreementDiscount = false;
+            CustomerPurchaseAmount = 0m;
+            CustomerPurchaseAmountText = string.Empty;
             DiscountAmount = 0m;
+            CloseAgreementTooltip();
+            RecalculateLiveFee();
+            return;
         }
-        else
+
+        // Validar si la estadía del vehículo supera el tiempo máximo permitido para este convenio
+        if (SelectedTicket != null)
         {
-            SelectedAgreement = agreement;
-            HasAgreementDiscount = true;
-            CustomerPurchaseAmount = agreement.MinPurchaseAmount;
+            var now = _currentGracePeriodSeconds > 0 ? _frozenExitTimeUtc : DateTime.UtcNow;
+            var totalStay = Math.Max(0, (int)(now - SelectedTicket.EntryTimeUtc).TotalMinutes);
+            var maxAllowed = (agreement.MaxHoursApplicable.GetValueOrDefault(0) * 60) + agreement.MaxMinutesApplicable.GetValueOrDefault(0);
+
+            if (maxAllowed > 0 && totalStay > maxAllowed)
+            {
+                SelectedAgreement = null;
+                HasAgreementDiscount = false;
+                CustomerPurchaseAmount = 0m;
+                CustomerPurchaseAmountText = string.Empty;
+                DiscountAmount = 0m;
+                CloseAgreementTooltip();
+                RecalculateLiveFee();
+
+                await _dialogService.ShowAlertAsync(
+                    "Convenio No Aplicable",
+                    $"El convenio '{agreement.Name}' no aplica para este vehículo porque la estadía ({FormatMinutesToHours(totalStay)}) supera el tiempo máximo permitido ({FormatMinutesToHours(maxAllowed)}).",
+                    DialogNotificationType.Warning);
+                return;
+            }
         }
+
+        SelectedAgreement = agreement;
+        HasAgreementDiscount = true;
+        CustomerPurchaseAmount = 0m; // Formulario limpio: NO pre-llenar con agreement.MinPurchaseAmount
+        CustomerPurchaseAmountText = string.Empty;
 
         RecalculateLiveFee();
     }
@@ -1061,6 +1155,10 @@ public partial class CheckOutViewModel : ViewModelBase
         {
             parts.Add($"Máx. {agreement.MaxHoursApplicable.Value} horas");
         }
+        if (agreement.MaxMinutesApplicable.HasValue && agreement.MaxMinutesApplicable.Value > 0)
+        {
+            parts.Add($"Máx. {agreement.MaxMinutesApplicable.Value} min");
+        }
 
         PopupDiscountSummary = parts.Count > 0 ? string.Join(" • ", parts) : "Tarifa de convenio preferencial";
 
@@ -1076,7 +1174,43 @@ public partial class CheckOutViewModel : ViewModelBase
         IsAgreementPopupOpen = false;
     }
 
+    [RelayCommand]
+    private void ShowAgreementTooltip()
+    {
+        _agreementTooltipTimer.Stop();
+        IsAgreementTooltipOpen = true;
+        _agreementTooltipTimer.Start();
+    }
+
+    [RelayCommand]
+    private void CloseAgreementTooltip()
+    {
+        _agreementTooltipTimer.Stop();
+        IsAgreementTooltipOpen = false;
+    }
+
     partial void OnCustomerPurchaseAmountChanged(decimal value) => RecalculateLiveFee();
+
+    partial void OnCustomerPurchaseAmountTextChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            CustomerPurchaseAmount = 0m;
+        }
+        else
+        {
+            var digits = new string(value.Where(char.IsDigit).ToArray());
+            if (decimal.TryParse(digits, out var parsed))
+            {
+                CustomerPurchaseAmount = parsed;
+            }
+            else
+            {
+                CustomerPurchaseAmount = 0m;
+            }
+        }
+        RecalculateLiveFee();
+    }
 
     partial void OnHasAgreementDiscountChanged(bool value)
     {
@@ -1085,8 +1219,10 @@ public partial class CheckOutViewModel : ViewModelBase
             SelectedStore = null;
             SelectedAgreement = null;
             CustomerPurchaseAmount = 0m;
+            CustomerPurchaseAmountText = string.Empty;
             InvoiceNumber = string.Empty;
             DiscountAmount = 0m;
+            CloseAgreementTooltip();
         }
 
         RecalculateLiveFee();
@@ -1094,6 +1230,10 @@ public partial class CheckOutViewModel : ViewModelBase
 
     async partial void OnSelectedTicketChanged(ParkingTicket? value)
     {
+        IsMoreDataPopupOpen = false;
+        OnPropertyChanged(nameof(FormattedCustomerPhone));
+        OnPropertyChanged(nameof(FormattedNotes));
+
         if (value != null)
         {
             await LoadPaymentMethodsAsync();
@@ -1687,28 +1827,32 @@ public partial class CheckOutViewModel : ViewModelBase
 
         GrossFee = _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, feeCalculationTime, 0, IsLostTicket);
 
-        if (HasAgreementDiscount && SelectedAgreement != null)
+        EvaluateAgreementEligibility();
+
+        if (HasAgreementDiscount && SelectedAgreement != null && IsAgreementEligible)
         {
             if (SelectedAgreement.DiscountType == 2 || (SelectedAgreement.FreeHours.GetValueOrDefault(0) > 0 || SelectedAgreement.FreeMinutes.GetValueOrDefault(0) > 0))
             {
                 int freeMins = (SelectedAgreement.FreeHours.GetValueOrDefault(0) * 60) + SelectedAgreement.FreeMinutes.GetValueOrDefault(0);
-                if (freeMins <= 0 && SelectedAgreement.MaxHoursApplicable.HasValue)
+                if (freeMins <= 0 && AgreementMaxAllowedMinutes > 0 && SelectedAgreement.DiscountType == 2)
                 {
-                    freeMins = (SelectedAgreement.MaxHoursApplicable.Value * 60) + SelectedAgreement.MaxMinutesApplicable.GetValueOrDefault(0);
+                    freeMins = AgreementMaxAllowedMinutes;
                 }
                 var feeWithoutFreeTime = _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, feeCalculationTime, 0, false);
                 var feeWithFreeTime = _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, feeCalculationTime, freeMins, false);
                 DiscountAmount = Math.Max(0m, feeWithoutFreeTime - feeWithFreeTime);
             }
+            else if (SelectedAgreement.DiscountPercentage.GetValueOrDefault(0) > 0)
+            {
+                DiscountAmount = Math.Round(GrossFee * (SelectedAgreement.DiscountPercentage!.Value / 100m), 2);
+            }
+            else if (SelectedAgreement.DiscountFixedAmount.GetValueOrDefault(0) > 0)
+            {
+                DiscountAmount = Math.Min(GrossFee, SelectedAgreement.DiscountFixedAmount!.Value);
+            }
             else
             {
                 DiscountAmount = _agreementService.CalculateDiscount(SelectedAgreement, CustomerPurchaseAmount, GrossFee);
-                if (DiscountAmount == 0m && SelectedAgreement.MaxHoursApplicable.HasValue && SelectedAgreement.MaxHoursApplicable.Value > 0)
-                {
-                    var freeMinutes = SelectedAgreement.MaxHoursApplicable.Value * 60;
-                    var freeUntil = SelectedTicket.EntryTimeUtc.AddMinutes(freeMinutes);
-                    DiscountAmount = Math.Min(GrossFee, _pricingCalculator.CalculateFee(SelectedTicket.VehicleType, SelectedTicket.EntryTimeUtc, freeUntil));
-                }
             }
         }
         else
@@ -1724,6 +1868,210 @@ public partial class CheckOutViewModel : ViewModelBase
             AmountTendered = CalculatedFee;
         }
     }
+
+    private void EvaluateAgreementEligibility()
+    {
+        if (SelectedAgreement == null || SelectedTicket == null)
+        {
+            IsAgreementEligible = false;
+            AgreementRequiresPurchase = false;
+            AgreementMinPurchaseMet = true;
+            AgreementMaxTimeMet = true;
+            AgreementTotalStayMinutes = 0;
+            AgreementMaxAllowedMinutes = 0;
+            AgreementBenefitText = string.Empty;
+            AgreementEligibilityBannerText = string.Empty;
+            AgreementEligibilityBannerStatus = string.Empty;
+            NotifyAgreementUiProperties();
+            return;
+        }
+
+        var now = _currentGracePeriodSeconds > 0 ? _frozenExitTimeUtc : DateTime.UtcNow;
+        var totalStay = Math.Max(0, (int)(now - SelectedTicket.EntryTimeUtc).TotalMinutes);
+        AgreementTotalStayMinutes = totalStay;
+
+        var maxAllowed = (SelectedAgreement.MaxHoursApplicable.GetValueOrDefault(0) * 60) + SelectedAgreement.MaxMinutesApplicable.GetValueOrDefault(0);
+        AgreementMaxAllowedMinutes = maxAllowed;
+
+        AgreementRequiresPurchase = SelectedAgreement.MinPurchaseAmount > 0;
+        AgreementMinPurchaseMet = !AgreementRequiresPurchase || CustomerPurchaseAmount >= SelectedAgreement.MinPurchaseAmount;
+        AgreementMaxTimeMet = maxAllowed <= 0 || totalStay <= maxAllowed;
+
+        IsAgreementEligible = AgreementMinPurchaseMet && AgreementMaxTimeMet;
+        AgreementBenefitText = FormatAgreementBenefit(SelectedAgreement);
+
+        if (IsAgreementEligible)
+        {
+            AgreementEligibilityBannerText = "✓ Reglas cumplidas — Descuento aplicado";
+            AgreementEligibilityBannerStatus = "success";
+        }
+        else if (!AgreementMinPurchaseMet && !AgreementMaxTimeMet)
+        {
+            AgreementEligibilityBannerText = "⚠️ Requiere compra y superó tiempo límite";
+            AgreementEligibilityBannerStatus = "danger";
+        }
+        else if (!AgreementMinPurchaseMet)
+        {
+            AgreementEligibilityBannerText = "⚠️ Ingrese el valor de compra para aplicar";
+            AgreementEligibilityBannerStatus = "warning";
+        }
+        else
+        {
+            AgreementEligibilityBannerText = "⚠️ Tiempo de estadía supera el máximo permitido";
+            AgreementEligibilityBannerStatus = "danger";
+        }
+
+        NotifyAgreementUiProperties();
+    }
+
+    private void NotifyAgreementUiProperties()
+    {
+        OnPropertyChanged(nameof(AgreementMinPurchaseBadgeSuccessVisibility));
+        OnPropertyChanged(nameof(AgreementMinPurchaseBadgeWarningVisibility));
+        OnPropertyChanged(nameof(HasMaxAllowedTime));
+        OnPropertyChanged(nameof(HasMaxAllowedTimeVisibility));
+        OnPropertyChanged(nameof(NoMaxAllowedTimeVisibility));
+        OnPropertyChanged(nameof(AgreementMaxTimeBadgeSuccessVisibility));
+        OnPropertyChanged(nameof(AgreementMaxTimeBadgeDangerVisibility));
+        OnPropertyChanged(nameof(AgreementMinPurchasePromptVisibility));
+        OnPropertyChanged(nameof(AgreementMinPurchaseSuccessVisibility));
+        OnPropertyChanged(nameof(AgreementMaxAllowedTimeString));
+        OnPropertyChanged(nameof(AgreementStaySuccessString));
+        OnPropertyChanged(nameof(AgreementStayDangerString));
+        OnPropertyChanged(nameof(AgreementEligibilityBannerBrush));
+        OnPropertyChanged(nameof(AgreementMinPurchaseBadgeBg));
+        OnPropertyChanged(nameof(AgreementMinPurchaseBadgeFg));
+        OnPropertyChanged(nameof(AgreementRuleStatusTitle));
+        OnPropertyChanged(nameof(AgreementRuleStatusBrush));
+        OnPropertyChanged(nameof(AgreementRuleStatusSubtitle));
+        OnPropertyChanged(nameof(AgreementRuleStatusSubtitleVisibility));
+        OnPropertyChanged(nameof(AgreementMinPurchaseStatusText));
+        OnPropertyChanged(nameof(AgreementMinPurchaseTooltipStatusText));
+        OnPropertyChanged(nameof(AgreementMinPurchaseRequiredText));
+    }
+
+    public static string FormatAgreementBenefit(CommercialAgreement ag)
+    {
+        if (ag.DiscountType == 2 || ag.FreeHours.GetValueOrDefault(0) > 0 || ag.FreeMinutes.GetValueOrDefault(0) > 0)
+        {
+            var parts = new List<string>();
+            if (ag.FreeHours.GetValueOrDefault(0) > 0) parts.Add($"{ag.FreeHours!.Value}h");
+            if (ag.FreeMinutes.GetValueOrDefault(0) > 0) parts.Add($"{ag.FreeMinutes!.Value}m");
+            if (parts.Count == 0 && ag.MaxHoursApplicable.GetValueOrDefault(0) > 0)
+            {
+                parts.Add($"{ag.MaxHoursApplicable!.Value}h");
+                if (ag.MaxMinutesApplicable.GetValueOrDefault(0) > 0) parts.Add($"{ag.MaxMinutesApplicable!.Value}m");
+            }
+            return parts.Count > 0 ? $"{string.Join(" ", parts)} GRATIS" : "TIEMPO LIBRE";
+        }
+        if (ag.DiscountPercentage.GetValueOrDefault(0) > 0)
+        {
+            return $"{ag.DiscountPercentage!.Value:N0}% DCTO";
+        }
+        if (ag.DiscountFixedAmount.GetValueOrDefault(0) > 0)
+        {
+            return $"${ag.DiscountFixedAmount!.Value:N0} DCTO";
+        }
+        if (ag.MaxHoursApplicable.GetValueOrDefault(0) > 0 || ag.MaxMinutesApplicable.GetValueOrDefault(0) > 0)
+        {
+            var parts = new List<string>();
+            if (ag.MaxHoursApplicable.GetValueOrDefault(0) > 0) parts.Add($"{ag.MaxHoursApplicable!.Value}h");
+            if (ag.MaxMinutesApplicable.GetValueOrDefault(0) > 0) parts.Add($"{ag.MaxMinutesApplicable!.Value}m");
+            return $"{string.Join(" ", parts)} GRATIS";
+        }
+        return "CONVENIO";
+    }
+
+    public static string FormatMinutesToHours(int totalMinutes)
+    {
+        int hours = totalMinutes / 60;
+        int mins = totalMinutes % 60;
+        if (hours == 0) return $"{mins} min";
+        if (mins == 0) return $"{hours} h";
+        return $"{hours}h {mins}m";
+    }
+
+    public bool HasMaxAllowedTime => AgreementMaxAllowedMinutes > 0;
+
+    public System.Windows.Visibility AgreementMinPurchaseBadgeSuccessVisibility =>
+        AgreementRequiresPurchase && AgreementMinPurchaseMet ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+    public System.Windows.Visibility AgreementMinPurchaseBadgeWarningVisibility =>
+        AgreementRequiresPurchase && !AgreementMinPurchaseMet ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+    public System.Windows.Visibility HasMaxAllowedTimeVisibility =>
+        AgreementMaxAllowedMinutes > 0 ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+    public System.Windows.Visibility NoMaxAllowedTimeVisibility =>
+        AgreementMaxAllowedMinutes <= 0 ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+    public System.Windows.Visibility AgreementMaxTimeBadgeSuccessVisibility =>
+        AgreementMaxAllowedMinutes > 0 && AgreementMaxTimeMet ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+    public System.Windows.Visibility AgreementMaxTimeBadgeDangerVisibility =>
+        AgreementMaxAllowedMinutes > 0 && !AgreementMaxTimeMet ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+    public System.Windows.Visibility AgreementMinPurchasePromptVisibility =>
+        AgreementRequiresPurchase && !AgreementMinPurchaseMet ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+    public System.Windows.Visibility AgreementMinPurchaseSuccessVisibility =>
+        AgreementRequiresPurchase && AgreementMinPurchaseMet ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+    public string AgreementMaxAllowedTimeString =>
+        AgreementMaxAllowedMinutes > 0 ? FormatMinutesToHours(AgreementMaxAllowedMinutes) : "Sin límite";
+
+    public string AgreementStaySuccessString =>
+        $"✓ En tiempo ({FormatMinutesToHours(AgreementTotalStayMinutes)})";
+
+    public string AgreementStayDangerString =>
+        $"❌ Excedido ({FormatMinutesToHours(AgreementTotalStayMinutes)})";
+
+    public System.Windows.Media.Brush AgreementEligibilityBannerBrush =>
+        AgreementEligibilityBannerStatus switch
+        {
+            "success" => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(52, 211, 153)), // #34D399
+            "warning" => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(251, 191, 36)), // #FBBF24
+            _ => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(248, 113, 113)) // #F87171
+        };
+
+    public System.Windows.Media.Brush AgreementMinPurchaseBadgeBg =>
+        AgreementMinPurchaseMet
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(220, 252, 231)) // #DCFCE7
+            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(254, 243, 199)); // #FEF3C7
+
+    public System.Windows.Media.Brush AgreementMinPurchaseBadgeFg =>
+        AgreementMinPurchaseMet
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(21, 128, 61)) // #15803D
+            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(180, 83, 9)); // #B45309
+
+    public string AgreementRuleStatusTitle =>
+        IsAgreementEligible
+            ? $"✓ Convenio aplicado: {SelectedAgreement?.Name}"
+            : $"⚠️ Convenio no cumple requisitos: {SelectedAgreement?.Name}";
+
+    public System.Windows.Media.Brush AgreementRuleStatusBrush =>
+        IsAgreementEligible
+            ? new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(5, 150, 105)) // #059669
+            : new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(220, 38, 38)); // #DC2626
+
+    public string AgreementRuleStatusSubtitle =>
+        !AgreementMaxTimeMet
+            ? $"Estadía ({FormatMinutesToHours(AgreementTotalStayMinutes)}) supera el máximo permitido de {FormatMinutesToHours(AgreementMaxAllowedMinutes)}."
+            : (!AgreementMinPurchaseMet
+                ? $"Requiere compra mínima de ${SelectedAgreement?.MinPurchaseAmount:N0}."
+                : string.Empty);
+
+    public System.Windows.Visibility AgreementRuleStatusSubtitleVisibility =>
+        !IsAgreementEligible && !string.IsNullOrEmpty(AgreementRuleStatusSubtitle) ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+
+    public string AgreementMinPurchaseStatusText =>
+        AgreementMinPurchaseMet ? "✓ Cumple compra mínima" : "⚠️ Monto insuficiente";
+
+    public string AgreementMinPurchaseTooltipStatusText =>
+        AgreementMinPurchaseMet ? "✓ Cumplida" : "⚠️ Pendiente";
+
+    public string AgreementMinPurchaseRequiredText =>
+        SelectedAgreement?.MinPurchaseAmount > 0 ? $"${SelectedAgreement.MinPurchaseAmount:N0}" : "No aplica";
 
     private async Task HandlePaymentTimeoutAsync()
     {
@@ -1891,6 +2239,34 @@ public partial class CheckOutViewModel : ViewModelBase
                 return;
             }
 
+            EvaluateAgreementEligibility();
+            if (!IsAgreementEligible)
+            {
+                if (!AgreementMaxTimeMet)
+                {
+                    var name = SelectedAgreement.Name;
+                    SelectedAgreement = null;
+                    HasAgreementDiscount = false;
+                    DiscountAmount = 0m;
+                    RecalculateLiveFee();
+
+                    await _dialogService.ShowAlertAsync(
+                        "Convenio Desmarcado",
+                        $"El convenio '{name}' no es aplicable porque la estadía supera el tiempo máximo permitido ({FormatMinutesToHours(AgreementMaxAllowedMinutes)}). Se ha desmarcado el convenio para continuar.",
+                        DialogNotificationType.Warning);
+                    return;
+                }
+
+                if (!AgreementMinPurchaseMet)
+                {
+                    await _dialogService.ShowAlertAsync(
+                        "Compra Mínima Requerida",
+                        $"El convenio '{SelectedAgreement.Name}' requiere una compra mínima de ${SelectedAgreement.MinPurchaseAmount:N0} en el comercio aliado. Ingrese el monto de compra válido o desmarque el convenio para continuar con la salida.",
+                        DialogNotificationType.Warning);
+                    return;
+                }
+            }
+
             if (SelectedStore == null && SelectedAgreement.StoreId != Guid.Empty)
             {
                 SelectedStore = AvailableStores.FirstOrDefault(s => s.StoreId == SelectedAgreement.StoreId);
@@ -1899,11 +2275,6 @@ public partial class CheckOutViewModel : ViewModelBase
             if (string.IsNullOrWhiteSpace(InvoiceNumber))
             {
                 InvoiceNumber = $"CONV-{SelectedAgreement.Name?.Trim().ToUpperInvariant() ?? "SEDE"}";
-            }
-
-            if (CustomerPurchaseAmount < SelectedAgreement.MinPurchaseAmount && SelectedAgreement.MinPurchaseAmount > 0)
-            {
-                CustomerPurchaseAmount = SelectedAgreement.MinPurchaseAmount;
             }
         }
 

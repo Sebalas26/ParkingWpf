@@ -21,6 +21,15 @@
                 <Setter Property="FontFamily" Value="{StaticResource FontFamilyPrimary}"/>
             </Style>
 
+            <Style TargetType="Control">
+                <Setter Property="FontFamily" Value="{StaticResource FontFamilyPrimary}"/>
+            </Style>
+
+            <Style TargetType="Page">
+                <Setter Property="FontFamily" Value="{StaticResource FontFamilyPrimary}"/>
+                <Setter Property="TextElement.FontFamily" Value="{StaticResource FontFamilyPrimary}"/>
+            </Style>
+
             <!-- Global Converters for universal access across Views and DataGridColumns -->
             <conv:CurrencyConverter x:Key="CurrencyConv"/>
             <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>

@@ -387,7 +387,8 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border HorizontalAlignment="Stretch"
-                                        VerticalAlignment="Top"
+                                        VerticalAlignment="Stretch"
+                                        MinHeight="128"
                                         Background="#F0F0F0"
                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
                                         BorderThickness="1.5"
@@ -415,6 +416,7 @@
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
                                         </Grid.RowDefinitions>
 
                                         <!-- Fila 1: Icono + Placa (Izquierda) y Categoría (Derecha) -->
@@ -424,7 +426,7 @@
                                                 <ColumnDefinition Width="Auto"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                                                 <Border Width="32"
                                                         Height="32"
                                                         CornerRadius="7"
@@ -464,17 +466,17 @@
 
                                             <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,6,0">
                                                 <TextBlock Text="{Binding EntryTime, StringFormat='{}Entrada: {0:HH:mm}'}"
-                                                           FontSize="11"
+                                                           FontSize="13"
                                                            FontWeight="SemiBold"
                                                            Foreground="{DynamicResource BrushTextMuted}"/>
                                                 <Border Background="#F1F5F9"
                                                         CornerRadius="5"
-                                                        Padding="5,2"
+                                                        Padding="6,2"
                                                         Margin="0,3,0,0"
                                                         HorizontalAlignment="Left">
                                                     <TextBlock Text="{Binding FormattedDuration}"
-                                                               FontSize="10.5"
-                                                               FontWeight="Bold"
+                                                               FontSize="13.5"
+                                                               FontWeight="Black"
                                                                Foreground="{DynamicResource BrushPrimary}"/>
                                                 </Border>
                                             </StackPanel>
@@ -486,11 +488,39 @@
                                                     CommandParameter="{Binding}"
                                                     Style="{StaticResource SuccessButton}"
                                                     Padding="10,2"
-                                                    FontSize="11.5"
+                                                    FontSize="12"
                                                     FontWeight="Bold"
                                                     Height="32"
                                                     VerticalAlignment="Center"/>
                                         </Grid>
+
+                                        <!-- Fila 3: Teléfono y Observaciones de ingreso si existen -->
+                                        <StackPanel Grid.Row="2" Margin="0,6,0,0" VerticalAlignment="Bottom">
+                                            <!-- Teléfono del Conductor -->
+                                            <StackPanel Orientation="Horizontal"
+                                                        Visibility="{Binding CustomerPhone, Converter={StaticResource NullToVis}}"
+                                                        Margin="0,0,0,3">
+                                                <Path Data="{StaticResource IconPhone}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding CustomerPhone}"
+                                                           FontSize="13.5"
+                                                           FontWeight="Bold"
+                                                           Foreground="{DynamicResource BrushTextPrimary}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+
+                                            <!-- Observaciones / Notas de Entrada -->
+                                            <StackPanel Orientation="Horizontal"
+                                                        Visibility="{Binding Notes, Converter={StaticResource NullToVis}}">
+                                                <Path Data="{StaticResource IconNotes}" Fill="#D97706" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="{Binding Notes}"
+                                                           FontSize="13"
+                                                           FontWeight="SemiBold"
+                                                           Foreground="#1E293B"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding Notes}"
+                                                           MaxWidth="210"/>
+                                            </StackPanel>
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

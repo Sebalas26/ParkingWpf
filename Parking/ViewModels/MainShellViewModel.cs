@@ -38,6 +38,9 @@ public partial class MainShellViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(IsSuperAdmin))]
     [NotifyPropertyChangedFor(nameof(CompanyDisplayName))]
     [NotifyPropertyChangedFor(nameof(CompanyLogoBase64))]
+    [NotifyPropertyChangedFor(nameof(CompanyNit))]
+    [NotifyPropertyChangedFor(nameof(CompanyEmail))]
+    [NotifyPropertyChangedFor(nameof(CompanyPhone))]
     private UserSessionModel? _currentUser;
 
     public bool IsSuperAdmin => CurrentUser?.IsSuperAdmin == true;
@@ -45,6 +48,9 @@ public partial class MainShellViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CompanyDisplayName))]
     [NotifyPropertyChangedFor(nameof(CompanyLogoBase64))]
+    [NotifyPropertyChangedFor(nameof(CompanyNit))]
+    [NotifyPropertyChangedFor(nameof(CompanyEmail))]
+    [NotifyPropertyChangedFor(nameof(CompanyPhone))]
     private BranchModel? _currentBranch;
 
     public string CompanyDisplayName =>
@@ -60,6 +66,25 @@ public partial class MainShellViewModel : ViewModelBase
             : (!string.IsNullOrWhiteSpace(CurrentBranch?.CompanyLogo)
                 ? CurrentBranch.CompanyLogo
                 : CurrentBranch?.LogoBase64);
+
+    public string? CompanyNit =>
+        !string.IsNullOrWhiteSpace(CurrentBranch?.CompanyNit)
+            ? CurrentBranch.CompanyNit
+            : CurrentUser?.CompanyNit;
+
+    public string? CompanyEmail =>
+        !string.IsNullOrWhiteSpace(CurrentBranch?.CompanyEmail)
+            ? CurrentBranch.CompanyEmail
+            : (!string.IsNullOrWhiteSpace(CurrentUser?.CompanyEmail)
+                ? CurrentUser.CompanyEmail
+                : (CurrentUser?.Username?.Contains('@') == true ? CurrentUser.Username : null));
+
+    public string? CompanyPhone =>
+        !string.IsNullOrWhiteSpace(CurrentBranch?.Phone)
+            ? CurrentBranch.Phone
+            : (!string.IsNullOrWhiteSpace(CurrentBranch?.CompanyPhone)
+                ? CurrentBranch.CompanyPhone
+                : CurrentUser?.CompanyPhone);
 
     [ObservableProperty]
     private bool _hasMultipleBranches;

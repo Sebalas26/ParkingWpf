@@ -164,6 +164,8 @@
                     Background="{DynamicResource BrushSidebarBackground}"
                     BorderBrush="{DynamicResource BrushBorderSubtle}"
                     BorderThickness="0,0,1,0"
+                    CornerRadius="0,20,0,0"
+                    ClipToBounds="True"
                     Padding="16,20">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -172,11 +174,17 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <!-- Sidebar Brand Header con Logo y Nombre Oficial de Empresa -->
-                    <StackPanel Grid.Row="0" Margin="4,0,0,24">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Sidebar Brand Header con Logo, Nombre Oficial, NIT, Teléfono y Correo -->
+                    <StackPanel Grid.Row="0" Margin="4,0,0,20">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
                             <!-- Logo de la Empresa (si CompanyLogoBase64 != null) -->
-                            <Border Width="38" Height="38" CornerRadius="8" Margin="0,0,10,0" ClipToBounds="True" Background="#111827"
+                            <Border Grid.Column="0" Width="38" Height="38" CornerRadius="8" Margin="0,0,10,0" ClipToBounds="True" Background="#111827"
+                                    VerticalAlignment="Center"
                                     Visibility="{Binding CompanyLogoBase64, Converter={StaticResource NullToVis}}">
                                 <Image Source="{Binding CompanyLogoBase64, Converter={StaticResource Base64ToImageConv}}"
                                        Stretch="Uniform"
@@ -184,22 +192,46 @@
                             </Border>
 
                             <!-- Logo Oficial por defecto (si CompanyLogoBase64 == null) -->
-                            <Border Width="38" Height="38" CornerRadius="8" Margin="0,0,10,0" ClipToBounds="True" Background="Transparent"
+                            <Border Grid.Column="0" Width="38" Height="38" CornerRadius="8" Margin="0,0,10,0" ClipToBounds="True" Background="Transparent"
+                                    VerticalAlignment="Center"
                                     Visibility="{Binding CompanyLogoBase64, Converter={StaticResource InvertedNullToVis}}">
                                 <Image Source="/Resources/logo_completo_3d.png"
                                        Stretch="Uniform"
                                        RenderOptions.BitmapScalingMode="HighQuality"/>
                             </Border>
 
-                            <!-- Nombre de la Empresa -->
-                            <TextBlock Text="{Binding CompanyDisplayName, FallbackValue='PARKING FLOW'}"
-                                       FontSize="15"
-                                       FontWeight="Black"
-                                       Foreground="{DynamicResource BrushTextWhite}"
-                                       TextTrimming="CharacterEllipsis"
-                                       MaxWidth="170"
-                                       VerticalAlignment="Center"/>
-                        </StackPanel>
+                            <!-- Información de la Empresa -->
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <!-- Nombre de la Empresa -->
+                                <TextBlock Text="{Binding CompanyDisplayName, FallbackValue='PARKING FLOW'}"
+                                           FontSize="14"
+                                           FontWeight="Black"
+                                           Foreground="{DynamicResource BrushTextWhite}"
+                                           TextTrimming="CharacterEllipsis"
+                                           MaxWidth="180"/>
+
+                                <!-- NIT de la Empresa -->
+                                <StackPanel Orientation="Horizontal" Margin="0,2,0,0"
+                                            Visibility="{Binding CompanyNit, Converter={StaticResource NullToVis}}">
+                                    <TextBlock Text="NIT: " FontSize="10.5" FontWeight="Bold" Foreground="#94A3B8"/>
+                                    <TextBlock Text="{Binding CompanyNit}" FontSize="10.5" Foreground="#CBD5E1" TextTrimming="CharacterEllipsis" MaxWidth="145"/>
+                                </StackPanel>
+
+                                <!-- Teléfono -->
+                                <StackPanel Orientation="Horizontal" Margin="0,1,0,0"
+                                            Visibility="{Binding CompanyPhone, Converter={StaticResource NullToVis}}">
+                                    <TextBlock Text="Tel: " FontSize="10" FontWeight="Bold" Foreground="#94A3B8"/>
+                                    <TextBlock Text="{Binding CompanyPhone}" FontSize="10" Foreground="#CBD5E1" TextTrimming="CharacterEllipsis" MaxWidth="145"/>
+                                </StackPanel>
+
+                                <!-- Correo Electrónico -->
+                                <StackPanel Orientation="Horizontal" Margin="0,1,0,0"
+                                            Visibility="{Binding CompanyEmail, Converter={StaticResource NullToVis}}">
+                                    <TextBlock Text="Email: " FontSize="10" FontWeight="Bold" Foreground="#94A3B8"/>
+                                    <TextBlock Text="{Binding CompanyEmail}" FontSize="10" Foreground="#CBD5E1" TextTrimming="CharacterEllipsis" MaxWidth="135"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
 
                 <!-- Navigation List: Módulos Operativos -->

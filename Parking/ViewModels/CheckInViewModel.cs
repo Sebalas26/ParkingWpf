@@ -81,8 +81,31 @@ public partial class CheckInViewModel : ViewModelBase
     [ObservableProperty]
     private OccupancyStats _occupancy = new();
 
+    private List<ParkingTicket> _allRecentEntries = new();
+    private const int RecentEntriesPageSize = 4;
+
+    [ObservableProperty]
+    private int _recentEntriesCurrentPage = 1;
+
+    [ObservableProperty]
+    private int _recentEntriesTotalPages = 1;
+
+    [ObservableProperty]
+    private bool _hasRecentEntriesPagination;
+
+    [ObservableProperty]
+    private string _recentEntriesPageIndicator = "Pág. 1 de 1";
+
     [ObservableProperty]
     private IReadOnlyList<ParkingTicket> _recentEntries = new List<ParkingTicket>();
+
+    partial void OnNotesChanged(string? value)
+    {
+        if (value != null && value.Length > 50)
+        {
+            Notes = value.Substring(0, 50);
+        }
+    }
 
     [ObservableProperty]
     private string? _feedbackMessage;
@@ -278,10 +301,58 @@ public partial class CheckInViewModel : ViewModelBase
         {
             Occupancy = await _ticketService.GetOccupancyStatsAsync();
             var active = await _ticketService.GetActiveTicketsAsync();
-            RecentEntries = active.Take(6).ToList();
+            _allRecentEntries = active.OrderByDescending(t => t.EntryTimeUtc).ToList();
+            UpdateRecentEntriesPage();
         }
         catch { }
     }
+
+    public void UpdateRecentEntriesPage()
+    {
+        RecentEntriesTotalPages = Math.Max(1, (int)Math.Ceiling(_allRecentEntries.Count / (double)RecentEntriesPageSize));
+        if (RecentEntriesCurrentPage > RecentEntriesTotalPages)
+        {
+            RecentEntriesCurrentPage = RecentEntriesTotalPages;
+        }
+        if (RecentEntriesCurrentPage < 1)
+        {
+            RecentEntriesCurrentPage = 1;
+        }
+
+        HasRecentEntriesPagination = RecentEntriesTotalPages > 1;
+        RecentEntriesPageIndicator = $"Pág. {RecentEntriesCurrentPage} de {RecentEntriesTotalPages}";
+        RecentEntries = _allRecentEntries
+            .Skip((RecentEntriesCurrentPage - 1) * RecentEntriesPageSize)
+            .Take(RecentEntriesPageSize)
+            .ToList();
+
+        PreviousRecentEntriesPageCommand.NotifyCanExecuteChanged();
+        NextRecentEntriesPageCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanGoToPreviousRecentEntriesPage))]
+    private void PreviousRecentEntriesPage()
+    {
+        if (RecentEntriesCurrentPage > 1)
+        {
+            RecentEntriesCurrentPage--;
+            UpdateRecentEntriesPage();
+        }
+    }
+
+    private bool CanGoToPreviousRecentEntriesPage() => RecentEntriesCurrentPage > 1;
+
+    [RelayCommand(CanExecute = nameof(CanGoToNextRecentEntriesPage))]
+    private void NextRecentEntriesPage()
+    {
+        if (RecentEntriesCurrentPage < RecentEntriesTotalPages)
+        {
+            RecentEntriesCurrentPage++;
+            UpdateRecentEntriesPage();
+        }
+    }
+
+    private bool CanGoToNextRecentEntriesPage() => RecentEntriesCurrentPage < RecentEntriesTotalPages;
 
 
     async partial void OnPlateNumberChanged(string value)
@@ -615,6 +686,7 @@ public partial class CheckInViewModel : ViewModelBase
         BlockedIncidentType = null;
         BlockedDescription = null;
         SelectedVehicleType = VehicleType.Car;
+        RecentEntriesCurrentPage = 1;
     }
 
     [RelayCommand]

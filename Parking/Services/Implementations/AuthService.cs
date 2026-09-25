@@ -65,6 +65,8 @@ public class AuthService : IAuthService
                     CompanyId = apiLogin.CompanyId,
                     CompanyName = apiLogin.CompanyName,
                     CompanyNit = apiLogin.CompanyNit,
+                    CompanyEmail = apiLogin.CompanyEmail,
+                    CompanyPhone = apiLogin.CompanyPhone,
                     CompanyLogo = apiLogin.CompanyLogo ?? apiLogin.Branches?.FirstOrDefault(b => !string.IsNullOrWhiteSpace(b.LogoBase64))?.LogoBase64,
                     AllowMultipleSessions = apiLogin.AllowMultipleSessions,
                     MaxActiveSessionsPerUser = apiLogin.MaxActiveSessionsPerUser > 1 ? apiLogin.MaxActiveSessionsPerUser : 1,
@@ -94,6 +96,14 @@ public class AuthService : IAuthService
                     if (string.IsNullOrWhiteSpace(b.CompanyNit) && !string.IsNullOrWhiteSpace(apiLogin.CompanyNit))
                     {
                         b.CompanyNit = apiLogin.CompanyNit;
+                    }
+                    if (string.IsNullOrWhiteSpace(b.CompanyEmail) && !string.IsNullOrWhiteSpace(apiLogin.CompanyEmail))
+                    {
+                        b.CompanyEmail = apiLogin.CompanyEmail;
+                    }
+                    if (string.IsNullOrWhiteSpace(b.CompanyPhone) && !string.IsNullOrWhiteSpace(apiLogin.CompanyPhone))
+                    {
+                        b.CompanyPhone = apiLogin.CompanyPhone;
                     }
                     if (string.IsNullOrWhiteSpace(b.CompanyName) && !string.IsNullOrWhiteSpace(apiLogin.CompanyName))
                     {

@@ -1,6 +1,247 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
-## 📅 Entrada: [2026-09-24 15:34:00] - [BUGFIX / UI & SECURITY] Reparación de Tenancy Leak Crítico en Relevo de Turnos (WPF) y Corrección Visual PWA
+## 📅 Entrada: [2026-09-25 01:00:00] - [FEATURE / UI / UX] Ventana Flotante 'Ver más datos' en Checkout, Paginación de 4 Vehículos en Ingresos y Límite de 50 Caracteres en Observaciones (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"# 🏗️ Plan de Arquitectura e Implementación: Mejoras Operativas en WPF (Parking)"_
+  > _"1. Enlace subrayado azul 'Ver más datos' con ventana flotante modal/popup (con botón de cierre 'X') que muestre teléfono y observaciones de ingreso (o 'N/A' si están vacíos) en CheckOutDialog.xaml."_
+  > _"2. Límite de máximo 4 vehículos por página en la tarjeta 'Últimos Vehículos Ingresados' en CheckInView.xaml, con barra de paginación interactiva (Anterior / Siguiente)."_
+  > _"3. Corrección del recorte visual vertical interno en el campo 'OBSERVACIONES / NOTAS' y restricción estricta a un máximo de 50 caracteres."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Enlace 'Ver más datos' y Popup Flotante en Checkout (`CheckOutDialog.xaml`, `CheckOutViewModel.cs`)**:
+     - En `CheckOutDialog.xaml`: Se configuró una cabecera con 3 columnas en la cuadrícula superior. Se integró el botón `BtnVerMasDatos` con tipografía `13pt Bold`, color azul `#0284C7`, subrayado y cursor tipo mano.
+     - Se vinculó a un `Popup` flotante moderno con sombra `DropShadowEffect`, fondo blanco, borde redondeado (`CornerRadius="10"`), botón circular "X" de cierre (`IconClose`), y visualización estilizada con íconos vectoriales de `Teléfono del Conductor` y `Observaciones de Entrada`.
+     - En `CheckOutViewModel.cs`: Se crearon las propiedades observables y reactivas `IsMoreDataPopupOpen`, `FormattedCustomerPhone` y `FormattedNotes` con fallback estricto a `"N/A"` cuando sean nulos o vacíos. Se implementaron los comandos `ToggleMoreDataPopupCommand` y `CloseMoreDataPopupCommand`, asegurando el reseteo del popup y la notificación de cambios al seleccionar o limpiar tiquetes.
+  2. **Paginación Interactiva de Máximo 4 Vehículos por Página en Ingresos (`CheckInView.xaml`, `CheckInViewModel.cs`)**:
+     - En `CheckInViewModel.cs`: Se implementó el control de paginación de entradas recientes con `RecentEntriesPageSize = 4`, propiedades reactivas `RecentEntriesCurrentPage`, `RecentEntriesTotalPages`, `HasRecentEntriesPagination`, `RecentEntriesPageIndicator` ("Pág. X de Y") y comandos `PreviousRecentEntriesPageCommand` y `NextRecentEntriesPageCommand`.
+     - En `CheckInView.xaml`: Debajo del `ItemsControl` de vehículos ingresados, se incorporó la barra de paginación con estilo `OutlineButton`, íconos vectoriales `IconChevronLeft` y `IconChevronRight`, e indicador central de página, visible reactivamente mediante `{StaticResource BoolToVis}` cuando `HasRecentEntriesPagination` es verdadero.
+  3. **Corrección de Recorte Visual Vertical y Límite Estricto de 50 Caracteres en Observaciones (`CheckInView.xaml`, `CheckInViewModel.cs`)**:
+     - En `CheckInView.xaml`: Se corrigió el recorte interno vertical asignando `Height="42"`, `Padding="10,8"` y `VerticalContentAlignment="Center"` en los campos de Teléfono y Observaciones. Se definió `MaxLength="50"` en el `TextBox` de Observaciones.
+     - En `CheckInViewModel.cs`: En el método parcial `OnNotesChanged(string? value)`, se aplicó validación defensiva truncando automáticamente a 50 caracteres si el texto ingresado o pegado excede dicho límite.
+  4. **Pruebas Unitarias Automatizadas**:
+     - Se crearon 3 pruebas unitarias en `CheckInViewModelTests.cs` validando el truncado a 50 caracteres y el funcionamiento completo de la paginación de 4 en 4 con comandos Anterior y Siguiente.
+     - Se crearon 3 pruebas unitarias en `CheckOutViewModelTests.cs` validando la apertura/cierre del popup y el formateo de teléfono y observaciones con fallback `"N/A"`.
+     - Compilación limpia con `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - Suite completa de pruebas unitarias con `dotnet test ParkingWpf.slnx`: **277/277 pruebas superadas al 100% (0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking.UnitTests/ViewModels/CheckInViewModelTests.cs`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **277 Pasadas, 0 Fallidas (100% Superadas)**.
+
+---
+
+## 📅 Entrada: [2026-09-25 00:30:00] - [FEATURE / UI / UX] Ampliación de Tipografía en Tarjetas de Patio, Reubicación de Facturación Electrónica Arriba de Convenios y Auto-Scroll en Resolución (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"quiero que me aumentes mas el tamañp de letra estos datos , se ven muy pequeños_
+  > _- en la liquidacion de salida y cobro , quiero que cuando se elija resolucion haga el pequeño scrol hacia abajo, adicional el componente de emitir factura elecronica me lo dejes arriba de los convenios"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Ampliación Significativa de Fuentes en Tarjetas de Vehículos Activos (`CheckOutView.xaml`)**:
+     - Se ajustó el contenedor de tarjeta a `MinHeight="128"` con `VerticalAlignment="Stretch"` para asegurar una altura uniforme y balanceada.
+     - `EntryTime`: Se elevó a `FontSize="13"` `FontWeight="SemiBold"`.
+     - `FormattedDuration`: Se configuró en `FontSize="13.5"` `FontWeight="Black"` con padding `6,2` y estilo tipo píldora destacada.
+     - `CustomerPhone`: Se aumentó a `FontSize="13.5"` `FontWeight="Bold"` con `Foreground="#0F172A"` e ícono de teléfono en `14x14`.
+     - `Notes`: Se aumentó a `FontSize="13"` `FontWeight="SemiBold"` con `Foreground="#1E293B"` e ícono de notas en `14x14`.
+  2. **Reubicación de Facturación Electrónica DIAN Arriba de Convenios (`CheckOutDialog.xaml`)**:
+     - Se ubicó el módulo completo de emisión de Factura Electrónica (DIAN), selección y registro rápido de cliente/adquirente justo debajo del Método de Pago y Resolución, posicionándose por encima de la sección de Convenios y Comercios Aliados.
+     - Se eliminó la instancia duplicada inferior de dicho módulo preservando intactos todos los bindings, validaciones y convertidores.
+  3. **Auto-Scroll al Seleccionar Resolución DIAN (`CheckOutDialog.xaml.cs`)**:
+     - En `ViewModel_PropertyChanged`, se agregó el control reactivo para la propiedad `SelectedResolution`: al seleccionar una resolución DIAN, se ejecuta un desplazamiento vertical suave (`DialogScrollViewer?.ScrollToVerticalOffset(VerticalOffset + 180)`) para que el cajero vea al instante los campos de adquirente y facturación electrónica sin interacción manual.
+  4. **Verificación y Pruebas Unitarias**:
+     - Compilación limpia con `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - Suite completa de pruebas unitarias con `dotnet test ParkingWpf.slnx`: **271/271 pruebas superadas al 100% (0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Views/CheckOutView.xaml`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/Views/CheckOutDialog.xaml.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **271 Pasadas, 0 Fallidas (100% Superadas)**.
+
+---
+
+## 📅 Entrada: [2026-09-25 00:05:00] - [FEATURE / UI / UX / REFACTORING] Tipografía Segoe UI Global, Homogeneidad de Tarjetas de Vehículos, Reubicación de Pago y Scroll de Convenios (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"quieroq que el tamaño de letra de esos componentes sea un poco mas grande, casi no se ven, adicional veo que si tiene numero o obs se agranda mas la caja contenedora y la idea es que todos tengan el mimso tamañp_
+  > _- estoy viendo que el cuadro axul sigue saliendo al seleccionar convenio en el wpf , te dije que lo eliminaras_
+  > _- quisiera que metodode pago y resoucion me lo subieras a donde te especifique, asi mismo, que al marcar un convenio, haga un pequeño scroll hacia abajo para que vea la demas info_
+  > _- quisiera que me dejaras todo mi wpf con la fuente Segoe UI"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Uniformidad Dimensional y Legibilidad en Tarjetas de Vehículos Activos (`CheckOutView.xaml`)**:
+     - Se aumentó el tamaño de fuente y visibilidad de los metadatos de ingreso: Teléfono (`12pt Bold`, icono `13x13`) y Observaciones (`11.5pt Foreground="#334155"`, icono `13x13`).
+     - Se corrigió la asimetría de altura entre tarjetas (que variaban de tamaño si tenían o no teléfono/observaciones): se cambió `VerticalAlignment="Top"` por `VerticalAlignment="Stretch"` y se definió `MinHeight="118"` en el `Border` de cada tarjeta. Ahora todas las tarjetas en la cuadrícula tienen dimensiones idénticas y homogéneas.
+  2. **Eliminación Total del Recuadro Azul/Oscuro al Marcar Convenios (`CheckOutDialog.xaml`, `CheckOutViewModel.cs`)**:
+     - Se suprimió completamente el contenedor `<Border Visibility="{Binding IsAgreementTooltipOpen...}" ...>` que aparecía automáticamente al seleccionar un convenio.
+     - En `CheckOutViewModel.cs` se retiró la invocación a `ShowAgreementTooltip()` en `ToggleSelectAgreementAsync`. Las reglas y diagnósticos de convenios se mantienen accesibles exclusivamente de forma manual mediante el botón de ojo (`ShowAgreementDetailsCommand`).
+  3. **Reubicación de Método de Pago y Resolución + Auto-Scroll al Seleccionar Convenio (`CheckOutDialog.xaml`, `CheckOutDialog.xaml.cs`)**:
+     - Se trasladó el bloque de `MÉTODO DE PAGO *` y `RESOLUCIÓN / DOC *` inmediatamente debajo del módulo de cobro (`Total Neto a Pagar / Devuelta de Caja`) y justo por encima de la sección de `Convenios y Comercios Aliados`.
+     - En `CheckOutDialog.xaml.cs` se enlazó el evento `DataContextChanged` y la propiedad `SelectedAgreement` de `CheckOutViewModel`: al marcar un convenio, se ejecuta un desplazamiento vertical automático suave (`DialogScrollViewer.ScrollToVerticalOffset(+180)`) para que el cajero visualice inmediatamente los campos de compra mínima y detalles correspondientes sin necesidad de desplazarse manualmente.
+  4. **Fuente Universal Segoe UI en toda la Aplicación WPF (`Typography.xaml`, `App.xaml`)**:
+     - Se definió `FontFamilyPrimary` como `Segoe UI, Segoe UI Variable Display, sans-serif` en `Typography.xaml`.
+     - En `App.xaml` se establecieron estilos globales implícitos para `Control` y `Page` aplicando `{StaticResource FontFamilyPrimary}` para garantizar que ventanas, diálogos, cajas de texto, etiquetas y botones utilicen homogéneamente Segoe UI en todo el software.
+  5. **Verificación y Pruebas Unitarias**:
+     - Compilación limpia con `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - Suite completa de pruebas con `dotnet test ParkingWpf.slnx`: **271/271 pruebas superadas al 100% (0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Styles/Typography.xaml`
+  - `Parking/App.xaml`
+  - `Parking/Views/CheckOutView.xaml`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/Views/CheckOutDialog.xaml.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **271 Pasadas, 0 Fallidas (100% Superadas)**.
+
+---
+
+## 📅 Entrada: [2026-09-24 23:45:00] - [FEATURE / UI / UX / SYNC] Propagación de Correo Corporativo, Centrado Vertical de Logotipo y Esquina Superior Curveada en Menú Lateral (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"bien, pero veo que falto el correo de la empresa, adicional alinealo para que el icono quede mas abajito, para que se ea como en la mitad de los texto_
+  > _tambien quiero quemenu lateral, en la esquina superior este curveada"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Propagación Robusta de Correo Corporativo (`CompanyEmail`)**:
+     - En `BootstrapSyncResponse.cs`: Se expusieron `[JsonPropertyName("companyEmail")] public string? CompanyEmail { get; set; }` y `[JsonPropertyName("companyPhone")] public string? CompanyPhone { get; set; }` tanto en `ApiBranchSyncDto` como en `BootstrapSyncResponse`.
+     - En `SyncEngineService.cs`: Se implementó la actualización en caliente de `_sessionService.CurrentUser.CompanyEmail`, `_sessionService.CurrentUser.CompanyPhone` y la actualización sobre la sede activa (`UpdateCurrentBranch`) al recibir los datos de sincronización inicial bootstrap.
+     - En `MainShellViewModel.cs`: Se robusteció la propiedad `CompanyEmail` implementando un esquema de resolución en cascada: `CurrentBranch.CompanyEmail` ➔ `CurrentUser.CompanyEmail` ➔ `CurrentUser.Username` (si es un correo con `@`).
+  2. **Centrado Vertical Simétrico del Logotipo Institucional en el Sidebar (`MainShellWindow.xaml`)**:
+     - Se corrigió la alineación de los dos contenedores `Border` del isotipo de la empresa (tanto el personalizado en Base64 como el logotipo por defecto en 3D), reemplazando `VerticalAlignment="Top"` por `VerticalAlignment="Center"`.
+     - De esta manera el logo queda exactamente centrado en la mitad de la altura total del bloque corporativo de cuatro renglones (Nombre comercial, NIT, Teléfono institucional y Correo de contacto).
+  3. **Esquina Superior Curveada en Menú Lateral (`MainShellWindow.xaml`)**:
+     - En el contenedor principal del sidebar (`Border Grid.Column="0"`), se aplicó `CornerRadius="0,20,0,0"` y `ClipToBounds="True"` con `BorderBrush="{DynamicResource BrushBorderSubtle}"`.
+     - Esto otorga una transición curvada elegante y moderna en la esquina superior derecha que conecta el menú lateral con el lienzo de trabajo y la barra de título, sin alterar la responsividad ni los componentes hijos.
+  4. **Verificación y Pruebas Unitarias**:
+     - Compilación limpia con `dotnet build ParkingWpf.slnx`: 0 Errores, 0 Advertencias.
+     - Suite completa de pruebas con `dotnet test ParkingWpf.slnx`: **271/271 pruebas superadas al 100% (0 errores, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **271 Pasadas, 0 Fallidas (100% Superadas)**.
+
+---
+
+## 📅 Entrada: [2026-09-24 23:25:00] - [FEATURE / UI / UX / VALIDATIONS] Reorganización de Total a Pagar, Bloqueo de Convenios Inaplicables, Datos de Empresa en Sidebar y Metadatos en Vehículos Activos (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"bien, ya estan sincronizados e iguales, sin embargo ayudame con agunas cosas:_
+  > _- Quisiera que me bloquees la eleccion del comvenio cuado no aplica , ahi elegi un convenio que no me aplica y me deja darle salida, ahi deberia de desmarcar ese convenio si lo elegi y no aplica_
+  > _-asi mismo quiero me reorganices este campo del total a pagar, quiero que me lo muestres de primeras , debajo del componente de la hora de ingreso_
+  > _- Adicional estoy viendo que cada vez que elijo un convenio me desplega un recuadro azul, no me gusto eso, eliminalo y solo dejame el de convenio aplicado... , en mi wpf tengo un ojito esquino sobre cada foto de convenio, ahi me muestra toda la info del convenio, eso quiero que tenga el pwa,_
+  > _- Ayudame para que en mi wpf , en la esquina donde esta el logo y nombre de la empresa, tambien me muestres nit, correo y telefono, adicional en el compontente de losvehiculos activos dentro, quiero que cuenten con el telefono y observaciones en caso de que haya ingresado con esa info, ya se por wpf o pwa"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Reorganización Panorámica de Total Neto y Módulo de Caja en `CheckOutDialog.xaml`**:
+     - Se reubicó el bloque completo de cobro (Total Neto a Pagar en tipografía grande de 34pt, TextBox de Efectivo Recibido con botones rápidos de billetes y tarjeta de CAMBIO/DEVUELTA) a la parte superior, directamente debajo del bloque de métricas de ingreso (`HORA DE INGRESO / TIEMPO TRANSCURRIDO / TARIFA APLICADA`).
+     - Se mantuvieron intactas las demás secciones de convenios, tiquete perdido, métodos de pago y facturación DIAN sin regresiones estructurales.
+  2. **Bloqueo Inmediato y Deselección de Convenios No Aplicables (`CheckOutViewModel.cs`)**:
+     - En `ToggleSelectAgreementAsync`: Al hacer clic en un convenio, se valida si la estadía del vehículo supera el tiempo máximo permitido (`totalStay > maxAllowed`). De superarlo, se bloquea la elección, se desmarca de inmediato (`SelectedAgreement = null; HasAgreementDiscount = false; DiscountAmount = 0m;`) y se alerta al operador mediante `_dialogService.ShowAlertAsync(...)`.
+     - En `ShowAgreementDetails`: Se desacopló la visualización de detalles de la selección del convenio para evitar que consultar las reglas marque o fuerce convenios inválidos.
+     - En `ProcessPaymentAsync`: Antes de procesar el cobro y dar salida, se valida la elegibilidad del convenio. Si no cumple tiempo máximo, se desmarca y notifica; si requiere compra mínima insuficiente, se bloquea el cobro y se solicita completar el valor o desmarcar el convenio.
+  3. **Visualización de NIT, Teléfono y Correo de la Empresa en Sidebar (`MainShellWindow.xaml`, `MainShellViewModel.cs`)**:
+     - En `UserSessionModel`, `BranchModel` y `LoginApiResponse` se incorporaron las propiedades `CompanyEmail` y `CompanyPhone`.
+     - En `AuthService.cs` se mapearon `CompanyEmail` y `CompanyPhone` desde la sesión autenticada y las sedes.
+     - En `MainShellViewModel.cs` se expusieron `CompanyNit`, `CompanyEmail` y `CompanyPhone` con notificaciones automáticas `NotifyPropertyChangedFor` vinculadas a `_currentUser` y `_currentBranch`.
+     - En `MainShellWindow.xaml` se actualizó la cabecera de marca lateral (bajo el logotipo y nombre de la empresa) mostrando NIT, Teléfono y Correo con etiquetas claras y control de visibilidad `NullToVis`.
+  4. **Metadatos en Tarjetas de Vehículos Activos Adentro (`CheckOutView.xaml`, `Icons.xaml`)**:
+     - Se agregaron las geometrías oficiales vectoriales `IconPhone` e `IconNotes` en `Icons.xaml`.
+     - En `CheckOutView.xaml`, dentro del DataTemplate de `ActiveVehicles`, se añadió una fila informativa mostrando el teléfono del cliente (`CustomerPhone` con ícono y texto semibold) y las observaciones de ingreso (`Notes` con ícono, truncamiento y tooltip) cuando están presentes.
+  5. **Pruebas Unitarias y Certificación**:
+     - Se actualizó `CheckOutViewModelTests.cs` para validar que `ToggleSelectAgreementCommand` desmarca el convenio y emite alerta cuando la estadía excede el tiempo límite.
+     - Compilación y suite completa de pruebas: 271 pruebas superadas al 100% (0 errores, 0 fallos).
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Models/UserSessionModel.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Models/ApiModels/TicketApiModels.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `Parking/Styles/Icons.xaml`
+  - `Parking/Views/CheckOutView.xaml`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build Parking/Parking.csproj`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **100% Superado (271 Pruebas pasadas, 0 Fallos, 0 Omitidas)**.
+
+---
+
+## 📅 Entrada: [2026-09-24 22:45:00] - [FEATURE / RULES / UI / HOMOLOGACION] Homologación de Reglas de Convenios Comerciales (Compra Mínima, Tiempo Máximo, Tiempo Libre) y Tooltip Informativo en Salida de Vehículos (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"Ayudame a completar este plan, ya que se estaba ejecutando pero se me apago el pc, analiza hasta donde quedo y completadlo"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Formularios Limpios (Cero Data Quemada / Prohibición de Pre-llenado)**:
+     - Se eliminó la asignación que forzaba `CustomerPurchaseAmount = SelectedAgreement.MinPurchaseAmount;` al seleccionar un convenio o ver sus detalles.
+     - Ahora se inicializa limpiamente en `0m` con `CustomerPurchaseAmountText = string.Empty` y placeholder visual `Ej: 50000` en XAML para orientar al operador sin inventar datos de negocio.
+  2. **Evaluación Estricta de Elegibilidad (`EvaluateAgreementEligibility`)**:
+     - **Compra Mínima**: Si `SelectedAgreement.MinPurchaseAmount > 0`, se exige estrictamente que `CustomerPurchaseAmount >= MinPurchaseAmount`. Si el monto es insuficiente o no se ingresa, `IsAgreementEligible = false` y el descuento es estrictamente `$0`.
+     - **Tiempo Máximo**: Si `MaxHoursApplicable` o `MaxMinutesApplicable` están configurados, se calcula `AgreementMaxAllowedMinutes`. Si la estancia real del vehículo (`AgreementTotalStayMinutes`) supera el tiempo máximo, el descuento se deniega por completo (`$0`), alertando el exceso de tiempo.
+  3. **Cálculo de Descuento de Tiempo Libre**:
+     - Para convenios de tiempo libre (`DiscountType == 2` o `FreeHours/FreeMinutes > 0`), se calcula la diferencia de tarifa mediante `_pricingCalculator.CalculateFee(...)` aplicando los minutos libres como minutos de gracia descontados de la tarifa regular.
+  4. **Tooltip Interactivo Dark Glassmorphism (Auto-dismiss 4s & Cierre Manual)**:
+     - En `CheckOutDialog.xaml` se integró el tooltip informativo flotante (`#0F172A`, borde `#334155`) con cabecera de convenio, beneficio, botón manual de cierre `X` y diagnóstico en vivo de las dos reglas:
+       - Compra Mínima: Badge `✓ Cumplida` o `⚠️ Pendiente`.
+       - Tiempo Máximo: Badge `✓ En tiempo (Xh Ym)` o `❌ Excedido (Xh Ym)`.
+     - Se configuró `DispatcherTimer` a 4 segundos para el cierre automático reactivo.
+     - Se incorporó la caja de captura para el monto de compra (`QuickCustomerTextBox`) con prefijo `$`, placeholder `"Ej: 50000"` y badge en vivo de suficiencia.
+     - Se incorporó banner de resumen de diagnóstico de la regla con colores semánticos (`#059669` éxito, `#DC2626` rechazo).
+  5. **Pruebas Unitarias**:
+     - Se agregaron 4 pruebas unitarias en `CheckOutViewModelTests.cs` cubriendo:
+       - `ToggleSelectAgreement_RequiresPurchase_InitializesCleanAndRequiresPurchaseAmount`
+       - `RecalculateLiveFee_WhenPurchaseAmountIsSufficient_AppliesDiscount`
+       - `RecalculateLiveFee_WhenStayExceedsMaxHours_DeniesDiscountAndFlagsExceeded`
+       - `RecalculateLiveFee_FreeTimeAgreement_EvaluatesMinPurchaseAndCalculatesFeeDifference`
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **100% Superado (271 Pruebas pasadas, 0 Fallos, 0 Omitidas)**.
+
+---
+
 
 - **`💬 Prompt Original del Usuario`**:
 
