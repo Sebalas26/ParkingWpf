@@ -59,16 +59,31 @@ public class EfPricingCalculatorService : IPricingCalculatorService
 
             var branchVehicleTypes = branchRates.Select(r => r.VehicleType).ToHashSet();
             var globalRates = await db.VehicleRates
-                .Where(r => r.IsActive && r.BranchId == null && !branchVehicleTypes.Contains(r.VehicleType))
+                .Where(r => r.IsActive && r.BranchId == null && (r.HourRate > 0 || r.MinuteRate > 0) && !branchVehicleTypes.Contains(r.VehicleType))
                 .OrderBy(r => r.DisplayName)
                 .ToListAsync();
 
             rates = branchRates.Concat(globalRates).ToList();
+
+            // Contingencia extrema offline: si la sede no tiene tarifas configuradas ni existen globales con valor,
+            // pero hay tarifas locales activas de otra sede en la terminal, usar el catálogo disponible para no frenar la operación física.
+            if (rates.Count == 0)
+            {
+                var availableFallbackRates = await db.VehicleRates
+                    .Where(r => r.IsActive && (r.HourRate > 0 || r.MinuteRate > 0))
+                    .OrderBy(r => r.DisplayName)
+                    .ToListAsync();
+
+                rates = availableFallbackRates
+                    .GroupBy(r => r.VehicleType)
+                    .Select(g => g.First())
+                    .ToList();
+            }
         }
         else
         {
             rates = await db.VehicleRates
-                .Where(r => r.IsActive)
+                .Where(r => r.IsActive && (r.HourRate > 0 || r.MinuteRate > 0))
                 .OrderBy(r => r.DisplayName)
                 .ToListAsync();
         }

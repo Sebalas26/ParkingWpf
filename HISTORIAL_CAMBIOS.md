@@ -45,11 +45,47 @@
   - `Parking/ViewModels/ShiftClosureViewModel.cs`
   - `Parking.UnitTests/Security/AuthServiceOfflineTests.cs`
   - `Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
+
+## 📅 Entrada: [2026-09-25 08:25:00] - [FEATURE / OFFLINE / RATES] Contingencia y Persistencia Multi-Sede de Tarifas Vehiculares en SQLite y Fallback Jerárquico en Modo Offline
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"valida porque el wpf cuando me logeo offline, no me carga tarifas vehiculares si el deberia de almacenarlo local en bd para tener la contigencia en caso de que no tenga internet, pueda seguir operando"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Persistencia Multi-Sede en Motor de Sincronización (`SyncEngineService.cs`)**:
+     - Se eliminó el filtro excluyente que descartaba tarifas pertenecientes a sedes distintas de `currentBranchId`.
+     - Se corrigió la asignación de `BranchId` para preservar el `targetBranchId` original de la tarifa (`rate.GetBranchId()`) en lugar de sobreescribirla forzosamente con la sede activa.
+     - Se corrigió `ratesToDelete` para que evalúe `!incomingRateIds.Contains(r.RateId)` sobre la totalidad del catálogo local, garantizando que tarifas de sedes hermanas no sean eliminadas accidentalmente al sincronizar desde otra sede.
+  2. **Fallback Jerárquico de Precios Resiliente (`EfPricingCalculatorService.cs`)**:
+     - En `ReloadRatesAsync()`:
+       - **Prioridad 1**: Tarifas activas de la sede actual (`r.BranchId == currentBranchId.Value`).
+       - **Prioridad 2**: Tarifas globales activas de la empresa (`r.BranchId == null && (r.HourRate > 0 || r.MinuteRate > 0)`).
+       - **Prioridad 3 (Contingencia extrema en modo offline)**: Si la sede no tiene tarifas configuradas ni globales con valor, utiliza el catálogo de tarifas activas disponible en SQLite (ej. tarifas sincronizadas de otra sede hermana) agrupadas por `VehicleType`, eliminando la pantalla de bloqueo y permitiendo la operación física continua sin internet.
+  3. **Auto-Sanación Defensiva en SQLite (`DbConnectionManager.cs`)**:
+     - Se incorporó la sección 5 en la inicialización de SQLite: si una sede activa en `Branches` carece de tarifas para algún tipo vehicular pero existen tarifas con valor en otra sede en SQLite, se clonan automáticamente de forma defensiva con `WHERE NOT EXISTS`.
+  4. **Pruebas Unitarias Automatizadas**:
+     - Se creó la prueba unitaria `SyncEngineService_SyncRates_MultiBranch_PersistsAllBranchesAndDoesNotPurgeSisterBranches` en `OfflineResilienceTests.cs`, verificando:
+       - Persistencia simultánea de tarifas de múltiples sedes sin colisiones.
+       - Resolución correcta de tarifas según la sede activa en `EfPricingCalculatorService`.
+       - Conmutación offline de sede y resolución inmediata de tarifas de la nueva sede.
+       - No purga de tarifas de sedes hermanas en re-sincronizaciones.
+     - Compilación limpia con `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - Suite completa de pruebas unitarias: **278/278 superadas al 100% (0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs`
   - `HISTORIAL_CAMBIOS.md`
 
 - **`✅ Verificación y Compilación`**:
   - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
-  - `dotnet test ParkingWpf.slnx` -> **283 Pasadas, 0 Fallidas (100% Superadas)**.
+    <<<<<<< HEAD
+  - # `dotnet test ParkingWpf.slnx` -> **283 Pasadas, 0 Fallidas (100% Superadas)**.
+  - `dotnet test ParkingWpf.slnx` -> **278 Pasadas, 0 Fallidas (100% Superadas)**.
+    > > > > > > > b1f090b26c0a1430cfcde5dc02172786ae998ba5
 
 ---
 
@@ -294,7 +330,6 @@
   - `dotnet test ParkingWpf.slnx`: **100% Superado (271 Pruebas pasadas, 0 Fallos, 0 Omitidas)**.
 
 ---
-
 
 - **`💬 Prompt Original del Usuario`**:
 

@@ -334,6 +334,122 @@ public class OfflineResilienceTests : IDisposable
     }
 
     [Fact]
+    public async Task SyncEngineService_SyncRates_MultiBranch_PersistsAllBranchesAndDoesNotPurgeSisterBranches()
+    {
+        // Arrange: Sede 1 activa
+        _mockSessionService.Setup(s => s.CurrentBranchId).Returns(1);
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = 1, Name = "Sede 136" });
+
+        var rateBranch1Car = new ApiVehicleRateSyncDto
+        {
+            RawRateId = Guid.NewGuid(),
+            BranchId = 1,
+            DisplayName = "Automóvil Sede 1",
+            VehicleType = "Car",
+            HourRate = 4500m,
+            MinuteRate = 75m,
+            IsActive = true
+        };
+        var rateBranch1Moto = new ApiVehicleRateSyncDto
+        {
+            RawRateId = Guid.NewGuid(),
+            BranchId = 1,
+            DisplayName = "Motocicleta Sede 1",
+            VehicleType = "Motorcycle",
+            HourRate = 2500m,
+            MinuteRate = 42m,
+            IsActive = true
+        };
+        var rateBranch2Car = new ApiVehicleRateSyncDto
+        {
+            RawRateId = Guid.NewGuid(),
+            BranchId = 2,
+            DisplayName = "Automóvil Sede 2",
+            VehicleType = "Car",
+            HourRate = 5000m,
+            MinuteRate = 250m,
+            IsActive = true
+        };
+        var rateBranch2Moto = new ApiVehicleRateSyncDto
+        {
+            RawRateId = Guid.NewGuid(),
+            BranchId = 2,
+            DisplayName = "Motocicleta Sede 2",
+            VehicleType = "Motorcycle",
+            HourRate = 2000m,
+            MinuteRate = 160m,
+            IsActive = true
+        };
+
+        var bootstrap = new BootstrapSyncResponse
+        {
+            Branches = new List<ApiBranchSyncDto>
+            {
+                new() { Id = 1, Name = "Sede 136" },
+                new() { Id = 2, Name = "Pepe sierra" }
+            },
+            Rates = new List<ApiVehicleRateSyncDto>
+            {
+                rateBranch1Car,
+                rateBranch1Moto,
+                rateBranch2Car,
+                rateBranch2Moto
+            }
+        };
+
+        _mockApiClient.Setup(a => a.PingAsync()).ReturnsAsync(true);
+        _mockApiClient.Setup(a => a.GetBootstrapAsync(1)).ReturnsAsync(bootstrap);
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        // Act 1: Sincronizar catálogo multi-sede
+        var result = await syncEngine.PerformFullSyncAsync();
+
+        // Assert 1: Ambos BranchId deben persistirse en SQLite con sus sedes originales
+        result.Should().BeTrue();
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            var branch1Rates = await db.VehicleRates.Where(r => r.BranchId == 1).ToListAsync();
+            branch1Rates.Should().HaveCount(2);
+
+            var branch2Rates = await db.VehicleRates.Where(r => r.BranchId == 2).ToListAsync();
+            branch2Rates.Should().HaveCount(2);
+        }
+
+        // Act 2 & Assert 2: Pricing calculator en Sede 1 resuelve tarifas de Sede 1
+        var pricingService = new EfPricingCalculatorService(_connectionManager, syncEngine, _mockSessionService.Object);
+        await pricingService.ReloadRatesAsync();
+        var resolvedCarRateSede1 = pricingService.GetRate(VehicleType.Car);
+        resolvedCarRateSede1.Should().NotBeNull();
+        resolvedCarRateSede1!.HourRate.Should().Be(4500m);
+        resolvedCarRateSede1.DisplayName.Should().Be("Automóvil Sede 1");
+
+        // Act 3 & Assert 3: Al conmutar de sede a Sede 2 (modo offline), resuelve tarifas de Sede 2
+        _mockSessionService.Setup(s => s.CurrentBranchId).Returns(2);
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = 2, Name = "Pepe sierra" });
+        await pricingService.ReloadRatesAsync();
+        var resolvedCarRateSede2 = pricingService.GetRate(VehicleType.Car);
+        resolvedCarRateSede2.Should().NotBeNull();
+        resolvedCarRateSede2!.HourRate.Should().Be(5000m);
+        resolvedCarRateSede2.DisplayName.Should().Be("Automóvil Sede 2");
+
+        // Act 4: Resincronizar y confirmar que las sedes hermanas NO se purgan
+        _mockApiClient.Setup(a => a.GetBootstrapAsync(2)).ReturnsAsync(bootstrap);
+        var resyncResult = await syncEngine.PerformFullSyncAsync();
+        resyncResult.Should().BeTrue();
+        using (var dbAfter = _connectionManager.CreateDbContext())
+        {
+            var allRates = await dbAfter.VehicleRates.ToListAsync();
+            allRates.Should().HaveCount(4);
+        }
+    }
+
+    [Fact]
     public async Task SyncEngineService_SyncRoles_WithCustomRole_DoesNotThrowRoleIdCollision()
     {
         // Arrange: Simular que la base de datos local ya tiene un rol 'Cajero' creado durante el login
