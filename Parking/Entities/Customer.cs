@@ -25,4 +25,11 @@ public class Customer
 
     public virtual ICollection<CustomerVehicle> Vehicles { get; set; } = new List<CustomerVehicle>();
     public virtual ICollection<ParkingTicket> ParkingTickets { get; set; } = new List<ParkingTicket>();
+
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public string DisplayText => string.IsNullOrWhiteSpace(DocumentNumber)
+        ? FullName
+        : $"{FullName} - Doc: {DocumentNumber}";
+
+    public override string ToString() => DisplayText;
 }
