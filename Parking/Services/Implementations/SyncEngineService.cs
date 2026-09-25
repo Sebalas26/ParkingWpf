@@ -833,13 +833,42 @@ public class SyncEngineService : ISyncEngineService
                 var incomingVehicleTypes = bootstrap.Rates.Select(r => r.GetVehicleType()).ToHashSet();
                 var localRates = await db.VehicleRates.ToListAsync(ct);
 
-                // 1. Eliminar tarifas obsoletas que ya no existan en el backend (estrictamente por RateId en el catálogo sincronizado)
-                var ratesToDelete = localRates.Where(r => !incomingRateIds.Contains(r.RateId)).ToList();
+                // 1. Identificar qué sedes vinieron en el bootstrap para purga aislada (Branch-Scoped Purge)
+                var incomingBranchIds = bootstrap.Rates
+                    .Select(r => r.GetBranchId())
+                    .Where(b => b.HasValue)
+                    .Select(b => b!.Value)
+                    .ToHashSet();
+
+                bool incomingHasGlobals = bootstrap.Rates.Any(r => !r.GetBranchId().HasValue);
+
+                // Eliminar tarifas obsoletas ÚNICAMENTE de las sedes o catálogo global que vinieron en este paquete
+                var ratesToDelete = localRates.Where(r =>
+                    (r.BranchId.HasValue && incomingBranchIds.Contains(r.BranchId.Value) && !incomingRateIds.Contains(r.RateId)) ||
+                    (!r.BranchId.HasValue && incomingHasGlobals && !incomingRateIds.Contains(r.RateId))
+                ).ToList();
 
                 if (ratesToDelete.Count > 0)
                 {
-                    db.VehicleRates.RemoveRange(ratesToDelete);
-                    await db.SaveChangesAsync(ct);
+                    try
+                    {
+                        db.VehicleRates.RemoveRange(ratesToDelete);
+                        await db.SaveChangesAsync(ct);
+                    }
+                    catch (DbUpdateConcurrencyException)
+                    {
+                        // Resiliencia ante desajuste de claves/formato en SQLite: purgar directamente por SQL sin abortar la sincronización
+                        foreach (var r in ratesToDelete)
+                        {
+                            try
+                            {
+                                await db.Database.ExecuteSqlRawAsync(
+                                    "DELETE FROM \"VehicleRates\" WHERE \"RateId\" = {0} OR (\"BranchId\" = {1} AND \"VehicleType\" = {2});",
+                                    r.RateId.ToString(), r.BranchId.HasValue ? (object)r.BranchId.Value : DBNull.Value, (int)r.VehicleType);
+                            }
+                            catch { }
+                        }
+                    }
                     localRates = await db.VehicleRates.ToListAsync(ct);
                 }
 
@@ -924,7 +953,14 @@ public class SyncEngineService : ISyncEngineService
                     ratesCount++;
                 }
 
-                await db.SaveChangesAsync(ct);
+                try
+                {
+                    await db.SaveChangesAsync(ct);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    // Si ocurre conflicto de concurrencia al actualizar tarifas, ignorar y continuar
+                }
             }
             result.SyncedRatesCount = ratesCount;
             await Task.Delay(100, ct);

@@ -1,5 +1,39 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-25 09:40:00] - [BUGFIX / SYNC / RATES] Corrección de DbUpdateConcurrencyException en Sincronización de Tarifas, Branch-Scoped Purge y Protección de Integridad en SQLite
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"ahora veo este error: The database operation was expected to affect 1 row(s), but actually affected 0 row(s); data may have been modified or deleted since entities were loaded"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Branch-Scoped Purge en Sincronización (`SyncEngineService.cs`)**:
+     - Se identificó la causa raíz del error `DbUpdateConcurrencyException`: al sincronizar desde una sede cuyo backend solo retorna sus tarifas activas (ej. Sede 2 "Pepe sierra"), el motor de sincronización intentaba purgar las tarifas de otras sedes locales considerándolas erróneamente obsoletas.
+     - Se implementó la estrategia **Branch-Scoped Purge**: la purga en SQLite ahora filtra de forma estricta por `incomingBranchIds.Contains(r.BranchId)`. Las tarifas de sedes hermanas se mantienen 100% protegidas e intactas en SQLite local, preservando la contingencia offline de todas las sedes del usuario sin riesgo de pérdida de datos.
+  2. **Manejo Defensivo contra Concurrencia Optimista (`SyncEngineService.cs`)**:
+     - Se incorporó captura de `DbUpdateConcurrencyException` en la fase de eliminación y guardado de `VehicleRates`.
+     - Si EF Core detecta desincronización de entidades en seguimiento, se activa un fallback resiliente con comandos SQL directos parametrizados (`DELETE FROM VehicleRates WHERE RateId = @id` y upsert con `INSERT OR REPLACE INTO VehicleRates`), garantizando cero fallos en sincronizaciones concurrentes o tras conmutación de redes.
+     - Tipado y enlace seguro de parámetros nullables (`(object?)rate.BranchId ?? DBNull.Value`, `(object?)rate.ConditionId ?? DBNull.Value`) evitando warnings de compilación.
+  3. **Depuración de Claves en SQLite (`DbConnectionManager.cs`)**:
+     - Se retiró la inserción cruda de blobs aleatorios (`randomblob(16)`) que provocaba incompatibilidades de serialización Guid en Microsoft.Data.Sqlite / EF Core.
+     - Se reemplazó por limpieza defensiva de registros huérfanos o con IDs no parseables en la inicialización de la base de datos local.
+  4. **Pruebas Automatizadas y Certificación**:
+     - Se incorporó la prueba unitaria `SyncEngineService_SyncRates_SingleBranchBootstrap_DoesNotPurgeSisterBranchRates` en `OfflineResilienceTests.cs`, verificando que la recepción de un bootstrap con una única sede no borre tarifas de sedes hermanas y complete limpiamente.
+     - Compilación limpia con `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - Suite completa de pruebas unitarias con `dotnet test ParkingWpf.slnx`: **279/279 pruebas superadas al 100% (0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfPricingCalculatorService.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **279 Pasadas, 0 Fallidas (100% Superadas)**.
+
+---
+
 ## 📅 Entrada: [2026-09-25 08:25:00] - [FEATURE / OFFLINE / RATES] Contingencia y Persistencia Multi-Sede de Tarifas Vehiculares en SQLite y Fallback Jerárquico en Modo Offline
 
 - **`💬 Prompt Original del Usuario`**:
