@@ -139,4 +139,174 @@ public class AuthServiceOfflineTests : IDisposable
         Assert.False(result.Success);
         Assert.Contains("incorrectos", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public async Task AuthenticateAsync_Online_AssignsLocalRoleIdToSession()
+    {
+        // Arrange
+        _apiClientMock.Setup(a => a.LoginAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(new Parking.Models.ApiModels.LoginApiResponse
+            {
+                Success = true,
+                Token = "fake-jwt-token",
+                UserId = 42,
+                Username = "cajero_online",
+                FullName = "Cajero Online Test",
+                RoleName = "Cajero Central",
+                RoleId = 7,
+                CompanyId = 1,
+                CompanyName = "Parking Flow",
+                Permissions = new System.Collections.Generic.List<string> { "shift.handover", "ticket.create" }
+            });
+
+        var authService = new AuthService(
+            _dbManager,
+            _apiClientMock.Object,
+            _sessionServiceMock.Object,
+            _permissionServiceMock.Object);
+
+        // Act
+        var result = await authService.AuthenticateAsync("cajero_online", "password123");
+
+        // Assert
+        Assert.True(result.Success);
+        Assert.NotNull(result.User);
+        Assert.NotEqual(Guid.Empty, result.User.RoleId);
+        Assert.NotEqual(Guid.Empty, result.User.UserId);
+        Assert.Equal(42, result.User.ServerUserId);
+        Assert.Equal(7, result.User.ServerRoleId);
+    }
+
+    [Fact]
+    public async Task SwitchCurrentUser_UsesGrantedPermissions_WhenAvailable()
+    {
+        // Arrange
+        var authService = new AuthService(
+            _dbManager,
+            _apiClientMock.Object,
+            _sessionServiceMock.Object,
+            _permissionServiceMock.Object);
+
+        var userModel = new Parking.Models.UserSessionModel
+        {
+            UserId = Guid.NewGuid(),
+            Username = "cajero_switch",
+            FullName = "Cajero Switch Test",
+            RoleName = "Operador",
+            RoleId = Guid.NewGuid(),
+            IsAdmin = false,
+            GrantedPermissions = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "shift.handover",
+                "ticket.checkout"
+            }
+        };
+
+        // Act
+        authService.SwitchCurrentUser(userModel);
+
+        // Assert: _permissionServiceMock debe recibir las GrantedPermissions directamente
+        _permissionServiceMock.Verify(p => p.LoadPermissions(
+            It.Is<System.Collections.Generic.List<string>>(perms =>
+                perms.Contains("shift.handover") && perms.Contains("ticket.checkout")),
+            false),
+            Moq.Times.Once);
+    }
+
+    [Fact]
+    public async Task ValidateCredentials_DoesNotCreateNewApiSession()
+    {
+        // Arrange
+        var rawPassword = "claveLocal123";
+        var bcryptHash = BCrypt.Net.BCrypt.HashPassword(rawPassword, workFactor: 11);
+
+        using (var db = _dbManager.CreateDbContext())
+        {
+            var role = new Role { RoleId = Guid.NewGuid(), Name = "Cajero" };
+            db.Roles.Add(role);
+
+            var user = new User
+            {
+                UserId = Guid.NewGuid(),
+                Username = "cajero_val_local",
+                FullName = "Cajero Local Validación",
+                PasswordHash = bcryptHash,
+                RoleId = role.RoleId,
+                IsActive = true
+            };
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+        }
+
+        var authService = new AuthService(
+            _dbManager,
+            _apiClientMock.Object,
+            _sessionServiceMock.Object,
+            _permissionServiceMock.Object);
+
+        // Act
+        var validatedSession = await authService.ValidateCredentialsAsync("cajero_val_local", rawPassword);
+
+        // Assert: Validó localmente con éxito
+        Assert.NotNull(validatedSession);
+        Assert.Equal("cajero_val_local", validatedSession.Username);
+
+        // Y NUNCA llamó al API central para crear una sesión o token
+        _apiClientMock.Verify(a => a.LoginAsync(It.IsAny<string>(), It.IsAny<string>()), Moq.Times.Never);
+    }
+
+    [Fact]
+    public async Task ValidateAdminAuthorization_OnlyAcceptsIsAdminTrue()
+    {
+        // Arrange: Dos usuarios, uno con rol Administrador pero IsAdmin = false (suplantación de texto),
+        // y otro con IsAdmin = true legítimo.
+        var passAdminFalso = "claveFalsa123";
+        var passAdminReal = "claveReal123";
+
+        using (var db = _dbManager.CreateDbContext())
+        {
+            var role = new Role { RoleId = Guid.NewGuid(), Name = "Administrador" };
+            db.Roles.Add(role);
+
+            // Usuario con nombre de rol "Administrador" pero IsAdmin = false
+            db.Users.Add(new User
+            {
+                UserId = Guid.NewGuid(),
+                Username = "admin_falso",
+                FullName = "Usuario Trampa",
+                PasswordHash = DbConnectionManager.HashPassword(passAdminFalso),
+                RoleId = role.RoleId,
+                IsAdmin = false,
+                IsActive = true
+            });
+
+            // Usuario con IsAdmin = true legítimo
+            db.Users.Add(new User
+            {
+                UserId = Guid.NewGuid(),
+                Username = "admin_real",
+                FullName = "Admin Real",
+                PasswordHash = DbConnectionManager.HashPassword(passAdminReal),
+                RoleId = role.RoleId,
+                IsAdmin = true,
+                IsActive = true
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        var authService = new AuthService(
+            _dbManager,
+            _apiClientMock.Object,
+            _sessionServiceMock.Object,
+            _permissionServiceMock.Object);
+
+        // Act & Assert
+        var resultFalso = await authService.ValidateAdminAuthorizationAsync(passAdminFalso);
+        Assert.Null(resultFalso); // Rechazado porque IsAdmin es false
+
+        var resultReal = await authService.ValidateAdminAuthorizationAsync(passAdminReal);
+        Assert.NotNull(resultReal); // Aceptado porque IsAdmin es true
+        Assert.Equal("admin_real", resultReal.Username);
+    }
 }

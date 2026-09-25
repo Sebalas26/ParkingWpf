@@ -377,16 +377,18 @@ public partial class MainShellViewModel : ViewModelBase
             var currentUser = _sessionService.CurrentUser;
             if (currentUser != null)
             {
-                bool matchesToken = !string.IsNullOrWhiteSpace(notification.SessionToken) &&
+                bool hasSpecificToken = !string.IsNullOrWhiteSpace(notification.SessionToken);
+                bool matchesToken = hasSpecificToken &&
                                     !string.IsNullOrWhiteSpace(currentUser.SessionToken) &&
                                     string.Equals(notification.SessionToken, currentUser.SessionToken, StringComparison.OrdinalIgnoreCase);
 
-                bool matchesUser = (notification.UserId.HasValue && currentUser.ServerUserId == notification.UserId.Value) ||
-                                   (!string.IsNullOrWhiteSpace(notification.EntityIdentifier) &&
-                                    string.Equals(notification.EntityIdentifier, currentUser.Username, StringComparison.OrdinalIgnoreCase));
+                bool matchesUser = !hasSpecificToken &&
+                                   ((notification.UserId.HasValue && currentUser.ServerUserId == notification.UserId.Value) ||
+                                    (!string.IsNullOrWhiteSpace(notification.EntityIdentifier) &&
+                                     string.Equals(notification.EntityIdentifier, currentUser.Username, StringComparison.OrdinalIgnoreCase)));
 
-                bool matchesCompany = !notification.UserId.HasValue &&
-                                      string.IsNullOrWhiteSpace(notification.SessionToken) &&
+                bool matchesCompany = !hasSpecificToken &&
+                                      !notification.UserId.HasValue &&
                                       string.IsNullOrWhiteSpace(notification.EntityIdentifier) &&
                                       notification.CompanyId.HasValue &&
                                       currentUser.CompanyId.HasValue &&

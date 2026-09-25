@@ -142,6 +142,8 @@ public class AuthService : IAuthService
                         await localDb.SaveChangesAsync();
                     }
 
+                    userModel.RoleId = targetRole.RoleId;
+
                     if (localUser != null)
                     {
                         if (!string.IsNullOrWhiteSpace(password))
@@ -171,6 +173,8 @@ public class AuthService : IAuthService
                         };
                         localDb.Users.Add(localUser);
                     }
+
+                    userModel.UserId = localUser.UserId;
 
                     // Asegurar persistencia de sedes de la empresa/usuario para disponibilidad offline
                     if (branches != null && branches.Count > 0)
@@ -287,11 +291,7 @@ public class AuthService : IAuthService
         await db.SaveChangesAsync();
 
         var localRoleName = user.Role?.Name ?? "Operador";
-        var isLocalAdmin = user.IsAdmin ||
-                           localRoleName.Equals("Administrador", StringComparison.OrdinalIgnoreCase) ||
-                           localRoleName.Equals("Admin", StringComparison.OrdinalIgnoreCase) ||
-                           localRoleName.Contains("Administrador", StringComparison.OrdinalIgnoreCase) ||
-                           localRoleName.Contains("Admin", StringComparison.OrdinalIgnoreCase);
+        var isLocalAdmin = user.IsAdmin;
 
         var localUserModel = new UserSessionModel
         {
@@ -468,6 +468,80 @@ public class AuthService : IAuthService
 
     public async Task<UserSessionModel?> ValidateCredentialsAsync(string username, string password)
     {
+        if (string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
+            return null;
+
+        var normalizedUser = username.Trim().ToLower();
+
+        // 1. Verificación local inmediata (SQLite) para evitar crear sesiones en el API y prevenir deslogueos concurrentes por SignalR
+        using var db = _connectionManager.CreateDbContext();
+        var passwordHash = DbConnectionManager.HashPassword(password);
+
+        var user = await db.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => (u.Username.ToLower() == normalizedUser || (u.Email != null && u.Email.ToLower() == normalizedUser)) && u.IsActive);
+
+        if (user != null && !string.IsNullOrWhiteSpace(user.PasswordHash))
+        {
+            var isValidLocal = false;
+            try
+            {
+                if (user.PasswordHash.StartsWith("$2") && BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+                {
+                    isValidLocal = true;
+                }
+            }
+            catch { }
+
+            if (!isValidLocal && (user.PasswordHash == passwordHash || user.PasswordHash == password))
+            {
+                isValidLocal = true;
+            }
+
+            if (isValidLocal)
+            {
+                var permissions = await db.RolePermissions
+                    .Include(rp => rp.Permission)
+                    .Where(rp => rp.RoleId == user.RoleId && rp.IsGranted && rp.Permission.ActionKey != null)
+                    .Select(rp => rp.Permission.ActionKey)
+                    .ToListAsync();
+
+                var localRoleName = user.Role?.Name ?? "Operador";
+
+                // Resolver ServerUserId previo si existe en el historial local de turnos
+                int? resolvedServerUserId = null;
+                var previousShift = await db.WorkShifts
+                    .AsNoTracking()
+                    .Where(s => s.OperatorName == user.FullName && s.UserId > 0)
+                    .OrderByDescending(s => s.StartTimeUtc)
+                    .FirstOrDefaultAsync();
+
+                if (previousShift != null)
+                {
+                    resolvedServerUserId = previousShift.UserId;
+                }
+
+                return new UserSessionModel
+                {
+                    UserId = user.UserId,
+                    ServerUserId = resolvedServerUserId,
+                    Username = user.Username,
+                    FullName = user.FullName,
+                    RoleName = localRoleName,
+                    RoleId = user.RoleId,
+                    IsAdmin = user.IsAdmin,
+                    IsSuperAdmin = false,
+                    CompanyId = user.CompanyId,
+                    GrantedPermissions = new HashSet<string>(permissions, StringComparer.OrdinalIgnoreCase),
+                    SessionToken = Guid.NewGuid().ToString(),
+                    LoginTime = DateTime.Now
+                };
+            }
+
+            return null; // Contraseña incorrecta para usuario local existente
+        }
+
+        // 2. Si el usuario no existe aún en la base de datos local SQLite, intentar autenticación contra API
         var result = await AuthenticateAsync(username, password);
         return result.Success ? result.User : null;
     }
@@ -482,7 +556,7 @@ public class AuthService : IAuthService
         using var db = _connectionManager.CreateDbContext();
         var adminUsers = await db.Users
             .Include(u => u.Role)
-            .Where(u => u.IsActive && (u.IsAdmin || u.Role.Name == "Administrador" || u.Role.Name == "Admin"))
+            .Where(u => u.IsActive && u.IsAdmin)
             .ToListAsync();
 
         foreach (var admin in adminUsers)
@@ -513,7 +587,11 @@ public class AuthService : IAuthService
         var isAdmin = newUser.IsAdmin;
 
         List<string> permissions = new();
-        if (!isAdmin && newUser.RoleId != Guid.Empty)
+        if (newUser.GrantedPermissions != null && newUser.GrantedPermissions.Count > 0)
+        {
+            permissions = newUser.GrantedPermissions.ToList();
+        }
+        else if (!isAdmin && newUser.RoleId != Guid.Empty)
         {
             using var db = _connectionManager.CreateDbContext();
             permissions = db.RolePermissions
