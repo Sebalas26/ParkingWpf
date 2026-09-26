@@ -109,7 +109,7 @@
                               Margin="0,0,10,0"
                               VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1"
-                                   Text="Protección activa: Antes de actualizar se sincronizarán al 100% sus ventas locales y se creará una copia de seguridad preventiva de la base de datos."
+                                   Text="Protección activa: Su base de datos local y transacciones se respaldan de forma preventiva antes de aplicar la actualización."
                                    FontSize="12"
                                    Foreground="{DynamicResource BrushTextSecondary}"
                                    TextWrapping="Wrap"/>

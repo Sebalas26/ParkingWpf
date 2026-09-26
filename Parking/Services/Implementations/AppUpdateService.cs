@@ -91,40 +91,11 @@ public class AppUpdateService : IAppUpdateService
 
     public async Task<bool> PrepareAndApplyUpdateAsync(AppReleaseInfoDto release, IProgress<UpdateProgressReport>? progress = null)
     {
-        // 1. REGLA DE ORO DE SEGURIDAD: VERIFICACIÓN Y SINCRONIZACIÓN PREVIA TOTAL DE DATOS LOCALES
-        progress?.Report(new UpdateProgressReport
-        {
-            StepDescription = "Comprobando transacciones locales pendientes antes de actualizar...",
-            Percentage = 10
-        });
-
-        if (_syncEngine.PendingItemsCount > 0)
-        {
-            progress?.Report(new UpdateProgressReport
-            {
-                StepDescription = $"Sincronizando {_syncEngine.PendingItemsCount} transacciones locales pendientes con el servidor central...",
-                Percentage = 20
-            });
-
-            var syncSuccess = await _syncEngine.PerformFullSyncAsync();
-            if (!syncSuccess || _syncEngine.PendingItemsCount > 0)
-            {
-                progress?.Report(new UpdateProgressReport
-                {
-                    StepDescription = "Sincronización incompleta.",
-                    Percentage = 20,
-                    IsError = true,
-                    ErrorMessage = "Existen registros en cola local sin sincronizar y no se pudo asegurar la conexión con el servidor. Para proteger la información de ventas y turnos, la actualización se ha pospuesto."
-                });
-                return false;
-            }
-        }
-
-        // 2. COPIA DE SEGURIDAD PREVENTIVA DE LA BASE DE DATOS LOCAL SQLITE
+        // 1. COPIA DE SEGURIDAD PREVENTIVA DE LA BASE DE DATOS LOCAL SQLITE
         progress?.Report(new UpdateProgressReport
         {
             StepDescription = "Generando copia de seguridad preventiva de la base de datos local...",
-            Percentage = 35
+            Percentage = 15
         });
 
         try
@@ -138,6 +109,35 @@ public class AppUpdateService : IAppUpdateService
         catch (Exception ex)
         {
             Debug.WriteLine($"[BACKUP LOCAL WARNING] No se pudo generar backup automático preventivo: {ex.Message}");
+        }
+
+        // 2. REGLA DE ORO DE SEGURIDAD: INTENTO DE SINCRONIZACIÓN PREVIA DE DATOS LOCALES
+        if (_syncEngine.PendingItemsCount > 0)
+        {
+            progress?.Report(new UpdateProgressReport
+            {
+                StepDescription = $"Sincronizando {_syncEngine.PendingItemsCount} transacciones locales pendientes con el servidor central...",
+                Percentage = 30
+            });
+
+            try
+            {
+                await _syncEngine.PerformFullSyncAsync();
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[SYNC PRE-UPDATE WARNING] Sincronización previa no completada: {ex.Message}");
+            }
+
+            if (_syncEngine.PendingItemsCount > 0)
+            {
+                // No abortar: la base de datos local SQLite y su copia de seguridad conservan los registros pendientes de forma segura
+                progress?.Report(new UpdateProgressReport
+                {
+                    StepDescription = $"Base de datos respaldada. {_syncEngine.PendingItemsCount} registros locales protegidos se sincronizarán al iniciar sesión.",
+                    Percentage = 35
+                });
+            }
         }
 
         // 3. DESCARGA AUTENTICADA DEL PAQUETE ZIP

@@ -40,6 +40,10 @@ public partial class AppUpdateViewModel : ObservableObject
     public void Initialize(AppReleaseInfoDto release)
     {
         ReleaseInfo = release;
+        if (string.IsNullOrWhiteSpace(ReleaseInfo.ReleaseNotes))
+        {
+            ReleaseInfo.ReleaseNotes = "Esta versión incluye mejoras generales de rendimiento, seguridad en base de datos local y optimizaciones de sincronización.";
+        }
         CanCancel = !release.IsMandatory;
         StatusMessage = release.IsMandatory
             ? "Esta actualización es obligatoria para garantizar la estabilidad y compatibilidad con el servidor central."

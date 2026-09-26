@@ -1,5 +1,43 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-26 15:10:00] - [BUGFIX / ARCHITECTURE / WPF / UPDATE] Actualización Resiliente sin Pérdida de BD Local y Notificación Reactiva SignalR desde PWA
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Analiza porque sale erorr al actualizar el wpf , valida que cuando se notifique desde el pwa que hay una nueva version, el permita sin perder la bd local por temas de seguridad. Analiza huecos tecnicos que este ajuste arregle definitivo el daño y no se dañe nada"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Eliminación de Causa Raíz (Bloqueo en Pantalla de Login)**:
+     - *Comportamiento Previo*: Al detectarse una actualización disponible en el arranque de la aplicación (`App.xaml.cs`) o en el diálogo `AppUpdateDialog`, `AppUpdateService.PrepareAndApplyUpdateAsync` abortaba drásticamente el proceso si `_syncEngine.PendingItemsCount > 0` arrojando el error *"Sincronización incompleta: Existen registros en cola local sin sincronizar y no se pudo asegurar la conexión con el servidor. Para proteger la información de ventas y turnos, la actualización se ha pospuesto."*.
+     - *Falla de Diseño Identificada*: En la pantalla de inicio de sesión no existe un operador autenticado (`_sessionService.CurrentUser == null` y `_apiClient` carece de JWT), por lo que los endpoints protegidos del API rechazaban la sincronización inmediata, atrapando a la terminal en un bucle infinito que impedía actualizar.
+     - *Seguridad de Almacenamiento Local*: La base de datos SQLite física (`parkflow_local.db`) no reside en el directorio de binarios de la aplicación, sino en `%LocalAppData%\ParkFlow\Data\`, y el micro-actualizador `ParkFlow.Updater` cuenta con reglas de exclusión inmutables para no tocar archivos `.db`, `.db-wal` ni `.db-shm`.
+  2. **Arquitectura de Actualización Resiliente (`AppUpdateService.cs`)**:
+     - Se reorganizó la secuencia de ejecución:
+       1. Se genera primero e incondicionalmente la copia de seguridad preventiva física con timestamp en `%LocalAppData%\ParkFlow\Backups\parkflow_local_backup_{timestamp}.db` mediante `_dbManager.BackupDatabaseAsync()`.
+       2. Se intenta sincronizar los registros pendientes (`PerformFullSyncAsync`). Si la sincronización no puede completarse en ese instante (por falta de sesión activa o conectividad), se reporta al usuario que los registros locales están protegidos y respaldados, permitiendo continuar con la descarga e instalación.
+       3. Al reiniciar la aplicación e iniciar sesión el operador, el motor de sincronización (`_syncEngine`) procesa los elementos pendientes con normalidad.
+  3. **Recepción en Vivo de Actualizaciones vía SignalR (`MainShellViewModel.cs`)**:
+     - Se inyectó opcionalmente `IAppUpdateService? updateService = null` en el constructor de `MainShellViewModel`.
+     - En `HandleRealtimeNotificationAsync`, se añadió el manejador para el evento `AppReleaseAvailable`:
+       - Al recibir la notificación desde SignalR, consulta en segundo plano `_updateService.CheckForUpdateAsync()`.
+       - Si existe una actualización disponible, invoca en el Dispatcher `_dialogService.ShowAppUpdateDialogAsync(release)` para presentar la ventana de actualización en caliente al operador sin requerir reiniciar la terminal.
+  4. **Afinamiento de UI en Diálogo de Actualización (`AppUpdateViewModel.cs`, `AppUpdateDialog.xaml`)**:
+     - Se dotó de notas descriptivas por defecto en `AppUpdateViewModel.Initialize` cuando `release.ReleaseNotes` viene nulo o vacío.
+     - Se actualizó el texto del banner de seguridad en `AppUpdateDialog.xaml` para reflejar con precisión la protección y respaldo de la base de datos local.
+  5. **Pruebas Unitarias Actualizadas (`AppUpdateAndLicensingTests.cs`)**:
+     - Se sustituyó la prueba de aborto por `PrepareAndApplyUpdate_WhenPendingSyncItemsExistAndSyncFails_ShouldBackupAndContinueSafely`, certificando que ante fallas de sincronización remota se genera el respaldo preventivo (`BackupDatabaseAsync`, `Times.Once`) y se preservan los registros locales.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/AppUpdateService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/ViewModels/AppUpdateViewModel.cs`
+  - `Parking/Views/AppUpdateDialog.xaml`
+  - `Parking.UnitTests/Services/AppUpdateAndLicensingTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **334/334 Pruebas Unitarias Superadas (0 Fallos, 100% Correctas)**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+
 
 
 

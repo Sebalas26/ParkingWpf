@@ -101,20 +101,42 @@ public class AppUpdateAndLicensingTests : IDisposable
     }
 
     [Fact]
-    public async Task PrepareAndApplyUpdate_WhenPendingSyncItemsExistAndSyncFails_ShouldAbortToPreventDataLoss()
+    public async Task PrepareAndApplyUpdate_WhenPendingSyncItemsExistAndSyncFails_ShouldBackupAndContinueSafely()
     {
-        // REGLA DE ORO: Si hay pendientes y falla la sincronización, NUNCA debe actualizar
+        // REGLA DE ORO: Si hay pendientes y falla el sync remoto (ej. pantalla login sin auth),
+        // se DEBE respaldar la BD SQLite preventiva y continuar la actualización protegiendo los datos locales.
         var syncEngineMock = new Mock<ISyncEngineService>();
         syncEngineMock.SetupGet(s => s.PendingItemsCount).Returns(5); // 5 transacciones pendientes
         syncEngineMock.Setup(s => s.PerformFullSyncAsync()).ReturnsAsync(false); // Falla el sync
 
         var dbManagerMock = new Mock<IDbConnectionManager>();
+        dbManagerMock.Setup(d => d.BackupDatabaseAsync()).ReturnsAsync("C:\\mock\\backup.db");
+
         var fingerprintMock = new Mock<IHardwareFingerprintService>();
+        fingerprintMock.Setup(f => f.GetMachineFingerprint()).Returns("fp_test");
+
         var licenseMock = new Mock<IDeviceLicenseService>();
         var sessionMock = new Mock<ISessionService>();
 
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new ByteArrayContent(Encoding.UTF8.GetBytes("CONTENIDO_CORRUPTO_O_FALSO"))
+            });
+
+        var httpClient = new HttpClient(handlerMock.Object)
+        {
+            BaseAddress = new Uri("http://localhost/")
+        };
+
         var updateService = new AppUpdateService(
-            new HttpClient(),
+            httpClient,
             syncEngineMock.Object,
             dbManagerMock.Object,
             fingerprintMock.Object,
@@ -124,22 +146,20 @@ public class AppUpdateAndLicensingTests : IDisposable
         var release = new AppReleaseInfoDto
         {
             LatestVersion = "2.0.0",
+            DownloadEndpoint = "api/v1/app-update/download/2.0.0",
+            PackageSha256 = "SHA_TEST",
             IsMandatory = true
         };
 
-        UpdateProgressReport? lastReport = null;
-        var progress = new Progress<UpdateProgressReport>(r => lastReport = r);
+        var reports = new List<UpdateProgressReport>();
+        var progress = new Progress<UpdateProgressReport>(r => reports.Add(r));
 
-        var result = await updateService.PrepareAndApplyUpdateAsync(release, progress);
+        await updateService.PrepareAndApplyUpdateAsync(release, progress);
 
         // Verificaciones de Seguridad Crítica
-        result.Should().BeFalse();
         syncEngineMock.Verify(s => s.PerformFullSyncAsync(), Times.Once);
-        // Jamás debe llamar al backup ni descargar binarios si el sync falló
-        dbManagerMock.Verify(d => d.BackupDatabaseAsync(), Times.Never);
-        lastReport.Should().NotBeNull();
-        lastReport!.IsError.Should().BeTrue();
-        lastReport.ErrorMessage.Should().Contain("Para proteger la información de ventas y turnos, la actualización se ha pospuesto");
+        dbManagerMock.Verify(d => d.BackupDatabaseAsync(), Times.Once); // El backup preventivo SIEMPRE se ejecuta
+        reports.Should().Contain(r => r.StepDescription.Contains("Base de datos respaldada") && r.StepDescription.Contains("5 registros locales protegidos"));
     }
 
     [Fact]

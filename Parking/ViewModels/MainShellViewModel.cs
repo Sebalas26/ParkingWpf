@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
@@ -28,6 +29,7 @@ public partial class MainShellViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly IShiftService _shiftService;
     private readonly ISignalRClientService _signalRClient;
+    private readonly IAppUpdateService? _updateService;
     private readonly DispatcherTimer _clockTimer;
 
     [ObservableProperty]
@@ -166,7 +168,8 @@ public partial class MainShellViewModel : ViewModelBase
         IBackgroundSyncScheduler backgroundSync,
         IDialogService dialogService,
         IShiftService shiftService,
-        ISignalRClientService signalRClient)
+        ISignalRClientService signalRClient,
+        IAppUpdateService? updateService = null)
     {
         _authService = authService;
         _sessionService = sessionService;
@@ -179,6 +182,7 @@ public partial class MainShellViewModel : ViewModelBase
         _dialogService = dialogService;
         _shiftService = shiftService;
         _signalRClient = signalRClient;
+        _updateService = updateService;
 
         _backgroundSync.SyncTriggered += (s, e) =>
         {
@@ -670,6 +674,33 @@ public partial class MainShellViewModel : ViewModelBase
                     IsRealtimeSyncing = false;
                     RealtimeSyncMessage = string.Empty;
                 }
+            }
+            return;
+        }
+
+        // 7. Manejo reactivo de Actualización Disponible (publicada desde PWA)
+        if (notification.EventType == "AppReleaseAvailable")
+        {
+            if (_updateService != null)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var release = await _updateService.CheckForUpdateAsync();
+                        if (release != null && release.HasUpdate)
+                        {
+                            await Application.Current.Dispatcher.InvokeAsync(async () =>
+                            {
+                                await _dialogService.ShowAppUpdateDialogAsync(release);
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[APP UPDATE ERROR] Error al procesar notificación de actualización en vivo: {ex.Message}");
+                    }
+                });
             }
             return;
         }
