@@ -62,6 +62,24 @@ public partial class LoginViewModel : ViewModelBase
         _syncEngine = syncEngine;
         _permissionService = permissionService;
 
+        _apiClient.ConnectionStateChanged += isOnline =>
+        {
+            var app = Application.Current;
+            if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
+            {
+                app.Dispatcher.InvokeAsync(() =>
+                {
+                    IsOnline = isOnline;
+                    NetworkStatusText = isOnline ? "API Central Online" : "Modo Offline (Sin Conexión)";
+                });
+            }
+            else
+            {
+                IsOnline = isOnline;
+                NetworkStatusText = isOnline ? "API Central Online" : "Modo Offline (Sin Conexión)";
+            }
+        };
+
         _ = CheckInitialConnectionAsync();
     }
 
@@ -69,7 +87,8 @@ public partial class LoginViewModel : ViewModelBase
     {
         try
         {
-            var isAvailable = await _apiClient.PingAsync();
+            NetworkStatusText = "Comprobando conexión...";
+            var isAvailable = await _apiClient.PingAsync(8);
             IsOnline = isAvailable;
             NetworkStatusText = isAvailable ? "API Central Online" : "Modo Offline (Sin Conexión)";
         }

@@ -13,7 +13,7 @@ public interface IApiClientService
     event Action<bool>? ConnectionStateChanged;
     string BaseUrl { get; set; }
     string? AuthToken { get; }
-    Task<bool> PingAsync();
+    Task<bool> PingAsync(int timeoutSeconds = 8);
     Task<BootstrapSyncResponse?> GetBootstrapAsync(int? branchId = null);
     Task<ParkingTicket?> CheckInAsync(CheckInApiRequest request);
     Task<ParkingTicket?> CheckOutAsync(CheckOutApiRequest request);

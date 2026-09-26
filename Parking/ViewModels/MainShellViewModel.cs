@@ -538,9 +538,8 @@ public partial class MainShellViewModel : ViewModelBase
                     {
                         SyncStatusText = $"Caja cerrada centralmente ({DateTime.Now.ToString("hh:mm tt", CultureInfo.InvariantCulture)})";
                         
-                        // Si ya no había turno activo en este terminal (por ejemplo, el usuario lo cerró localmente),
-                        // o si el operador ya se encuentra en la pantalla de control de turno/cierre, omitir el diálogo modal invasivo
-                        if (!hadActiveShiftLocally || ActiveView is ShiftClosureViewModel)
+                        // Si el operador local aún conserva su turno activo, o no tenía turno, o se encuentra en control de caja, omitir
+                        if (!hadActiveShiftLocally || HasActiveShift || ActiveView is ShiftClosureViewModel)
                         {
                             return;
                         }

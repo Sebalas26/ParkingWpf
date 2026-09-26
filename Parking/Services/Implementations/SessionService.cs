@@ -82,6 +82,10 @@ public class SessionService : ISessionService
         {
             CurrentBranch = selectedBranch;
         }
+        else if (CurrentBranch != null && _userBranches.Any(b => b.Id == CurrentBranch.Id))
+        {
+            CurrentBranch = _userBranches.First(b => b.Id == CurrentBranch.Id);
+        }
         else
         {
             CurrentBranch = _userBranches.FirstOrDefault(b => b.IsDefault) ?? _userBranches.FirstOrDefault();

@@ -198,6 +198,18 @@ public class EfShiftServiceTests : IDisposable
     {
         // Arrange
         var service = CreateService();
+        _mockApiClient.Setup(a => a.OpenShiftAsync(It.IsAny<OpenShiftApiRequest>()))
+            .ReturnsAsync(new WorkShift
+            {
+                ShiftId = Guid.NewGuid(),
+                BranchId = 1,
+                CompanyId = 5,
+                UserId = 1,
+                Status = 0,
+                IsSynchronized = true,
+                StartTimeUtc = DateTime.UtcNow.AddHours(-1)
+            });
+
         await service.OpenShiftAsync(baseAmount: 50000m);
         service.HasActiveShift.Should().BeTrue();
 
@@ -215,6 +227,34 @@ public class EfShiftServiceTests : IDisposable
         service.CurrentShift.Should().BeNull();
         service.HasActiveShift.Should().BeFalse();
         eventFired.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RefreshCurrentShiftAsync_WhenShiftUnsynchronizedOrRecent_PreservesShiftEvenIfApiReturnsNull()
+    {
+        // Arrange
+        var service = CreateService();
+        // Abrir turno localmente en modo offline (sin respuesta del API central)
+        var localShift = await service.OpenShiftAsync(baseAmount: 30000m);
+        localShift.IsSynchronized.Should().BeFalse();
+        service.HasActiveShift.Should().BeTrue();
+
+        // Simular que el API retorna null porque aún no se sincronizó a MySQL
+        _mockApiClient.Setup(a => a.GetActiveShiftAsync(It.IsAny<int?>(), It.IsAny<int?>()))
+            .ReturnsAsync((WorkShift?)null);
+
+        // Act
+        await service.RefreshCurrentShiftAsync();
+
+        // Assert: El turno local NO debe ser destruido ni cerrado
+        service.CurrentShift.Should().NotBeNull();
+        service.CurrentShift!.ShiftId.Should().Be(localShift.ShiftId);
+        service.HasActiveShift.Should().BeTrue();
+
+        using var db = _connectionManager.CreateDbContext();
+        var shiftInDb = await db.WorkShifts.FindAsync(localShift.ShiftId);
+        shiftInDb.Should().NotBeNull();
+        shiftInDb!.Status.Should().Be(0); // Sigue Abierto
     }
 
     [Fact]
@@ -543,6 +583,8 @@ public class EfShiftServiceTests : IDisposable
         newShift.BaseAmount.Should().Be(verifiedCash);
         newShift.OperatorName.Should().Be(incomingUserName);
         newShift.CashRegisterName.Should().Be("Caja Secundaria");
+        newShift.BranchId.Should().Be(1);
+        newShift.CompanyId.Should().Be(5);
 
         using (var db = _connectionManager.CreateDbContext())
         {
@@ -648,6 +690,72 @@ public class EfShiftServiceTests : IDisposable
         // Assert
         nextShift.Should().NotBeNull();
         nextShift.UserId.Should().Be(expectedServerUserId);
+        nextShift.OperatorName.Should().Be(incomingName);
+    }
+
+    [Fact]
+    public async Task HandoverAndOpenNextShiftAsync_PreservesBranchAndCompanyOfOutgoingShift_EvenIfCurrentBranchDiffers()
+    {
+        // Arrange: Sede actual en SessionService es Sede 1 ("Sede Principal")
+        _mockSessionService.Setup(s => s.CurrentBranchId).Returns(1);
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = 1, Name = "Sede Principal" });
+        _mockSessionService.Setup(s => s.CurrentCompanyId).Returns(10);
+
+        var outgoingShiftId = Guid.NewGuid();
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            // Turno saliente ubicado físicamente en Sede 8 (ej: "Sede Centro") con CompanyId 30
+            db.WorkShifts.Add(new WorkShift
+            {
+                ShiftId = outgoingShiftId,
+                BranchId = 8,
+                CompanyId = 30,
+                UserId = 15,
+                OperatorName = "Operador Centro",
+                CashRegisterName = "Caja 2 Centro",
+                Status = 0,
+                BaseAmount = 100000m,
+                StartTimeUtc = DateTime.UtcNow.AddHours(-2)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var incomingUserGuid = Guid.NewGuid();
+        var incomingName = "Receptor Centro";
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            var role = new Role { RoleId = Guid.NewGuid(), Name = "Cajero", Description = "Cajero" };
+            db.Roles.Add(role);
+            db.Users.Add(new User
+            {
+                UserId = incomingUserGuid,
+                Username = "receptor.centro",
+                FullName = incomingName,
+                ServerUserId = 99,
+                RoleId = role.RoleId,
+                IsActive = true
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var service = CreateService();
+
+        // Act: Relevar el turno ubicado en la Sede 8
+        var nextShift = await service.HandoverAndOpenNextShiftAsync(
+            actualCashCounted: 120000m,
+            notes: "Relevo en Sede Centro",
+            handoverToUserId: incomingUserGuid,
+            handoverToUserName: incomingName,
+            newShiftBaseAmount: 120000m,
+            shiftIdToClose: outgoingShiftId);
+
+        // Assert: El nuevo turno debe permanecer en la Sede 8 y Empresa 30, no en Sede 1
+        nextShift.Should().NotBeNull();
+        nextShift.BranchId.Should().Be(8);
+        nextShift.CompanyId.Should().Be(30);
+        nextShift.CashRegisterName.Should().Be("Caja 2 Centro");
+        nextShift.Status.Should().Be(0);
         nextShift.OperatorName.Should().Be(incomingName);
     }
 

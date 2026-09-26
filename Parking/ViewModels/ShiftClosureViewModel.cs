@@ -600,9 +600,6 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 ? $"Relevo entregado por {outgoingOperatorName} a {SelectedHandoverUser.FullName}. Base entregada: ${verifiedCash:N0}"
                 : $"{Notes} (Relevo entregado a {SelectedHandoverUser.FullName})";
 
-            // Cambiar de inmediato la sesión activa al operador receptor autenticado
-            _authService.SwitchCurrentUser(authResult.Session);
-
             // Cerrar turno saliente y abrir inmediatamente el nuevo turno
             await _shiftService.HandoverAndOpenNextShiftAsync(
                 verifiedCash,
@@ -611,6 +608,9 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 SelectedHandoverUser.FullName,
                 verifiedCash,
                 currentShiftId);
+
+            // Cambiar la sesión activa al operador receptor autenticado una vez abierto el nuevo turno
+            _authService.SwitchCurrentUser(authResult.Session);
 
             await _dialogService.ShowAlertAsync(
                 "Entrega de Turno Exitosa",
@@ -708,9 +708,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 ? $"Relevo de '{targetShift.CashRegisterName}' asumido por {incomingUser.FullName}. Base recibida: ${verifiedCash:N0}"
                 : $"{Notes} (Relevo de '{targetShift.CashRegisterName}' asumido por {incomingUser.FullName})";
 
-            // Sincronizar y recargar sesión activa con la matriz de permisos
-            _authService.SwitchCurrentUser(authResult.Session);
-
+            // Cerrar turno saliente y abrir inmediatamente el nuevo turno a nombre del operador entrante
             await _shiftService.HandoverAndOpenNextShiftAsync(
                 verifiedCash,
                 note,
@@ -719,6 +717,9 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 verifiedCash,
                 targetShift.ShiftId,
                 targetShift.CashRegisterName);
+
+            // Sincronizar y recargar sesión activa con la matriz de permisos para el nuevo operador
+            _authService.SwitchCurrentUser(authResult.Session);
 
             await _dialogService.ShowAlertAsync(
                 "Turno Asumido con Éxito",

@@ -701,7 +701,7 @@ public class AuthService : IAuthService
         }
 
         _permissionService.LoadPermissions(permissions, isAdmin);
-        _sessionService.SetSession(newUser, _sessionService.UserBranches);
+        _sessionService.SetSession(newUser, _sessionService.UserBranches, _sessionService.CurrentBranch);
         UserSessionChanged?.Invoke(CurrentUser);
     }
 

@@ -1,5 +1,113 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-26 00:15:00] - [BUGFIX / WPF / LOGOUT-LIFECYCLE / SHIFT-HANDOVER / BRANCH-INTEGRITY] Erradicación de Excepción ShutdownMode en Logout, Blindaje Atómico de Relevo de Turnos y Preservación de Sede Operativa (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"cuando le di salir d ela aplicacion me arrojo este error ahora: System.InvalidOperationException: 'No se puede establecer ShutdownMode cuando la aplicación se está deteniendo o ya está detenida.' en Parking.App.ShowLoginWindow() en App.xaml.cs:línea 280"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Erradicación de `InvalidOperationException` al Cerrar Sesión (`App.xaml.cs`)**:
+     - *Causa Raíz*: En `ShowMainShellWindow()`, el manejador `shellWindow.Closed += (s, e) => { if (!isLoggingOut) Shutdown(0); }` era ejecutado cuando el usuario pulsaba el botón rojo de Logout. Dado que `OnShellLogoutRequested` cerraba `shellWindow` antes de que el flujo de logout finalizara, el evento `.Closed` invocaba `Shutdown(0)`, iniciando el proceso de apagado de la aplicación. Al abrir inmediatamente `ShowLoginWindow()`, la asignación de `ShutdownMode` en la línea 280 arrojaba `InvalidOperationException` porque WPF no permite alterar `ShutdownMode` mientras el runtime se está deteniendo.
+     - *Solución*:
+       - Se estableció `ShutdownMode = ShutdownMode.OnExplicitShutdown;` estrictamente una sola vez en `OnStartup`, eliminando todas las reasignaciones redundantes y peligrosas en tiempo de ejecución.
+       - Se introdujo la bandera de control `_isTransitioningToLogin` en `App.xaml.cs`, garantizando que durante la transición de Logout nunca se invoque accidentalmente `Shutdown()`.
+       - Se eliminó el manejador defectuoso de `.Closed` en `ShowMainShellWindow()`. El cierre formal de la aplicación se delega a los botones de salida explícita y al menú de apagado.
+  2. **Preservación Estricta de Sede en Cambio de Sesión (`AuthService.cs`, `SessionService.cs`)**:
+     - *Causa Raíz*: Al realizar la entrega o relevo de caja, `AuthService.SwitchCurrentUser(authResult.Session)` llamaba a `_sessionService.SetSession(newUser, _userBranches)` pasando `selectedBranch = null`. Esto provocaba que `SessionService.SetSession` reiniciara arbitrariamente `CurrentBranch` a `_userBranches.FirstOrDefault()` (**"Sede Principal"**), provocando el abandono de la sede operativa real.
+     - *Solución*:
+       - `SwitchCurrentUser` ahora transfiere explícitamente `_sessionService.CurrentBranch`: `_sessionService.SetSession(newUser, _sessionService.UserBranches, _sessionService.CurrentBranch);`.
+       - `SessionService.SetSession` protege `CurrentBranch`: si `selectedBranch` es `null`, pero la sede actual pertenece a las sedes asignadas al usuario, **preserva intacta la sede activa**.
+  3. **Atomicidad e Integridad de Sede en Relevo de Turnos (`EfShiftService.cs`, `ShiftClosureViewModel.cs`)**:
+     - *Causa Raíz*:
+       - `HandoverAndOpenNextShiftAsync` cerraba el turno saliente y luego intentaba consultar la caja anterior, usando `branchId = CurrentBranchId` (el cual podía haber cambiado a Sede Principal por el cambio de usuario).
+       - El evento `UserSessionChanged` o `SignalR` ejecutaba `RefreshCurrentShiftAsync()` concurrentemente en medio del relevo, destruyendo temporalmente `CurrentShift` en memoria y dejando la pantalla en "SIN TURNO".
+       - En `ShiftClosureViewModel`, `_authService.SwitchCurrentUser(authResult.Session)` se invocaba antes de que `HandoverAndOpenNextShiftAsync` abriera el nuevo turno.
+     - *Solución*:
+       - Se introdujo la bandera `_isHandoverInProgress` en `EfShiftService`, bloqueando lecturas intermedias o desasociaciones destructivas de `CurrentShift` durante el relevo atómico.
+       - En `HandoverAndOpenNextShiftAsync`, se consulta el turno saliente antes de cerrarlo, heredando obligatoriamente su `BranchId`, `CompanyId` y `CashRegisterName`, blindando la caja contra cualquier desfase de sede.
+       - En `ShiftClosureViewModel` (`HandoverShiftAsync` y `TakeOverShiftAsync`), se reordenó la ejecución para abrir primero el nuevo turno (`_shiftService.HandoverAndOpenNextShiftAsync`) y posteriormente conmutar el usuario (`_authService.SwitchCurrentUser`), garantizando que la sesión cambie cuando el nuevo turno ya está persistido en SQLite y en memoria.
+  4. **Pruebas y Verificación**:
+     - Se añadió la prueba unitaria `HandoverAndOpenNextShiftAsync_PreservesBranchAndCompanyOfOutgoingShift_EvenIfCurrentBranchDiffers` en `EfShiftServiceTests.cs`.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **313/313 Pruebas Unitarias Superadas (100% de éxito, 0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/App.xaml.cs`
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/Services/Implementations/SessionService.cs`
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/ViewModels/LoginViewModel.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs`
+  - `Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **313 Superadas, 0 Fallos (100%)**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+---
+
+## 📅 Entrada: [2026-09-25 23:50:00] - [BUGFIX / WPF / LIFECYCLE / CONNECTIVITY / REACTIVE-LOGIN] Erradicación de Excepción ShutdownMode en App.xaml.cs, Calibración de Timeout en PingAsync con Reintento Defensivo y Reactividad en Login
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"ahra ocurrio este error segundo cuando se lanza la aplicaicon de una vez sale modo offline activo por que si esta con internet el debería de una vez validar que esta conectao a internet y que el api responde para estar en linea si me explico."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Corrección de `InvalidOperationException` en `App.xaml.cs` (Línea 286)**:
+     - *Causa Raíz*: En `ShowLoginWindow()`, se asignaba `ShutdownMode = ShutdownMode.OnMainWindowClose;` con `MainWindow = loginWindow`. Al autenticarse, `ShowMainShellWindow()` cerraba `loginWindow` mediante `w.Close()`. Al ser `MainWindow`, WPF interpretaba el cierre como orden de apagado del proceso (`_isShuttingDown = true`). Cuando el código inmediatamente intentaba ejecutar `ShutdownMode = ShutdownMode.OnMainWindowClose;` sobre `shellWindow`, WPF arrojaba `InvalidOperationException: No se puede establecer ShutdownMode cuando la aplicación se está deteniendo o ya está detenida.`.
+     - *Solución*: Se mantuvo de forma permanente `ShutdownMode = ShutdownMode.OnExplicitShutdown;` en toda la aplicación. Se enlazaron manejadores en los eventos `.Closed` de `LoginWindow` y `MainShellWindow` para cerrar el proceso mediante `Shutdown(0)` únicamente cuando el usuario cierra intencionalmente la ventana principal y no se trata de una transición de autenticación o cierre de sesión.
+  2. **Calibración de Conectividad y Detección en Arranque (`IApiClientService.cs`, `ParkingApiClient.cs`)**:
+     - *Causa Raíz*: `PingAsync` tenía un timeout de apenas 3.5 segundos (`TimeSpan.FromSeconds(3.5)`). En arranque en frío contra el API en la nube (`https://api.parking-flow.com`), la resolución de DNS y la negociación TLS 1.3 inicial superaban este tiempo, provocando que la aplicación abortara el sondeo y marcara de inmediato "Modo Offline Activo". Además, en `LoginAsync`, ante caídas de red se intentaba un fallback a `localhost:7023` aunque `BaseUrl` fuera de producción, generando `HttpRequestException` ruidosas.
+     - *Solución*:
+       - Se amplió la firma a `Task<bool> PingAsync(int timeoutSeconds = 8)` con valor por defecto de 8s.
+       - Se añadió verificación inmediata de enlace de red (`NetworkInterface.GetIsNetworkAvailable()`).
+       - Si la conexión física está disponible y el primer intento en frío falla por latencia de handshake, ejecuta un reintento defensivo rápido antes de conmutar a offline.
+       - En `LoginAsync`, el fallback a `localhost:7023` solo se intenta si `BaseUrl.Contains("localhost")`.
+  3. **Reactividad en Ventana de Login (`LoginViewModel.cs`)**:
+     - Se suscribió `LoginViewModel` al evento `_apiClient.ConnectionStateChanged`. Si la conexión se establece o conmuta mientras el operador está en pantalla de login, el indicador de estado y la píldora se actualizan automáticamente en tiempo real entre *"API Central Online"* y *"Modo Offline (Sin Conexión)"*.
+  4. **Pruebas y Verificación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **312/312 Pruebas Unitarias Superadas (100% de éxito, 0 Fallos)**. Se añadió la prueba unitaria `LoginViewModel_WhenConnectionStateChangedFires_UpdatesIsOnlineAndNetworkStatusText` en `OfflineResilienceTests.cs`.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/App.xaml.cs`
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/ViewModels/LoginViewModel.cs`
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **312 Superadas, 0 Fallos**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+---
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Mira tengo este error cada vez que le doy clic a algo mira cuantas ventanas me está abriendo o sea yo no se si sera que por eso es que a la larga el sistema se crashea que esta haciendo el wpf de eso no me habia fijado que esta haciendo eso... al momento de loguearse se esta quedando en el 50% y se queda pegado un buen rato y dice el servidor no respondio con los datos de sincronizacion modo offline activo... cuando ingreso me da recibir turno lo recibe pero queda sin turno, empieza a titilar el tema de sincronizado modo offline sincronizado... tenian abierto en otra pestaña el pwa no fue reactivo... necesitamos corregir eso."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Prevención de Múltiples Ventanas e Instancias (`App.xaml.cs`)**:
+     - *Mutex de Proceso Único*: Se implementó `_singleInstanceMutex = new Mutex(true, "ParkingFlow_WPF_SingleInstance_Mutex", out bool createdNew);` en `OnStartup`, cerrando cualquier proceso concurrente duplicado silenciosamente con `Shutdown(0)`.
+     - *Fuga de Delegados*: Se reemplazó la suscripción de lambdas anónimas en `shellViewModel.LogoutRequested` por el método `OnShellLogoutRequested` con desuscripción defensiva (`-=`, `+=`), cerrando ventanas residuales antes de instanciar la pantalla de login.
+  2. **Ampliación de Timeouts a 90s para Sincronización WAN (`appsettings.json`, `App.xaml.cs`, `ParkingApiClient.cs`)**:
+     - Se actualizó `"TimeoutSeconds": 90` en `appsettings.json` y `appsettings.Development.json`.
+     - En `App.xaml.cs`, se inyectó la lectura dinámica de `TimeoutSeconds` en el `HttpClient` (con fallback a 90s).
+     - En `ParkingApiClient.GetBootstrapAsync`, se elevó el `CancellationTokenSource` a 90s, eliminando la excepción `TaskCanceledException: The request was canceled due to the configured HttpClient.Timeout of 30 seconds elapsing`.
+  3. **Preservación Absoluta de Turnos Locales (`EfShiftService.cs`)**:
+     - En `RefreshCurrentShiftAsync()`, se eliminó el cierre ciego de turnos locales en SQLite cuando el API retornaba `null`.
+     - Ahora verifica: si existe un turno local con `!s.IsSynchronized` o creado en los últimos 15 minutos, **lo preserva como `CurrentShift`**, permitiendo que la terminal opere con su turno activo y base de caja sin alteración.
+     - Solo los turnos con `IsSynchronized == true` de más de 15 minutos se consideran cerrados remotamente desde la web.
+  4. **Pruebas y Verificación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **311/311 Pruebas Unitarias Superadas (100% de éxito, 0 Fallos)**.
+
+---
+
 ## 📅 Entrada: [2026-09-25 21:55:00] - [SIGNALR / ARCHITECTURE / DESKTOP] Blindaje de Comunicación SignalR, Eliminación de Negociación HTTP, Persistencia Defensiva de Cookies y Corrección de Token JWT (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
