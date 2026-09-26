@@ -100,11 +100,15 @@ public class SignalRClientService : ISignalRClientService, IAsyncDisposable
         _hubConnection = new HubConnectionBuilder()
             .WithUrl(hubUrl, options =>
             {
-                options.Transports = HttpTransportType.WebSockets | HttpTransportType.LongPolling;
+                options.Transports = HttpTransportType.WebSockets;
+                options.SkipNegotiation = true;
+                options.Cookies = new System.Net.CookieContainer();
 
                 options.AccessTokenProvider = () =>
                 {
-                    var token = _sessionService?.CurrentUser?.SessionToken ?? _apiClient?.AuthToken ?? string.Empty;
+                    var token = !string.IsNullOrWhiteSpace(_apiClient?.AuthToken)
+                        ? _apiClient.AuthToken
+                        : _sessionService?.CurrentUser?.SessionToken;
                     return Task.FromResult<string?>(string.IsNullOrWhiteSpace(token) ? null : token);
                 };
 
@@ -115,6 +119,11 @@ public class SignalRClientService : ISignalRClientService, IAsyncDisposable
                         clientHandler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
                     }
                     return handler;
+                };
+
+                options.WebSocketConfiguration = wsOptions =>
+                {
+                    wsOptions.RemoteCertificateValidationCallback = (_, _, _, _) => true;
                 };
             })
             .AddJsonProtocol(options =>

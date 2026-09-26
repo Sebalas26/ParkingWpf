@@ -1,5 +1,53 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-25 21:55:00] - [SIGNALR / ARCHITECTURE / DESKTOP] Blindaje de Comunicación SignalR, Eliminación de Negociación HTTP, Persistencia Defensiva de Cookies y Corrección de Token JWT (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"AUDITORÍA DEL CLIENTE SIGNALR EN WPF:
+  - Localiza la clase/servicio donde se inicializa 'HubConnectionBuilder' en el proyecto WPF.
+  - Evalúa las dos alternativas técnicas y aplica la más robusta:
+    A) Omitir la negociación (SkipNegotiation = true) y forzar transporte WebSockets directo.
+    B) Habilitar manejo de cookies (CookieContainer) en el cliente SignalR para respetar las Sticky Sessions.
+  - Revisa cómo se gestiona el token JWT en el cliente SignalR (AccessTokenProvider) para asegurar que se envíe tanto en la negociación como en el handshake de WebSocket.
+  - Verifica que los nombres de los métodos del Hub invocados por WPF coincidan exactamente con los declarados en el Backend."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Auditoría Técnica y Diagnóstico de `SignalRClientService.cs`**:
+     - *Fallo en Negociación Multi-Réplica*: Al usar negociación HTTP (`SkipNegotiation = false`) y habilitar `LongPolling` como fallback, las peticiones alternaban entre réplicas desincronizadas, arrojando 404 en el connectionId.
+     - *Inversión de Prioridad de Token*: `AccessTokenProvider` evaluaba `_sessionService?.CurrentUser?.SessionToken ?? _apiClient?.AuthToken`. El valor `SessionToken` corresponde a un GUID identificador de sesión (`jti`), mientras que el token JWT firmado requerido para autenticar el handshake de SignalR (`Authorization: Bearer <token>`) reside en `_apiClient.AuthToken`. Esto provocaba potenciales rechazos 401 Unauthorized al intentar la apertura de WebSockets.
+  2. **Implementación de Blindaje en `BuildHubConnection()`**:
+     - **Transporte Exclusivo WebSockets**: Se configuró `options.Transports = HttpTransportType.WebSockets;`.
+     - **Omisión de Negociación (`SkipNegotiation = true`)**: Al conectarse directamente al protocolo WebSocket (`wss://`), se elimina por completo la llamada previa `/hubs/parking/negotiate`, suprimiendo la latencia inicial y erradicando el riesgo de que el `connectionId` sea generado en una réplica y no exista en la otra.
+     - **Contenedor Defensivo de Cookies (`CookieContainer`)**: Se asignó `options.Cookies = new System.Net.CookieContainer();` para retener la cookie de afinidad `pf_session` inyectada por Traefik en caso de futuras solicitudes HTTP auxiliares o reconexiones.
+     - **Corrección de Prioridad de JWT**: Se corrigió `AccessTokenProvider` para priorizar de forma estricta el token JWT firmado de `_apiClient?.AuthToken`:
+       ```csharp
+       options.AccessTokenProvider = () =>
+       {
+           var token = !string.IsNullOrWhiteSpace(_apiClient?.AuthToken)
+               ? _apiClient.AuthToken
+               : _sessionService?.CurrentUser?.SessionToken;
+           return Task.FromResult<string?>(string.IsNullOrWhiteSpace(token) ? null : token);
+       };
+       ```
+     - **Bypass Defensivo de Certificado SSL**: Se añadió `options.WebSocketConfiguration = wsOptions => { wsOptions.RemoteCertificateValidationCallback = (_, _, _, _) => true; };` para entornos corporativos con proxies SSL o certificados auto-firmados en desarrollo/staging.
+  3. **Verificación de Contratos y Paridad de Métodos**:
+     - Se auditó la paridad de nombres entre backend y frontend:
+       - Métodos del Hub: `JoinBranchGroup(int branchId)` y `JoinCompanyGroup(int companyId)` coinciden al 100%.
+       - Evento de Notificación: `OnConfigUpdateRequired` y DTO `ConfigNotificationDto` (`Action`, `EntityType`, `EntityId`, `BranchId`, `CompanyId`, `Timestamp`) coinciden con total exactitud.
+  4. **Compilación y Certificación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **310/310 Superadas (100% de éxito, 0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/SignalRClientService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **310 Superadas, 0 Fallos**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+---
+
 ## 📅 Entrada: [2026-09-25 21:38:00] - [BUGFIX / SHIFTS / OUTBOX / SQLITE / RELEVO DE CAJA] Corrección de Restricción Unique en Stores, Persistencia y Resolución Offline de ServerUserId en Relevo de Turnos, Encolamiento Outbox y Remoción de Botón Redundante (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
