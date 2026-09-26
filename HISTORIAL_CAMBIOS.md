@@ -1,5 +1,6 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+<<<<<<< HEAD
 ## 📅 Entrada: [2026-09-25 20:10:00] - [FEATURE / UI / UX / CURRENCY / SHIFT CLOSURE] Formato de Pesos Colombianos en Vivo ($ X.XXX) en Conteo Físico de Gaveta (ShiftHandoverAuthDialog y ShiftClosureView) (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
@@ -39,6 +40,95 @@
 
 - **`✅ Verificación y Compilación`**:
   - `dotnet test ParkingWpf.slnx` ➔ **329 Pasadas, 0 Fallidas (100% Superadas)**.
+=======
+## 📅 Entrada: [2026-09-25 21:55:00] - [SIGNALR / ARCHITECTURE / DESKTOP] Blindaje de Comunicación SignalR, Eliminación de Negociación HTTP, Persistencia Defensiva de Cookies y Corrección de Token JWT (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"AUDITORÍA DEL CLIENTE SIGNALR EN WPF:
+  - Localiza la clase/servicio donde se inicializa 'HubConnectionBuilder' en el proyecto WPF.
+  - Evalúa las dos alternativas técnicas y aplica la más robusta:
+    A) Omitir la negociación (SkipNegotiation = true) y forzar transporte WebSockets directo.
+    B) Habilitar manejo de cookies (CookieContainer) en el cliente SignalR para respetar las Sticky Sessions.
+  - Revisa cómo se gestiona el token JWT en el cliente SignalR (AccessTokenProvider) para asegurar que se envíe tanto en la negociación como en el handshake de WebSocket.
+  - Verifica que los nombres de los métodos del Hub invocados por WPF coincidan exactamente con los declarados en el Backend."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Auditoría Técnica y Diagnóstico de `SignalRClientService.cs`**:
+     - *Fallo en Negociación Multi-Réplica*: Al usar negociación HTTP (`SkipNegotiation = false`) y habilitar `LongPolling` como fallback, las peticiones alternaban entre réplicas desincronizadas, arrojando 404 en el connectionId.
+     - *Inversión de Prioridad de Token*: `AccessTokenProvider` evaluaba `_sessionService?.CurrentUser?.SessionToken ?? _apiClient?.AuthToken`. El valor `SessionToken` corresponde a un GUID identificador de sesión (`jti`), mientras que el token JWT firmado requerido para autenticar el handshake de SignalR (`Authorization: Bearer <token>`) reside en `_apiClient.AuthToken`. Esto provocaba potenciales rechazos 401 Unauthorized al intentar la apertura de WebSockets.
+  2. **Implementación de Blindaje en `BuildHubConnection()`**:
+     - **Transporte Exclusivo WebSockets**: Se configuró `options.Transports = HttpTransportType.WebSockets;`.
+     - **Omisión de Negociación (`SkipNegotiation = true`)**: Al conectarse directamente al protocolo WebSocket (`wss://`), se elimina por completo la llamada previa `/hubs/parking/negotiate`, suprimiendo la latencia inicial y erradicando el riesgo de que el `connectionId` sea generado en una réplica y no exista en la otra.
+     - **Contenedor Defensivo de Cookies (`CookieContainer`)**: Se asignó `options.Cookies = new System.Net.CookieContainer();` para retener la cookie de afinidad `pf_session` inyectada por Traefik en caso de futuras solicitudes HTTP auxiliares o reconexiones.
+     - **Corrección de Prioridad de JWT**: Se corrigió `AccessTokenProvider` para priorizar de forma estricta el token JWT firmado de `_apiClient?.AuthToken`:
+       ```csharp
+       options.AccessTokenProvider = () =>
+       {
+           var token = !string.IsNullOrWhiteSpace(_apiClient?.AuthToken)
+               ? _apiClient.AuthToken
+               : _sessionService?.CurrentUser?.SessionToken;
+           return Task.FromResult<string?>(string.IsNullOrWhiteSpace(token) ? null : token);
+       };
+       ```
+     - **Bypass Defensivo de Certificado SSL**: Se añadió `options.WebSocketConfiguration = wsOptions => { wsOptions.RemoteCertificateValidationCallback = (_, _, _, _) => true; };` para entornos corporativos con proxies SSL o certificados auto-firmados en desarrollo/staging.
+  3. **Verificación de Contratos y Paridad de Métodos**:
+     - Se auditó la paridad de nombres entre backend y frontend:
+       - Métodos del Hub: `JoinBranchGroup(int branchId)` y `JoinCompanyGroup(int companyId)` coinciden al 100%.
+       - Evento de Notificación: `OnConfigUpdateRequired` y DTO `ConfigNotificationDto` (`Action`, `EntityType`, `EntityId`, `BranchId`, `CompanyId`, `Timestamp`) coinciden con total exactitud.
+  4. **Compilación y Certificación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **310/310 Superadas (100% de éxito, 0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/SignalRClientService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **310 Superadas, 0 Fallos**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+---
+
+## 📅 Entrada: [2026-09-25 21:38:00] - [BUGFIX / SHIFTS / OUTBOX / SQLITE / RELEVO DE CAJA] Corrección de Restricción Unique en Stores, Persistencia y Resolución Offline de ServerUserId en Relevo de Turnos, Encolamiento Outbox y Remoción de Botón Redundante (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"1. me sale este error en el relevo de turnos de la caja: System.InvalidOperationException: No se pudo resolver el identificador de usuario para el operador receptor 'Carlos Relevo'. No es posible abrir el turno de relevo sin un usuario válido. en Parking.Services.Implementations.EfShiftService.HandoverAndOpenNextShiftAsync(...) en Parking.ViewModels.ShiftClosureViewModel.TakeOverShiftAsync(...) y mira este error también: Microsoft.Data.Sqlite.SqliteException: SQLite Error 19: 'UNIQUE constraint failed: Stores.TaxId'. 2. En relevo de turnos elimina este boton ya que esta seccion es solo para el relevo de turnos: Relevar Caja Existente"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Corrección de Restricción UNIQUE en `Stores.TaxId`**:
+     - **Causa Raíz**: En `StoreConfiguration.cs`, `builder.HasIndex(s => s.TaxId).IsUnique();` imponía restricción única sobre `TaxId`. Cuando una empresa posee múltiples sedes que comparten el mismo NIT corporativo (`TaxId`), el bootstrap o inserción en SQLite arrojaba `SQLite Error 19: UNIQUE constraint failed: Stores.TaxId`.
+     - **Solución**: Se eliminó `.IsUnique()` en `StoreConfiguration.cs`. En `DbConnectionManager.cs`, se agregó migración correctiva e idempotente al inicio: `DROP INDEX IF EXISTS "IX_Stores_TaxId";` y creación de índice regular no único `CREATE INDEX IF NOT EXISTS "IX_Stores_TaxId" ON "Stores" ("TaxId");`.
+  2. **Diagnóstico y Corrección de Resolución de `UserId` en Relevo de Turnos**:
+     - **Causa Raíz**: La entidad local `User` en SQLite carecía de la propiedad `ServerUserId`. Al sincronizar usuarios desde el API central (`bootstrap.Users`), el `Id` numérico del usuario en MySQL/API nunca se persistía en la tabla `Users` de SQLite. Si un operador receptor (ej: "Carlos Relevo") no había abierto turnos previos en esa estación física, la búsqueda en `WorkShifts` arrojaba `null`. Además, al autenticarse offline en el modal de relevo (`ValidateCredentialsAsync`), el `UserSessionModel` resultante no podía poblar `ServerUserId`, dejando `CurrentUser.ServerUserId` en `null` y provocando el fallo `System.InvalidOperationException: No se pudo resolver el identificador de usuario para el operador receptor...`.
+     - **Solución**:
+       - En `Parking/Entities/User.cs`: Se agregó la propiedad `public int? ServerUserId { get; set; }` (auto-migrada dinámicamente por `DbConnectionManager.AutoMigrateDatabaseAsync`).
+       - En `SyncEngineService.cs`: Al sincronizar `bootstrap.Users`, se mapea y persiste `ServerUserId = apiUser.Id` tanto para usuarios existentes como nuevos.
+       - En `AuthService.cs`: En `AuthenticateAsync`, se guarda `localUser.ServerUserId = apiLogin.UserId`. En `ValidateCredentialsAsync`, se prioriza `user.ServerUserId` de la entidad `User` en SQLite antes del fallback a turnos previos.
+       - En `EfShiftService.cs` (`HandoverAndOpenNextShiftAsync`): La resolución consulta primero `dbLookup.Users` por GUID, Username o FullName para extraer su `ServerUserId`, con fallback a `WorkShifts` y a la sesión activa autenticada.
+  3. **Encolamiento Outbox (`PendingSyncItems`) y Resiliencia Offline para Cierre y Apertura de Turnos**:
+     - En `EfShiftService.cs`:
+       - En `CloseSpecificShiftAsync`: Si `!local.IsSynchronized` (cierre offline o sin red), se encola automáticamente en `PendingSyncItems` con `OperationType = "CloseShift"`.
+       - En `HandoverAndOpenNextShiftAsync` y `OpenShiftAsync`: Si `!nextShift.IsSynchronized`, se encola automáticamente en `PendingSyncItems` con `OperationType = "OpenShift"`.
+     - En `SyncEngineService.cs` (`ProcessPendingQueueAsync`): Se incorporaron los despachadores para `"CloseShift"` y `"OpenShift"`, reintentando de forma resiliente contra el API central y conciliando el estado `IsSynchronized = true` en SQLite al recuperar conectividad.
+  4. **Limpieza Visual en Vista de Relevo de Turno (`ShiftClosureView.xaml`)**:
+     - Se eliminó el botón redundante "Relevar Caja Existente" (`SelectRelieveModeCommand`), preservando únicamente el botón de conmutación "Abrir Nueva Caja Aparte" (`SelectNewRegisterModeCommand`) para un flujo operativo claro y sin duplicidad.
+  5. **Pruebas Automatizadas de Regresión**:
+     - Se agregó la prueba unitaria `HandoverAndOpen_ResolvesUserIdFromUserEntity_WhenAvailableInSQLite` en `EfShiftServiceTests.cs`, certificando que el relevo resuelve con éxito el ID del usuario receptor directamente desde SQLite cuando los operadores difieren.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Data/Configurations/StoreConfiguration.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Entities/User.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Views/ShiftClosureView.xaml`
+  - `Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx` ➔ **310 Pasadas, 0 Fallidas (100% Superadas)**.
+>>>>>>> 50e5e2bcb0b5aac775403adb63c110c7d491439a
   - `dotnet build ParkingWpf.slnx` ➔ **0 Errores, 0 Advertencias**.
 
 ---

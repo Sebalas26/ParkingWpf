@@ -13,7 +13,7 @@ public class StoreConfiguration : IEntityTypeConfiguration<Store>
 
         builder.Property(s => s.Name).IsRequired().HasMaxLength(120);
         builder.Property(s => s.TaxId).IsRequired().HasMaxLength(50);
-        builder.HasIndex(s => s.TaxId).IsUnique();
+        builder.HasIndex(s => s.TaxId);
 
         builder.Property(s => s.PhoneNumber).HasMaxLength(30);
     }

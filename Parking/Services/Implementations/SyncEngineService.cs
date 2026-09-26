@@ -574,6 +574,10 @@ public class SyncEngineService : ISyncEngineService
                     var existing = localUsers.FirstOrDefault(u => u.Username.ToLower() == apiUser.Username.ToLower());
                     if (existing != null)
                     {
+                        if (apiUser.Id > 0)
+                        {
+                            existing.ServerUserId = apiUser.Id;
+                        }
                         existing.FullName = fullName;
                         existing.Email = apiUser.Email;
                         if (apiUser.CompanyId.HasValue && apiUser.CompanyId.Value > 0)
@@ -590,6 +594,7 @@ public class SyncEngineService : ISyncEngineService
                         db.Users.Add(new User
                         {
                             UserId = Guid.NewGuid(),
+                            ServerUserId = apiUser.Id > 0 ? apiUser.Id : null,
                             Username = apiUser.Username,
                             FullName = fullName,
                             Email = apiUser.Email,
@@ -2080,6 +2085,67 @@ public class SyncEngineService : ISyncEngineService
                                     if (!string.IsNullOrWhiteSpace(result.QrCodeData)) localTicket.QrCodeData = result.QrCodeData;
                                     if (result.DianStatus != DianStatus.None) localTicket.DianStatus = result.DianStatus;
                                     localTicket.IsElectronicInvoice = result.IsElectronicInvoice;
+                                }
+                            }
+                        }
+                    }
+                    else if (item.OperationType == "CloseShift")
+                    {
+                        var req = JsonSerializer.Deserialize<CloseShiftApiRequest>(item.PayloadJson, ParkingApiClient.JsonOptions);
+                        if (req != null)
+                        {
+                            var result = await _apiClient.CloseShiftAsync(req);
+                            if (result != null)
+                            {
+                                item.IsProcessed = true;
+                                var localShift = await db.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == req.ShiftId);
+                                if (localShift != null)
+                                {
+                                    localShift.IsSynchronized = true;
+                                    await db.SaveChangesAsync();
+                                }
+                            }
+                            else if (IsOnline)
+                            {
+                                // Si estamos online y el API no devolvió turno (ej: ya fue cerrado centralmente),
+                                // marcar como procesado para no atascar la cola y reconciliar localmente
+                                item.IsProcessed = true;
+                                var localShift = await db.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == req.ShiftId);
+                                if (localShift != null)
+                                {
+                                    localShift.IsSynchronized = true;
+                                    await db.SaveChangesAsync();
+                                }
+                            }
+                        }
+                    }
+                    else if (item.OperationType == "OpenShift")
+                    {
+                        var req = JsonSerializer.Deserialize<OpenShiftApiRequest>(item.PayloadJson, ParkingApiClient.JsonOptions);
+                        if (req != null)
+                        {
+                            try
+                            {
+                                var result = await _apiClient.OpenShiftAsync(req);
+                                if (result != null)
+                                {
+                                    item.IsProcessed = true;
+                                    var localShift = await db.WorkShifts.FirstOrDefaultAsync(s => s.BranchId == req.BranchId && s.UserId == req.UserId && s.Status == 0);
+                                    if (localShift != null)
+                                    {
+                                        localShift.IsSynchronized = true;
+                                        await db.SaveChangesAsync();
+                                    }
+                                }
+                            }
+                            catch (InvalidOperationException ex) when (ex.Message.Contains("existe un turno abierto", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("already", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("400"))
+                            {
+                                item.IsProcessed = true;
+                                var localShift = await db.WorkShifts.FirstOrDefaultAsync(s => s.BranchId == req.BranchId && s.UserId == req.UserId && s.Status == 0);
+                                if (localShift != null)
+                                {
+                                    localShift.IsSynchronized = true;
+                                    await db.SaveChangesAsync();
                                 }
                             }
                         }

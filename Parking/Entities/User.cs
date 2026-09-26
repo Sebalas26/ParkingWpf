@@ -16,6 +16,7 @@ public class User
     public bool IsAdmin { get; set; } = false;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAtUtc { get; set; }
+    public int? ServerUserId { get; set; }
 
     public Role Role { get; set; } = null!;
     public ICollection<UserSession> Sessions { get; set; } = new List<UserSession>();

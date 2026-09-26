@@ -146,6 +146,10 @@ public class AuthService : IAuthService
 
                     if (localUser != null)
                     {
+                        if (apiLogin.UserId > 0)
+                        {
+                            localUser.ServerUserId = apiLogin.UserId;
+                        }
                         if (!string.IsNullOrWhiteSpace(password))
                         {
                             localUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, workFactor: 11);
@@ -161,6 +165,7 @@ public class AuthService : IAuthService
                         localUser = new User
                         {
                             UserId = Guid.NewGuid(),
+                            ServerUserId = apiLogin.UserId > 0 ? apiLogin.UserId : null,
                             Username = apiLogin.Username ?? normalizedUser,
                             FullName = string.IsNullOrWhiteSpace(apiLogin.FullName) ? normalizedUser : apiLogin.FullName,
                             Email = normalizedUser.Contains("@") ? normalizedUser : null,
@@ -599,17 +604,20 @@ public class AuthService : IAuthService
 
                 var localRoleName = user.Role?.Name ?? "Operador";
 
-                // Resolver ServerUserId previo si existe en el historial local de turnos
-                int? resolvedServerUserId = null;
-                var previousShift = await db.WorkShifts
-                    .AsNoTracking()
-                    .Where(s => s.OperatorName == user.FullName && s.UserId > 0)
-                    .OrderByDescending(s => s.StartTimeUtc)
-                    .FirstOrDefaultAsync();
-
-                if (previousShift != null)
+                // Resolver ServerUserId: 1° Directo de la entidad User en SQLite, 2° Historial previo de turnos
+                int? resolvedServerUserId = user.ServerUserId;
+                if (!resolvedServerUserId.HasValue || resolvedServerUserId.Value <= 0)
                 {
-                    resolvedServerUserId = previousShift.UserId;
+                    var previousShift = await db.WorkShifts
+                        .AsNoTracking()
+                        .Where(s => (s.OperatorName == user.FullName || s.OperatorName == user.Username) && s.UserId > 0)
+                        .OrderByDescending(s => s.StartTimeUtc)
+                        .FirstOrDefaultAsync();
+
+                    if (previousShift != null)
+                    {
+                        resolvedServerUserId = previousShift.UserId;
+                    }
                 }
 
                 return new UserSessionModel
