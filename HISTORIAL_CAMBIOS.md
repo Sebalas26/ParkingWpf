@@ -6607,3 +6607,17 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **Descripción**:
   - Se aseguró la creación y persistencia previa de roles base antes de insertar usuarios sincronizados desde MySQL, eliminando fallos de foreign key en SQLite.
 - **Verificación**: Compilación limpia con 0 errores.
+
+## 2026-09-26 - Corrección de Codificación y Ejecución Exitosa de Empaquetador publish-release.ps1
+
+- **💬 Prompt Original del Usuario**:
+  > "¿cómo puedo hacer la prueba de generar el instalador, el ejecutable del WPF y valida si al cargarlo en este módulo me permite crear una actualización para ese WPF..."
+- **🤖 Resumen Técnico para la IA**:
+  1. **Corrección de Codificación en PowerShell 5.1**:
+     - Se guardó `Scripts/publish-release.ps1` con codificación UTF-8 con BOM y se sanearon caracteres especiales de consola para evitar excepciones de parsing en terminales Windows PowerShell 5.1.
+  2. **Generación Exitosa de Paquete de Lanzamiento**:
+     - Se ejecutó el empaquetador oficial generando `Releases/v1.1.0/ParkFlow_v1.1.0.zip` (5.11 MB) con compilación en Release de `Parking.dll` y `ParkFlow.Updater.dll`, depuración de archivos de desarrollo y cálculo de firma criptográfica SHA-256 (`3f0242f8346ba5f485dcb3697f413ccc20f9c621cfee2037715613b38ff644b0`).
+- **📦 Componentes Modificados**:
+  - `Scripts/publish-release.ps1`
+- **✅ Verificación y Compilación**:
+  - Script probado y validado con salida de código 0. Paquete ZIP y manifiesto JSON generados correctamente.
