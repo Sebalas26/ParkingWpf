@@ -108,6 +108,46 @@
 
 ---
 
+=======
+## 📅 Entrada: [2026-09-25 20:10:00] - [FEATURE / UI / UX / CURRENCY / SHIFT CLOSURE] Formato de Pesos Colombianos en Vivo ($ X.XXX) en Conteo Físico de Gaveta (ShiftHandoverAuthDialog y ShiftClosureView) (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"# 🏗️ Plan de Arquitectura e Implementación: Formato de Pesos Colombianos en Efectivo Contado (Caja WPF) ... ejecutame el plan"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Necesidad de Formato en Vivo**:
+     - Los campos de conteo de efectivo físico en gaveta tanto en el diálogo modal de entrega y custodia (`ShiftHandoverAuthDialog`) como en la vista de arqueo de turnos (`ShiftClosureView`) carecían de máscara en vivo, mostrando cifras planas sin puntos ni signo de pesos, lo que generaba discordancia con los saldos esperados (`$ 390.000`) y cálculos de diferencia.
+     - `StringFormat='N0'` en enlaces TwoWay con `UpdateSourceTrigger=PropertyChanged` no formatea en tiempo de tipeo en WPF, y escribir caracteres no numéricos o símbolos monetarios rompía el enlace sin un convertidor bidireccional.
+  2. **Implementación de la Propiedad Adjunta `CurrencyInputHelper` (`Parking.Core.Helpers.CurrencyInputHelper`)**:
+     - Intercepta `PreviewTextInput` restringiendo la escritura exclusivamente a dígitos numéricos (`char.IsDigit`).
+     - Bloquea la barra espaciadora en `PreviewKeyDown`.
+     - Maneja el pegado de texto con `DataObject.AddPastingHandler`, neutralizando el pegado de caracteres alfabéticos o inválidos.
+     - Formatea en tiempo real en `TextChanged` aplicando `$ {number:N0}` usando `CultureInfo("es-CO")` con `NumberGroupSeparator = "."` explícito para garantizar puntos de miles en cualquier configuración regional de Windows, posicionando el cursor al final (`CaretIndex = Text.Length`).
+     - Selecciona la totalidad del texto al recibir foco (`GotFocus` / `PreviewMouseDown`) para que el cajero sobreescriba cifras inmediatamente.
+     - Normaliza a `"$ 0"` ante vaciado y pérdida de foco (`LostFocus`).
+  3. **Implementación del Convertidor Bidireccional `PesosCurrencyConverter` (`Parking.Core.Converters.PesosCurrencyConverter`)**:
+     - `Convert`: Convierte valores numéricos (`decimal`, `double`, `int`, `long`) a cadena `$ {value:N0}` con puntos de miles colombianos.
+     - `ConvertBack`: Extrae los dígitos puros de la cadena ingresada y retorna el tipo numérico correspondiente (`decimal`, etc.) sin errores de parseo.
+     - Registrado globalmente en `App.xaml` (`PesosCurrencyConv`) y como recurso en `ShiftClosureView.xaml`.
+  4. **Integración en Diálogos y Pantallas**:
+     - En `ShiftHandoverAuthDialog.xaml` y `.xaml.cs`: Activada la propiedad adjunta `helpers:CurrencyInputHelper.IsCurrencyPesos="True"`, normalización de cultura colombiana explícita en saldo esperado, conteo inicial y diferencias (`+$X.XXX (Sobrante)`, `-$X.XXX (Faltante)`).
+     - En `ShiftClosureView.xaml`: Vinculados los dos cuadros de texto de Efectivo Contado (sección cierre ordinario y sección relevo) con `Converter={StaticResource PesosCurrencyConv}` y `helpers:CurrencyInputHelper.IsCurrencyPesos="True"`.
+  5. **Pruebas Unitarias Automatizadas (`PesosCurrencyConverterTests.cs`)**:
+     - Suite completa de pruebas unitarias xUnit + FluentAssertions validando formateo directo (decimal, enteros, nulos, cero) y parseo inverso bidireccional con formatos variados.
+     - Total pruebas solución: **329 Pasadas, 0 Fallidas (100% Superadas)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Core/Converters/PesosCurrencyConverter.cs` (Nuevo)
+  - `Parking/Core/Helpers/CurrencyInputHelper.cs` (Nuevo)
+  - `Parking/App.xaml`
+  - `Parking/Views/ShiftHandoverAuthDialog.xaml`
+  - `Parking/Views/ShiftHandoverAuthDialog.xaml.cs`
+  - `Parking/Views/ShiftClosureView.xaml`
+  - `Parking.UnitTests/Converters/PesosCurrencyConverterTests.cs` (Nuevo)
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx` ➔ **329 Pasadas, 0 Fallidas (100% Superadas)**.
 ## 📅 Entrada: [2026-09-25 21:55:00] - [SIGNALR / ARCHITECTURE / DESKTOP] Blindaje de Comunicación SignalR, Eliminación de Negociación HTTP, Persistencia Defensiva de Cookies y Corrección de Token JWT (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
@@ -195,6 +235,7 @@
 
 - **`✅ Verificación y Compilación`**:
   - `dotnet test ParkingWpf.slnx` ➔ **310 Pasadas, 0 Fallidas (100% Superadas)**.
+>>>>>>> 50e5e2bcb0b5aac775403adb63c110c7d491439a
   - `dotnet build ParkingWpf.slnx` ➔ **0 Errores, 0 Advertencias**.
 
 ---

@@ -32,6 +32,7 @@
 
             <!-- Global Converters for universal access across Views and DataGridColumns -->
             <conv:CurrencyConverter x:Key="CurrencyConv"/>
+            <conv:PesosCurrencyConverter x:Key="PesosCurrencyConv"/>
             <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
             <conv:InverseBooleanConverter x:Key="InverseBoolConv"/>
             <conv:NullToVisibilityConverter x:Key="NullToVis"/>

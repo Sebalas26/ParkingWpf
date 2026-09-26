@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -22,6 +23,15 @@ public partial class ShiftHandoverAuthDialog : Window
     private readonly IAuthService _authService;
     private readonly User _selectedUser;
     private readonly decimal _expectedCash;
+    private static readonly CultureInfo ColombianCulture = new("es-CO")
+    {
+        NumberFormat =
+        {
+            NumberGroupSeparator = ".",
+            NumberDecimalSeparator = ",",
+            CurrencySymbol = "$"
+        }
+    };
 
     public UserSessionModel? AuthenticatedSession { get; private set; }
     public decimal VerifiedCashAmount { get; private set; }
@@ -41,11 +51,11 @@ public partial class ShiftHandoverAuthDialog : Window
         OutgoingOperatorText.Text = operatorName;
         IncomingOperatorText.Text = selectedUser.FullName;
         IncomingUsernameText.Text = $"(@{selectedUser.Username})";
-        ExpectedCashText.Text = expectedCash.ToString("C0");
+        ExpectedCashText.Text = $"$ {expectedCash.ToString("N0", ColombianCulture)}";
 
         var initialCounted = initialCountedCash ?? expectedCash;
         VerifiedCashAmount = initialCounted;
-        CashCountedTextBox.Text = initialCounted.ToString("N0");
+        CashCountedTextBox.Text = $"$ {initialCounted.ToString("N0", ColombianCulture)}";
         UpdateDifference(initialCounted);
 
         Loaded += ShiftHandoverAuthDialog_Loaded;
@@ -94,13 +104,14 @@ public partial class ShiftHandoverAuthDialog : Window
 
     private void CashCountedTextBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        var rawText = CashCountedTextBox.Text?.Replace(".", "").Replace(",", "").Replace("$", "").Trim();
-        if (decimal.TryParse(rawText, NumberStyles.Any, CultureInfo.InvariantCulture, out var parsed))
+        var rawText = CashCountedTextBox.Text ?? string.Empty;
+        var digitsOnly = new string(rawText.Where(char.IsDigit).ToArray());
+        if (decimal.TryParse(digitsOnly, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed))
         {
             VerifiedCashAmount = parsed;
             UpdateDifference(parsed);
         }
-        else if (string.IsNullOrWhiteSpace(rawText))
+        else
         {
             VerifiedCashAmount = 0m;
             UpdateDifference(0m);
@@ -117,12 +128,12 @@ public partial class ShiftHandoverAuthDialog : Window
         }
         else if (diff > 0)
         {
-            CashDifferenceText.Text = $"+${diff:N0} (Sobrante)";
+            CashDifferenceText.Text = $"+${diff.ToString("N0", ColombianCulture)} (Sobrante)";
             CashDifferenceText.Foreground = (Brush)FindResource("BrushSuccess");
         }
         else
         {
-            CashDifferenceText.Text = $"-${Math.Abs(diff):N0} (Faltante)";
+            CashDifferenceText.Text = $"-${Math.Abs(diff).ToString("N0", ColombianCulture)} (Faltante)";
             CashDifferenceText.Foreground = (Brush)FindResource("BrushDanger");
         }
     }
