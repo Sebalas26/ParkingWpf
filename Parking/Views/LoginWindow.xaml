@@ -6,10 +6,10 @@
         xmlns:vm="clr-namespace:Parking.ViewModels"
         xmlns:conv="clr-namespace:Parking.Core.Converters"
         mc:Ignorable="d"
-        Title="Parking Flow - Control de Acceso y Caja"
+        Title="Parking Flow - Control de Acceso y Terminal POS"
         Icon="/Resources/parkpoint.ico"
-        Height="620"
-        Width="960"
+        Height="640"
+        Width="1020"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -17,6 +17,7 @@
 
     <Window.Resources>
         <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:BooleanToVisibilityConverter x:Key="InverseBoolToVis" Invert="True"/>
         <conv:InverseBooleanConverter x:Key="InverseBoolConv"/>
     </Window.Resources>
 
@@ -24,87 +25,135 @@
         <KeyBinding Key="Enter" Command="{Binding LoginCommand}"/>
     </Window.InputBindings>
 
-    <Border Background="{DynamicResource BrushAppBackground}"
-            BorderBrush="{DynamicResource BrushBorderMedium}"
+    <Border Background="#0B0F19"
+            BorderBrush="#CBD5E1"
             BorderThickness="1"
-            CornerRadius="16">
+            CornerRadius="18"
+            ClipToBounds="True">
         <Grid>
             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.15*"/>
                 <ColumnDefinition Width="1.1*"/>
-                <ColumnDefinition Width="1.2*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- Banner Izquierdo PARKING FLOW (Hero Inmersivo en Alta Resolución) -->
-            <Border Grid.Column="0"
-                    Background="#111822"
-                    CornerRadius="16,0,0,16"
-                    ClipToBounds="True"
-                    Padding="32,40">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+            <!-- Columna Izquierda: Hero con fondopark.jpg + Overlay Negro Neutral -->
+            <Grid Grid.Column="0" ClipToBounds="True">
+                <!-- Imagen de Fondo fondopark.jpg -->
+                <Image Source="/Resources/fondopark.jpg"
+                       Stretch="UniformToFill"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
 
-                    <!-- Centro Visual: Logotipo Completo en Gran Formato -->
-                    <StackPanel Grid.Row="0" VerticalAlignment="Center" HorizontalAlignment="Center">
-                        <Border MaxWidth="380"
-                                HorizontalAlignment="Center"
-                                CornerRadius="12"
-                                ClipToBounds="True">
-                            <Image Source="/Resources/logo.jpeg"
+                <!-- Overlay Gradiente Negro Puro Cinematográfico -->
+                <Border>
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#D8000000" Offset="0"/>
+                            <GradientStop Color="#B80E0E0E" Offset="0.5"/>
+                            <GradientStop Color="#A6000000" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+
+                    <Grid Margin="44,36,40,28">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Fila superior vacía para balance armónico -->
+                        <Border Grid.Row="0" Height="16"/>
+
+                        <!-- Centro: Logo Oficial + Píldora + H1 + Subtítulo -->
+                        <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Left" MaxWidth="440">
+                            <!-- Logo newlogoblanco.png en la posición encerrada en rojo -->
+                            <Image Source="/Resources/newlogoblanco.png"
+                                   Height="56"
+                                   MaxWidth="280"
+                                   HorizontalAlignment="Left"
                                    Stretch="Uniform"
-                                   RenderOptions.BitmapScalingMode="HighQuality"/>
-                        </Border>
+                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                   Margin="0,0,0,24">
+                                <Image.Effect>
+                                    <DropShadowEffect Color="#000000" BlurRadius="16" ShadowDepth="4" Opacity="0.5"/>
+                                </Image.Effect>
+                            </Image>
 
-                        <!-- Píldora Elegante de Terminal POS -->
-                        <Border Background="#1A2332"
-                                BorderBrush="#2A384C"
-                                BorderThickness="1"
-                                CornerRadius="20"
-                                Padding="16,7"
-                                HorizontalAlignment="Center"
-                                Margin="0,24,0,0">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Ellipse Width="7" Height="7" Fill="{DynamicResource BrushPrimary}" Margin="0,0,8,0"/>
-                                <TextBlock Text="Terminal POS • Control de Acceso y Recaudación"
-                                           Foreground="#94A3B8"
-                                           FontSize="11"
-                                           FontWeight="SemiBold"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
+                            <!-- Píldora Elegante -->
+                            <Border Background="#260D9488"
+                                    BorderBrush="#552DD4BF"
+                                    BorderThickness="1"
+                                    CornerRadius="14"
+                                    Padding="12,5"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,0,0,18">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Ellipse Width="6" Height="6" Fill="#2DD4BF" Margin="0,0,8,0">
+                                        <Ellipse.Effect>
+                                            <DropShadowEffect Color="#2DD4BF" BlurRadius="6" ShadowDepth="0" Opacity="0.8"/>
+                                        </Ellipse.Effect>
+                                    </Ellipse>
+                                    <TextBlock Text="CONTROL DE ACCESO • TERMINAL POS"
+                                               Foreground="#5EEAD4"
+                                               FontSize="10.5"
+                                               FontWeight="Bold"/>
+                                </StackPanel>
+                            </Border>
 
-                    <!-- Pie de Marca Minimalista -->
-                    <TextBlock Grid.Row="1"
-                               Text="© Parking Flow • Tu punto de llegada"
-                               FontSize="11"
-                               FontWeight="Medium"
-                               Foreground="#64748B"
-                               HorizontalAlignment="Center"/>
-                </Grid>
-            </Border>
+                            <!-- Título H1 -->
+                            <TextBlock Text="Acceso que mantiene tu&#x0a;parqueadero en movimiento."
+                                       FontSize="28"
+                                       FontWeight="Black"
+                                       Foreground="#FFFFFF"
+                                       LineHeight="34"
+                                       Margin="0,0,0,16">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect Color="#000000" BlurRadius="16" ShadowDepth="3" Opacity="0.5"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
 
-            <!-- Lado Derecho: Formulario de Autenticación con Loader -->
-            <Grid Grid.Column="1" Margin="40,30,40,30">
+                            <!-- Subtítulo -->
+                            <TextBlock Text="Administra ingresos, salidas y recaudo desde una terminal segura, clara y siempre disponible."
+                                       FontSize="13"
+                                       LineHeight="20"
+                                       Foreground="#CBD5E1"
+                                       TextWrapping="Wrap">
+                                <TextBlock.Effect>
+                                    <DropShadowEffect Color="#000000" BlurRadius="10" ShadowDepth="2" Opacity="0.4"/>
+                                </TextBlock.Effect>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <!-- Pie de Marca Minimalista -->
+                        <TextBlock Grid.Row="2"
+                                   Text="© Parking Flow • Tu punto de llegada"
+                                   FontSize="11"
+                                   FontWeight="Medium"
+                                   Foreground="#64748B"/>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Columna Derecha: Formulario y Tarjeta de Inicio de Sesión sobre Fondo Blanco (#FFFFFF) -->
+            <Grid Grid.Column="1" Background="#FFFFFF">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <!-- Barra Superior con Indicador de Estado de Conexión + Controles de Ventana -->
-                <Grid Grid.Row="0">
-                    <!-- Píldora de Estado de Red / Modo Offline -->
+                <!-- Barra Superior con Indicador de Red y Controles de Ventana -->
+                <Grid Grid.Row="0" Margin="32,20,24,0">
+                    <!-- Píldora de Estado de Red / Modo Offline adaptada para fondo claro -->
                     <Border HorizontalAlignment="Left"
                             VerticalAlignment="Center"
-                            Background="{DynamicResource BrushSurfaceLight}"
-                            BorderBrush="{DynamicResource BrushBorderSubtle}"
+                            Background="#F1F5F9"
+                            BorderBrush="#E2E8F0"
                             BorderThickness="1"
-                            CornerRadius="14"
-                            Padding="12,5">
+                            CornerRadius="12"
+                            Padding="10,4">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <Ellipse Width="8" Height="8" Margin="0,0,8,0">
+                            <Ellipse Width="7" Height="7" Margin="0,0,7,0">
                                 <Ellipse.Style>
                                     <Style TargetType="Ellipse">
                                         <Setter Property="Fill" Value="#10B981"/>
@@ -119,132 +168,267 @@
                             <TextBlock Text="{Binding NetworkStatusText, FallbackValue='Comprobando servidor...'}"
                                        FontSize="11"
                                        FontWeight="SemiBold"
-                                       Foreground="{DynamicResource BrushTextSecondary}"
+                                       Foreground="#475569"
                                        VerticalAlignment="Center"/>
                         </StackPanel>
                     </Border>
 
-                    <!-- Botones de Control de Ventana (Minimizar y Cerrar) -->
+                    <!-- Botones de Control de Ventana (Minimizar y Cerrar) sobre Fondo Blanco -->
                     <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-                        <Button Width="32" Height="32" Click="MinimizeButton_Click" Style="{StaticResource SecondaryButton}" Padding="0" Margin="0,0,8,0">
-                            <Rectangle Width="10" Height="2" Fill="{DynamicResource BrushTextSecondary}"/>
+                        <Button Width="30" Height="30" Click="MinimizeButton_Click" Style="{StaticResource SecondaryButton}" Padding="0" Margin="0,0,6,0">
+                            <Rectangle Width="10" Height="2" Fill="#475569"/>
                         </Button>
-                        <Button Width="32" Height="32" Click="CloseButton_Click" Style="{StaticResource SecondaryButton}" Padding="0">
-                            <Path Data="{StaticResource IconClose}" Fill="{DynamicResource BrushTextSecondary}" Width="10" Height="10" Stretch="Uniform"/>
+                        <Button Width="30" Height="30" Click="CloseButton_Click" Style="{StaticResource SecondaryButton}" Padding="0">
+                            <Path Data="{StaticResource IconClose}" Fill="#475569" Width="10" Height="10" Stretch="Uniform"/>
                         </Button>
                     </StackPanel>
                 </Grid>
 
-                <StackPanel Grid.Row="1" VerticalAlignment="Center" MaxWidth="380" HorizontalAlignment="Stretch">
-                    <TextBlock Text="Iniciar Sesión" Style="{StaticResource TextHeaderLarge}" Margin="0,0,0,6"/>
-                    <TextBlock Text="Ingrese sus credenciales de operador para iniciar estación" Style="{StaticResource TextBodySecondary}" Margin="0,0,0,24"/>
+                <!-- Tarjeta Flotante Central (#2A2B2C) sobre fondo blanco -->
+                <Border Grid.Row="1"
+                        Background="#2A2B2C"
+                        BorderBrush="#374151"
+                        BorderThickness="1"
+                        CornerRadius="20"
+                        Padding="32,28"
+                        MaxWidth="410"
+                        Margin="32,10,32,10"
+                        VerticalAlignment="Center">
+                    <Border.Effect>
+                        <DropShadowEffect Color="#000000" BlurRadius="32" Direction="270" ShadowDepth="8" Opacity="0.28"/>
+                    </Border.Effect>
 
-                    <Border Background="{DynamicResource BrushDangerBg}"
-                            BorderBrush="{DynamicResource BrushDanger}"
-                            BorderThickness="1"
-                            CornerRadius="8"
-                            Padding="12,10"
-                            Margin="0,0,0,16"
-                            Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="{Binding ErrorMessage}" Foreground="{DynamicResource BrushDanger}" FontSize="12" TextWrapping="Wrap"/>
-                    </Border>
+                    <StackPanel>
+                        <!-- Icono de Usuario de Encabezado -->
+                        <Border Width="40" Height="40"
+                                CornerRadius="10"
+                                Background="#220D9488"
+                                BorderBrush="#402DD4BF"
+                                BorderThickness="1"
+                                HorizontalAlignment="Left"
+                                Margin="0,0,0,14">
+                            <Path Data="{StaticResource IconUser}" Fill="#2DD4BF" Width="16" Height="16" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
 
-                    <TextBlock Text="Usuario / ID de Operador" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,8"/>
-                    <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
-                             IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
-                             Style="{StaticResource ModernTextBox}"
-                             Margin="0,0,0,18"/>
+                        <TextBlock Text="Iniciar sesión"
+                                   FontSize="22"
+                                   FontWeight="Bold"
+                                   Foreground="#FFFFFF"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="Ingrese sus credenciales de operador para acceder al sistema."
+                                   FontSize="12"
+                                   Foreground="#94A3B8"
+                                   Margin="0,0,0,18"/>
 
-                    <TextBlock Text="Contraseña" Style="{StaticResource TextHeaderSmall}" Margin="0,0,0,8"/>
-                    <Grid Margin="0,0,0,24">
-                        <PasswordBox x:Name="UserPasswordBox"
-                                     IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
-                                     Style="{StaticResource ModernPasswordBox}"
-                                     PasswordChanged="UserPasswordBox_PasswordChanged"
-                                     KeyDown="UserPasswordBox_KeyDown"/>
-                        <TextBox x:Name="VisiblePasswordTextBox"
-                                 IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
-                                 Style="{StaticResource ModernTextBox}"
-                                 Visibility="Collapsed"
-                                 TextChanged="VisiblePasswordTextBox_TextChanged"
-                                 KeyDown="UserPasswordBox_KeyDown"/>
-                        <Button x:Name="TogglePasswordButton"
-                                Click="TogglePasswordButton_Click"
-                                HorizontalAlignment="Right"
-                                Width="40"
-                                Margin="2"
-                                Background="Transparent"
-                                BorderThickness="0"
-                                Cursor="Hand">
-                            <Path x:Name="TogglePasswordIcon" Data="{StaticResource IconEye}" Fill="{DynamicResource BrushTextSecondary}" Width="18" Height="18" Stretch="Uniform"/>
-                        </Button>
-                    </Grid>
+                        <!-- Alerta de Error -->
+                        <Border Background="#28EF4444"
+                                BorderBrush="#55EF4444"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="10,8"
+                                Margin="0,0,0,14"
+                                Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconAlert}" Fill="#F87171" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding ErrorMessage}" Foreground="#FCA5A5" FontSize="11.5" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
 
-                    <!-- Botón de Acceso -->
-                    <Button Command="{Binding LoginCommand}"
-                            IsDefault="True"
-                            IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
-                            Style="{StaticResource ModernButton}"
-                            Height="46"
-                            Margin="0,0,0,16">
-                        <Button.ContentTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="Acceder a Estación de Trabajo" Foreground="{DynamicResource BrushTextWhite}" FontSize="14" FontWeight="Bold"/>
-                            </DataTemplate>
-                        </Button.ContentTemplate>
-                    </Button>
-
-                    <!-- Loader Visual y Barra de Progreso de Sincronización en Vivo -->
-                    <Border Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"
-                            Background="{DynamicResource BrushSurfaceLight}"
-                            BorderBrush="{DynamicResource BrushBorderSubtle}"
-                            BorderThickness="1"
-                            CornerRadius="10"
-                            Padding="16,14"
-                            Margin="0,6,0,0">
-                        <StackPanel HorizontalAlignment="Stretch" VerticalAlignment="Center">
-                            <Grid Margin="0,0,0,8">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                                    <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding BusyMessage, FallbackValue='Validando y sincronizando estación...'}"
-                                               Foreground="{DynamicResource BrushTextPrimary}"
-                                               FontSize="12"
-                                               FontWeight="Bold"
-                                               VerticalAlignment="Center"/>
-                                </StackPanel>
-                                <TextBlock Text="{Binding SyncProgressPercentage, StringFormat='{}{0}%'}"
-                                           Visibility="{Binding IsSyncing, Converter={StaticResource BoolToVis}}"
-                                           HorizontalAlignment="Right"
-                                           FontSize="12"
-                                           FontWeight="Black"
-                                           Foreground="{DynamicResource BrushPrimary}"/>
-                            </Grid>
-
-                            <!-- Barra de progreso indeterminada durante validación y determinada durante sincronización -->
-                            <ProgressBar Value="{Binding SyncProgressPercentage}"
-                                         Minimum="0"
-                                         Maximum="100"
-                                         IsIndeterminate="{Binding IsSyncing, Converter={StaticResource InverseBoolConv}}"
-                                         Height="6"
-                                         Foreground="{DynamicResource BrushPrimary}"
-                                         Background="{DynamicResource BrushInputBackground}"
+                        <!-- Campo: Usuario / ID -->
+                        <TextBlock Text="Usuario / ID"
+                                   Foreground="#CBD5E1"
+                                   FontSize="11.5"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,6"/>
+                        <Border Background="#FFFFFF"
+                                BorderBrush="#CBD5E1"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Height="42"
+                                Margin="0,0,0,14">
+                            <Grid>
+                                <Path Data="{StaticResource IconUser}" Fill="#64748B" Width="14" Height="14" Stretch="Uniform" HorizontalAlignment="Left" Margin="12,0,0,0"/>
+                                <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
+                                         Foreground="#0F172A"
+                                         Background="Transparent"
                                          BorderThickness="0"
-                                         Margin="0,0,0,8"/>
+                                         FontSize="13"
+                                         VerticalContentAlignment="Center"
+                                         Padding="34,0,12,0"/>
+                            </Grid>
+                        </Border>
 
-                            <TextBlock Text="{Binding SyncStepDescription, FallbackValue='Conectando estación...'}"
-                                       Visibility="{Binding IsSyncing, Converter={StaticResource BoolToVis}}"
-                                       Foreground="{DynamicResource BrushTextSecondary}"
-                                       FontSize="11"
-                                       TextTrimming="CharacterEllipsis"
-                                       HorizontalAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
+                        <!-- Campo: Contraseña -->
+                        <TextBlock Text="Contraseña"
+                                   Foreground="#CBD5E1"
+                                   FontSize="11.5"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,6"/>
+                        <Border Background="#FFFFFF"
+                                BorderBrush="#CBD5E1"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Height="42"
+                                Margin="0,0,0,20">
+                            <Grid>
+                                <Path Data="{StaticResource IconLock}" Fill="#64748B" Width="14" Height="14" Stretch="Uniform" HorizontalAlignment="Left" Margin="12,0,0,0"/>
+                                <PasswordBox x:Name="UserPasswordBox"
+                                             IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
+                                             Foreground="#0F172A"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             FontSize="13"
+                                             VerticalContentAlignment="Center"
+                                             Padding="34,0,38,0"
+                                             PasswordChanged="UserPasswordBox_PasswordChanged"
+                                             KeyDown="UserPasswordBox_KeyDown"/>
+                                <TextBox x:Name="VisiblePasswordTextBox"
+                                         IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
+                                         Foreground="#0F172A"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         FontSize="13"
+                                         VerticalContentAlignment="Center"
+                                         Padding="34,0,38,0"
+                                         Visibility="Collapsed"
+                                         TextChanged="VisiblePasswordTextBox_TextChanged"
+                                         KeyDown="UserPasswordBox_KeyDown"/>
+                                <Button x:Name="TogglePasswordButton"
+                                        Click="TogglePasswordButton_Click"
+                                        HorizontalAlignment="Right"
+                                        Width="36"
+                                        Background="Transparent"
+                                        BorderThickness="0"
+                                        Cursor="Hand">
+                                    <Path x:Name="TogglePasswordIcon" Data="{StaticResource IconEye}" Fill="#64748B" Width="15" Height="15" Stretch="Uniform"/>
+                                </Button>
+                            </Grid>
+                        </Border>
 
+                        <!-- Botón de Ingreso: Verde Esmeralda institucional con estado Cargando -->
+                        <Button Command="{Binding LoginCommand}"
+                                IsDefault="True"
+                                IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"
+                                Height="44"
+                                Cursor="Hand">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="btnBorder"
+                                                        CornerRadius="9"
+                                                        BorderThickness="1"
+                                                        BorderBrush="#402DD4BF">
+                                                    <Border.Background>
+                                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                            <GradientStop Color="#07665E" Offset="0"/>
+                                                            <GradientStop Color="#0D9488" Offset="1"/>
+                                                        </LinearGradientBrush>
+                                                    </Border.Background>
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="btnBorder" Property="Background">
+                                                            <Setter.Value>
+                                                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                                    <GradientStop Color="#0D9488" Offset="0"/>
+                                                                    <GradientStop Color="#10B981" Offset="1"/>
+                                                                </LinearGradientBrush>
+                                                            </Setter.Value>
+                                                        </Setter>
+                                                    </Trigger>
+                                                    <Trigger Property="IsEnabled" Value="False">
+                                                        <Setter TargetName="btnBorder" Property="Opacity" Value="0.6"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </Button.Style>
+                            <Button.Content>
+                                <Grid>
+                                    <!-- Estado Normal: Ingresar + Separador + Flecha -->
+                                    <StackPanel Orientation="Horizontal"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Center"
+                                                Visibility="{Binding IsBusy, Converter={StaticResource InverseBoolToVis}}">
+                                        <Rectangle Width="2" Height="13" Fill="#40FFFFFF" RadiusX="1" RadiusY="1" Margin="0,0,10,0"/>
+                                        <TextBlock Text="Ingresar" Foreground="#FFFFFF" FontSize="13.5" FontWeight="Bold" Margin="0,0,10,0"/>
+                                        <Path Data="{StaticResource IconChevronRight}" Fill="#FFFFFF" Width="10" Height="10" Stretch="Uniform" VerticalAlignment="Center"/>
+                                    </StackPanel>
+
+                                    <!-- Estado Cargando: Separador + Cargando + Spinner rotatorio -->
+                                    <StackPanel Orientation="Horizontal"
+                                                VerticalAlignment="Center"
+                                                HorizontalAlignment="Center"
+                                                Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
+                                        <Rectangle Width="2" Height="13" Fill="#40FFFFFF" RadiusX="1" RadiusY="1" Margin="0,0,10,0"/>
+                                        <TextBlock Text="Cargando" Foreground="#FFFFFF" FontSize="13.5" FontWeight="Bold" Margin="0,0,10,0"/>
+                                        <Path Data="{StaticResource IconRefresh}" Fill="#FFFFFF" Width="13" Height="13" Stretch="Uniform" RenderTransformOrigin="0.5,0.5">
+                                            <Path.RenderTransform>
+                                                <RotateTransform x:Name="SpinnerTransform" Angle="0"/>
+                                            </Path.RenderTransform>
+                                            <Path.Triggers>
+                                                <EventTrigger RoutedEvent="Loaded">
+                                                    <BeginStoryboard>
+                                                        <Storyboard RepeatBehavior="Forever">
+                                                            <DoubleAnimation Storyboard.TargetProperty="(Path.RenderTransform).(RotateTransform.Angle)"
+                                                                             From="0" To="360" Duration="0:0:0.85"/>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </EventTrigger>
+                                            </Path.Triggers>
+                                        </Path>
+                                    </StackPanel>
+                                </Grid>
+                            </Button.Content>
+                        </Button>
+
+                        <!-- Panel de Sincronización y Contingencia Offline -->
+                        <Border Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"
+                                Background="#1E2A2F"
+                                BorderBrush="#30FFFFFF"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="12,9"
+                                Margin="0,12,0,0">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,5">
+                                    <TextBlock Text="{Binding BusyMessage, FallbackValue='Validando estación...'}"
+                                               Foreground="#94A3B8"
+                                               FontSize="11"
+                                               FontWeight="SemiBold"/>
+                                    <TextBlock Text="{Binding SyncProgressPercentage, StringFormat='{}{0}%'}"
+                                               Visibility="{Binding IsSyncing, Converter={StaticResource BoolToVis}}"
+                                               HorizontalAlignment="Right"
+                                               FontSize="11"
+                                               FontWeight="Bold"
+                                               Foreground="#2DD4BF"/>
+                                </Grid>
+                                <ProgressBar Value="{Binding SyncProgressPercentage}"
+                                             Minimum="0" Maximum="100"
+                                             IsIndeterminate="{Binding IsSyncing, Converter={StaticResource InverseBoolConv}}"
+                                             Height="4"
+                                             Foreground="#0D9488"
+                                             Background="#111827"
+                                             BorderThickness="0"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Pie Inferior con Versión -->
                 <TextBlock Grid.Row="2"
-                           Text="Protegido por Control de Acceso • PARKING FLOW"
+                           Text="• Versión v0.1.2 • © PARKING FLOW"
+                           Foreground="#64748B"
+                           FontSize="11"
+                           FontWeight="SemiBold"
                            HorizontalAlignment="Center"
-                           Style="{StaticResource TextCaption}"/>
+                           Margin="0,0,0,16"/>
             </Grid>
         </Grid>
     </Border>

@@ -1,5 +1,149 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-26 01:46:00] - [BUGFIX / WPF / UI / CONVERTER] Corrección de Superposición y Duplicación Visual del Texto e Ícono 'Cargando' en Botón de Login
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Ayudame arreglar el wpf cuando le doy ingresar, el mensaje de cargadno con el icono decarga se ve como duplicado"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz de la Superposición Visual (`LoginWindow.xaml`)**:
+     - *Causa Raíz*: El contenedor `StackPanel` correspondiente al estado normal (*"Ingresar"*) del botón de login tenía asignado `Visibility="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"`.
+     - `InverseBooleanConverter` devuelve estrictamente un tipo `bool` (`!b`) y **no** un `System.Windows.Visibility`.
+     - En el motor de renderizado de WPF, cuando una propiedad de tipo `Visibility` recibe un valor booleano desde un convertidor no compatible, el enlace falla internamente y WPF adopta el valor de respaldo por defecto: **`Visibility.Visible`**.
+     - Por consiguiente, al desencadenarse el comando de login (`IsBusy = true`), el bloque *"Cargando"* pasaba a ser visible mediante `BoolToVis`, pero el bloque *"Ingresar"* permanecía forzado en `Visible`, provocando que ambos textos e íconos se renderizaran superpuestos dentro del mismo `Grid` del botón.
+  2. **Solución Aplicada**:
+     - En `Window.Resources` de `LoginWindow.xaml`, se declaró explícitamente la instancia inversa del convertidor de visibilidad: `<conv:BooleanToVisibilityConverter x:Key="InverseBoolToVis" Invert="True"/>`.
+     - En el botón de login, se actualizó la visibilidad del estado normal a `Visibility="{Binding IsBusy, Converter={StaticResource InverseBoolToVis}}"`.
+     - Cuando `IsBusy == true`, el bloque *"Ingresar"* conmuta de forma atómica y estricta a `Visibility.Collapsed`, permitiendo que únicamente se muestre el texto *"Cargando"* y el spinner rotatorio `IconRefresh`.
+  3. **Verificación y Pruebas Unitarias**:
+     - Compilación: `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+     - Pruebas unitarias: `dotnet test ParkingWpf.slnx` -> **100% Superado (333/333 Pruebas Unitarias, 0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Views/LoginWindow.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **333/333 Pruebas Superadas (0 Fallos)**.
+
+---
+
+
+
+## 📅 Entrada: [2026-09-26 01:42:00] - [FEATURE / UI / BRANDING / WPF] Reubicación del Logotipo sobre Píldora Hero y Transición a Fondo Blanco en Panel Derecho de LoginWindow
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Ayudame con esto, veo que el wpf tiene 2 errores con la ui del login,
+- el logo quiero que me lo dejes donde te encerre en rojo, y cambiame el fondo de donde esta azul por blanco
+En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agrande en tamaño, eso solo dejame en el pwa , en el wpf no lomodifiques"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Reubicación Quirúrgica del Logotipo Oficial en Hero Izquierdo (`LoginWindow.xaml`)**:
+     - Se trasladó el control de imagen del logotipo oficial (`/Resources/newlogoblanco.png`) desde la fila superior aislada (`Grid.Row="0"`) hacia el contenedor principal del hero (`StackPanel Grid.Row="1"`).
+     - El logotipo se posicionó inmediatamente arriba de la píldora verde `• CONTROL DE ACCESO • TERMINAL POS`, coincidiendo exactamente con el recuadro rojo delimitado por el usuario.
+     - Se configuró con `Height="56"`, `MaxWidth="280"`, `HorizontalAlignment="Left"`, `Margin="0,0,0,24"` y sombra de profundidad para máxima nitidez y balance visual.
+  2. **Transición a Fondo Blanco en la Columna Derecha**:
+     - Se modificó el fondo del panel derecho (`Grid.Column="1"`): de azul oscuro (`#111827`) a blanco puro (`#FFFFFF`).
+     - **Armonización de Contraste para Fondo Claro**:
+       - Píldora de estado de red / modo offline adaptada: fondo claro `#F1F5F9`, borde sutil `#E2E8F0` y tipografía `#475569`.
+       - Glifos de botones de control de ventana (minimizar y cerrar): color `#475569` para un contraste nítido y elegante.
+       - Tarjeta flotante `#2A2B2C`: se preservó su diseño oscuro de elevación aplicando una sombra profunda optimizada (`BlurRadius="32"`, `ShadowDepth="8"`, `Opacity="0.28"`), logrando una estética flotante idéntica a la PWA.
+       - Pie de página inferior (`• Versión v0.1.2 • © PARKING FLOW`): ajustado con tipografía legibilidad `#64748B`.
+       - Marco perimetral de la ventana: `BorderBrush="#CBD5E1"` para definición limpia sobre fondos de escritorio claros u oscuros.
+  3. **Preservación Estricta de Recursos**:
+     - No se alteró el archivo del logotipo en WPF, manteniéndose `/Resources/newlogoblanco.png`.
+  4. **Verificación y Pruebas Unitarias**:
+     - Compilación: `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+     - Suite de pruebas unitarias: `dotnet test ParkingWpf.slnx` -> **100% Superado (333/333 Pruebas Unitarias, 0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Views/LoginWindow.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **333/333 Pruebas Superadas (0 Fallos)**.
+
+---
+
+
+
+## 📅 Entrada: [2026-09-26 01:25:00] - [FEATURE / UI / BRANDING / PARITY] Unificación Estética y Arquitectural del Login WPF con Parking PWA (Split-Screen, Dark Glassmorphism, Card #2A2B2C, Emerald Action & Spinner)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Quisiera que ahora el login del wpf tenga el mismo estilo, pantallas , colores y logica al pwa, ya que los 2 aplicativos y proyectos deben parecersen en el login en cuanto a la UI"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Unificación Visual y Arquitectural de LoginWindow (WPF vs PWA)**:
+     - Se realizó el rediseño integral de `Parking/Views/LoginWindow.xaml` para replicar fielmente el diseño split-screen, paleta cromática, elevaciones y micro-interacciones de Parking PWA.
+     - **Hero Izquierdo (Branding & Identidad Institucional)**:
+       - Se incluyó la imagen de fondo oficial `fondopark.jpg` vinculada como recurso de la aplicación (`/Resources/fondopark.jpg`), sobre la cual se aplicó el degradado oscuro neutro (`#CC000000` a `#F20B0F19`) idéntico a la PWA.
+       - Se integró el logotipo oficial recortado en alta resolución (`newlogoblanco.png`) a 220px de ancho y 56px de alto, la pastilla/badge oficial `TERMINAL POS • CONTROL DE ACCESO` (`#10B981` con fondo verde translúcido), el titular tipográfico H1 *"Acceso que mantiene la ciudad en movimiento."* y el texto descriptivo institucional.
+     - **Panel Derecho y Tarjeta Flotante de Inicio de Sesión**:
+       - Fondo general del contenedor: `#111827` (superficie carbón institucional).
+       - Card del formulario de login: Fondo `#2A2B2C` con radio de curvatura (`CornerRadius="16"`), borde sutil `#374151` y sombra de elevación (`BlurRadius="24"`).
+       - Badge de usuario superior en la card: Fondo `#111827`, borde `#10B981`, icono `IconUser` en verde esmeralda (`#2DD4BF`).
+       - Título de card: "Iniciar sesión" en blanco semi-bold (`FontSize="20"`), subtítulo `#9CA3AF`.
+     - **Inputs y Controles de Formulario**:
+       - Campos de usuario y contraseña con fondo blanco/off-white (`#F9FAFB`), bordes redondeados (`CornerRadius="10"`), iconos vectoriales a la izquierda (`IconUser`, `IconLock`) en `#9CA3AF`, y botón de alternar visibilidad de contraseña con icono dinámico (`IconEye` / `IconEyeOff`).
+     - **Botón de Acción Principal y Feedback de Carga**:
+       - Botón estilizado con degradado esmeralda institucional (`#07665E` a `#0D9488`), bordes redondeados (`CornerRadius="10"`).
+       - Micro-animación de carga: Durante el estado `IsBusy = true`, el botón conmuta de manera reactiva: oculta *"Ingresar"* y presenta *"Cargando"* acompañado de un spinner circular rotativo (`SpinPath` con animación `DoubleAnimation` infinita de rotación 360° en 1 segundo).
+     - **Barra de Sincronización Offline y Estado de Red**:
+       - Indicador de estado de red superior (badge con dot `#10B981` y texto según `NetworkStatusText` / `IsOnline`).
+       - Barra de progreso de sincronización inicial SQLite (`ProgressBar` con `SyncProgressPercentage` y descripción `SyncStepDescription`).
+     - **Preservación Estricta de Contratos Code-Behind y MVVM**:
+       - Se preservaron intactos todos los controles referenciados por `LoginWindow.xaml.cs`: `UserPasswordBox`, `VisiblePasswordTextBox`, `TogglePasswordButton`, `TogglePasswordIcon`, `MinimizeButton_Click`, `CloseButton_Click`.
+       - Se preservaron todos los bindings de `LoginViewModel.cs`: `Username`, `Password`, `LoginCommand`, `IsBusy`, `IsSyncing`, `SyncProgressPercentage`, `SyncStepDescription`, `HasError`, `ErrorMessage`, `IsOnline`, `NetworkStatusText`.
+  2. **Recursos Incorporados**:
+     - `Parking/Resources/fondopark.jpg` incorporado y registrado como `<Resource Include="Resources\fondopark.jpg" />` en `Parking/Parking.csproj`.
+     - `Parking/Resources/newlogoblanco.png` registrado como recurso.
+  3. **Verificación y Pruebas Unitarias**:
+     - Compilación: `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+     - Suite de pruebas unitarias: `dotnet test ParkingWpf.slnx` -> **100% Superado (333/333 Pruebas Unitarias, 0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Parking.csproj`
+  - `Parking/Resources/fondopark.jpg`
+  - `Parking/Resources/newlogoblanco.png`
+  - `Parking/Views/LoginWindow.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **333/333 Pruebas Superadas (0 Fallos)**.
+
+---
+
+
+
+## 📅 Entrada: [2026-09-26 01:15:00] - [FEATURE / UI / BRANDING] Integración del Nuevo Logotipo Oficial (newlogoblanco.png) en Alta Resolución en LoginWindow (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Veo que el logo sigue con un tamaño pequeño en la pwa y wpf, puedes aumentar el tamaño o necesitas que te lo pase con otras dimensiones?"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Recorte y Modernización del Logotipo Oficial (`newlogoblanco.png`)**:
+     - Se realizó el análisis y recorte automatizado sin pérdida de los márgenes vacíos de `newlogoblanco.png` (de 2752x1536 a 2230x504 px).
+     - Se incorporó `Parking/Resources/newlogoblanco.png` y se declaró como recurso en `Parking.csproj`.
+     - En `Parking/Views/LoginWindow.xaml`, se actualizó la imagen del hero izquierdo reemplazando el archivo anterior por `/Resources/newlogoblanco.png`, ampliando la escala a `MaxWidth="420"` y `Height="120"` con `RenderOptions.BitmapScalingMode="HighQuality"`.
+  2. **Verificación y Pruebas**:
+     - Compilación: `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+     - Pruebas unitarias: `dotnet test ParkingWpf.slnx` -> **100% Superado (333/333 Pruebas Unitarias, 0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Resources/newlogoblanco.png`
+  - `Parking/Parking.csproj`
+  - `Parking/Views/LoginWindow.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **333/333 Pruebas Superadas (0 Fallos)**.
+
+---
+
 ## 📅 Entrada: [2026-09-26 00:15:00] - [BUGFIX / WPF / LOGOUT-LIFECYCLE / SHIFT-HANDOVER / BRANCH-INTEGRITY] Erradicación de Excepción ShutdownMode en Logout, Blindaje Atómico de Relevo de Turnos y Preservación de Sede Operativa (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
