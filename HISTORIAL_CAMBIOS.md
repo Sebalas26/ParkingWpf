@@ -3,6 +3,44 @@
 
 
 
+
+## 📅 Entrada: [2026-09-26 14:15:00] - [FEATURE / WPF / INVOICING / CHECKOUT] Emisión Predeterminada a Consumidor Final (222222222222) y Selector de Factura Personalizada
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"ayudame ajustar algo, cuando le voy a dar salida un vehiculo y la resolucion haya sido factura electronica (fv) no me muestres la pregunta de que si quiero imprimir o no, ellas siempre deben imprimirse tanto en pwa, como en wpf... no me obligues a buscar el cliente por defecto sino que por defecto salga a consumidor final (222222222222) y haya un check que diga factura personalizada que al darle clic si me muestre los campos del cliente para asociarlo"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Arquitectura en ViewModel (`CheckOutViewModel.cs`)**:
+     - *Comportamiento Previo*: Al activar `EmitElectronicInvoice` o resoluciones de factura electrónica (FV / FE), `ConfirmExitAsync` validaba obligatoriamente que `SelectedCustomer != null`, bloqueando el cobro y desplegando una alerta modal de adquirente requerido.
+     - *Nuevo Flujo*:
+       - Se introdujo la propiedad reactiva `[ObservableProperty] private bool _isCustomCustomer = false;`.
+       - Por defecto (`IsCustomCustomer == false`), la liquidación de salida se realiza a **Consumidor Final (222222222222)** sin exigir cliente ni bloquear el botón de cobro.
+       - En `ConfirmExitAsync`, la validación de cliente requerido se condicionó a:
+         `(EmitElectronicInvoice || IsElectronicResolutionDefensive(SelectedResolution)) && IsCustomCustomer && SelectedCustomer == null && !allowAnonymous`.
+       - Al invocar `ProcessExitAsync`, se envía `(EmitElectronicInvoice && IsCustomCustomer) ? SelectedCustomer?.CustomerId : null`. El backend mapea automáticamente el valor `null` al adquirente Consumidor Final registrado para la compañía.
+       - Al finalizar el cobro o cancelar la selección (`CancelSelection`), `IsCustomCustomer` se reinicia de inmediato a `false`.
+  2. **Diseño XAML en Diálogo de Cobro (`CheckOutDialog.xaml`)**:
+     - Dentro del panel de Facturación Electrónica DIAN, se integró el selector con CheckBox *"Factura personalizada (Cliente específico)"*.
+     - Cuando `IsCustomCustomer` es `false`, se muestra un banner verde institucional con ícono y texto informativo: *"Consumidor Final (222222222222) - Emisión automática para cuantías menores y público general (no requiere registrar cliente)"*.
+     - Cuando `IsCustomCustomer` es `true`, se despliegan reactivamente el ComboBox de búsqueda de clientes y el botón de *"Nuevo Cliente"*.
+  3. **Pruebas Unitarias Exhaustivas**:
+     - Se actualizó el caso de prueba existente para validar bloqueo únicamente cuando `IsCustomCustomer == true` y no hay cliente seleccionado.
+     - Se añadió la prueba unitaria `ProcessPaymentAsync_WhenEmitElectronicInvoiceAndConsumidorFinal_ProcessesExitWithNullCustomer` que certifica el procesamiento exitoso de cobro a Consumidor Final pasando `customerId = null`.
+  4. **Empaquetado de Distribución Oficial**:
+     - Se generó el paquete autocontenido Release v2.0.1: `ParkFlow_v2.0.1.zip` con hash SHA-256 inmutable y su correspondiente `release_manifest.json`.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **334/334 Pruebas Unitarias Superadas (0 Fallos, 100% Correctas)**.
+  - `dotnet build -c Release ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+
+
 ## 📅 Entrada: [2026-09-26 13:30:00] - [FEATURE / WPF / INVOICING / PRINT] Auto-Impresión Obligatoria en Facturación Electrónica (Prefijo FV / FE) al Liquidar Salida
 
 - **`💬 Prompt Original del Usuario`**:

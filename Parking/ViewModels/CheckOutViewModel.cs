@@ -297,6 +297,9 @@ public partial class CheckOutViewModel : ViewModelBase
     private bool _canToggleElectronicInvoice = true;
 
     [ObservableProperty]
+    private bool _isCustomCustomer;
+
+    [ObservableProperty]
     private Customer? _selectedCustomer;
 
     [ObservableProperty]
@@ -669,6 +672,14 @@ public partial class CheckOutViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsElectronicInvoicingSectionVisible));
     }
 
+    partial void OnIsCustomCustomerChanged(bool value)
+    {
+        if (!value)
+        {
+            ShowCustomerWarning = false;
+        }
+    }
+
     partial void OnSelectedResolutionChanged(BillingResolution? value)
     {
         if (_isApplyingResolutionFilter) return;
@@ -699,11 +710,13 @@ public partial class CheckOutViewModel : ViewModelBase
             if (isElectronic)
             {
                 EmitElectronicInvoice = true;
+                IsCustomCustomer = false;
                 _ = LoadCustomersAsync();
             }
             else if (!ForceElectronicInvoiceOnCheckout && (SelectedPaymentMethodEntity == null || !SelectedPaymentMethodEntity.RequiresResolution))
             {
                 EmitElectronicInvoice = false;
+                IsCustomCustomer = false;
             }
         }
         OnPropertyChanged(nameof(IsElectronicInvoicingSectionVisible));
@@ -1413,6 +1426,7 @@ public partial class CheckOutViewModel : ViewModelBase
 
     partial void OnEmitElectronicInvoiceChanged(bool value)
     {
+        IsCustomCustomer = false;
         if (value)
         {
             _ = LoadCustomersAsync();
@@ -2424,7 +2438,10 @@ public partial class CheckOutViewModel : ViewModelBase
                 ShowResolutionWarning = false;
             }
 
-            bool customerRequired = EmitElectronicInvoice && SelectedCustomer == null && !(_sessionService.CurrentUser?.AllowAnonymousInvoice ?? false);
+            bool customerRequired = (EmitElectronicInvoice || IsElectronicResolutionDefensive(SelectedResolution))
+                && IsCustomCustomer
+                && SelectedCustomer == null
+                && !(_sessionService.CurrentUser?.AllowAnonymousInvoice ?? false);
 
             if (customerRequired)
             {
@@ -2441,14 +2458,14 @@ public partial class CheckOutViewModel : ViewModelBase
                 HasFeedback = true;
                 IsSuccessFeedback = false;
                 FeedbackMessage = customerRequired
-                    ? "Debe seleccionar un cliente / adquirente para emitir la Factura Electrónica."
+                    ? "Debe seleccionar un cliente / adquirente para emitir la Factura Electrónica personalizada."
                     : "Por favor seleccione el método de pago y la resolución requeridos.";
 
                 if (customerRequired)
                 {
                     await _dialogService.ShowAlertAsync(
                         "Adquirente Requerido",
-                        "Ha seleccionado emitir Factura Electrónica (DIAN), pero no ha seleccionado ningún cliente. Por favor seleccione o registre uno.",
+                        "Ha seleccionado emitir Factura Electrónica personalizada, pero no ha seleccionado ningún cliente. Por favor seleccione o registre uno, o desmarque la opción para emitir a Consumidor Final.",
                         DialogNotificationType.Warning);
                 }
                 return;
@@ -2502,7 +2519,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 IsLostTicket,
                 IsLostTicket ? LostTicketFee : 0m,
                 EmitElectronicInvoice,
-                SelectedCustomer?.CustomerId);
+                (EmitElectronicInvoice && IsCustomCustomer) ? SelectedCustomer?.CustomerId : null);
 
             if (completedTicket != null)
             {
@@ -2518,6 +2535,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 HasAgreementDiscount = false;
                 IsLostTicket = false;
                 SelectedCustomer = null;
+                IsCustomCustomer = false;
                 EmitElectronicInvoice = ForceElectronicInvoiceOnCheckout;
                 ShowCustomerWarning = false;
                 IsQuickRegisterCustomerOpen = false;
@@ -2592,6 +2610,7 @@ public partial class CheckOutViewModel : ViewModelBase
         HasFeedback = false;
         FeedbackMessage = null;
         SelectedCustomer = null;
+        IsCustomCustomer = false;
         CustomerSearchText = string.Empty;
         ApplyCustomerFilter();
         EmitElectronicInvoice = ForceElectronicInvoiceOnCheckout;

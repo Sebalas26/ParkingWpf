@@ -484,6 +484,7 @@ public class CheckOutViewModelTests : IDisposable
         vm.SelectedTicket = ticket;
         vm.SelectedResolution = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", IsActive = true };
         vm.EmitElectronicInvoice = true;
+        vm.IsCustomCustomer = true;
         vm.SelectedCustomer = null;
 
         // Act
@@ -499,6 +500,72 @@ public class CheckOutViewModelTests : IDisposable
             It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<Guid?>(),
             It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool>(),
             It.IsAny<decimal>(), It.IsAny<bool>(), It.IsAny<Guid?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ProcessPaymentAsync_WhenEmitElectronicInvoiceAndConsumidorFinal_ProcessesExitWithNullCustomer()
+    {
+        // Arrange
+        var userSession = new UserSessionModel
+        {
+            UserId = Guid.NewGuid(),
+            Username = "cajero",
+            HasElectronicInvoicingEnabled = true,
+            ForceElectronicInvoiceOnCheckout = false
+        };
+        _mockSessionService.Setup(s => s.CurrentUser).Returns(userSession);
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "FINAL01",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-20)
+        };
+        _mockTicketService.Setup(s => s.ProcessExitAsync(
+            It.IsAny<Guid>(), It.IsAny<PaymentMethod>(), It.IsAny<decimal>(),
+            It.IsAny<Guid?>(), It.IsAny<Guid?>(), It.IsAny<string?>(),
+            It.IsAny<decimal?>(), It.IsAny<decimal>(), It.IsAny<int?>(),
+            It.IsAny<string?>(), It.IsAny<DateTime?>(), It.IsAny<Guid?>(),
+            It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool>(),
+            It.IsAny<decimal>(), It.IsAny<bool>(), It.IsAny<Guid?>()))
+            .ReturnsAsync(ticket);
+
+        vm.SelectedTicket = ticket;
+        vm.SelectedResolution = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FE", IsActive = true, IsElectronicResolution = true };
+        vm.EmitElectronicInvoice = true;
+        vm.IsCustomCustomer = false; // Consumidor Final por defecto
+        vm.SelectedCustomer = null;
+        vm.AmountTendered = 10000m;
+
+        // Act
+        await vm.ProcessPaymentCommand.ExecuteAsync(null);
+
+        // Assert
+        vm.ShowCustomerWarning.Should().BeFalse();
+        _mockTicketService.Verify(s => s.ProcessExitAsync(
+            ticket.TicketId,
+            It.IsAny<PaymentMethod>(),
+            It.IsAny<decimal>(),
+            It.IsAny<Guid?>(),
+            It.IsAny<Guid?>(),
+            It.IsAny<string?>(),
+            It.IsAny<decimal?>(),
+            It.IsAny<decimal>(),
+            It.IsAny<int?>(),
+            It.IsAny<string?>(),
+            It.IsAny<DateTime?>(),
+            It.IsAny<Guid?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<bool>(),
+            It.IsAny<decimal>(),
+            true, // EmitElectronicInvoice
+            null // customerId: null para Consumidor Final (222222222222)
+        ), Times.Once);
     }
 
     [Fact]
