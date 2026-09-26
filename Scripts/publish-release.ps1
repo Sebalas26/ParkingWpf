@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Script oficial de publicacion y empaquetado seguro de versiones de ParkFlow Desktop (WPF).
 .DESCRIPTION
@@ -50,7 +50,7 @@ Write-Host "`n[1/5] Compilando Parking WPF (Release win-x64)..." -ForegroundColo
 dotnet publish "$rootDir\Parking\Parking.csproj" `
     -c Release `
     -r win-x64 `
-    --self-contained false `
+    --self-contained true `
     -o "$stagingDir"
 
 # 3. Compilar Micro-Updater
@@ -58,7 +58,7 @@ Write-Host "`n[2/5] Compilando ParkFlow.Updater (Release win-x64)..." -Foregroun
 dotnet publish "$rootDir\ParkFlow.Updater\ParkFlow.Updater.csproj" `
     -c Release `
     -r win-x64 `
-    --self-contained false `
+    --self-contained true `
     -o "$stagingDir"
 
 # 4. Limpiar archivos no deseados en la distribucion (PDBs pesados de desarrollo, configs locales, bases de datos)

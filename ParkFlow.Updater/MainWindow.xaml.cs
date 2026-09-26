@@ -145,7 +145,14 @@ public partial class MainWindow : Window
                         Directory.CreateDirectory(parentDir);
                     }
 
-                    entry.ExtractToFile(destinationPath, overwrite: true);
+                    try
+                    {
+                        entry.ExtractToFile(destinationPath, overwrite: true);
+                    }
+                    catch (IOException) when (entry.Name.StartsWith("ParkFlow.Updater", StringComparison.OrdinalIgnoreCase))
+                    {
+                        // El micro-updater se encuentra actualmente en ejecución; se preserva el binario activo sin abortar la actualización del sistema principal.
+                    }
                 }
             }
 

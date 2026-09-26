@@ -1,6 +1,30 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
 
+
+## 📅 Entrada: [2026-09-26 12:35:00] - [FEATURE / WPF / RELEASE / PACKAGING] Empaquetado Autocontenido (.NET Self-Contained) y Blindaje contra Bloqueos de Archivo en Micro-Updater
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"vuelve analizar a ver si tiene huecos tecnicos y que sea la solucion definitiva"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico Técnico Exhaustivo de Despliegue (.NET Runtime Dependency)**:
+     - *Causa Raíz de Solicitud de Runtime*: El script `publish-release.ps1` compilaba las soluciones con `--self-contained false`. Al estar los proyectos configurados en `net10.0-windows`, cualquier PC cliente sin el runtime exacto de .NET 10 para escritorio rechazaba la ejecución con la ventana de diálogo del sistema operativo: *"You must install .NET Desktop Runtime to run this application"*.
+     - *Solución*: Se configuró `--self-contained true` para `Parking.csproj` y `ParkFlow.Updater.csproj`. Esto incluye el motor de ejecución CLR (`coreclr.dll`, `clrjit.dll`, etc.), bibliotecas base del BCL y las librerías nativas de SQLite (`e_sqlite3.dll`) directamente dentro del ZIP de distribución (`~300 archivos`), eliminando al 100% el requisito de instalar .NET o SDKs en los clientes.
+  2. **Detección y Blindaje de Bloqueo de Proceso en `ParkFlow.Updater` (Crucial)**:
+     - *Hueco Técnico Identificado*: Durante una actualización desatendida en caliente iniciada por `AppUpdateService`, `ParkFlow.Updater.exe` se ejecuta desde la carpeta de instalación. Al descomprimir el ZIP de la nueva versión, si el ZIP intentaba sobrescribir `ParkFlow.Updater.exe` mientras este mismo se encontraba corriendo, Windows arrojaba `IOException: The process cannot access the file because it is being used by another process`, abortando catastróficamente la actualización.
+     - *Solución de Protección*: En `ParkFlow.Updater/MainWindow.xaml.cs`, se blindó la llamada de extracción con un bloque `try/catch` defensivo capturando `IOException` cuando la entrada en el archivo ZIP corresponde al propio actualizador (`entry.Name.StartsWith("ParkFlow.Updater")`), permitiendo que la versión activa en memoria finalice la copia de todos los demás componentes del sistema sin colapsar.
+
+- **`📦 Componentes Modificados`**:
+  - `Scripts/publish-release.ps1`
+  - `ParkFlow.Updater/MainWindow.xaml.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **333/333 Pruebas Unitarias Superadas (0 Fallos)**.
+  - `dotnet build ParkFlow.Updater.csproj`: **0 Errores, 0 Advertencias**.
+
+
 ## 📅 Entrada: [2026-09-26 12:15:00] - [BUGFIX / WPF / SYNC / DATABASE] Corrección de Eliminación Destructiva y Error de Integridad Referencial SQLite 19 en SyncEngine (Soft Delete)
 
 - **`💬 Prompt Original del Usuario`**:
