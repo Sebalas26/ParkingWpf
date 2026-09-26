@@ -1,5 +1,36 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+
+## 📅 Entrada: [2026-09-26 12:15:00] - [BUGFIX / WPF / SYNC / DATABASE] Corrección de Eliminación Destructiva y Error de Integridad Referencial SQLite 19 en SyncEngine (Soft Delete)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"mira que cuando sincronizo, sale ese erorr de foreign key failed. Analiza si hay huecos tecnicos para dar con la solucion defintiva"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico del Error SQLite 19 ('FOREIGN KEY constraint failed')**:
+     - *Causa Raíz*: El motor de sincronización `SyncEngineService.cs` ejecutaba eliminaciones físicas destructivas (`db.Entities.RemoveRange`) sobre catálogos fundamentales (`Users`, `Stores`, `CommercialAgreements`, `BillingResolutions`) al depurar registros que ya no existían en el `bootstrap` del API remoto.
+     - Si estas entidades tenían registros dependientes en tablas históricas o transaccionales en la sede (por ejemplo, turnos en `UserSessions`, o descuentos aplicados en `TicketDiscounts`), SQLite bloqueaba estrictamente el borrado en cascada para garantizar la integridad referencial, lanzando el error 19 y abortando prematuramente el proceso de sincronización.
+  2. **Implementación de Borrado Lógico (Soft-Delete) y Resolución Defensiva**:
+     - Se rediseñaron los bloques de depuración (`agsToDelete`, `storesToDelete`, `usersToDelete`, `resToDelete`) en `SyncEngineService.cs`.
+     - Ahora, en lugar de un borrado masivo físico, se itera sobre cada entidad huérfana y se consulta activamente la base de datos local usando `AnyAsync` para detectar si el registro posee relaciones transaccionales activas:
+       - `Users`: verificando relaciones con `UserSessions`.
+       - `Stores`: verificando dependencias en `TicketDiscounts`.
+       - `CommercialAgreements`: verificando dependencias en `TicketDiscounts`.
+       - `BillingResolutions`: verificando dependencias en `ParkingTickets`.
+     - Si el registro posee dependencias históricas, en lugar de eliminarse físicamente de SQLite, se aplica una inactivación suave lógica (`entity.IsActive = false`).
+     - Si el registro no posee referencias cruzadas y está limpio, se purga físicamente ahorrando espacio.
+  3. **Certificación del Bloqueo de Riesgos Operativos**:
+     - La estrategia evita orfanar recibos contables, asegura el cumplimiento regulatorio de persistencia de operaciones DIAN/turnos y soluciona íntegramente el bloqueo de la cadena de sincronización.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **333/333 Pruebas Unitarias Superadas (0 Fallos)**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+
 ## 📅 Entrada: [2026-09-26 01:46:00] - [BUGFIX / WPF / UI / CONVERTER] Corrección de Superposición y Duplicación Visual del Texto e Ícono 'Cargando' en Botón de Login
 
 - **`💬 Prompt Original del Usuario`**:

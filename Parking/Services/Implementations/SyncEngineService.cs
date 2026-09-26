@@ -547,9 +547,17 @@ public class SyncEngineService : ISyncEngineService
                     && (string.IsNullOrEmpty(currentUsername) || u.Username.ToLowerInvariant() != currentUsername)
                     && string.IsNullOrWhiteSpace(u.PasswordHash)
                 ).ToList();
-                if (usersToDelete.Count > 0)
+                foreach (var user in usersToDelete)
                 {
-                    db.Users.RemoveRange(usersToDelete);
+                    bool isReferenced = await db.UserSessions.AnyAsync(s => s.UserId == user.UserId, ct);
+                    if (isReferenced)
+                    {
+                        user.IsActive = false;
+                    }
+                    else
+                    {
+                        db.Users.Remove(user);
+                    }
                 }
 
                 foreach (var apiUser in bootstrap.Users)
@@ -1061,9 +1069,17 @@ public class SyncEngineService : ISyncEngineService
                 var incomingAgIds = bootstrap.Agreements.Select(a => a.AgreementId).ToHashSet();
                 var localAgreements = await db.CommercialAgreements.ToListAsync(ct);
                 var agsToDelete = localAgreements.Where(a => !incomingAgIds.Contains(a.AgreementId)).ToList();
-                if (agsToDelete.Count > 0)
+                foreach (var ag in agsToDelete)
                 {
-                    db.CommercialAgreements.RemoveRange(agsToDelete);
+                    bool isReferenced = await db.TicketDiscounts.AnyAsync(td => td.AgreementId == ag.AgreementId, ct);
+                    if (isReferenced)
+                    {
+                        ag.IsActive = false;
+                    }
+                    else
+                    {
+                        db.CommercialAgreements.Remove(ag);
+                    }
                 }
             }
 
@@ -1072,9 +1088,17 @@ public class SyncEngineService : ISyncEngineService
                 var incomingStoreIds = bootstrap.Stores.Select(s => s.StoreId).ToHashSet();
                 var localStores = await db.Stores.ToListAsync(ct);
                 var storesToDelete = localStores.Where(s => !incomingStoreIds.Contains(s.StoreId)).ToList();
-                if (storesToDelete.Count > 0)
+                foreach (var store in storesToDelete)
                 {
-                    db.Stores.RemoveRange(storesToDelete);
+                    bool isReferenced = await db.TicketDiscounts.AnyAsync(td => td.StoreId == store.StoreId, ct);
+                    if (isReferenced)
+                    {
+                        store.IsActive = false;
+                    }
+                    else
+                    {
+                        db.Stores.Remove(store);
+                    }
                 }
 
                 foreach (var store in bootstrap.Stores)
@@ -1391,9 +1415,17 @@ public class SyncEngineService : ISyncEngineService
                 var incomingResIds = bootstrap.Resolutions.Select(r => r.ResolutionId).ToHashSet();
                 var localResolutions = await db.BillingResolutions.ToListAsync(ct);
                 var resToDelete = localResolutions.Where(r => !incomingResIds.Contains(r.ResolutionId)).ToList();
-                if (resToDelete.Count > 0)
+                foreach (var res in resToDelete)
                 {
-                    db.BillingResolutions.RemoveRange(resToDelete);
+                    bool isReferenced = await db.ParkingTickets.AnyAsync(pt => pt.ResolutionId == res.ResolutionId, ct);
+                    if (isReferenced)
+                    {
+                        res.IsActive = false;
+                    }
+                    else
+                    {
+                        db.BillingResolutions.Remove(res);
+                    }
                 }
 
                 foreach (var res in bootstrap.Resolutions)
