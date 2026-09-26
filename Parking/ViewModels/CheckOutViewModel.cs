@@ -250,9 +250,10 @@ public partial class CheckOutViewModel : ViewModelBase
         var name = r.Name ?? string.Empty;
 
         return doc.IndexOf("electr", StringComparison.OrdinalIgnoreCase) >= 0 ||
-               pfx.Equals("FE", StringComparison.OrdinalIgnoreCase) ||
-               pfx.Equals("SETP", StringComparison.OrdinalIgnoreCase) ||
+               pfx.StartsWith("FV", StringComparison.OrdinalIgnoreCase) ||
                pfx.StartsWith("FE", StringComparison.OrdinalIgnoreCase) ||
+               pfx.StartsWith("FM", StringComparison.OrdinalIgnoreCase) ||
+               pfx.StartsWith("SET", StringComparison.OrdinalIgnoreCase) ||
                name.IndexOf("electr", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
@@ -2505,9 +2506,8 @@ public partial class CheckOutViewModel : ViewModelBase
 
             if (completedTicket != null)
             {
-                var clearedPlate = completedTicket.PlateNumber;
-                var totalPaid = completedTicket.NetAmount;
-                var change = completedTicket.ChangeGiven;
+                var resolutionUsed = SelectedResolution;
+                var wasElectronic = EmitElectronicInvoice || IsElectronicResolutionDefensive(resolutionUsed);
 
                 SelectedTicket = null;
                 RequestCloseDialog?.Invoke();
@@ -2526,16 +2526,25 @@ public partial class CheckOutViewModel : ViewModelBase
                 HasFeedback = false;
                 FeedbackMessage = null;
 
-                var shouldPrint = await _dialogService.ShowConfirmationAsync(
-                    "Impresión de Factura",
-                    "¿Desea imprimir la factura / tiquete de salida?",
-                    DialogNotificationType.Question,
-                    "Sí, Imprimir",
-                    "No Imprimir");
+                // Las facturas electrónicas (FV / FE) siempre deben imprimirse automáticamente sin preguntar
+                bool shouldPrint;
+                if (wasElectronic)
+                {
+                    shouldPrint = true;
+                }
+                else
+                {
+                    shouldPrint = await _dialogService.ShowConfirmationAsync(
+                        "Impresión de Factura",
+                        "¿Desea imprimir la factura / tiquete de salida?",
+                        DialogNotificationType.Question,
+                        "Sí, Imprimir",
+                        "No Imprimir");
+                }
 
                 if (shouldPrint)
                 {
-                    await _dialogService.ShowReceiptPreviewAsync(completedTicket, SelectedResolution);
+                    await _dialogService.ShowReceiptPreviewAsync(completedTicket, resolutionUsed);
                 }
             }
         }

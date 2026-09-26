@@ -51,6 +51,9 @@ dotnet publish "$rootDir\Parking\Parking.csproj" `
     -c Release `
     -r win-x64 `
     --self-contained true `
+    /p:Version=$Version `
+    /p:AssemblyVersion=$Version `
+    /p:FileVersion=$Version `
     -o "$stagingDir"
 
 # 3. Compilar Micro-Updater
@@ -59,6 +62,9 @@ dotnet publish "$rootDir\ParkFlow.Updater\ParkFlow.Updater.csproj" `
     -c Release `
     -r win-x64 `
     --self-contained true `
+    /p:Version=$Version `
+    /p:AssemblyVersion=$Version `
+    /p:FileVersion=$Version `
     -o "$stagingDir"
 
 # 4. Limpiar archivos no deseados en la distribucion (PDBs pesados de desarrollo, configs locales, bases de datos)

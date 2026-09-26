@@ -2,6 +2,31 @@
 
 
 
+
+## 📅 Entrada: [2026-09-26 13:30:00] - [FEATURE / WPF / INVOICING / PRINT] Auto-Impresión Obligatoria en Facturación Electrónica (Prefijo FV / FE) al Liquidar Salida
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"ayudame ajustar algo, cuando le voy a dar salida un vehiculo y la resolucion haya sido factura electronica (fv) no me muestres la pregunta de que si quiero imprimir o no, ellas siempre deben imprimirse tanto en pwa, como en wpf"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Regla Operativa DIAN**:
+     - *Comportamiento Previo*: Al liquidar la salida de un vehículo en `ConfirmExitAsync`, el sistema ejecutaba incondicionalmente el diálogo de confirmación (`_dialogService.ShowConfirmationAsync`: *"¿Desea imprimir la factura / tiquete de salida?"*).
+     - *Requerimiento*: Las resoluciones de Factura Electrónica (prefijo `FV`, `FE`, `FM` o emisión FE activa) tienen obligación fiscal de entrega de comprobante y no deben depender de la confirmación manual del cajero.
+  2. **Implementación de Bypass Condicional en `CheckOutViewModel.cs`**:
+     - En `IsElectronicResolutionDefensive(BillingResolution? r)`, se añadieron explícitamente los prefijos `FV` y `FM` (`pfx.StartsWith("FV", StringComparison.OrdinalIgnoreCase)`).
+     - En `ConfirmExitAsync`, se determina si la transacción involucró facturación electrónica (`var wasElectronic = EmitElectronicInvoice || IsElectronicResolutionDefensive(resolutionUsed)`).
+     - Si `wasElectronic == true`, se omite por completo la ventana de confirmación (`ShowConfirmationAsync`), se fija `shouldPrint = true` y se invoca directamente `ShowReceiptPreviewAsync(completedTicket, resolutionUsed)`.
+     - Si la transacción es POS regular sin resolución electrónica, se conserva la confirmación opcional.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **333/333 Pruebas Unitarias Superadas (0 Fallos)**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+
 ## 📅 Entrada: [2026-09-26 12:35:00] - [FEATURE / WPF / RELEASE / PACKAGING] Empaquetado Autocontenido (.NET Self-Contained) y Blindaje contra Bloqueos de Archivo en Micro-Updater
 
 - **`💬 Prompt Original del Usuario`**:
