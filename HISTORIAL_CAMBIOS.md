@@ -1,5 +1,48 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-25 21:38:00] - [BUGFIX / SHIFTS / OUTBOX / SQLITE / RELEVO DE CAJA] Corrección de Restricción Unique en Stores, Persistencia y Resolución Offline de ServerUserId en Relevo de Turnos, Encolamiento Outbox y Remoción de Botón Redundante (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"1. me sale este error en el relevo de turnos de la caja: System.InvalidOperationException: No se pudo resolver el identificador de usuario para el operador receptor 'Carlos Relevo'. No es posible abrir el turno de relevo sin un usuario válido. en Parking.Services.Implementations.EfShiftService.HandoverAndOpenNextShiftAsync(...) en Parking.ViewModels.ShiftClosureViewModel.TakeOverShiftAsync(...) y mira este error también: Microsoft.Data.Sqlite.SqliteException: SQLite Error 19: 'UNIQUE constraint failed: Stores.TaxId'. 2. En relevo de turnos elimina este boton ya que esta seccion es solo para el relevo de turnos: Relevar Caja Existente"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Corrección de Restricción UNIQUE en `Stores.TaxId`**:
+     - **Causa Raíz**: En `StoreConfiguration.cs`, `builder.HasIndex(s => s.TaxId).IsUnique();` imponía restricción única sobre `TaxId`. Cuando una empresa posee múltiples sedes que comparten el mismo NIT corporativo (`TaxId`), el bootstrap o inserción en SQLite arrojaba `SQLite Error 19: UNIQUE constraint failed: Stores.TaxId`.
+     - **Solución**: Se eliminó `.IsUnique()` en `StoreConfiguration.cs`. En `DbConnectionManager.cs`, se agregó migración correctiva e idempotente al inicio: `DROP INDEX IF EXISTS "IX_Stores_TaxId";` y creación de índice regular no único `CREATE INDEX IF NOT EXISTS "IX_Stores_TaxId" ON "Stores" ("TaxId");`.
+  2. **Diagnóstico y Corrección de Resolución de `UserId` en Relevo de Turnos**:
+     - **Causa Raíz**: La entidad local `User` en SQLite carecía de la propiedad `ServerUserId`. Al sincronizar usuarios desde el API central (`bootstrap.Users`), el `Id` numérico del usuario en MySQL/API nunca se persistía en la tabla `Users` de SQLite. Si un operador receptor (ej: "Carlos Relevo") no había abierto turnos previos en esa estación física, la búsqueda en `WorkShifts` arrojaba `null`. Además, al autenticarse offline en el modal de relevo (`ValidateCredentialsAsync`), el `UserSessionModel` resultante no podía poblar `ServerUserId`, dejando `CurrentUser.ServerUserId` en `null` y provocando el fallo `System.InvalidOperationException: No se pudo resolver el identificador de usuario para el operador receptor...`.
+     - **Solución**:
+       - En `Parking/Entities/User.cs`: Se agregó la propiedad `public int? ServerUserId { get; set; }` (auto-migrada dinámicamente por `DbConnectionManager.AutoMigrateDatabaseAsync`).
+       - En `SyncEngineService.cs`: Al sincronizar `bootstrap.Users`, se mapea y persiste `ServerUserId = apiUser.Id` tanto para usuarios existentes como nuevos.
+       - En `AuthService.cs`: En `AuthenticateAsync`, se guarda `localUser.ServerUserId = apiLogin.UserId`. En `ValidateCredentialsAsync`, se prioriza `user.ServerUserId` de la entidad `User` en SQLite antes del fallback a turnos previos.
+       - En `EfShiftService.cs` (`HandoverAndOpenNextShiftAsync`): La resolución consulta primero `dbLookup.Users` por GUID, Username o FullName para extraer su `ServerUserId`, con fallback a `WorkShifts` y a la sesión activa autenticada.
+  3. **Encolamiento Outbox (`PendingSyncItems`) y Resiliencia Offline para Cierre y Apertura de Turnos**:
+     - En `EfShiftService.cs`:
+       - En `CloseSpecificShiftAsync`: Si `!local.IsSynchronized` (cierre offline o sin red), se encola automáticamente en `PendingSyncItems` con `OperationType = "CloseShift"`.
+       - En `HandoverAndOpenNextShiftAsync` y `OpenShiftAsync`: Si `!nextShift.IsSynchronized`, se encola automáticamente en `PendingSyncItems` con `OperationType = "OpenShift"`.
+     - En `SyncEngineService.cs` (`ProcessPendingQueueAsync`): Se incorporaron los despachadores para `"CloseShift"` y `"OpenShift"`, reintentando de forma resiliente contra el API central y conciliando el estado `IsSynchronized = true` en SQLite al recuperar conectividad.
+  4. **Limpieza Visual en Vista de Relevo de Turno (`ShiftClosureView.xaml`)**:
+     - Se eliminó el botón redundante "Relevar Caja Existente" (`SelectRelieveModeCommand`), preservando únicamente el botón de conmutación "Abrir Nueva Caja Aparte" (`SelectNewRegisterModeCommand`) para un flujo operativo claro y sin duplicidad.
+  5. **Pruebas Automatizadas de Regresión**:
+     - Se agregó la prueba unitaria `HandoverAndOpen_ResolvesUserIdFromUserEntity_WhenAvailableInSQLite` en `EfShiftServiceTests.cs`, certificando que el relevo resuelve con éxito el ID del usuario receptor directamente desde SQLite cuando los operadores difieren.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Data/Configurations/StoreConfiguration.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/Entities/User.cs`
+  - `Parking/Services/Implementations/AuthService.cs`
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Views/ShiftClosureView.xaml`
+  - `Parking.UnitTests/Shifts/EfShiftServiceTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx` ➔ **310 Pasadas, 0 Fallidas (100% Superadas)**.
+  - `dotnet build ParkingWpf.slnx` ➔ **0 Errores, 0 Advertencias**.
+
+---
+
 ## 📅 Entrada: [2026-09-25 15:52:00] - [BUGFIX / UI / UX / AUTOCOMPLETE / COMBOBOX] Corrección de Sobreescritura y Borrado del Primer Caracter al Buscar Cliente en Checkout (WPF)
 
 - **`💬 Prompt Original del Usuario`**:

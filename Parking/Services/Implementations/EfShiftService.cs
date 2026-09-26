@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Parking.Core.Enums;
@@ -192,6 +193,27 @@ public class EfShiftService : IShiftService
                 existing.Notes = notes;
                 existing.IsSynchronized = shift.IsSynchronized;
             }
+
+            if (!shift.IsSynchronized && branchId.HasValue)
+            {
+                var openRequest = new OpenShiftApiRequest
+                {
+                    BranchId = branchId.Value,
+                    CompanyId = companyId.Value,
+                    UserId = shift.UserId,
+                    CashRegisterName = shift.CashRegisterName,
+                    BaseAmount = baseAmount,
+                    Notes = notes
+                };
+                db.PendingSyncItems.Add(new PendingSyncItem
+                {
+                    PendingSyncItemId = Guid.NewGuid(),
+                    OperationType = "OpenShift",
+                    PayloadJson = JsonSerializer.Serialize(openRequest, ParkingApiClient.JsonOptions),
+                    CreatedAtUtc = DateTime.UtcNow
+                });
+            }
+
             await db.SaveChangesAsync();
         }
         finally
@@ -677,6 +699,18 @@ public class EfShiftService : IShiftService
                 local.HandoverToUserId = handoverToUserId;
                 local.HandoverToUserName = handoverToUserName;
                 local.IsSynchronized = closedShift != null;
+
+                if (!local.IsSynchronized)
+                {
+                    db.PendingSyncItems.Add(new PendingSyncItem
+                    {
+                        PendingSyncItemId = Guid.NewGuid(),
+                        OperationType = "CloseShift",
+                        PayloadJson = JsonSerializer.Serialize(request, ParkingApiClient.JsonOptions),
+                        CreatedAtUtc = DateTime.UtcNow
+                    });
+                }
+
                 await db.SaveChangesAsync();
 
                 closedShift ??= local;
@@ -729,20 +763,38 @@ public class EfShiftService : IShiftService
         }
 
         // Resolver estrictamente el UserId numérico del operador receptor (sin fallback a SuperAdmin '1')
-        int? resolvedUserId = _authService.CurrentUser?.ServerUserId;
+        int? resolvedUserId = null;
+        using (var dbLookup = _connectionManager.CreateDbContext())
+        {
+            var userEntity = await dbLookup.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.UserId == handoverToUserId || 
+                                          (u.Username != null && u.Username.ToLower() == handoverToUserName.ToLower()) || 
+                                          (u.FullName != null && u.FullName.ToLower() == handoverToUserName.ToLower()));
+
+            if (userEntity?.ServerUserId.HasValue == true && userEntity.ServerUserId.Value > 0)
+            {
+                resolvedUserId = userEntity.ServerUserId.Value;
+            }
+            else
+            {
+                var previousShift = await dbLookup.WorkShifts
+                    .AsNoTracking()
+                    .Where(s => s.OperatorName == handoverToUserName && s.UserId > 0)
+                    .OrderByDescending(s => s.StartTimeUtc)
+                    .FirstOrDefaultAsync();
+
+                if (previousShift != null)
+                {
+                    resolvedUserId = previousShift.UserId;
+                }
+            }
+        }
+
+        // Si aún no se resuelve, verificar la sesión del usuario actual
         if (!resolvedUserId.HasValue || resolvedUserId.Value <= 0)
         {
-            using var dbLookup = _connectionManager.CreateDbContext();
-            var previousShift = await dbLookup.WorkShifts
-                .AsNoTracking()
-                .Where(s => s.OperatorName == handoverToUserName && s.UserId > 0)
-                .OrderByDescending(s => s.StartTimeUtc)
-                .FirstOrDefaultAsync();
-
-            if (previousShift != null)
-            {
-                resolvedUserId = previousShift.UserId;
-            }
+            resolvedUserId = _authService.CurrentUser?.ServerUserId;
         }
 
         if (!resolvedUserId.HasValue || resolvedUserId.Value <= 0)
@@ -804,6 +856,27 @@ public class EfShiftService : IShiftService
         {
             using var db = _connectionManager.CreateDbContext();
             db.WorkShifts.Add(nextShift);
+
+            if (!nextShift.IsSynchronized && branchId.HasValue)
+            {
+                var openRequest = new OpenShiftApiRequest
+                {
+                    BranchId = branchId.Value,
+                    CompanyId = _sessionService.CurrentCompanyId,
+                    UserId = resolvedUserId.Value,
+                    CashRegisterName = registerName,
+                    BaseAmount = newShiftBaseAmount,
+                    Notes = nextShift.Notes
+                };
+                db.PendingSyncItems.Add(new PendingSyncItem
+                {
+                    PendingSyncItemId = Guid.NewGuid(),
+                    OperationType = "OpenShift",
+                    PayloadJson = JsonSerializer.Serialize(openRequest, ParkingApiClient.JsonOptions),
+                    CreatedAtUtc = DateTime.UtcNow
+                });
+            }
+
             await db.SaveChangesAsync();
         }
         finally

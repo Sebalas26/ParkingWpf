@@ -454,27 +454,6 @@
                         </StackPanel>
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
-                            <Button Command="{Binding SelectRelieveModeCommand}" Margin="0,0,8,0" Padding="16,8">
-                                <Button.Style>
-                                    <Style TargetType="Button" BasedOn="{StaticResource ModernButton}">
-                                        <Setter Property="Background" Value="{DynamicResource BrushPrimary}"/>
-                                        <Setter Property="Foreground" Value="{DynamicResource BrushTextWhite}"/>
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsRelieveModeSelected}" Value="False">
-                                                <Setter Property="Background" Value="{DynamicResource BrushSurfaceBackground}"/>
-                                                <Setter Property="Foreground" Value="{DynamicResource BrushTextPrimary}"/>
-                                                <Setter Property="BorderBrush" Value="{DynamicResource BrushBorderMedium}"/>
-                                                <Setter Property="BorderThickness" Value="1"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Button.Style>
-                                <StackPanel Orientation="Horizontal">
-                                    <Path Data="{StaticResource IconCashRegister}" Fill="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Foreground}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                    <TextBlock Text="Relevar Caja Existente" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
-
                             <Button Command="{Binding SelectNewRegisterModeCommand}" Padding="16,8">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource ModernButton}">

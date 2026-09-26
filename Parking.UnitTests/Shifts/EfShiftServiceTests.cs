@@ -603,6 +603,54 @@ public class EfShiftServiceTests : IDisposable
             .WithMessage("*No se pudo resolver el identificador de usuario*");
     }
 
+    [Fact]
+    public async Task HandoverAndOpen_ResolvesUserIdFromUserEntity_WhenAvailableInSQLite()
+    {
+        // Arrange
+        var incomingUserGuid = Guid.NewGuid();
+        var incomingName = "Carlos Relevo";
+        const int expectedServerUserId = 42;
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            var role = new Role { RoleId = Guid.NewGuid(), Name = "Cajero", Description = "Cajero" };
+            db.Roles.Add(role);
+            db.Users.Add(new User
+            {
+                UserId = incomingUserGuid,
+                Username = "carlos.relevo",
+                FullName = incomingName,
+                ServerUserId = expectedServerUserId,
+                RoleId = role.RoleId,
+                IsActive = true
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // Simular que el usuario saliente es diferente y tiene otro id
+        _mockAuthService.Setup(a => a.CurrentUser).Returns(new UserSessionModel
+        {
+            ServerUserId = 999,
+            Username = "operador.saliente",
+            FullName = "Operador Saliente"
+        });
+
+        var service = CreateService();
+
+        // Act
+        var nextShift = await service.HandoverAndOpenNextShiftAsync(
+            actualCashCounted: 50000m,
+            notes: "Relevo a Carlos",
+            handoverToUserId: incomingUserGuid,
+            handoverToUserName: incomingName,
+            newShiftBaseAmount: 50000m);
+
+        // Assert
+        nextShift.Should().NotBeNull();
+        nextShift.UserId.Should().Be(expectedServerUserId);
+        nextShift.OperatorName.Should().Be(incomingName);
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();
