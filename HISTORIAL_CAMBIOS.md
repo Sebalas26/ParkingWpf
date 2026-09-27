@@ -1,6 +1,30 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
-## 📅 Entrada: [2026-09-27 16:55:00] - [PERFORMANCE / PACKAGING / SCRIPTS] Optimización de Binarios y Depuración de Carpetas Satélites de Idiomas en publish-release.ps1
+## 📅 Entrada: [2026-09-27 17:35:00] - [UI/UX / INNO-SETUP / BRANDING] Ícono Oficial en Instalador Inno Setup y Bloqueo de Botón en Diálogo de Actualización
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Otra cosa que se vio es que el instalador no tiene el icono... el icono de Parking Flow, debería tenerlo. Tampoco cuando se abre... o sea el instalador no tiene el icono así como el ejecutable. Debería tenerlo... y dice arriba: 'su base de datos local y transacciones se respaldan de forma preventiva antes de aplicar la actualización'... pero cuando inició la descarga dice: 'Descargando actualización: 0,0 MB de 61,9 MB (30%)...' y ahí se quedó..."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Ícono Oficial en Instalador Inno Setup (`installer.iss`)**:
+     - Se integró la directiva `SetupIconFile=..\Parking\Resources\parkpoint.ico` en `[Setup]`.
+     - Se configuró `UninstallDisplayIcon={app}\{#MyAppExeName}` para el panel de control de Windows.
+     - Se vinculó `IconFilename: "{app}\{#MyAppExeName}"` en los accesos directos del menú de inicio y escritorio.
+     - El archivo `ParkFlow_Setup_vX.exe` y sus accesos directos ahora cuentan con la identidad visual oficial de Parking Flow.
+  2. **Bloqueo y Ocultamiento de Botón en Actualización (`AppUpdateDialog.xaml`)**:
+     - Se configuró `Visibility="{Binding IsUpdating, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"` sobre el botón principal *"Sincronizar y Actualizar Ahora"*.
+     - Mientras la actualización está en curso, el botón se oculta automáticamente para impedir reintentos concurrentes o confusión del operador.
+  3. **Verificación y Pruebas**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+     - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Scripts/installer.iss`
+  - `Parking/Views/AppUpdateDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test`: **338 Pruebas Superadas, 0 Fallos, 0 Errores**.
 
 - **`💬 Prompt Original del Usuario`**:
   > _"Tengo estos problemas se revienta el servidor y no es mi internet tengo 900 MB simetricas si no que al subir se demora demasiado entonces revienta el sistema si me explico. que propones para poder solucionar estos problemas. crea el plan completo para mirar bien el detalle"_
