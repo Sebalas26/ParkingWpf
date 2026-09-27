@@ -1,5 +1,24 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-27] - [BUGFIX / MULTI-SEDE / OFFLINE] Corrección de Huecos Técnicos en Validación de Caja Única Offline
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"valida si tiene huecos tecnicos para evitar errores, recuerda que eso debe controlar el abrir caja desde wpf y pwa"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Análisis de Vulnerabilidades**: WPF no tenía validación activa sobre la restricción "Caja Única". Además, el `SyncService` de la API estaba mandando erróneamente la configuración de "Caja Única" de la Empresa y no de la Sede.
+  2. **Ajuste de Backend (API Sync)**: Se modificó `SyncService.cs` en la API (`GetBootstrapDataAsync`) para asegurar que el `AllowMultipleOpenShifts` propagado hacia la aplicación de escritorio responda a la propiedad de la Sede (`Branch`), en lugar del global de empresa.
+  3. **Adición al Modelo WPF**: Se integró `AllowMultipleOpenShifts` en el modelo `Branch.cs` local.
+  4. **Prevención Offline Activa**: Se insertó lógica de bloqueo en `ShiftClosureViewModel.cs` (`OpenShiftAsync`) para que, cuando el usuario intente abrir caja estando desconectado, el cliente valide localmente contra el modelo de su sede y muestre un error nativo (`"Caja Única Activa"`) antes de guardarlo en la base local, cerrando un hueco técnico en la integridad de la base offline y resolviendo conflictos con el API.
+
+- **`📦 Componentes Modificados`**:
+  - `(API) ParkingApi.Core/Services/Sync/SyncService.cs`
+  - `(WPF) Parking/Entities/Branch.cs`
+  - `(WPF) Parking/ViewModels/ShiftClosureViewModel.cs`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **337/337 Pruebas Superadas (0 Fallos)**
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
 ## 📅 Entrada: [2026-09-27 10:35:00] - [RELEASE / PACKAGING / DEPLOYMENT] Generación Oficial de Paquete de Distribución ParkFlow Desktop v3.0.0
 
 - **`💬 Prompt Original del Usuario`**:

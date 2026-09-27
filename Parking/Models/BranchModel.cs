@@ -77,6 +77,9 @@ public class BranchModel
     [JsonPropertyName("lostTicketFee")]
     public decimal LostTicketFee { get; set; } = 0m;
 
+    [JsonPropertyName("allowMultipleOpenShifts")]
+    public bool AllowMultipleOpenShifts { get; set; } = false;
+
     [JsonPropertyName("fullDayThresholdMinutes")]
     public int? FullDayThresholdMinutes { get; set; }
 

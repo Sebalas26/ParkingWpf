@@ -401,6 +401,19 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 DialogNotificationType.Warning);
             return;
         }
+        
+        var branch = _sessionService.CurrentBranch;
+        if (branch != null && !branch.AllowMultipleOpenShifts)
+        {
+            if (OtherActiveShifts.Any())
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Caja Única Activa",
+                    $"Esta sede opera bajo modalidad de Caja Única y ya cuenta con un turno activo. Debes cerrar el turno actual antes de abrir uno nuevo.",
+                    DialogNotificationType.Warning);
+                return;
+            }
+        }
 
         if ((NewShiftBaseAmount ?? 0m) <= 0)
         {
