@@ -79,10 +79,20 @@ dotnet publish "$rootDir\ParkFlow.Updater\ParkFlow.Updater.csproj" `
 # 4. Limpiar archivos no deseados en la distribucion (PDBs pesados de desarrollo, configs locales, bases de datos)
 Write-Host "`n[3/5] Depurando paquete para distribucion..." -ForegroundColor Yellow
 Get-ChildItem -Path $stagingDir -Filter "*.pdb" | Remove-Item -Force
+Get-ChildItem -Path $stagingDir -Filter "*.xml" | Remove-Item -Force
 Get-ChildItem -Path $stagingDir -Filter "*.db*" | Remove-Item -Force
 Get-ChildItem -Path $stagingDir -Filter "license.dat" | Remove-Item -Force
 if (Test-Path "$stagingDir\appsettings.Development.json") {
     Remove-Item "$stagingDir\appsettings.Development.json" -Force
+}
+
+# Depurar carpetas satélites de idiomas de EF Core / .NET no utilizadas (Ahorra ~20 MB de peso muerto)
+$satelliteCultures = @('cs','de','es','fr','it','ja','ko','pl','pt-BR','ru','tr','zh-Hans','zh-Hant')
+foreach ($culture in $satelliteCultures) {
+    $culturePath = "$stagingDir\$culture"
+    if (Test-Path $culturePath) {
+        Remove-Item $culturePath -Recurse -Force
+    }
 }
 
 # 5. Generar archivo comprimido ZIP

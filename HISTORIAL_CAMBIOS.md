@@ -1,6 +1,24 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
-## 📅 Entrada: [2026-09-27 16:40:00] - [PERFORMANCE / FAST-LOGIN / UPDATER] Fast-Login Ultrarrápido (< 1 Segundo), Eliminación de Salto de Progreso a 50% y HasLocalBranchDataAsync
+## 📅 Entrada: [2026-09-27 16:55:00] - [PERFORMANCE / PACKAGING / SCRIPTS] Optimización de Binarios y Depuración de Carpetas Satélites de Idiomas en publish-release.ps1
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Tengo estos problemas se revienta el servidor y no es mi internet tengo 900 MB simetricas si no que al subir se demora demasiado entonces revienta el sistema si me explico. que propones para poder solucionar estos problemas. crea el plan completo para mirar bien el detalle"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Depuración de Binarios en Staging (`publish-release.ps1`)**:
+     - Se incorporó la eliminación de más de 13 carpetas satélites de culturas e idiomas no utilizados de EF Core y .NET (`cs`, `de`, `es`, `fr`, `it`, `ja`, `ko`, `pl`, `pt-BR`, `ru`, `tr`, `zh-Hans`, `zh-Hant`) y archivos de documentación XML (`*.xml`).
+     - Esto reduce drásticamente el peso del paquete ZIP (`ParkFlow_v{version}.zip`) en ~20 MB de peso muerto, acelerando la compresión y la transferencia a la nube.
+  2. **Verificación y Pruebas**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+     - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Scripts/publish-release.ps1`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test`: **338 Pruebas Superadas, 0 Fallos, 0 Errores**.
 
 - **`💬 Prompt Original del Usuario`**:
   > _"cada vez que me logueo se está quedando en el 50% y se queda ahí un rato... necesitamos revisar cómo mejoramos esos tiempos... elabora el plan completo"_
