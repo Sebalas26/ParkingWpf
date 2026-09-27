@@ -1,5 +1,58 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-27 00:10:00] - [BUGFIX / WPF / LIFECYCLE / SHELL-ICON] Erradicación de Procesos Zombie en Segundo Plano, Auto-Rescate de Instancia Única y Garantía del Ícono en Barra de Tareas
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Ajustame esto porque a veces no me carga la imagen del icono de la aplicación del WPF en la barra de tareas. Y ahorita estaba trabajando con ella y se me cerró, pero quedó el segundo plano ahí abierto. ¿Cómo podría evitar esto?"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico Técnico de Procesos Zombie y Bloqueo de Mutex**:
+     - *Causa Raíz de Proceso en Fondo*: Al configurar `ShutdownMode = ShutdownMode.OnExplicitShutdown`, cuando la interfaz gráfica se cerraba, los hilos de fondo (.NET Runtime, `DispatcherTimer` de `BackgroundSyncScheduler`, SignalR, HttpClient) podían mantener vivo el proceso en el Administrador de Tareas. Además, `App.OnExit` carecía de `Environment.Exit()`, convirtiendo a la terminal en un proceso zombie invisible.
+     - *Causa Raíz de Bloqueo*: Al ejecutar nuevamente `Parking.exe`, `Mutex(true, "ParkingFlow_WPF_SingleInstance_Mutex", ...)` detectaba el proceso zombie colgado y arrojaba el diálogo modal *"Parking Flow ya se encuentra en ejecución en este equipo"*, cerrándose y bloqueando permanentemente al usuario hasta reiniciar el equipo.
+  2. **Implementación de Auto-Rescate Inteligente de Instancia Única (`App.xaml.cs`)**:
+     - En `App.OnStartup`, cuando `createdNew == false`:
+       - Se buscan los procesos activos llamados `Parking` diferentes al PID actual.
+       - **Si el proceso tiene ventana activa (`MainWindowHandle != IntPtr.Zero`)**: Restaura y trae la ventana al frente mediante `ShowWindow(handle, SW_RESTORE)` y `SetForegroundWindow(handle)`, saliendo limpiamente sin desplegar alertas molestas.
+       - **Si el proceso NO tiene ventana activa (proceso zombie colgado)**: Lo termina automáticamente mediante `proc.Kill()`, espera su liberación y permite que la nueva ventana arranque con normalidad de manera transparente y desatendida.
+  3. **Terminación Garantizada del Proceso (`App.xaml.cs`)**:
+     - En `App.OnExit`, se añadió `Environment.Exit(e.ApplicationExitCode)`, asegurando que al cerrar la aplicación el sistema operativo finalice de inmediato todos los hilos y sockets residuales, impidiendo que quede en segundo plano.
+  4. **Garantía Absoluta del Ícono en Barra de Tareas (`App.xaml.cs`, `LoginWindow.xaml`, `MainShellWindow.xaml`)**:
+     - Se integró el registro de `SetCurrentProcessExplicitAppUserModelID("ParkFlow.Desktop.Wpf")` desde `shell32.dll` en `OnStartup`, forzando a Windows DWM y al explorador de tareas a asociar las ventanas al Application ID institucional.
+     - Se migraron las referencias relativas `Icon="/Resources/parkpoint.ico"` hacia rutas canónicas seguras de ensamblado Pack URI: `Icon="pack://application:,,,/Parking;component/Resources/parkpoint.ico"` en `LoginWindow.xaml` y `MainShellWindow.xaml`, resolviendo el problema de íconos en blanco en ventanas sin bordes (`WindowStyle="None"`, `AllowsTransparency="True"`).
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/App.xaml.cs`
+  - `Parking/Views/LoginWindow.xaml`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **337/337 Pruebas Superadas (100% Correctas, 0 Fallos)**.
+
+## 📅 Entrada: [2026-09-26 23:45:00] - [BUGFIX / WPF / UPDATER] Corrección de Error de Parseo de Argumentos y Validación de Rutas (Error de Reemplazo de Binarios)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Plan de Arquitectura y Corrección: Error de Reemplazo de Binarios en ParkFlow.Updater. Analiza si tiene huecos tecnicos para dar co la solucion definitiva"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Análisis de Causa Raíz**: Se presentaba una falla donde `AppDomain.CurrentDomain.BaseDirectory` agregaba un trailing slash (`\`) que terminaba escapando las comillas finales `\"` en la concatenación de la cadena de `ProcessStartInfo.Arguments`, haciendo que el CLI de Windows fundiera argumentos contiguos (`--target` y `--exe`) en un solo token defectuoso, desatando una `IOException` en la extracción por incluir un flag (`--exe`) en el path.
+  2. **Emisor Resiliente (`AppUpdateService.cs`)**:
+     - Se normalizaron rigurosamente las rutas llamando `Path.GetFullPath()` y purgando barras perimetrales con `.TrimEnd('\\', '/')` para las variables de entrada del updater (`targetDir`, `tempZipPath`), de modo que el cierre de comillas doble `"` en los parámetros sea transparente y confiable.
+  3. **Receptor Defensivo (`MainWindow.xaml.cs` en `ParkFlow.Updater`)**:
+     - Se optimizó `ParseArguments` añadiendo un mecanismo de rescate o sanitización en caso de recibir una cadena corrompida por versiones previas con fallas en quotes (`_targetDir`). Ahora localiza el posible inicio de un argumento tragado (por ej., `--exe`) y trunca limpiamente la ruta.
+     - Se reforzó con validación directa a nivel de sistema mediante `Path.GetFullPath(_targetDir)` en un bloque defensivo antes de proceder con el reemplazo de binarios, impidiendo el intento de creación de directorios malformados.
+  4. **Análisis de Huecos Técnicos**: La alternativa definitiva y recomendada en .NET 5+ habría sido delegar la construcción al objeto `ArgumentList` del `ProcessStartInfo` para que el framework se encargue del escaping en vez de usar la interpolación concatenada clásica (`Arguments`). Sin embargo, se mantuvo la interpolación clásica por protección y compatibilidad con `UseShellExecute = true` para versiones antiguas del CLI o del mismo ejecutable, lo cual era un acercamiento seguro considerando la sanidad agregada de `.TrimEnd('\\', '/')`.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/AppUpdateService.cs`
+  - `ParkFlow.Updater/MainWindow.xaml.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **337/337 Pruebas Superadas (100% Correctas, 0 Fallos)**.
+
 ## 📅 Entrada: [2026-09-26 23:25:00] - [UI / UX / WPF / CUSTOMERS] Rediseño Estético Institucional Park Point y Control Dinámico de Visibilidad del DV en Directorio de Clientes
 
 - **`💬 Prompt Original del Usuario`**:

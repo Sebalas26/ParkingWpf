@@ -1,6 +1,8 @@
-using System;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -40,17 +42,68 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        try
+        {
+            SetCurrentProcessExplicitAppUserModelID("ParkFlow.Desktop.Wpf");
+        }
+        catch { }
+
         // 0. Instancia única a nivel de sistema operativo para prevenir múltiples procesos huérfanos
         _singleInstanceMutex = new Mutex(true, "ParkingFlow_WPF_SingleInstance_Mutex", out bool createdNew);
         if (!createdNew)
         {
-            MessageBox.Show(
-                "Parking Flow ya se encuentra en ejecución en este equipo.",
-                "ParkFlow - Instancia Activa",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-            Shutdown(0);
-            return;
+            var currentPid = Environment.ProcessId;
+            var existingProcesses = Process.GetProcessesByName("Parking")
+                .Where(p => p.Id != currentPid)
+                .ToList();
+
+            bool windowActivated = false;
+            foreach (var proc in existingProcesses)
+            {
+                try
+                {
+                    if (proc.MainWindowHandle != IntPtr.Zero)
+                    {
+                        if (IsIconic(proc.MainWindowHandle))
+                        {
+                            ShowWindow(proc.MainWindowHandle, SW_RESTORE);
+                        }
+                        else
+                        {
+                            ShowWindow(proc.MainWindowHandle, SW_SHOW);
+                        }
+                        SetForegroundWindow(proc.MainWindowHandle);
+                        windowActivated = true;
+                        break;
+                    }
+                }
+                catch { }
+            }
+
+            if (windowActivated)
+            {
+                Shutdown(0);
+                return;
+            }
+
+            // Si el proceso previo no tiene ventana (proceso zombie en segundo plano),
+            // lo terminamos automáticamente para recuperar la terminal de forma transparente y desatendida.
+            foreach (var proc in existingProcesses)
+            {
+                try
+                {
+                    proc.Kill();
+                    proc.WaitForExit(2000);
+                }
+                catch { }
+            }
+
+            try
+            {
+                _singleInstanceMutex?.Dispose();
+                _singleInstanceMutex = new Mutex(true, "ParkingFlow_WPF_SingleInstance_Mutex", out createdNew);
+            }
+            catch { }
         }
 
         base.OnStartup(e);
@@ -230,6 +283,7 @@ public partial class App : Application
         }
         catch { }
         base.OnExit(e);
+        Environment.Exit(e.ApplicationExitCode);
     }
 
     private bool _isTransitioningToLogin = false;
@@ -411,6 +465,25 @@ public partial class App : Application
             // Ignorar errores al escribir logs
         }
     }
+
+    #endregion
+
+    #region Win32 Native Interop
+
+    [DllImport("shell32.dll", SetLastError = true)]
+    private static extern void SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string appId);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
+
+    private const int SW_RESTORE = 9;
+    private const int SW_SHOW = 5;
 
     #endregion
 }

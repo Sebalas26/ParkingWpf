@@ -7,7 +7,7 @@
         xmlns:conv="clr-namespace:Parking.Core.Converters"
         mc:Ignorable="d"
         Title="Parking Flow - Control de Acceso y Terminal POS"
-        Icon="/Resources/parkpoint.ico"
+        Icon="pack://application:,,,/Parking;component/Resources/parkpoint.ico"
         Height="640"
         Width="1020"
         WindowStartupLocation="CenterScreen"

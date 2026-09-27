@@ -9,7 +9,7 @@
         xmlns:security="clr-namespace:Parking.Security"
         mc:Ignorable="d"
         Title="Parking Flow - Terminal POS de Control de Acceso y Caja"
-        Icon="/Resources/parkpoint.ico"
+        Icon="pack://application:,,,/Parking;component/Resources/parkpoint.ico"
         Height="900" Width="1440"
         MinHeight="720" MinWidth="1024"
         WindowStartupLocation="CenterScreen"
