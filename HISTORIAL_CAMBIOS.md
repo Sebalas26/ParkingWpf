@@ -1,5 +1,160 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-27 16:40:00] - [PERFORMANCE / FAST-LOGIN / UPDATER] Fast-Login Ultrarrápido (< 1 Segundo), Eliminación de Salto de Progreso a 50% y HasLocalBranchDataAsync
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"cada vez que me logueo se está quedando en el 50% y se queda ahí un rato... necesitamos revisar cómo mejoramos esos tiempos... elabora el plan completo"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Fast-Login (< 1 Segundo) con Sincronización en Segundo Plano (`LoginViewModel.cs`, `ISyncEngineService.cs`, `SyncEngineService.cs`)**:
+     - *Causa Raíz de Demora*: Cada inicio de sesión ejecutaba síncronamente `PerformFullSyncWithProgressAsync` con barra de progreso y retardos artificiales, incluso en terminales que ya tenían todo el catálogo descargado en SQLite local.
+     - *Solución*: Se implementó el método `HasLocalBranchDataAsync(int branchId)` en `SyncEngineService`, verificando la existencia de tarifas activas (`VehicleRates`) y usuarios locales (`Users`).
+     - Si la sede ya cuenta con datos locales (Fast-Login):
+       - Se omite la barra de progreso interactiva (`IsSyncing = false`).
+       - Se valida la conectividad en milisegundos y se da paso inmediato (< 1s) a `MainShellWindow`.
+       - Se lanza la sincronización de catálogos y turnos en segundo plano de forma no bloqueante (`Task.Run`).
+     - Si la sede no tiene datos (PC nuevo o base de datos vacía):
+       - Se ejecuta la descarga interactiva completa ("Descargando catálogo inicial de la sede...").
+  2. **Eliminación del Salto al 50% en el Actualizador (`AppUpdateService.cs`)**:
+     - *Causa Raíz*: Antes de iniciar la conexión HTTP de descarga del archivo ZIP, el servicio reportaba `Percentage = 50`. Luego, al comenzar el streaming de bloques de 80 KB, la fórmula `30 + (fraction * 55)` calculaba 30%, produciendo un retroceso brusco de 50% a 30% que causaba lag y confusión visual.
+     - *Solución*: Se ajustó el reporte previo a la conexión a `Percentage = 25`, logrando una secuencia estrictamente creciente y continua: 10% (verificación) ➔ 25% (conexión) ➔ 30% a 85% (streaming fluido de megabytes en tiempo real) ➔ 90% (hash SHA-256) ➔ 95% (lanzando updater) ➔ 100% (completado).
+  3. **Verificación y Pruebas**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Contracts/ISyncEngineService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/AppUpdateService.cs`
+  - `Parking/ViewModels/LoginViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
+
+## 📅 Entrada: [2026-09-27 15:45:00] - [FEATURE / UX / RESILIENCE / UPDATER] Badge Oficial de Versión en Header, Erradicación de Flapping Offline por SignalR, Versión Dinámica en Login, Background Transparente en Diálogo de Actualización y Descarga por Streaming en Tiempo Real
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"En la primera imagen, no vemos en la parte superior la versión en la que está instalada... En la segunda imagen, hay un cracheo que se ve a cada ratico: modo offline, modo online... como que se desconecta y yo tengo internet super limpio... En el login del WPF, la versión no corresponde a la que lanzamos (dice v0.1.2)... En la última imagen, mira esa ventana negra que se forma atrás, se ve horrible... esa carga que se hace cuando se está descargando el instalador debería ser en tiempo real, ver cómo va cargando... pero llega a 50% y se muere ahí... cada vez que me logueo se está quedando en el 50% y se queda ahí un rato... necesitamos revisar cómo mejoramos esos tiempos."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Badge Oficial de Versión en la Barra Superior (`MainShellViewModel.cs`, `MainShellWindow.xaml`)**:
+     - Se creó la propiedad `AppVersionDisplay` que lee dinámicamente el `AssemblyInformationalVersion` / `Assembly.GetName().Version` sin requerir data quemada.
+     - Se integró un badge con estilo Dark Glassmorphism (`#1E293B`, borde `#334155`, texto cyan `#38BDF8`) en la barra de título superior de `MainShellWindow.xaml` para visualización inmediata en soporte técnico y operación física.
+  2. **Erradicación del Parpadeo (Flapping) de Conectividad (`SyncEngineService.cs`)**:
+     - *Causa Raíz*: `SignalRClientService` disparaba `ConnectionStatusChanged(false)` ante reconexiones o renovaciones periódicas del WebSocket, lo cual invocaba ciegamente `SetOnlineStatus(false)` degradando toda la terminal a "Modo Offline Local". La sonda ejecutaba `PingAsync` contra el REST API (que estaba online), restaurando "Modo Online", repitiendo el ciclo indefinidamente.
+     - *Solución*: Se desvinculó la degradación offline de SignalR. SignalR es exclusivamente un bus de eventos push; el estado de conectividad de la terminal se rige estrictamente por la disponibilidad del API REST (`_apiClient.PingAsync`) y la interfaz física de hardware de red en Windows.
+  3. **Versión Dinámica en Pie de Login (`LoginViewModel.cs`, `LoginWindow.xaml`)**:
+     - Se reemplazó el texto estático `Text="• Versión v0.1.2 • © PARKING FLOW"` por el binding reactivo `{Binding AppVersionDisplay, StringFormat='• Versión {0} • © PARKING FLOW'}`.
+  4. **Eliminación de Caja Negra en Diálogo de Actualización (`AppUpdateDialog.xaml`)**:
+     - Se corrigió `Background="#B3000000"` a `Background="Transparent"` en el `<Window>`. Ahora únicamente se dibuja la tarjeta moderna redondeada con su sombra `DropShadowEffect`, eliminando el marco rectangular negro exterior.
+  5. **Descarga con Streaming en Tiempo Real (`AppUpdateService.cs`)**:
+     - Se sustituyó `CopyToAsync` en bloque ciego por una descarga por bloques (buffer 80 KB) con reporte dinámico cada 150 ms, mostrando los megabytes transferidos en tiempo real (`Descargando actualización: X.X MB de Y.Y MB (Z%)`) e incrementando el progreso visual del 30% al 85%.
+  6. **Aceleración de Sincronización en Login (`SyncEngineService.cs`, `ParkingApi/SyncService.cs`)**:
+     - `AutoMigrateDatabaseAsync` en SQLite ahora se ejecuta una única vez por ciclo de vida de la aplicación (`_hasRunInitialMigration`), ahorrando introspecciones masivas de `sqlite_master` en cada login.
+     - Se granularizaron los porcentajes de reporte (45%, 55%, 65%) para evitar la percepción de congelamiento en 50%.
+     - En `ParkingApi`, se acotó la entrega de turnos históricos en el bootstrap a los últimos 3 días (`AddDays(-3)` en vez de 30 días), reduciendo drásticamente el tamaño del payload y el tiempo de respuesta HTTP.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `Parking/ViewModels/LoginViewModel.cs`
+  - `Parking/Views/LoginWindow.xaml`
+  - `Parking/Views/AppUpdateDialog.xaml`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/AppUpdateService.cs`
+  - `c:\Users\migue\source\repos\ParkingApi\ParkingApi.Core\Services\Sync\SyncService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
+  - `dotnet build ParkingApi.slnx`: **0 Errores**.
+  - `dotnet test ParkingApi.slnx`: **670/670 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"sabes tengo otra cosa eso genera es un ejecutable pero no un instalador de windows como deberiá ser por que no ? no es posible ?"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - `dotnet publish` compila por defecto los binarios sueltos de .NET en una carpeta (`Staging`).
+     - El script `publish-release.ps1` originalmente solo empaquetaba esos binarios en un archivo `.zip` para ser consumido por el micro-actualizador remoto (`ParkFlow.Updater`) a través del API y la PWA.
+     - El proyecto disponía de `Scripts/installer.iss` (Inno Setup), pero no estaba integrado en el flujo unificado de publicación, requería Inno Setup 6 instalado en la máquina (`ISCC.exe`) y tenía la directiva `#define MyAppVersion` rígida.
+  2. **Solución Implementada**:
+     - Instalación de Inno Setup 6 en la estación de trabajo (`JRSoftware.InnoSetup`).
+     - Corrección en `Scripts/installer.iss` con directiva condicional `#ifndef MyAppVersion` para admitir paso dinámico de versiones por parámetro `/DMyAppVersion="..."`.
+     - Integración del paso `[6/6]` en `Scripts/publish-release.ps1`: detección automática de `ISCC.exe` en rutas estándar de Windows (`%LOCALAPPDATA%`, `Program Files (x86)`, `Program Files`) y compilación automática del instalador en la carpeta `Releases\v<Version>\`.
+     - Ahora, con un único comando (`.\Scripts\publish-release.ps1 -Version 1.1.0`), se generan **ambos artefactos**:
+       - `ParkFlow_Setup_v1.1.0.exe`: Asistente de instalación oficial de Windows (Setup Wizard para nuevos PCs, accesos directos, desinstalador y configuración).
+       - `ParkFlow_v1.1.0.zip`: Paquete de actualización en caliente para el API y la PWA.
+       - `release_manifest.json`: Manifiesto criptográfico SHA-256.
+
+- **`📦 Componentes Modificados`**:
+  - `Scripts/installer.iss`
+  - `Scripts/publish-release.ps1`
+  - `PROTOCOLO_ACTUALIZACIONES_OBLIGATORIAS.md`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `publish-release.ps1 -Version 1.1.0`: Generó con éxito `ParkFlow_Setup_v1.1.0.exe` (47.96 MB) y `ParkFlow_v1.1.0.zip` (65.21 MB).
+  - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
+
+## 📅 Entrada: [2026-09-27 14:40:00] - [FEATURE / ARCHITECTURE / UPDATER / RESILIENCE] Blindaje de Actualizaciones Obligatorias, Sondeo Periódico (1h), Sincronización Previa al 100% y Protocolo de Ejecución Directa
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Necesito un análisis completo del WPF, donde verifiquemos, analicemos y contrastemos que esté funcional el tema actualización... que él pueda recibir la actualización desde que... si yo estoy instalado en mi aplicativo, estoy trabajando y ¡pum!, él detectó... yo creería que coloquémoslo cada hora... y cuando se vaya a loguear, sea lo primero que haga... cuando hay una actualización, él debe sí o sí primero subir toda la información a la nube, garantizar que todo esté en la nube... tiene que ser prácticamente obligatoria, tiene que actualizarlo, no la puede posponer... primero valida que toda la información esté arriba en la nube, toda. Ahí sí procede a actualizar... y genera pues el mensajito final 'Listo, sistema actualizado' para así continuar... Si está trabajando ya en el sistema y llega la notificación: valida que toda esa información esté cargada, hace... cierra la sesión normal, actualiza y vuelve y lo deja en el login... Y necesitamos agregar otras reglas en los 3 proyectos... el plan analiza y después cuando lo vamos a implementar vuelve y analiza... el proceder es solo ir a ejecutarlo..."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Garantía Inviolable de Sincronización al 100% (`AppUpdateService.cs`)**:
+     - Se reforzó la verificación de transacciones locales pendientes (`PendingItemsCount`). Si existen registros en cola, se ejecuta `PerformFullSyncAsync()`. Si tras el intento persisten elementos en cola (caída de red / indisponibilidad de API), la actualización se **aborta de inmediato**, impidiendo descargar paquetes o reemplazar binarios hasta asegurar que todos los datos de ventas y turnos estén en la nube.
+  2. **Obligatoriedad Absoluta de Actualizaciones (`AppUpdateViewModel.cs`, `AppUpdateDialog.xaml`)**:
+     - Se eliminó el botón *"Posponer"* (`CanCancel = false` incondicionalmente). Toda actualización es obligatoria para garantizar la integridad institucional.
+     - Botón principal transformado en *"Sincronizar y Actualizar Ahora"* ocupando el 100% del ancho del diálogo.
+  3. **Sondeo Periódico en Segundo Plano Cada 1 Hora (`IAppUpdateService.cs`, `AppUpdateService.cs`, `App.xaml.cs`)**:
+     - Se implementó `StartHourlyUpdateCheck()` con temporizador `DispatcherTimer` de 60 minutos y evento `UpdateDetected`.
+     - `App.xaml.cs` inicializa el sondeo al arrancar y suscribe el despachador de diálogos ante nuevas versiones.
+  4. **Validación Pre-Ingreso en Login (`LoginViewModel.cs`, `LoginWindow.xaml`)**:
+     - En `LoginAsync()`, tras validar credenciales con éxito y sincronizar datos, se consulta `CheckForUpdateAsync()`. Si hay actualización disponible, fuerza la subida total a la nube, limpia la sesión y abre de forma obligatoria el diálogo de actualización, impidiendo acceder a `MainShellWindow` con binarios desactualizados.
+     - Se integró el banner de confirmación visual verde (`#2610B981`) con el ícono `{StaticResource IconCheckCircle}` y el mensaje *"Listo, sistema actualizado"*.
+  5. **Manejo en Caliente y Retorno a Login (`MainShellViewModel.cs`, `AppUpdateService.cs`, `ParkFlow.Updater`)**:
+     - `MainShellViewModel` se suscribió a `UpdateDetected`.
+     - `AppUpdateService` ejecuta `_sessionService.Clear()` antes de iniciar el reemplazo de binarios para asegurar que el proceso relanzado vuelva a la pantalla de Login.
+     - `ParkFlow.Updater` invoca `Parking.exe` con el argumento `--updated`.
+     - `App.xaml.cs` detecta `--updated` en `e.Args`, asignando `loginViewModel.IsPostUpdateLaunch = true`.
+  6. **Documento Maestro y Reglas de Oro Transversales en los 3 Repositorios**:
+     - Se creó [`PROTOCOLO_ACTUALIZACIONES_OBLIGATORIAS.md`](file:///c:/Users/migue/source/repos/ParkingWpf/PROTOCOLO_ACTUALIZACIONES_OBLIGATORIAS.md) en `ParkingWpf`.
+     - Se agregó la Regla de Oro #9 en `ParkingWpf/AGENTS.md`.
+     - Se actualizó la Regla de Oro #1 en `ParkingWpf/AGENTS.md`, `ParkingApi/AGENTS.md`, `ParkingFlowPWa/AGENTS.md` y sus respectivos archivos `.agents/rules/` con el **Protocolo de Planificación Cerrada y Ejecución Directa (Cero Doble Análisis / Cero Desviación)**.
+  7. **Pruebas Automatizadas de Seguridad (`AppUpdateAndLicensingTests.cs`)**:
+     - Actualizado `PrepareAndApplyUpdate_WhenPendingSyncItemsExistAndSyncFails_ShouldAbortToProtectData` validando retorno `false` y emisión de error al fallar sync.
+     - Añadido `StartHourlyUpdateCheck_And_Stop_ShouldExecuteWithoutExceptions`.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Contracts/IAppUpdateService.cs`
+  - `Parking/Services/Implementations/AppUpdateService.cs`
+  - `Parking/ViewModels/AppUpdateViewModel.cs`
+  - `Parking/Views/AppUpdateDialog.xaml`
+  - `Parking/Styles/Icons.xaml`
+  - `Parking/ViewModels/LoginViewModel.cs`
+  - `Parking/Views/LoginWindow.xaml`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/App.xaml.cs`
+  - `ParkFlow.Updater/MainWindow.xaml.cs`
+  - `PROTOCOLO_ACTUALIZACIONES_OBLIGATORIAS.md` *(Nuevo)*
+  - `ParkingWpf/AGENTS.md`
+  - `ParkingWpf/.agents/rules/xaml_and_architecture_rules.md`
+  - `ParkingApi/AGENTS.md`
+  - `ParkingApi/.agents/rules/reglas_desarrollo.md`
+  - `ParkingFlowPWa/AGENTS.md`
+  - `ParkingFlowPWa/.agents/rules/reglas_desarrollo.md`
+  - `Parking.UnitTests/Services/AppUpdateAndLicensingTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
+
 ## 📅 Entrada: [2026-09-27 00:10:00] - [BUGFIX / WPF / LIFECYCLE / SHELL-ICON] Erradicación de Procesos Zombie en Segundo Plano, Auto-Rescate de Instancia Única y Garantía del Ícono en Barra de Tareas
 
 - **`💬 Prompt Original del Usuario`**:

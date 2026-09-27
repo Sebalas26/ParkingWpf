@@ -3,7 +3,9 @@
 ; ==============================================================================
 
 #define MyAppName "ParkFlow Desktop"
-#define MyAppVersion "1.0.0"
+#ifndef MyAppVersion
+#define MyAppVersion "1.1.0"
+#endif
 #define MyAppPublisher "ParkFlow Systems"
 #define MyAppURL "https://parking-flow.com"
 #define MyAppExeName "Parking.exe"

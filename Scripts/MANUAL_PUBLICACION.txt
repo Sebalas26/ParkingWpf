@@ -24,13 +24,13 @@ un ZIP y genera un hash SHA-256 inmutable junto al manifiesto JSON.
 
 COMANDO (desde la raíz de ParkingWpf):
   cd c:\Users\migue\source\repos\ParkingWpf
-  .\Scripts\publish-release.ps1 -Version "1.1.0" -IsMandatory $false -ReleaseNotes "Descripción de cambios y mejoras"
+  .\Scripts\publish-release.ps1 -Version "1.1.0" -ReleaseNotes "Descripción de cambios y mejoras"
 
 PARÁMETROS:
   -Version:      (Obligatorio) Versión semántica del release (ej: "1.1.0").
-  -IsMandatory:  (Opcional, default: $false) Indica si las terminales deben
-                 forzar la actualización sin permitir omitirla.
   -ReleaseNotes: (Opcional) Texto explicativo de los cambios de la versión.
+  -IsMandatory:  (Opcional, default: $true) Las actualizaciones en ParkFlow
+                 son de cumplimiento obligatorio inmediato.
 
 ARCHIVOS GENERADOS:
   - Archivo comprimido:  ParkingWpf\Releases\v1.1.0\ParkFlow_v1.1.0.zip

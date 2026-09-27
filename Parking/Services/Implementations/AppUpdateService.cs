@@ -21,6 +21,9 @@ public class AppUpdateService : IAppUpdateService
     private readonly IHardwareFingerprintService _fingerprintService;
     private readonly IDeviceLicenseService _licenseService;
     private readonly ISessionService _sessionService;
+    private readonly System.Windows.Threading.DispatcherTimer _periodicTimer = new();
+
+    public event Action<AppReleaseInfoDto>? UpdateDetected;
 
     public AppUpdateService(
         HttpClient httpClient,
@@ -111,7 +114,7 @@ public class AppUpdateService : IAppUpdateService
             Debug.WriteLine($"[BACKUP LOCAL WARNING] No se pudo generar backup automático preventivo: {ex.Message}");
         }
 
-        // 2. REGLA DE ORO DE SEGURIDAD: INTENTO DE SINCRONIZACIÓN PREVIA DE DATOS LOCALES
+        // 2. REGLA DE ORO DE SEGURIDAD: GARANTÍA DE SINCRONIZACIÓN AL 100% DE DATOS LOCALES
         if (_syncEngine.PendingItemsCount > 0)
         {
             progress?.Report(new UpdateProgressReport
@@ -126,25 +129,28 @@ public class AppUpdateService : IAppUpdateService
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[SYNC PRE-UPDATE WARNING] Sincronización previa no completada: {ex.Message}");
+                Debug.WriteLine($"[SYNC PRE-UPDATE ERROR] Sincronización previa no completada: {ex.Message}");
             }
 
             if (_syncEngine.PendingItemsCount > 0)
             {
-                // No abortar: la base de datos local SQLite y su copia de seguridad conservan los registros pendientes de forma segura
+                // REGLA DE ORO: ABORTAR ACTUALIZACIÓN SI NO SE PUDO SUBIR TODO A LA NUBE
                 progress?.Report(new UpdateProgressReport
                 {
-                    StepDescription = $"Base de datos respaldada. {_syncEngine.PendingItemsCount} registros locales protegidos se sincronizarán al iniciar sesión.",
-                    Percentage = 35
+                    StepDescription = "No se puede aplicar la actualización: existen registros locales pendientes que no pudieron subirse a la nube.",
+                    Percentage = 30,
+                    IsError = true,
+                    ErrorMessage = $"Imposible actualizar: Existen {_syncEngine.PendingItemsCount} transacciones locales pendientes por subir al servidor central. Por seguridad e integridad de datos, la actualización solo se ejecutará cuando todas las transacciones estén sincronizadas en la nube."
                 });
+                return false;
             }
         }
 
         // 3. DESCARGA AUTENTICADA DEL PAQUETE ZIP
         progress?.Report(new UpdateProgressReport
         {
-            StepDescription = "Descargando paquete de actualización firmado...",
-            Percentage = 50
+            StepDescription = "Estableciendo conexión y preparando descarga...",
+            Percentage = 25
         });
 
         var tempDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ParkFlow", "Temp");
@@ -182,16 +188,45 @@ public class AppUpdateService : IAppUpdateService
                 return false;
             }
 
+            var totalBytes = downloadResp.Content.Headers.ContentLength ?? (release.PackageSizeBytes > 0 ? release.PackageSizeBytes : 65L * 1024 * 1024);
+            var downloadedBytes = 0L;
+            var buffer = new byte[81920]; // 80 KB
+
+            await using (var responseStream = await downloadResp.Content.ReadAsStreamAsync())
             await using (var fs = new FileStream(tempZipPath, FileMode.Create, FileAccess.Write, FileShare.None))
             {
-                await downloadResp.Content.CopyToAsync(fs);
+                int bytesRead;
+                var lastReportTime = DateTime.UtcNow;
+
+                while ((bytesRead = await responseStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                {
+                    await fs.WriteAsync(buffer, 0, bytesRead);
+                    downloadedBytes += bytesRead;
+
+                    // Reporte continuo fluido (30% -> 85%) cada 150ms o al finalizar
+                    var now = DateTime.UtcNow;
+                    if ((now - lastReportTime).TotalMilliseconds >= 150 || downloadedBytes >= totalBytes)
+                    {
+                        lastReportTime = now;
+                        var progressFraction = totalBytes > 0 ? Math.Min(1.0, (double)downloadedBytes / totalBytes) : 0.5;
+                        var percent = 30 + (int)(progressFraction * 55.0);
+                        var mbDownloaded = downloadedBytes / (1024.0 * 1024.0);
+                        var mbTotal = totalBytes / (1024.0 * 1024.0);
+
+                        progress?.Report(new UpdateProgressReport
+                        {
+                            StepDescription = $"Descargando actualización: {mbDownloaded:F1} MB de {mbTotal:F1} MB ({percent}%)...",
+                            Percentage = Math.Min(85, percent)
+                        });
+                    }
+                }
             }
 
             // 4. VERIFICACIÓN CRIPTOGRÁFICA DEL HASH SHA-256
             progress?.Report(new UpdateProgressReport
             {
                 StepDescription = "Validando firma e integridad criptográfica SHA-256...",
-                Percentage = 80
+                Percentage = 90
             });
 
             if (!string.IsNullOrWhiteSpace(release.PackageSha256))
@@ -261,6 +296,13 @@ public class AppUpdateService : IAppUpdateService
                 UseShellExecute = true
             };
 
+            // Cierre formal de la sesión activa para garantizar que la nueva versión arranque en Login
+            try
+            {
+                _sessionService.Clear();
+            }
+            catch { }
+
             Process.Start(startInfo);
 
             // Cierre limpio
@@ -289,6 +331,35 @@ public class AppUpdateService : IAppUpdateService
                 ErrorMessage = $"Error no esperado: {ex.Message}"
             });
             return false;
+        }
+    }
+
+    public void StartHourlyUpdateCheck()
+    {
+        _periodicTimer.Interval = TimeSpan.FromHours(1);
+        _periodicTimer.Tick -= PeriodicTimer_Tick;
+        _periodicTimer.Tick += PeriodicTimer_Tick;
+        _periodicTimer.Start();
+    }
+
+    public void StopHourlyUpdateCheck()
+    {
+        _periodicTimer.Stop();
+    }
+
+    private async void PeriodicTimer_Tick(object? sender, EventArgs e)
+    {
+        try
+        {
+            var release = await CheckForUpdateAsync();
+            if (release != null && release.HasUpdate)
+            {
+                UpdateDetected?.Invoke(release);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[HOURLY UPDATE CHECK ERROR] {ex.Message}");
         }
     }
 }
