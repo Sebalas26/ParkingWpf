@@ -1,5 +1,37 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-27 10:35:00] - [RELEASE / PACKAGING / DEPLOYMENT] Generación Oficial de Paquete de Distribución ParkFlow Desktop v3.0.0
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"generame del wpf version 3 para probar la actualiacion del wpf cuando cargo en el pwa"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Validación Previa de Pruebas Unitarias**:
+     - Se ejecutaron las 337 pruebas unitarias de la solución `ParkingWpf.slnx` con éxito rotundo: **337/337 Superadas (0 Fallos)**.
+  2. **Compilación y Empaquetado Autónomo (Release win-x64)**:
+     - Mediante el script oficial `Scripts/publish-release.ps1`, se compilaron en modo `Release` (`win-x64`, self-contained con .NET 10):
+       - `Parking.csproj` (Versión 3.0.0, AssemblyVersion 3.0.0, FileVersion 3.0.0).
+       - `ParkFlow.Updater.csproj` (Micro-actualizador de reemplazo en caliente).
+     - Se depuraron archivos de depuración no deseados (`.pdb`, `.db*`, `license.dat`, `appsettings.Development.json`).
+     - Se empaquetó el conjunto de binarios en el archivo de distribución ZIP:
+       - **Ruta**: `Releases/v3.0.0/ParkFlow_v3.0.0.zip`
+       - **Tamaño**: 65.14 MB (68.301.820 bytes).
+       - **Firma SHA-256**: `7ac4ca0e8d2612f7f045ae150f77cc19406949bebd740ccd9c95b7baa2085ed7`.
+     - Se generó el archivo de manifiesto `release_manifest.json` listo para el módulo de versiones de la PWA.
+  3. **Instrucciones para el Usuario**:
+     - Desde la PWA (módulo *Versiones de Escritorio*), el usuario puede cargar directamente `ParkFlow_v3.0.0.zip` con versión `3.0.0`.
+
+- **`📦 Componentes Modificados / Generados`**:
+  - `Releases/v3.0.0/ParkFlow_v3.0.0.zip` (Nuevo)
+  - `Releases/v3.0.0/release_manifest.json` (Nuevo)
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **337/337 Pruebas Superadas (0 Fallos, 100% Correctas)**.
+  - Empaquetado `publish-release.ps1`: **0 Errores (65.14 MB, SHA-256 verificado)**.
+
+---
+
 ## 📅 Entrada: [2026-09-27 00:10:00] - [BUGFIX / WPF / LIFECYCLE / SHELL-ICON] Erradicación de Procesos Zombie en Segundo Plano, Auto-Rescate de Instancia Única y Garantía del Ícono en Barra de Tareas
 
 - **`💬 Prompt Original del Usuario`**:
