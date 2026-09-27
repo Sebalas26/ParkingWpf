@@ -190,22 +190,22 @@ public class AppUpdateService : IAppUpdateService
 
             var totalBytes = downloadResp.Content.Headers.ContentLength ?? (release.PackageSizeBytes > 0 ? release.PackageSizeBytes : 65L * 1024 * 1024);
             var downloadedBytes = 0L;
-            var buffer = new byte[81920]; // 80 KB
+            var buffer = new byte[1048576]; // Búfer de alto rendimiento (1 MB)
 
             await using (var responseStream = await downloadResp.Content.ReadAsStreamAsync())
-            await using (var fs = new FileStream(tempZipPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            await using (var fs = new FileStream(tempZipPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 1048576, useAsync: true))
             {
                 int bytesRead;
                 var lastReportTime = DateTime.UtcNow;
 
                 while ((bytesRead = await responseStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
                 {
-                    await fs.WriteAsync(buffer, 0, bytesRead);
+                    await fs.WriteAsync(buffer.AsMemory(0, bytesRead));
                     downloadedBytes += bytesRead;
 
-                    // Reporte continuo fluido (30% -> 85%) cada 150ms o al finalizar
+                    // Reporte continuo fluido (30% -> 85%) cada 250ms o al finalizar
                     var now = DateTime.UtcNow;
-                    if ((now - lastReportTime).TotalMilliseconds >= 150 || downloadedBytes >= totalBytes)
+                    if ((now - lastReportTime).TotalMilliseconds >= 250 || downloadedBytes >= totalBytes)
                     {
                         lastReportTime = now;
                         var progressFraction = totalBytes > 0 ? Math.Min(1.0, (double)downloadedBytes / totalBytes) : 0.5;

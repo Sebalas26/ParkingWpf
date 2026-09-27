@@ -14,12 +14,18 @@
   2. **Bloqueo y Ocultamiento de Botón en Actualización (`AppUpdateDialog.xaml`)**:
      - Se configuró `Visibility="{Binding IsUpdating, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"` sobre el botón principal *"Sincronizar y Actualizar Ahora"*.
      - Mientras la actualización está en curso, el botón se oculta automáticamente para impedir reintentos concurrentes o confusión del operador.
-  3. **Verificación y Pruebas**:
+  3. **Solución Definitiva de Ícono de Ventana en Barra de Tareas (`WindowIconHelper.cs`)**:
+     - *Diagnóstico*: En WPF, cuando una ventana utiliza `WindowStyle="None"` y `AllowsTransparency="True"`, WPF crea una ventana layered y omite enviar el mensaje Win32 `WM_SETICON` al `HWND`. Esto provocaba que Windows Taskbar y Alt+Tab mostraran el ícono genérico en blanco (cuadro blanco/azul).
+     - *Solución*: Se construyó `WindowIconHelper.cs` que en `SourceInitialized` extrae el ícono embebido `parkpoint.ico` (con fallback de `ExtractIcon` sobre el binario) y despacha directamente `SendMessage(hwnd, WM_SETICON, ICON_SMALL/ICON_BIG, hIcon)`. Se enlazó en `LoginWindow.xaml.cs` y `MainShellWindow.xaml.cs`.
+  4. **Verificación y Pruebas**:
      - `dotnet build ParkingWpf.slnx`: **0 Errores**.
      - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
 
 - **`📦 Componentes Modificados`**:
   - `Scripts/installer.iss`
+  - `Parking/Core/Helpers/WindowIconHelper.cs`
+  - `Parking/Views/LoginWindow.xaml.cs`
+  - `Parking/Views/MainShellWindow.xaml.cs`
   - `Parking/Views/AppUpdateDialog.xaml`
   - `HISTORIAL_CAMBIOS.md`
 
