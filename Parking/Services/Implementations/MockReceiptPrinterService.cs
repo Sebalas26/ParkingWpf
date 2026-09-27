@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Parking.Entities;
+using Parking.Models.ApiModels;
 using Parking.Services.Contracts;
 
 namespace Parking.Services.Implementations;
@@ -26,6 +27,14 @@ public class MockReceiptPrinterService : IReceiptPrinterService
     {
         var paperWidth = _sessionService.CurrentBranch?.PaperWidth > 0 ? _sessionService.CurrentBranch.PaperWidth : 80;
         Debug.WriteLine($"[PrintService] Imprimiendo Recibo de Salida {ticket.InvoiceNumber ?? ticket.TicketNumber} en formato térmico {paperWidth}mm.");
+        await Task.Delay(300);
+        return true;
+    }
+
+    public async Task<bool> PrintShiftCloseReceiptAsync(WorkShift shift, ShiftSummaryModel? summary = null)
+    {
+        var paperWidth = _sessionService.CurrentBranch?.PaperWidth > 0 ? _sessionService.CurrentBranch.PaperWidth : 80;
+        Debug.WriteLine($"[PrintService] Imprimiendo Comprobante de Cierre de Caja {shift.ShiftId} (Cajero: {shift.OperatorName}) en formato térmico {paperWidth}mm.");
         await Task.Delay(300);
         return true;
     }

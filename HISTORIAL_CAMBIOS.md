@@ -6961,3 +6961,43 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `Scripts/publish-release.ps1`
 - **✅ Verificación y Compilación**:
   - Script probado y validado con salida de código 0. Paquete ZIP y manifiesto JSON generados correctamente.
+
+## 2026-09-27 - Implementación de Tirilla Térmica de Cierre de Caja (ON PARKING) y Confirmación de Impresión al Cerrar Caja en WPF
+
+- **💬 Prompt Original del Usuario**:
+  > "ahora aplicalo para mi wpf"
+- **🤖 Resumen Técnico para la IA**:
+  1. **Comprobante Térmico de Cierre de Caja (Plantilla POS ON PARKING)**:
+     - Se extendió `ReceiptPreviewViewModel.cs` y `ReceiptPreviewDialog.xaml` para incorporar la 4.ª plantilla térmica (`IsShiftCloseReceipt`), con soporte para anchos de 80mm y 58mm y tipografía monoespaciada idéntica a Entrada y Salida.
+     - Incluye encabezado con logotipo de la sede/empresa, NIT, dirección, teléfono y consecutivo del turno.
+     - Incorpora el desglose contable y financiero discriminado del ticket físico ON PARKING:
+       - Datos del turno: Cajero responsable, fechas y horas de apertura y cierre (formato 12h AM/PM), duración calculada del turno.
+       - Ingresos por servicio: Total Parqueos ($) y Mensualidades ($ y cantidad de cobros).
+       - Movimientos de caja menor: Ingresos (+) y Salidas (-) por retiros / recogidas de efectivo.
+       - Resumen financiero: Subtotal Bruto, Descuentos/Convenios, Subtotal con Descuento, Base Gravable (TG), IVA (19%) discriminado y TOTAL CIERRE.
+       - Discriminación de medios de pago: Efectivo, Tarjetas y Transferencias/QR.
+       - Tráfico y ocupación: Vehículos salidos (#) y vehículos activos en patio (#).
+       - Arqueo y cuadre: Base inicial, total esperado, total contado, diferencia física y estado (`CUADRADA`, `SOBRANTE`, `FALTANTE`).
+       - Observaciones del turno registradas por el cajero.
+       - Líneas de firma para responsable de caja, C.C. y pie de software `ParkingFlow POS`.
+  2. **Flujo de Confirmación al Cerrar Caja**:
+     - En `ShiftClosureViewModel.cs` (`CloseShiftDirectAsync` y `CloseOtherShiftDirectAsync`), al cerrarse el turno formalmente, se dispara el cuadro de diálogo:
+       *"¿Desea imprimir el comprobante de cierre de caja? [Sí, imprimir tirilla] / [No, omitir]"*.
+     - Al seleccionar *"Sí, imprimir tirilla"*, se abre de inmediato `ReceiptPreviewDialog` permitiendo previsualizar e imprimir.
+  3. **Reimpresión desde Custodia del Turno Anterior**:
+     - En `ShiftClosureView.xaml`, se agregó el botón *"Imprimir Tirilla de Cierre"* (`PrintLastClosedShiftReceiptCommand` y `PrintShiftReceiptCommand`) para reimprimir el comprobante del último turno cerrado en cualquier momento posterior.
+  4. **Servicios de Diálogos e Impresión**:
+     - Se añadió `ShowShiftClosurePreviewAsync(WorkShift, ShiftSummaryModel?)` a `IDialogService` y `DialogService`.
+     - Se añadió `PrintShiftCloseReceiptAsync(WorkShift, ShiftSummaryModel?)` a `IReceiptPrinterService` y `MockReceiptPrinterService`.
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Contracts/IReceiptPrinterService.cs`
+  - `Parking/Services/Implementations/MockReceiptPrinterService.cs`
+  - `Parking/Services/Contracts/IDialogService.cs`
+  - `Parking/Services/Implementations/DialogService.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking/Views/ShiftClosureView.xaml`
+- **✅ Verificación y Compilación**:
+  - `dotnet build Parking/Parking.csproj -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
+  - `dotnet build Parking.UnitTests/Parking.UnitTests.csproj -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.

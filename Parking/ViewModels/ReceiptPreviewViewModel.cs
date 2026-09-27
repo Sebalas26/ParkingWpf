@@ -1,3 +1,4 @@
+using Parking.Models.ApiModels;
 using System;
 using System.Globalization;
 using System.Linq;
@@ -41,6 +42,105 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
     [ObservableProperty]
     private bool _isEntryTicket = true;
+
+    [ObservableProperty]
+    private bool _isShiftCloseReceipt;
+
+    [ObservableProperty]
+    private WorkShift? _shift;
+
+    [ObservableProperty]
+    private ShiftSummaryModel? _shiftSummary;
+
+    [ObservableProperty]
+    private string _shiftIdText = string.Empty;
+
+    [ObservableProperty]
+    private string _cashierName = string.Empty;
+
+    [ObservableProperty]
+    private string _shiftStartDateStr = string.Empty;
+
+    [ObservableProperty]
+    private string _shiftStartTimeStr = string.Empty;
+
+    [ObservableProperty]
+    private string _shiftEndDateStr = string.Empty;
+
+    [ObservableProperty]
+    private string _shiftEndTimeStr = string.Empty;
+
+    [ObservableProperty]
+    private string _shiftDurationStr = string.Empty;
+
+    [ObservableProperty]
+    private string _shiftParqueosAmountStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftMensualidadesAmountStr = "$ 0";
+
+    [ObservableProperty]
+    private int _shiftMensualidadesCount;
+
+    [ObservableProperty]
+    private string _shiftCashInflowsStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftCashOutflowsStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftGrossSubtotalStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftDiscountsStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftDiscountedSubtotalStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftTaxBaseStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftIva19Str = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftTotalRevenueStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftCashCollectedStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftCardCollectedStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftTransferCollectedStr = "$ 0";
+
+    [ObservableProperty]
+    private int _shiftVehiclesExitedCount;
+
+    [ObservableProperty]
+    private int _shiftVehiclesInYardCount;
+
+    [ObservableProperty]
+    private string _shiftBaseAmountStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftExpectedCashStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftActualCashStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftDifferenceStr = "$ 0";
+
+    [ObservableProperty]
+    private string _shiftArqueoStatusText = "CUADRADA";
+
+    [ObservableProperty]
+    private string _shiftNotes = string.Empty;
+
+    [ObservableProperty]
+    private bool _hasShiftNotes;
 
     [ObservableProperty]
     private System.Windows.Media.ImageSource? _barcodeImage;
@@ -249,6 +349,9 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         Ticket = ticket;
         Resolution = resolution;
         PrintSuccess = false;
+        IsShiftCloseReceipt = false;
+        Shift = null;
+        ShiftSummary = null;
 
         var currentBranch = _sessionService.CurrentBranch;
         var width = currentBranch?.PaperWidth > 0 ? currentBranch.PaperWidth : 80;
@@ -736,6 +839,183 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 
+    public void LoadShiftClosure(WorkShift shift, ShiftSummaryModel? summary = null)
+    {
+        Shift = shift;
+        ShiftSummary = summary;
+        PrintSuccess = false;
+
+        IsShiftCloseReceipt = true;
+        IsEntryTicket = false;
+        IsExitReceipt = false;
+        IsFvmInvoice = false;
+        IsStandardExitReceipt = false;
+
+        var currentBranch = _sessionService.CurrentBranch;
+        var width = currentBranch?.PaperWidth > 0 ? currentBranch.PaperWidth : 80;
+        PaperWidth = width;
+        Is58Mm = width <= 58;
+        PaperWidthBadgeText = $"Formato: {width} mm";
+
+        if (Is58Mm)
+        {
+            DialogWindowWidth = 390;
+            PaperContainerWidth = 280;
+            BarcodeWidth = 200;
+            QrCodeWidth = 85;
+            MonospaceFontSize = 9.5;
+            MonospaceTitleFontSize = 13;
+            PlateFontSize = 14;
+            LogoMaxHeight = 38;
+            LogoMaxWidth = 100;
+        }
+        else
+        {
+            DialogWindowWidth = 490;
+            PaperContainerWidth = 380;
+            BarcodeWidth = 260;
+            QrCodeWidth = 110;
+            MonospaceFontSize = 11;
+            MonospaceTitleFontSize = 15;
+            PlateFontSize = 16;
+            LogoMaxHeight = 48;
+            LogoMaxWidth = 130;
+        }
+
+        var rawLogo = currentBranch?.LogoBase64;
+        if (string.IsNullOrWhiteSpace(rawLogo))
+        {
+            try
+            {
+                using var db = _connectionManager.CreateDbContext();
+                var branchId = currentBranch?.Id ?? shift.BranchId;
+                if (branchId > 0)
+                {
+                    rawLogo = db.Branches.Where(b => b.Id == branchId && !string.IsNullOrWhiteSpace(b.LogoBase64)).Select(b => b.LogoBase64).FirstOrDefault();
+                }
+                if (string.IsNullOrWhiteSpace(rawLogo))
+                {
+                    rawLogo = db.Branches.Where(b => !string.IsNullOrWhiteSpace(b.LogoBase64)).Select(b => b.LogoBase64).FirstOrDefault();
+                }
+            }
+            catch { }
+        }
+        BranchLogoBase64 = rawLogo;
+
+        var bName = currentBranch?.Name ?? "PARKING FLOW";
+        BranchName = bName.ToUpperInvariant();
+
+        var bNit = currentBranch?.CompanyNit ?? _configuration?["BranchSettings:Nit"] ?? "900.000.000-1";
+        BranchNit = bNit.StartsWith("NIT", StringComparison.OrdinalIgnoreCase) ? bNit : $"NIT. {bNit}";
+
+        var bAddress = currentBranch?.Address ?? _configuration?["BranchSettings:Address"] ?? "CALLE PRINCIPAL";
+        BranchAddress = bAddress.ToUpperInvariant();
+
+        var bPhone = currentBranch?.Phone ?? _configuration?["BranchSettings:Phone"] ?? "000-000-0000";
+        BranchPhone = bPhone.StartsWith("TEL", StringComparison.OrdinalIgnoreCase) ? bPhone : $"Tel. {bPhone}";
+
+        var operatorName = !string.IsNullOrWhiteSpace(shift.OperatorName)
+            ? shift.OperatorName
+            : (_sessionService.CurrentUser?.FullName ?? "OPERADOR");
+        CashierName = operatorName.ToUpperInvariant();
+
+        var startTime = shift.StartTime;
+        var endTime = shift.EndTime ?? DateTime.Now;
+
+        ShiftStartDateStr = startTime.ToString("dd/MM/yyyy");
+        ShiftStartTimeStr = startTime.ToString("hh:mm tt", CultureInfo.InvariantCulture);
+        ShiftEndDateStr = endTime.ToString("dd/MM/yyyy");
+        ShiftEndTimeStr = endTime.ToString("hh:mm tt", CultureInfo.InvariantCulture);
+
+        var duration = endTime - startTime;
+        ShiftDurationStr = $"{(int)duration.TotalHours}h {duration.Minutes}m";
+
+        var shortId = shift.ShiftId.ToString().Length >= 8 ? shift.ShiftId.ToString()[..8].ToUpperInvariant() : shift.ShiftId.ToString().ToUpperInvariant();
+        ShiftIdText = $"TURNO #{shortId}";
+
+        var ci = new CultureInfo("es-CO");
+
+        var cash = summary?.TotalCashCollected ?? shift.TotalCashCollected;
+        var card = summary?.TotalCardCollected ?? shift.TotalCardCollected;
+        var transfer = summary?.TotalTransferCollected ?? shift.TotalTransferCollected;
+        var totalRevenue = cash + card + transfer;
+
+        var discounts = summary?.TotalDiscounts ?? shift.TotalDiscounts;
+        var withdrawals = summary?.TotalCashWithdrawals ?? shift.TotalCashWithdrawals;
+
+        decimal mensualidades = 0m;
+        int mensualidadesCount = 0;
+        int yardCount = 0;
+
+        try
+        {
+            using var db = _connectionManager.CreateDbContext();
+            var bId = currentBranch?.Id ?? shift.BranchId;
+            yardCount = db.ParkingTickets.Count(t => t.Status == TicketStatus.Active && (!bId.HasValue || bId.Value == 0 || t.BranchId == bId.Value));
+
+            var subs = db.MonthlySubscriptions
+                .Where(s => s.CreatedAtUtc >= shift.StartTimeUtc && s.CreatedAtUtc <= (shift.EndTimeUtc ?? DateTime.UtcNow) && (!bId.HasValue || bId.Value == 0 || s.BranchId == bId.Value))
+                .ToList();
+            mensualidades = subs.Sum(s => s.AmountPaid);
+            mensualidadesCount = subs.Count;
+        }
+        catch { }
+
+        decimal parqueos = Math.Max(0m, totalRevenue - mensualidades);
+        var grossSubtotal = totalRevenue + discounts;
+        var subtotalWithDiscount = totalRevenue;
+
+        var taxBase = Math.Round(totalRevenue / 1.19m, 0);
+        var iva19 = totalRevenue - taxBase;
+
+        ShiftParqueosAmountStr = parqueos.ToString("C0", ci);
+        ShiftMensualidadesAmountStr = mensualidades.ToString("C0", ci);
+        ShiftMensualidadesCount = mensualidadesCount;
+
+        ShiftCashInflowsStr = 0m.ToString("C0", ci);
+        ShiftCashOutflowsStr = withdrawals.ToString("C0", ci);
+
+        ShiftGrossSubtotalStr = grossSubtotal.ToString("C0", ci);
+        ShiftDiscountsStr = discounts.ToString("C0", ci);
+        ShiftDiscountedSubtotalStr = subtotalWithDiscount.ToString("C0", ci);
+        ShiftTaxBaseStr = taxBase.ToString("C0", ci);
+        ShiftIva19Str = iva19.ToString("C0", ci);
+        ShiftTotalRevenueStr = totalRevenue.ToString("C0", ci);
+
+        ShiftCashCollectedStr = cash.ToString("C0", ci);
+        ShiftCardCollectedStr = card.ToString("C0", ci);
+        ShiftTransferCollectedStr = transfer.ToString("C0", ci);
+
+        ShiftVehiclesExitedCount = summary != null && summary.TotalTicketsProcessed > 0 ? summary.TotalTicketsProcessed : shift.TotalTicketsProcessed;
+        ShiftVehiclesInYardCount = yardCount;
+
+        var baseAmount = summary?.BaseAmount ?? shift.BaseAmount;
+        var expectedCash = summary != null ? summary.ExpectedCash : (shift.ExpectedCash > 0 ? shift.ExpectedCash : (baseAmount + cash - withdrawals));
+        var actualCash = summary?.ActualCashCounted ?? shift.ActualCashCounted;
+        var diff = actualCash - expectedCash;
+
+        ShiftBaseAmountStr = baseAmount.ToString("C0", ci);
+        ShiftExpectedCashStr = expectedCash.ToString("C0", ci);
+        ShiftActualCashStr = actualCash.ToString("C0", ci);
+        ShiftDifferenceStr = diff.ToString("C0", ci);
+
+        if (Math.Abs(diff) < 0.01m)
+        {
+            ShiftArqueoStatusText = "CUADRADA";
+        }
+        else if (diff > 0.01m)
+        {
+            ShiftArqueoStatusText = "SOBRANTE";
+        }
+        else
+        {
+            ShiftArqueoStatusText = "FALTANTE";
+        }
+
+        ShiftNotes = shift.Notes ?? string.Empty;
+        HasShiftNotes = !string.IsNullOrWhiteSpace(ShiftNotes);
+    }
+
     [RelayCommand]
     private async Task PrintTicketAsync()
     {
@@ -747,7 +1027,11 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         IsPrinting = true;
         try
         {
-            if (Ticket.Status == Core.Enums.TicketStatus.Completed || Ticket.ExitTimeUtc.HasValue || Ticket.ExitTime.HasValue)
+            if (IsShiftCloseReceipt && Shift != null)
+            {
+                PrintSuccess = await _printerService.PrintShiftCloseReceiptAsync(Shift, ShiftSummary);
+            }
+            else if (Ticket.Status == Core.Enums.TicketStatus.Completed || Ticket.ExitTimeUtc.HasValue || Ticket.ExitTime.HasValue)
             {
                 PrintSuccess = await _printerService.PrintExitReceiptAsync(Ticket);
             }

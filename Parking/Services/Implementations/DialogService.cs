@@ -40,6 +40,27 @@ public class DialogService : IDialogService
         }).Task;
     }
 
+    public Task ShowShiftClosurePreviewAsync(WorkShift shift, Models.ApiModels.ShiftSummaryModel? summary = null)
+    {
+        return Application.Current.Dispatcher.InvokeAsync(() =>
+        {
+            var dialog = new ReceiptPreviewDialog();
+            var viewModel = _serviceProvider.GetRequiredService<ReceiptPreviewViewModel>();
+            viewModel.LoadShiftClosure(shift, summary);
+
+            void OnRequestClose()
+            {
+                viewModel.RequestClose -= OnRequestClose;
+                dialog.Close();
+            }
+
+            viewModel.RequestClose += OnRequestClose;
+            dialog.DataContext = viewModel;
+            dialog.Owner = Application.Current.MainWindow;
+            dialog.ShowDialog();
+        }).Task;
+    }
+
     public Task ShowAlertAsync(string title, string message, DialogNotificationType type = DialogNotificationType.Information)
     {
         return Application.Current.Dispatcher.InvokeAsync(() =>
