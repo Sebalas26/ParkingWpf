@@ -1,5 +1,85 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-26 23:25:00] - [UI / UX / WPF / CUSTOMERS] Rediseño Estético Institucional Park Point y Control Dinámico de Visibilidad del DV en Directorio de Clientes
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"mejorame el diseño de esta pantalla, ya que no se ve del mismo estilo de mi wpf, adicional veo que me muestra dv pero eso me deberia de salir cuando yo elija nit, si no? ocultalo"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Control Condicional y Dinámico del Dígito de Verificación (`CustomersView.xaml`)**:
+     - *Diagnóstico*: Anteriormente el campo DV se encontraba fijo en la columna 2 del formulario con ancho proporcional `0.6*` y solo deshabilitado (`IsEnabled="{Binding IsNitSelected}"`), mostrándose siempre en pantalla como un cuadro vacío inútil al elegir Cédula de Ciudadanía u otros documentos.
+     - *Implementación*: Se reestructuró la fila de documento en una sub-cuadrícula con columna flexible (`*`) para el número de documento y columna automática (`Auto`) para el DV.
+     - El contenedor `StackPanel` del DV se vinculó reactivamente a `Visibility="{Binding IsNitSelected, Converter={StaticResource BoolToVis}}"`.
+     - Cuando el tipo de documento seleccionado es distinto de NIT (Cédula de Ciudadanía `Id=13`, Cédula de Extranjería `Id=22`, Pasaporte `Id=41`, etc.), `IsNitSelected` es `false`, lo que colapsa el contenedor (`Visibility="Collapsed"`) y permite que el campo *Número Documento* se expanda suavemente al 100% del espacio disponible.
+     - Al seleccionar **NIT (`Id=31`)**, el campo DV se hace visible automáticamente, con un ancho fijo de 50px, centrado y tipografía `FontFamilyMonospace`.
+  2. **Modernización Visual y Alineación al Diseño Oficial Park Point (`CustomersView.xaml`)**:
+     - **Formulario Modal (*Datos Fiscales del Cliente*)**:
+       - Reemplazo de controles crudos de Windows por los estilos del Design System oficial:
+         - `Style="{StaticResource ModernComboBox}"` en el selector de tipo de documento (menú flotante moderno con bordes redondeados y sombra suave, eliminando el dropdown gris estándar de Windows).
+         - `Style="{StaticResource ModernTextBox}"` en todos los campos de texto (`FormDocumentNumber`, `FormFullName`, `FormTradeName`, `FormEmail`, `FormPhone`, `FormAddress`, `FormCityCode`).
+         - Encabezado con avatar circular en `{DynamicResource BrushPrimaryLight}` con `{StaticResource IconCustomers}` en verde institucional `#00867A`.
+         - Botón de cierre `[X]` circular `{StaticResource SecondaryButton}` y divisor sutil `BrushBorderSubtle`.
+         - Fondo de overlay modal profesional `#B3000000` con bordes redondeados (18px) y sombra difuminada en `#1E2A2F`.
+     - **Directorio Principal (Pantalla Base)**:
+       - Encabezado enriquecido con avatar de módulo `{StaticResource IconCustomers}` y badge de clientes registrados alineado a los recursos institucionales (`BrushPrimaryLight`, `BrushBorderSubtle`).
+       - Pastilla para el tipo de persona en la columna de documento con `BrushSurfaceLight`.
+       - Botón de eliminación en la tabla actualizado con el ícono semántico `{StaticResource IconTrash}` con `{StaticResource DangerButton}`.
+  3. **Pruebas Unitarias Automatizadas (`CustomersViewModelTests.cs`)**:
+     - Se añadió el test unitario `IsNitSelected_WhenDocumentTypeChanges_TogglesCorrectlyAndClearsDvWhenNotNit` para validar que al cambiar el tipo de documento a NIT (`31`) se activa `IsNitSelected`, se asigna el tipo `Company` y se calcula el dígito DIAN (`7` para `900336004`), y al regresar a CC (`13`) se desactiva `IsNitSelected`, se cambia a `Person` y se limpia `FormCheckDigit = null`.
+  4. **Verificación y Calidad de Código**:
+     - `dotnet test ParkingWpf.slnx`: **337/337 Pruebas Superadas (100% Correctas, 0 Fallos)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Views/CustomersView.xaml`
+  - `Parking.UnitTests/ViewModels/CustomersViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **100% de Pruebas Superadas (337 exitosas, 0 fallos)**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+## 📅 Entrada: [2026-09-26 23:12:00] - [FEATURE / WPF / CHECKIN / SEARCH] Búsqueda y Liquidación Rápida con Pistola Lectora en "Últimos Vehículos Ingresados"
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Quisiera que en el WPF, en esa pantalla que te envié, en ese cuadro rojo pequeño existiera un cuadrito donde yo pueda buscar los vehículos que ya han ingresado. O sea en esa lista que está ahí, quisiera que me agregaras el botón para filtrarlos, cosa que cuando yo tenga una pistola lectora y me deje el foco en ese recuadro, al momento de escanear la placa y le dé enter, me filtre y de una vez me permita dar salida..."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diseño XAML en Cabecera de Tarjeta (`CheckInView.xaml`)**:
+     - En la tarjeta lateral de *Últimos Vehículos Ingresados*, se transformó el encabezado en un `Grid` de 3 columnas para ubicar el cuadro de búsqueda en el extremo derecho (exactamente en el área señalada por el usuario).
+     - Se integró un contenedor `Border` compacto (160x30px) con fondo `#F1F5F9`, bordes redondeados (6px) y recursos oficiales verificados:
+       - Ícono vectorial `{StaticResource IconSearch}` (11px).
+       - `TextBox` con enlace bidireccional reactivo `RecentEntriesSearchQuery` (`UpdateSourceTrigger=PropertyChanged`).
+       - `KeyBinding` a `Key="Enter"` asociado a `ProcessRecentEntriesSearchOrCheckOutCommand` y `Key="Esc"` a `ClearRecentEntriesSearchCommand`.
+       - Placeholder sutil *"Buscar placa..."* visible automáticamente cuando el campo está vacío (`IsHitTestVisible="False"`).
+       - Botón de limpieza rápida con `{StaticResource IconClose}` (8px) visible cuando hay texto ingresado.
+  2. **Arquitectura y Comportamiento en ViewModel (`CheckInViewModel.cs`)**:
+     - **Propiedad Reactiva**: `[ObservableProperty] private string _recentEntriesSearchQuery = string.Empty;` con hook `OnRecentEntriesSearchQueryChanged` que reinicia la página a 1 y actualiza la lista paginada en tiempo real.
+     - **Filtrado Dinámico en Memoria (`GetFilteredRecentEntries`)**: Filtra la colección `_allRecentEntries` comparando de forma insensible a mayúsculas/minúsculas tanto por `PlateNumber` como por `TicketNumber`.
+     - **Paginación Inteligente**: `UpdateRecentEntriesPage` calcula el total de páginas y corta los registros basándose en la lista filtrada, manteniendo el límite institucional de 4 ítems por página y actualizando los comandos de navegación anterior/siguiente.
+     - **Flujo de Escáner y Enter (`ProcessRecentEntriesSearchOrCheckOutAsync`)**:
+       - Al presionar Enter (pistola lectora o teclado), busca la coincidencia exacta por placa o número de tiquete en memoria.
+       - Si no hay coincidencia exacta pero el filtro arroja 1 solo resultado, lo toma como objetivo.
+       - Fallback de búsqueda activa en base de datos local mediante `_ticketService.FindActiveTicketAsync(query)`.
+       - Si el vehículo activo es localizado, invoca directamente `CheckOutVehicleAsync(match)`, abriendo inmediatamente el diálogo de liquidación y cobro de salida (`CheckOutDialog`). Al concluir, limpia el campo de búsqueda para el siguiente escaneo.
+       - Si no se encuentra ningún vehículo activo, despliega notificación clara de advertencia mediante `_dialogService.ShowAlertAsync`.
+  3. **Pruebas Unitarias Automatizadas (`CheckInViewModelTests.cs`)**:
+     - `RecentEntries_SearchQuery_FiltersByPlateOrTicketAndResetsPage`: Certifica que al buscar por subcadena de placa se filtra la colección visible, se actualiza el total de páginas y al invocar `ClearRecentEntriesSearchCommand` se restablecen todos los registros.
+     - `RecentEntries_ProcessSearch_WhenNotFound_ShowsAlert`: Certifica que ante un término inexistente se muestra la alerta descriptiva al usuario sin generar excepciones.
+  4. **Verificación y Calidad de Código**:
+     - `dotnet test ParkingWpf.slnx`: **336/336 Pruebas Superadas (100% Correctas, 0 Fallos)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/Views/CheckInView.xaml`
+  - `Parking.UnitTests/ViewModels/CheckInViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **100% de Pruebas Superadas (336 exitosas, 0 fallos)**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
 ## 📅 Entrada: [2026-09-26 15:10:00] - [BUGFIX / ARCHITECTURE / WPF / UPDATE] Actualización Resiliente sin Pérdida de BD Local y Notificación Reactiva SignalR desde PWA
 
 - **`💬 Prompt Original del Usuario`**:

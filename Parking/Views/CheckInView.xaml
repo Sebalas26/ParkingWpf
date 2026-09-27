@@ -860,10 +860,112 @@
                 <!-- 3. Tarjeta de Entradas Recientes en el Turno -->
                 <Border Style="{StaticResource ModernCard}" Padding="18">
                     <StackPanel>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,10">
-                            <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                            <TextBlock Text="Últimos Vehículos Ingresados" FontSize="15" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
-                        </StackPanel>
+                        <!-- Cabecera de la Tarjeta con Caja de Búsqueda Rápida / Escaneo -->
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushPrimary}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Últimos Vehículos Ingresados" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                            </StackPanel>
+
+                            <!-- Cuadro de Búsqueda / Escáner de Placa -->
+                            <Border Grid.Column="2" 
+                                    Width="160" 
+                                    Height="30" 
+                                    CornerRadius="6" 
+                                    Background="#F1F5F9" 
+                                    BorderBrush="{DynamicResource BrushBorderSubtle}" 
+                                    BorderThickness="1"
+                                    VerticalAlignment="Center">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Ícono Buscar -->
+                                    <Path Grid.Column="0" 
+                                          Data="{StaticResource IconSearch}" 
+                                          Fill="{DynamicResource BrushTextMuted}" 
+                                          Width="11" Height="11" 
+                                          Stretch="Uniform" 
+                                          Margin="8,0,4,0" 
+                                          VerticalAlignment="Center"/>
+
+                                    <!-- TextBox de Búsqueda -->
+                                    <TextBox x:Name="RecentEntriesSearchTextBox"
+                                             Grid.Column="1"
+                                             Text="{Binding RecentEntriesSearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                                             FontSize="12"
+                                             FontWeight="SemiBold"
+                                             Foreground="{DynamicResource BrushTextPrimary}"
+                                             Background="Transparent"
+                                             BorderThickness="0"
+                                             VerticalAlignment="Center"
+                                             VerticalContentAlignment="Center"
+                                             CaretBrush="{DynamicResource BrushPrimary}">
+                                        <TextBox.InputBindings>
+                                            <KeyBinding Key="Enter" Command="{Binding ProcessRecentEntriesSearchOrCheckOutCommand}"/>
+                                            <KeyBinding Key="Esc" Command="{Binding ClearRecentEntriesSearchCommand}"/>
+                                        </TextBox.InputBindings>
+                                    </TextBox>
+
+                                    <!-- Placeholder Text si está vacío -->
+                                    <TextBlock Grid.Column="1"
+                                               Text="Buscar placa..."
+                                               FontSize="11"
+                                               Foreground="{DynamicResource BrushTextMuted}"
+                                               VerticalAlignment="Center"
+                                               Margin="2,0,0,0"
+                                               IsHitTestVisible="False">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding RecentEntriesSearchQuery}" Value="">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding RecentEntriesSearchQuery}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+
+                                    <!-- Botón Limpiar (si hay texto) -->
+                                    <Button Grid.Column="2"
+                                            Command="{Binding ClearRecentEntriesSearchCommand}"
+                                            Cursor="Hand"
+                                            Background="Transparent"
+                                            BorderThickness="0"
+                                            Padding="4"
+                                            Margin="0,0,4,0"
+                                            VerticalAlignment="Center">
+                                        <Button.Style>
+                                            <Style TargetType="Button">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding RecentEntriesSearchQuery}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding RecentEntriesSearchQuery}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                        <Path Data="{StaticResource IconClose}" Fill="{DynamicResource BrushTextMuted}" Width="8" Height="8" Stretch="Uniform"/>
+                                    </Button>
+                                </Grid>
+                            </Border>
+                        </Grid>
 
                         <!-- ItemsControl de Entradas Recientes -->
                         <ItemsControl ItemsSource="{Binding RecentEntries}">

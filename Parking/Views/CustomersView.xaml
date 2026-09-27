@@ -5,7 +5,11 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:conv="clr-namespace:Parking.Core.Converters"
              mc:Ignorable="d"
-             d:DesignHeight="850" d:DesignWidth="1180">
+             d:DesignHeight="850" d:DesignWidth="1180"
+             UseLayoutRounding="True"
+             SnapsToDevicePixels="True"
+             TextOptions.TextFormattingMode="Display"
+             TextOptions.TextRenderingMode="ClearType">
 
     <UserControl.Resources>
         <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
@@ -23,18 +27,42 @@
                 </Grid.RowDefinitions>
 
                 <!-- 1. Header -->
-                <Grid Grid.Row="0" Margin="0,0,0,18">
+                <Grid Grid.Row="0" Margin="0,0,0,20">
                     <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0">
-                        <TextBlock Text="Directorio de Clientes de Facturación Electrónica" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                        <TextBlock Text="Gestión centralizada de adquirentes y terceros fiscales para emisión de comprobantes DIAN" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" Margin="0,4,0,0"/>
+                    <!-- Avatar / Module Icon -->
+                    <Border Grid.Column="0"
+                            Width="44"
+                            Height="44"
+                            CornerRadius="22"
+                            Background="{DynamicResource BrushPrimaryLight}"
+                            Margin="0,0,14,0"
+                            VerticalAlignment="Center">
+                        <Path Data="{StaticResource IconCustomers}"
+                              Fill="{DynamicResource BrushPrimary}"
+                              Width="20"
+                              Height="20"
+                              Stretch="Uniform"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"/>
+                    </Border>
+
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="Directorio de Clientes de Facturación Electrónica" Style="{StaticResource TextHeaderMedium}"/>
+                        <TextBlock Text="Gestión centralizada de adquirentes y terceros fiscales para emisión de comprobantes DIAN" Style="{StaticResource TextCaption}" Margin="0,3,0,0"/>
                     </StackPanel>
 
-                    <Border Grid.Column="1" Background="#E0F2FE" CornerRadius="12" Padding="14,6" VerticalAlignment="Center">
+                    <Border Grid.Column="2"
+                            Background="{DynamicResource BrushPrimaryLight}"
+                            BorderBrush="{DynamicResource BrushBorderSubtle}"
+                            BorderThickness="1"
+                            CornerRadius="14"
+                            Padding="14,6"
+                            VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <Ellipse Width="8" Height="8" Fill="{DynamicResource BrushPrimary}" Margin="0,0,8,0" VerticalAlignment="Center"/>
                             <TextBlock Text="{Binding TotalCustomersCount, StringFormat='{}{0} Clientes Registrados'}"
@@ -58,8 +86,8 @@
                     <Border Grid.Column="0"
                             Background="{DynamicResource BrushInputBackground}"
                             BorderBrush="{DynamicResource BrushBorderSubtle}"
-                            BorderThickness="1.5"
-                            CornerRadius="20"
+                            BorderThickness="1"
+                            CornerRadius="10"
                             Padding="12,4">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -120,8 +148,8 @@
                                 Padding="14,8"
                                 Margin="0,0,10,0">
                             <StackPanel Orientation="Horizontal">
-                                <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushTextPrimary}" Width="13" Height="13" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                                <TextBlock Text="Actualizar" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource BrushTextPrimary}" VerticalAlignment="Center"/>
+                                <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushPrimary}" Width="13" Height="13" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="Actualizar" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Button>
 
@@ -146,14 +174,14 @@
                           HorizontalScrollBarVisibility="Auto">
                     <DataGrid.Columns>
                         <!-- Documento / NIT -->
-                        <DataGridTemplateColumn Header="DOCUMENTO" MinWidth="130" Width="1.2*">
+                        <DataGridTemplateColumn Header="DOCUMENTO" MinWidth="140" Width="1.2*">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel VerticalAlignment="Center">
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="{Binding DocumentNumber}"
                                                        FontFamily="{StaticResource FontFamilyMonospace}"
-                                                       FontWeight="Black"
+                                                       FontWeight="Bold"
                                                        FontSize="13.5"
                                                        Foreground="{DynamicResource BrushTextPrimary}"/>
                                             <TextBlock Text="{Binding CheckDigit, StringFormat='-{0}'}"
@@ -163,10 +191,16 @@
                                                        Foreground="{DynamicResource BrushPrimary}"
                                                        Visibility="{Binding CheckDigit, Converter={StaticResource NullToVis}}"/>
                                         </StackPanel>
-                                        <TextBlock Text="{Binding PersonType}"
-                                                   FontSize="10.5"
-                                                   FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource BrushTextMuted}"/>
+                                        <Border Background="{DynamicResource BrushSurfaceLight}"
+                                                CornerRadius="4"
+                                                Padding="6,1"
+                                                HorizontalAlignment="Left"
+                                                Margin="0,3,0,0">
+                                            <TextBlock Text="{Binding PersonType}"
+                                                       FontSize="10"
+                                                       FontWeight="Bold"
+                                                       Foreground="{DynamicResource BrushTextSecondary}"/>
+                                        </Border>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -227,7 +261,7 @@
                         </DataGridTemplateColumn>
 
                         <!-- Acciones -->
-                        <DataGridTemplateColumn Header="ACCIONES" MinWidth="170" Width="Auto">
+                        <DataGridTemplateColumn Header="ACCIONES" MinWidth="150" Width="Auto">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -235,9 +269,10 @@
                                                 CommandParameter="{Binding}"
                                                 Style="{StaticResource SecondaryButton}"
                                                 Padding="10,5"
-                                                Margin="0,0,6,0">
+                                                Margin="0,0,6,0"
+                                                ToolTip="Editar cliente">
                                             <StackPanel Orientation="Horizontal">
-                                                <Path Data="{StaticResource IconSettings}" Fill="{DynamicResource BrushPrimary}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <Path Data="{StaticResource IconSettings}" Fill="{DynamicResource BrushPrimary}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
                                                 <TextBlock Text="Editar" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
@@ -245,8 +280,9 @@
                                         <Button Command="{Binding DataContext.DeleteCustomerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
                                                 Style="{StaticResource DangerButton}"
-                                                Padding="8,5">
-                                            <Path Data="{StaticResource IconClose}" Fill="{DynamicResource BrushTextWhite}" Width="10" Height="10" Stretch="Uniform" VerticalAlignment="Center"/>
+                                                Padding="8,5"
+                                                ToolTip="Eliminar cliente">
+                                            <Path Data="{StaticResource IconTrash}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center"/>
                                         </Button>
                                     </StackPanel>
                                 </DataTemplate>
@@ -259,114 +295,138 @@
 
         <!-- Modal Overlay for Create / Edit Customer -->
         <Grid Visibility="{Binding IsFormOpen, Converter={StaticResource BoolToVis}}"
-              Background="#99000000">
+              Background="#B3000000">
             <Border HorizontalAlignment="Center"
                     VerticalAlignment="Center"
-                    Width="640"
-                    MaxHeight="720"
+                    Width="660"
+                    MaxHeight="740"
                     Background="{DynamicResource BrushSurfaceBackground}"
                     BorderBrush="{DynamicResource BrushBorderMedium}"
                     BorderThickness="1"
                     CornerRadius="18"
                     Padding="26">
                 <Border.Effect>
-                    <DropShadowEffect BlurRadius="32" ShadowDepth="10" Direction="270" Opacity="0.3" Color="#1E2A2F"/>
+                    <DropShadowEffect BlurRadius="32" ShadowDepth="8" Direction="270" Opacity="0.25" Color="#1E2A2F"/>
                 </Border.Effect>
 
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <StackPanel>
-                        <!-- Modal Title -->
-                        <Grid Margin="0,0,0,16">
+                        <!-- Modal Title & Header Bar -->
+                        <Grid Margin="0,0,0,14">
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
 
-                            <StackPanel Grid.Column="0">
-                                <TextBlock Text="Datos Fiscales del Cliente" FontSize="18" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
-                                <TextBlock Text="Configure los campos exigidos por la DIAN para emisión válida de factura electrónica" FontSize="12" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
+                            <Border Grid.Column="0"
+                                    Width="42"
+                                    Height="42"
+                                    CornerRadius="21"
+                                    Background="{DynamicResource BrushPrimaryLight}"
+                                    Margin="0,0,12,0"
+                                    VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconCustomers}"
+                                      Fill="{DynamicResource BrushPrimary}"
+                                      Width="18"
+                                      Height="18"
+                                      Stretch="Uniform"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                            </Border>
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Datos Fiscales del Cliente" FontSize="17" FontWeight="Bold" Foreground="{DynamicResource BrushTextPrimary}"/>
+                                <TextBlock Text="Configure los campos exigidos por la DIAN para emisión válida de factura electrónica" FontSize="11.5" Foreground="{DynamicResource BrushTextMuted}" Margin="0,2,0,0"/>
                             </StackPanel>
 
-                            <Button Grid.Column="1"
+                            <Button Grid.Column="2"
                                     Command="{Binding CloseFormCommand}"
                                     Style="{StaticResource SecondaryButton}"
-                                    Width="30" Height="30"
-                                    Padding="0">
+                                    Width="32" Height="32"
+                                    Padding="0"
+                                    VerticalAlignment="Center"
+                                    ToolTip="Cerrar formulario">
                                 <Path Data="{StaticResource IconClose}" Fill="{DynamicResource BrushTextSecondary}" Width="11" Height="11" Stretch="Uniform"/>
                             </Button>
                         </Grid>
 
-                        <!-- Row 1: Tipo Documento + Número + DV -->
+                        <!-- Subtle Divider -->
+                        <Border Height="1" Background="{DynamicResource BrushBorderSubtle}" Margin="0,0,0,16"/>
+
+                        <!-- Row 1: Tipo Documento + Número (+ DV condicional si es NIT) -->
                         <Grid Margin="0,0,0,12">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="1.5*"/>
-                                <ColumnDefinition Width="2*"/>
-                                <ColumnDefinition Width="0.6*"/>
+                                <ColumnDefinition Width="1.3*"/>
+                                <ColumnDefinition Width="1.7*"/>
                             </Grid.ColumnDefinitions>
 
-                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                <TextBlock Text="Tipo Documento *" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                            <!-- Tipo de Documento -->
+                            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                <TextBlock Text="Tipo Documento *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,5"/>
                                 <ComboBox ItemsSource="{Binding IdentificationTypes}"
                                           SelectedValue="{Binding FormIdentificationTypeId}"
                                           SelectedValuePath="Id"
                                           DisplayMemberPath="Name"
-                                          Height="36"/>
+                                          Style="{StaticResource ModernComboBox}"
+                                          Height="38"/>
                             </StackPanel>
 
-                            <StackPanel Grid.Column="1" Margin="0,0,10,0">
-                                <TextBlock Text="Número Documento *" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
-                                <TextBox Text="{Binding FormDocumentNumber, UpdateSourceTrigger=PropertyChanged}"
-                                         Height="36"
-                                         Padding="10,6"
-                                         Background="{DynamicResource BrushInputBackground}"
-                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                         Foreground="{DynamicResource BrushTextPrimary}"/>
-                                <TextBlock Text="{Binding FormDocumentError}"
-                                           FontSize="11"
-                                           Foreground="{DynamicResource BrushDanger}"
-                                           Margin="0,2,0,0"
-                                           Visibility="{Binding FormDocumentError, Converter={StaticResource NullToVis}}"/>
-                            </StackPanel>
+                            <!-- Número de Documento + DV condicional -->
+                            <Grid Grid.Column="1">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
 
-                            <StackPanel Grid.Column="2">
-                                <TextBlock Text="DV" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
-                                <TextBox Text="{Binding FormCheckDigit, UpdateSourceTrigger=PropertyChanged}"
-                                         IsEnabled="{Binding IsNitSelected}"
-                                         MaxLength="1"
-                                         Height="36"
-                                         HorizontalContentAlignment="Center"
-                                         FontWeight="Bold"
-                                         Background="{DynamicResource BrushInputBackground}"
-                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                         Foreground="{DynamicResource BrushTextPrimary}"/>
-                            </StackPanel>
+                                <StackPanel Grid.Column="0">
+                                    <TextBlock Text="Número Documento *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding FormDocumentNumber, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource ModernTextBox}"
+                                             Height="38"/>
+                                    <TextBlock Text="{Binding FormDocumentError}"
+                                               FontSize="11"
+                                               Foreground="{DynamicResource BrushDanger}"
+                                               Margin="0,3,0,0"
+                                               Visibility="{Binding FormDocumentError, Converter={StaticResource NullToVis}}"/>
+                                </StackPanel>
+
+                                <!-- Dígito de Verificación (ÚNICAMENTE VISIBLE SI ES NIT) -->
+                                <StackPanel Grid.Column="1"
+                                            Margin="10,0,0,0"
+                                            Visibility="{Binding IsNitSelected, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Text="DV" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,5"/>
+                                    <TextBox Text="{Binding FormCheckDigit, UpdateSourceTrigger=PropertyChanged}"
+                                             Width="50"
+                                             MaxLength="1"
+                                             Height="38"
+                                             HorizontalContentAlignment="Center"
+                                             FontWeight="Bold"
+                                             FontFamily="{StaticResource FontFamilyMonospace}"
+                                             Style="{StaticResource ModernTextBox}"/>
+                                </StackPanel>
+                            </Grid>
                         </Grid>
 
                         <!-- Row 2: Nombre o Razón Social -->
                         <StackPanel Margin="0,0,0,12">
-                            <TextBlock Text="Nombre o Razón Social *" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Nombre o Razón Social *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,5"/>
                             <TextBox Text="{Binding FormFullName, UpdateSourceTrigger=PropertyChanged}"
-                                     Height="36"
-                                     Padding="10,6"
-                                     Background="{DynamicResource BrushInputBackground}"
-                                     BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                     Foreground="{DynamicResource BrushTextPrimary}"/>
+                                     Style="{StaticResource ModernTextBox}"
+                                     Height="38"/>
                             <TextBlock Text="{Binding FormFullNameError}"
                                        FontSize="11"
                                        Foreground="{DynamicResource BrushDanger}"
-                                       Margin="0,2,0,0"
+                                       Margin="0,3,0,0"
                                        Visibility="{Binding FormFullNameError, Converter={StaticResource NullToVis}}"/>
                         </StackPanel>
 
                         <!-- Row 3: Nombre Comercial -->
                         <StackPanel Margin="0,0,0,12">
-                            <TextBlock Text="Nombre Comercial (Opcional)" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                            <TextBlock Text="Nombre Comercial (Opcional)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,5"/>
                             <TextBox Text="{Binding FormTradeName, UpdateSourceTrigger=PropertyChanged}"
-                                     Height="36"
-                                     Padding="10,6"
-                                     Background="{DynamicResource BrushInputBackground}"
-                                     BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                     Foreground="{DynamicResource BrushTextPrimary}"/>
+                                     Style="{StaticResource ModernTextBox}"
+                                     Height="38"/>
                         </StackPanel>
 
                         <!-- Row 4: Correo Electrónico + Teléfono -->
@@ -377,28 +437,22 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                <TextBlock Text="Correo Electrónico (Requerido DIAN) *" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                <TextBlock Text="Correo Electrónico (Requerido DIAN) *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,5"/>
                                 <TextBox Text="{Binding FormEmail, UpdateSourceTrigger=PropertyChanged}"
-                                         Height="36"
-                                         Padding="10,6"
-                                         Background="{DynamicResource BrushInputBackground}"
-                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                         Foreground="{DynamicResource BrushTextPrimary}"/>
+                                         Style="{StaticResource ModernTextBox}"
+                                         Height="38"/>
                                 <TextBlock Text="{Binding FormEmailError}"
                                            FontSize="11"
                                            Foreground="{DynamicResource BrushDanger}"
-                                           Margin="0,2,0,0"
+                                           Margin="0,3,0,0"
                                            Visibility="{Binding FormEmailError, Converter={StaticResource NullToVis}}"/>
                             </StackPanel>
 
                             <StackPanel Grid.Column="1">
-                                <TextBlock Text="Teléfono Móvil / Fijo" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                <TextBlock Text="Teléfono Móvil / Fijo" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,5"/>
                                 <TextBox Text="{Binding FormPhone, UpdateSourceTrigger=PropertyChanged}"
-                                         Height="36"
-                                         Padding="10,6"
-                                         Background="{DynamicResource BrushInputBackground}"
-                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                         Foreground="{DynamicResource BrushTextPrimary}"/>
+                                         Style="{StaticResource ModernTextBox}"
+                                         Height="38"/>
                             </StackPanel>
                         </Grid>
 
@@ -410,32 +464,26 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                <TextBlock Text="Dirección Fiscal *" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                <TextBlock Text="Dirección Fiscal *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,5"/>
                                 <TextBox Text="{Binding FormAddress, UpdateSourceTrigger=PropertyChanged}"
-                                         Height="36"
-                                         Padding="10,6"
-                                         Background="{DynamicResource BrushInputBackground}"
-                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                         Foreground="{DynamicResource BrushTextPrimary}"/>
+                                         Style="{StaticResource ModernTextBox}"
+                                         Height="38"/>
                                 <TextBlock Text="{Binding FormAddressError}"
                                            FontSize="11"
                                            Foreground="{DynamicResource BrushDanger}"
-                                           Margin="0,2,0,0"
+                                           Margin="0,3,0,0"
                                            Visibility="{Binding FormAddressError, Converter={StaticResource NullToVis}}"/>
                             </StackPanel>
 
                             <StackPanel Grid.Column="1">
-                                <TextBlock Text="Municipio / Código DANE *" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,4"/>
+                                <TextBlock Text="Municipio / Código DANE *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,5"/>
                                 <TextBox Text="{Binding FormCityCode, UpdateSourceTrigger=PropertyChanged}"
-                                         Height="36"
-                                         Padding="10,6"
-                                         Background="{DynamicResource BrushInputBackground}"
-                                         BorderBrush="{DynamicResource BrushBorderSubtle}"
-                                         Foreground="{DynamicResource BrushTextPrimary}"/>
+                                         Style="{StaticResource ModernTextBox}"
+                                         Height="38"/>
                                 <TextBlock Text="{Binding FormCityCodeError}"
                                            FontSize="11"
                                            Foreground="{DynamicResource BrushDanger}"
-                                           Margin="0,2,0,0"
+                                           Margin="0,3,0,0"
                                            Visibility="{Binding FormCityCodeError, Converter={StaticResource NullToVis}}"/>
                             </StackPanel>
                         </Grid>
@@ -449,17 +497,20 @@
                                    Visibility="{Binding FormGeneralError, Converter={StaticResource NullToVis}}"/>
 
                         <!-- Action Buttons -->
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,4,0,0">
                             <Button Content="Cancelar"
                                     Command="{Binding CloseFormCommand}"
                                     Style="{StaticResource SecondaryButton}"
-                                    Padding="18,9"
+                                    Padding="18,8"
                                     Margin="0,0,10,0"/>
-                            <Button Content="Guardar Cliente"
-                                    Command="{Binding SaveCustomerCommand}"
+                            <Button Command="{Binding SaveCustomerCommand}"
                                     Style="{StaticResource ModernButton}"
-                                    Padding="22,9"
-                                    FontWeight="Bold"/>
+                                    Padding="20,8">
+                                <StackPanel Orientation="Horizontal">
+                                    <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="Guardar Cliente" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>

@@ -162,4 +162,35 @@ public class CustomersViewModelTests
         vm.SearchText.Should().BeEmpty();
         vm.HasSearchText.Should().BeFalse();
     }
+
+    [Fact]
+    public void IsNitSelected_WhenDocumentTypeChanges_TogglesCorrectlyAndClearsDvWhenNotNit()
+    {
+        var vm = new CustomersViewModel(
+            _mockConnectionManager.Object,
+            _mockApiClient.Object,
+            _mockSessionService.Object,
+            _mockDialogService.Object,
+            _mockPermissionService.Object);
+
+        // Inicial por defecto es CC (13)
+        vm.FormIdentificationTypeId.Should().Be(13);
+        vm.IsNitSelected.Should().BeFalse();
+        vm.FormCheckDigit.Should().BeNull();
+
+        // Cambiar a NIT (31) con número de documento
+        vm.FormDocumentNumber = "900336004";
+        vm.FormIdentificationTypeId = 31;
+
+        vm.IsNitSelected.Should().BeTrue();
+        vm.FormPersonType.Should().Be("Company");
+        vm.FormCheckDigit.Should().Be("7"); // Dígito DIAN calculado para 900336004
+
+        // Cambiar de nuevo a CC (13)
+        vm.FormIdentificationTypeId = 13;
+
+        vm.IsNitSelected.Should().BeFalse();
+        vm.FormPersonType.Should().Be("Person");
+        vm.FormCheckDigit.Should().BeNull(); // Debe limpiarse al no ser NIT
+    }
 }

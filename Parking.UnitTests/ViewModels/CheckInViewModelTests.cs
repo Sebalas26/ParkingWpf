@@ -265,4 +265,64 @@ public class CheckInViewModelTests
         vm.CanShowPreviousRecentEntriesPage.Should().BeTrue();
         vm.CanShowNextRecentEntriesPage.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task RecentEntries_SearchQuery_FiltersByPlateOrTicketAndResetsPage()
+    {
+        // Arrange
+        var tickets = new List<ParkingTicket>
+        {
+            new() { TicketId = Guid.NewGuid(), TicketNumber = "TK-001", PlateNumber = "ABC123", VehicleType = VehicleType.Car, EntryTimeUtc = DateTime.UtcNow },
+            new() { TicketId = Guid.NewGuid(), TicketNumber = "TK-002", PlateNumber = "XYZ789", VehicleType = VehicleType.Car, EntryTimeUtc = DateTime.UtcNow },
+            new() { TicketId = Guid.NewGuid(), TicketNumber = "TK-003", PlateNumber = "ABC999", VehicleType = VehicleType.Car, EntryTimeUtc = DateTime.UtcNow },
+            new() { TicketId = Guid.NewGuid(), TicketNumber = "TK-004", PlateNumber = "JKL456", VehicleType = VehicleType.Car, EntryTimeUtc = DateTime.UtcNow },
+            new() { TicketId = Guid.NewGuid(), TicketNumber = "TK-005", PlateNumber = "MNO777", VehicleType = VehicleType.Car, EntryTimeUtc = DateTime.UtcNow },
+        };
+        _mockTicketService.Setup(s => s.GetActiveTicketsAsync()).ReturnsAsync(tickets);
+
+        var vm = CreateViewModel();
+        await vm.RefreshRecentEntriesAndOccupancyAsync();
+        vm.RecentEntriesTotalPages.Should().Be(2);
+
+        // Act - Filtrar por "ABC"
+        vm.RecentEntriesSearchQuery = "ABC";
+
+        // Assert
+        vm.RecentEntries.Should().HaveCount(2);
+        vm.RecentEntriesTotalPages.Should().Be(1);
+        vm.RecentEntries.Select(r => r.PlateNumber).Should().Contain(new[] { "ABC123", "ABC999" });
+
+        // Act - Limpiar búsqueda
+        vm.ClearRecentEntriesSearchCommand.Execute(null);
+
+        // Assert
+        vm.RecentEntriesSearchQuery.Should().BeEmpty();
+        vm.RecentEntries.Should().HaveCount(4);
+        vm.RecentEntriesTotalPages.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task RecentEntries_ProcessSearch_WhenNotFound_ShowsAlert()
+    {
+        // Arrange
+        var tickets = new List<ParkingTicket>
+        {
+            new() { TicketId = Guid.NewGuid(), TicketNumber = "TK-001", PlateNumber = "ABC123", VehicleType = VehicleType.Car, EntryTimeUtc = DateTime.UtcNow }
+        };
+        _mockTicketService.Setup(s => s.GetActiveTicketsAsync()).ReturnsAsync(tickets);
+        _mockTicketService.Setup(s => s.FindActiveTicketAsync(It.IsAny<string>())).ReturnsAsync((ParkingTicket?)null);
+
+        var vm = CreateViewModel();
+        await vm.RefreshRecentEntriesAndOccupancyAsync();
+        vm.RecentEntriesSearchQuery = "INEXISTENTE";
+
+        // Act
+        await vm.ProcessRecentEntriesSearchOrCheckOutCommand.ExecuteAsync(null);
+
+        // Assert
+        _mockDialogService.Verify(d => d.ShowAlertAsync(
+            "Vehículo No Encontrado",
+            It.Is<string>(msg => msg.Contains("INEXISTENTE")),
+            DialogNotificationType.Warning), Times.Once);
+    }
 }

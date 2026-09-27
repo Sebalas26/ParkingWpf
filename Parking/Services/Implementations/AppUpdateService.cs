@@ -249,11 +249,15 @@ public class AppUpdateService : IAppUpdateService
                 return false;
             }
 
+            var cleanTargetDir = Path.GetFullPath(targetDir).TrimEnd('\\', '/');
+            var cleanZipPath = Path.GetFullPath(tempZipPath).TrimEnd('\\', '/');
+            var cleanSha256 = (release.PackageSha256 ?? string.Empty).Trim();
+
             var currentPid = Environment.ProcessId;
             var startInfo = new ProcessStartInfo
             {
                 FileName = updaterExe,
-                Arguments = $"--pid {currentPid} --zip \"{tempZipPath}\" --target \"{targetDir}\" --exe \"Parking.exe\" --sha256 \"{release.PackageSha256}\"",
+                Arguments = $"--pid {currentPid} --zip \"{cleanZipPath}\" --target \"{cleanTargetDir}\" --exe \"Parking.exe\" --sha256 \"{cleanSha256}\"",
                 UseShellExecute = true
             };
 

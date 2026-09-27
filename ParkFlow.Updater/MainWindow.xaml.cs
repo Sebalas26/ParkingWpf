@@ -30,30 +30,37 @@ public partial class MainWindow : Window
 
     private void ParseArguments()
     {
-        var args = Environment.GetCommandLineArgs();
-        for (int i = 1; i < args.Length; i++)
-        {
-            if (args[i].Equals("--pid", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+            var args = Environment.GetCommandLineArgs();
+            for (int i = 1; i < args.Length; i++)
             {
-                int.TryParse(args[++i], out _pid);
+                var arg = args[i].Trim('"');
+                if (arg.Equals("--pid", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    int.TryParse(args[++i].Trim('"'), out _pid);
+                }
+                else if (arg.Equals("--zip", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    _zipPath = args[++i].Trim('"').TrimEnd('\\', '/');
+                }
+                else if (arg.Equals("--target", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    var rawTarget = args[++i].Trim('"');
+                    var exeIndex = rawTarget.IndexOf("--exe", StringComparison.OrdinalIgnoreCase);
+                    if (exeIndex > -1)
+                    {
+                        rawTarget = rawTarget.Substring(0, exeIndex).TrimEnd(' ', '"', '\\', '/');
+                    }
+                    _targetDir = rawTarget.TrimEnd('\\', '/');
+                }
+                else if (arg.Equals("--exe", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    _exeName = args[++i].Trim('"');
+                }
+                else if (arg.Equals("--sha256", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
+                {
+                    _expectedSha256 = args[++i].Trim('"');
+                }
             }
-            else if (args[i].Equals("--zip", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
-            {
-                _zipPath = args[++i];
-            }
-            else if (args[i].Equals("--target", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
-            {
-                _targetDir = args[++i];
-            }
-            else if (args[i].Equals("--exe", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
-            {
-                _exeName = args[++i];
-            }
-            else if (args[i].Equals("--sha256", StringComparison.OrdinalIgnoreCase) && i + 1 < args.Length)
-            {
-                _expectedSha256 = args[++i];
-            }
-        }
     }
 
     private async Task ExecuteUpdateAsync()
@@ -67,7 +74,13 @@ public partial class MainWindow : Window
                 try
                 {
                     var parentProcess = Process.GetProcessById(_pid);
-                    parentProcess.WaitForExit(15000);
+                    if (!parentProcess.WaitForExit(15000))
+                    {
+                        // Si el proceso no se ha cerrado amablemente en 15 segundos, forzamos el cierre
+                        // Esto es vital para evitar el error 'IOException: el archivo está en uso'
+                        parentProcess.Kill();
+                        parentProcess.WaitForExit(5000);
+                    }
                 }
                 catch { }
             }
@@ -77,6 +90,16 @@ public partial class MainWindow : Window
             if (string.IsNullOrWhiteSpace(_zipPath) || !File.Exists(_zipPath) || string.IsNullOrWhiteSpace(_targetDir))
             {
                 ShowErrorAndExit("Parámetros de actualización incompletos o archivo no encontrado.");
+                return;
+            }
+
+            try
+            {
+                _targetDir = Path.GetFullPath(_targetDir);
+            }
+            catch (Exception ex)
+            {
+                ShowErrorAndExit($"Ruta de destino inválida: {ex.Message}");
                 return;
             }
 
@@ -143,6 +166,18 @@ public partial class MainWindow : Window
                     if (!string.IsNullOrEmpty(parentDir) && !Directory.Exists(parentDir))
                     {
                         Directory.CreateDirectory(parentDir);
+                    }
+
+                    // Táctica de renombrado .bak para evitar el bloqueo del SO
+                    if (File.Exists(destinationPath) && !entry.Name.StartsWith("ParkFlow.Updater", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var bakPath = destinationPath + ".bak";
+                        try
+                        {
+                            if (File.Exists(bakPath)) File.Delete(bakPath);
+                            File.Move(destinationPath, bakPath);
+                        }
+                        catch { /* Ignorar, el extractToFile con overwrite: true intentará de nuevo o lanzará error */ }
                     }
 
                     try
