@@ -696,6 +696,293 @@
 
                             </StackPanel>
 
+                            <!-- ============================================================= -->
+                            <!-- D. PLANTILLA COMPROBANTE DE CIERRE DE CAJA (ON PARKING STYLE) -->
+                            <!-- ============================================================= -->
+                            <StackPanel Visibility="{Binding IsShiftCloseReceipt, Converter={StaticResource BoolToVis}}"
+                                        HorizontalAlignment="Stretch" Margin="0,0">
+
+                                <!-- 1. Encabezado de Empresa / Sede -->
+                                <Image Source="{Binding BranchLogoBase64, Converter={StaticResource Base64ToImageConv}}"
+                                       MaxHeight="{Binding LogoMaxHeight}"
+                                       MaxWidth="{Binding LogoMaxWidth}"
+                                       Stretch="Uniform"
+                                       HorizontalAlignment="Center"
+                                       Margin="0,0,0,8"
+                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                       Visibility="{Binding BranchLogoBase64, Converter={StaticResource NullToVis}}"/>
+                                <TextBlock Text="{Binding BranchName}" FontSize="15" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding BranchNit}" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                                <TextBlock Text="{Binding BranchAddress}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                                <TextBlock Text="{Binding BranchPhone}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,6"/>
+
+                                <!-- Línea divisoria continua -->
+                                <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="6,0,6,8"/>
+
+                                <!-- 2. Título de Cierre y Turno -->
+                                <TextBlock Text="REPORTE DE CIERRE" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding ShiftIdText}" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,6"/>
+
+                                <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
+
+                                <!-- 3. Datos del Turno -->
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="75"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="CAJERO:" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding CashierName}" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="75"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="INICIO:" FontSize="10.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" FontSize="10.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
+                                        <Run Text="{Binding ShiftStartDateStr, Mode=OneWay}"/>
+                                        <Run Text=" "/>
+                                        <Run Text="{Binding ShiftStartTimeStr, Mode=OneWay}"/>
+                                    </TextBlock>
+                                </Grid>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="75"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="FIN:" FontSize="10.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" FontSize="10.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
+                                        <Run Text="{Binding ShiftEndDateStr, Mode=OneWay}"/>
+                                        <Run Text=" "/>
+                                        <Run Text="{Binding ShiftEndTimeStr, Mode=OneWay}"/>
+                                    </TextBlock>
+                                </Grid>
+                                <Grid Margin="0,1,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="75"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="DURACIÓN:" FontSize="10.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftDurationStr}" FontSize="10.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
+
+                                <!-- 4. Ingresos por Servicio -->
+                                <TextBlock Text="INGRESOS POR SERVICIO" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Parqueos:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftParqueosAmountStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
+                                        <Run Text="Mensualidades ("/>
+                                        <Run Text="{Binding ShiftMensualidadesCount, Mode=OneWay}"/>
+                                        <Run Text="):"/>
+                                    </TextBlock>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftMensualidadesAmountStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
+
+                                <!-- 5. Movimientos de Caja Menor -->
+                                <TextBlock Text="MOVIMIENTOS DE CAJA" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="(+) Ingresos Efectivo:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftCashInflowsStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="(-) Salidas / Retiros:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftCashOutflowsStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
+
+                                <!-- 6. Resumen Financiero -->
+                                <TextBlock Text="RESUMEN FINANCIERO" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Subtotal Bruto:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftGrossSubtotalStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Convenios / Descuentos:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftDiscountsStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Subtotal con Descuento:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftDiscountedSubtotalStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Base Gravable (TG):" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftTaxBaseStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="IVA (19%):" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftIva19Str}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,2,0,4"/>
+                                <Grid Margin="0,2,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="TOTAL CIERRE:" FontSize="12" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftTotalRevenueStr}" FontSize="13" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
+
+                                <!-- 7. Medios de Pago -->
+                                <TextBlock Text="MEDIOS DE PAGO" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="• Efectivo:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftCashCollectedStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="• Tarjetas:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftCardCollectedStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="• Transferencias / QR:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftTransferCollectedStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
+
+                                <!-- 8. Vehículos y Ocupación -->
+                                <TextBlock Text="VEHÍCULOS Y OCUPACIÓN" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Vehículos Salidos:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftVehiclesExitedCount}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Vehículos en Patio:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftVehiclesInYardCount}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
+
+                                <!-- 9. Arqueo y Cuadre de Caja -->
+                                <TextBlock Text="ARQUEO Y CUADRE DE CAJA" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Base Inicial:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftBaseAmountStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Total Esperado:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftExpectedCashStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Total Contado:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftActualCashStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Diferencia:" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftDifferenceStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+                                <Grid Margin="0,1,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Estado Arqueo:" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftArqueoStatusText}" FontSize="10.5" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                </Grid>
+
+                                <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
+
+                                <!-- 10. Observaciones -->
+                                <StackPanel Visibility="{Binding HasShiftNotes, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6">
+                                    <TextBlock Text="OBSERVACIONES:" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Text="{Binding ShiftNotes}" FontSize="9.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap" Margin="0,2,0,6"/>
+                                    <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
+                                </StackPanel>
+
+                                <!-- 11. Firmas y Pie -->
+                                <StackPanel HorizontalAlignment="Center" Margin="0,14,0,8">
+                                    <TextBlock Text="___________________________" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Firma Responsable de Caja" FontSize="9.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2,0,1"/>
+                                    <TextBlock Text="C.C. _____________________" FontSize="9" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                                </StackPanel>
+
+                                <TextBlock Text="ParkingFlow POS" FontSize="9.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4,0,1"/>
+                                <TextBlock Text="Software de Gestión y Control" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+
+                            </StackPanel>
+
                         </Grid>
                     </ScrollViewer>
                 </Border>

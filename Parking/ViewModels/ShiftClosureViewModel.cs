@@ -401,6 +401,19 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 DialogNotificationType.Warning);
             return;
         }
+        
+        var branch = _sessionService.CurrentBranch;
+        if (branch != null && !branch.AllowMultipleOpenShifts)
+        {
+            if (OtherActiveShifts.Any())
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Caja Única Activa",
+                    $"Esta sede opera bajo modalidad de Caja Única y ya cuenta con un turno activo. Debes cerrar el turno actual antes de abrir uno nuevo.",
+                    DialogNotificationType.Warning);
+                return;
+            }
+        }
 
         if ((NewShiftBaseAmount ?? 0m) <= 0)
         {
@@ -502,13 +515,20 @@ public partial class ShiftClosureViewModel : ViewModelBase
         {
             var closedShift = await _shiftService.CloseShiftAsync(ActualCashCounted, Notes, null, null);
 
-            await _dialogService.ShowAlertAsync(
-                "Turno Cerrado con Éxito",
+            var shouldPrint = await _dialogService.ShowConfirmationAsync(
+                "Cierre de Turno Registrado",
                 $"El turno ha sido cerrado formalmente.\n\n" +
                 $"• Total Arqueo en Gaveta: ${ActualCashCounted:N0}\n" +
                 $"• Total Tiquetes Liquidados: {Summary.TotalTicketsProcessed}\n\n" +
-                $"La caja ha finalizado su jornada.",
-                DialogNotificationType.Success);
+                "¿Desea imprimir el comprobante de cierre de caja?",
+                DialogNotificationType.Question,
+                "Sí, imprimir tirilla",
+                "No, omitir");
+
+            if (shouldPrint && closedShift != null)
+            {
+                await _dialogService.ShowShiftClosurePreviewAsync(closedShift, Summary);
+            }
 
             ActualCashCounted = 0m;
             Notes = null;
@@ -779,8 +799,20 @@ public partial class ShiftClosureViewModel : ViewModelBase
         BusyMessage = "Cerrando caja del operador...";
         try
         {
-            await _shiftService.CloseSpecificShiftAsync(targetShift.ShiftId, ActualCashCounted, Notes);
-            await _dialogService.ShowAlertAsync("Caja Cerrada", $"La caja de '{targetShift.OperatorName}' ha sido cerrada exitosamente.", DialogNotificationType.Success);
+            var closedOtherShift = await _shiftService.CloseSpecificShiftAsync(targetShift.ShiftId, ActualCashCounted, Notes);
+
+            var shouldPrint = await _dialogService.ShowConfirmationAsync(
+                "Cierre de Turno Registrado",
+                $"La caja de '{targetShift.OperatorName}' ha sido cerrada exitosamente.\n\n¿Desea imprimir el comprobante de cierre de caja?",
+                DialogNotificationType.Question,
+                "Sí, imprimir tirilla",
+                "No, omitir");
+
+            if (shouldPrint)
+            {
+                await _dialogService.ShowShiftClosurePreviewAsync(closedOtherShift ?? targetShift, summary);
+            }
+
             ActualCashCounted = 0m;
             Notes = null;
             await LoadShiftDataAsync();
@@ -793,6 +825,42 @@ public partial class ShiftClosureViewModel : ViewModelBase
         {
             IsBusy = false;
             BusyMessage = null;
+        }
+    }
+
+    [RelayCommand]
+    private async Task PrintLastClosedShiftReceiptAsync()
+    {
+        if (LastClosedShift == null)
+        {
+            await _dialogService.ShowAlertAsync("Información", "No hay registro de un turno cerrado previamente para imprimir.", DialogNotificationType.Information);
+            return;
+        }
+
+        try
+        {
+            var summary = await _shiftService.GetShiftSummaryByIdAsync(LastClosedShift.ShiftId);
+            await _dialogService.ShowShiftClosurePreviewAsync(LastClosedShift, summary);
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowAlertAsync("Error", $"No fue posible generar la tirilla de cierre: {ex.Message}", DialogNotificationType.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task PrintShiftReceiptAsync(WorkShift? shift)
+    {
+        if (shift == null) return;
+
+        try
+        {
+            var summary = await _shiftService.GetShiftSummaryByIdAsync(shift.ShiftId);
+            await _dialogService.ShowShiftClosurePreviewAsync(shift, summary);
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowAlertAsync("Error", $"No fue posible generar la tirilla de cierre: {ex.Message}", DialogNotificationType.Error);
         }
     }
 

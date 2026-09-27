@@ -154,6 +154,56 @@
 - **`✅ Verificación y Compilación`**:
   - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
   - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
+## 📅 Entrada: [2026-09-27] - [BUGFIX / MULTI-SEDE / OFFLINE] Corrección de Huecos Técnicos en Validación de Caja Única Offline
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"valida si tiene huecos tecnicos para evitar errores, recuerda que eso debe controlar el abrir caja desde wpf y pwa"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Análisis de Vulnerabilidades**: WPF no tenía validación activa sobre la restricción "Caja Única". Además, el `SyncService` de la API estaba mandando erróneamente la configuración de "Caja Única" de la Empresa y no de la Sede.
+  2. **Ajuste de Backend (API Sync)**: Se modificó `SyncService.cs` en la API (`GetBootstrapDataAsync`) para asegurar que el `AllowMultipleOpenShifts` propagado hacia la aplicación de escritorio responda a la propiedad de la Sede (`Branch`), en lugar del global de empresa.
+  3. **Adición al Modelo WPF**: Se integró `AllowMultipleOpenShifts` en el modelo `Branch.cs` local.
+  4. **Prevención Offline Activa**: Se insertó lógica de bloqueo en `ShiftClosureViewModel.cs` (`OpenShiftAsync`) para que, cuando el usuario intente abrir caja estando desconectado, el cliente valide localmente contra el modelo de su sede y muestre un error nativo (`"Caja Única Activa"`) antes de guardarlo en la base local, cerrando un hueco técnico en la integridad de la base offline y resolviendo conflictos con el API.
+
+- **`📦 Componentes Modificados`**:
+  - `(API) ParkingApi.Core/Services/Sync/SyncService.cs`
+  - `(WPF) Parking/Entities/Branch.cs`
+  - `(WPF) Parking/ViewModels/ShiftClosureViewModel.cs`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **337/337 Pruebas Superadas (0 Fallos)**
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+## 📅 Entrada: [2026-09-27 10:35:00] - [RELEASE / PACKAGING / DEPLOYMENT] Generación Oficial de Paquete de Distribución ParkFlow Desktop v3.0.0
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"generame del wpf version 3 para probar la actualiacion del wpf cuando cargo en el pwa"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Validación Previa de Pruebas Unitarias**:
+     - Se ejecutaron las 337 pruebas unitarias de la solución `ParkingWpf.slnx` con éxito rotundo: **337/337 Superadas (0 Fallos)**.
+  2. **Compilación y Empaquetado Autónomo (Release win-x64)**:
+     - Mediante el script oficial `Scripts/publish-release.ps1`, se compilaron en modo `Release` (`win-x64`, self-contained con .NET 10):
+       - `Parking.csproj` (Versión 3.0.0, AssemblyVersion 3.0.0, FileVersion 3.0.0).
+       - `ParkFlow.Updater.csproj` (Micro-actualizador de reemplazo en caliente).
+     - Se depuraron archivos de depuración no deseados (`.pdb`, `.db*`, `license.dat`, `appsettings.Development.json`).
+     - Se empaquetó el conjunto de binarios en el archivo de distribución ZIP:
+       - **Ruta**: `Releases/v3.0.0/ParkFlow_v3.0.0.zip`
+       - **Tamaño**: 65.14 MB (68.301.820 bytes).
+       - **Firma SHA-256**: `7ac4ca0e8d2612f7f045ae150f77cc19406949bebd740ccd9c95b7baa2085ed7`.
+     - Se generó el archivo de manifiesto `release_manifest.json` listo para el módulo de versiones de la PWA.
+  3. **Instrucciones para el Usuario**:
+     - Desde la PWA (módulo *Versiones de Escritorio*), el usuario puede cargar directamente `ParkFlow_v3.0.0.zip` con versión `3.0.0`.
+
+- **`📦 Componentes Modificados / Generados`**:
+  - `Releases/v3.0.0/ParkFlow_v3.0.0.zip` (Nuevo)
+  - `Releases/v3.0.0/release_manifest.json` (Nuevo)
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **337/337 Pruebas Superadas (0 Fallos, 100% Correctas)**.
+  - Empaquetado `publish-release.ps1`: **0 Errores (65.14 MB, SHA-256 verificado)**.
+
+---
 
 ## 📅 Entrada: [2026-09-27 00:10:00] - [BUGFIX / WPF / LIFECYCLE / SHELL-ICON] Erradicación de Procesos Zombie en Segundo Plano, Auto-Rescate de Instancia Única y Garantía del Ícono en Barra de Tareas
 
@@ -7065,3 +7115,43 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `Scripts/publish-release.ps1`
 - **✅ Verificación y Compilación**:
   - Script probado y validado con salida de código 0. Paquete ZIP y manifiesto JSON generados correctamente.
+
+## 2026-09-27 - Implementación de Tirilla Térmica de Cierre de Caja (ON PARKING) y Confirmación de Impresión al Cerrar Caja en WPF
+
+- **💬 Prompt Original del Usuario**:
+  > "ahora aplicalo para mi wpf"
+- **🤖 Resumen Técnico para la IA**:
+  1. **Comprobante Térmico de Cierre de Caja (Plantilla POS ON PARKING)**:
+     - Se extendió `ReceiptPreviewViewModel.cs` y `ReceiptPreviewDialog.xaml` para incorporar la 4.ª plantilla térmica (`IsShiftCloseReceipt`), con soporte para anchos de 80mm y 58mm y tipografía monoespaciada idéntica a Entrada y Salida.
+     - Incluye encabezado con logotipo de la sede/empresa, NIT, dirección, teléfono y consecutivo del turno.
+     - Incorpora el desglose contable y financiero discriminado del ticket físico ON PARKING:
+       - Datos del turno: Cajero responsable, fechas y horas de apertura y cierre (formato 12h AM/PM), duración calculada del turno.
+       - Ingresos por servicio: Total Parqueos ($) y Mensualidades ($ y cantidad de cobros).
+       - Movimientos de caja menor: Ingresos (+) y Salidas (-) por retiros / recogidas de efectivo.
+       - Resumen financiero: Subtotal Bruto, Descuentos/Convenios, Subtotal con Descuento, Base Gravable (TG), IVA (19%) discriminado y TOTAL CIERRE.
+       - Discriminación de medios de pago: Efectivo, Tarjetas y Transferencias/QR.
+       - Tráfico y ocupación: Vehículos salidos (#) y vehículos activos en patio (#).
+       - Arqueo y cuadre: Base inicial, total esperado, total contado, diferencia física y estado (`CUADRADA`, `SOBRANTE`, `FALTANTE`).
+       - Observaciones del turno registradas por el cajero.
+       - Líneas de firma para responsable de caja, C.C. y pie de software `ParkingFlow POS`.
+  2. **Flujo de Confirmación al Cerrar Caja**:
+     - En `ShiftClosureViewModel.cs` (`CloseShiftDirectAsync` y `CloseOtherShiftDirectAsync`), al cerrarse el turno formalmente, se dispara el cuadro de diálogo:
+       *"¿Desea imprimir el comprobante de cierre de caja? [Sí, imprimir tirilla] / [No, omitir]"*.
+     - Al seleccionar *"Sí, imprimir tirilla"*, se abre de inmediato `ReceiptPreviewDialog` permitiendo previsualizar e imprimir.
+  3. **Reimpresión desde Custodia del Turno Anterior**:
+     - En `ShiftClosureView.xaml`, se agregó el botón *"Imprimir Tirilla de Cierre"* (`PrintLastClosedShiftReceiptCommand` y `PrintShiftReceiptCommand`) para reimprimir el comprobante del último turno cerrado en cualquier momento posterior.
+  4. **Servicios de Diálogos e Impresión**:
+     - Se añadió `ShowShiftClosurePreviewAsync(WorkShift, ShiftSummaryModel?)` a `IDialogService` y `DialogService`.
+     - Se añadió `PrintShiftCloseReceiptAsync(WorkShift, ShiftSummaryModel?)` a `IReceiptPrinterService` y `MockReceiptPrinterService`.
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Contracts/IReceiptPrinterService.cs`
+  - `Parking/Services/Implementations/MockReceiptPrinterService.cs`
+  - `Parking/Services/Contracts/IDialogService.cs`
+  - `Parking/Services/Implementations/DialogService.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking/Views/ShiftClosureView.xaml`
+- **✅ Verificación y Compilación**:
+  - `dotnet build Parking/Parking.csproj -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
+  - `dotnet build Parking.UnitTests/Parking.UnitTests.csproj -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
