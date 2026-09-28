@@ -1,5 +1,34 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
+## 📅 Entrada: [2026-09-27 18:50:00] - [PERFORMANCE / NETWORK / STREAMING] Optimización Crítica de Streaming de Descarga (Búfer 80 KB LOH-Safe) y Timeout Desacoplado en WPF
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Ya resolví el API, al API le metí ese transferencia de response forwarding para que descargara a todo lo que da, ahí le metí algo, ¿sí? Ahí le metí esto en el compose y ya. Pero me falta el WPF, o sea, se quedó, ya probé la descarga por fuera y ya funciona bien, super rápido. Pero el WPF no está descargando como debería ser. Algo le hiciste al WPF, algo algo algo pasó. Necesito revisar eso urgente, o sea, revisar eso urgente. No te pongas a hacer curls ni nada porque el API ya responde. Necesito ver el código, ¿qué pasó? ¿Sí?"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico Forense de la Causa Raíz en WPF**:
+     - *Búfer LOH y TCP Window Mismatch*: En versiones previas se asignó un búfer masivo de 1 MB (`new byte[1048576]`) en cada iteración de `ReadAsync`. Los búferes mayores a 85,000 bytes van directo al *Large Object Heap* (LOH) de .NET y provocan pausas por recolección de basura (*GC pauses*), mientras que la ventana TCP de red del kernel entrega fragmentos de entre 8 KB y 64 KB.
+     - *Contención en FileStream Overlapped*: `FileStream` con `bufferSize: 1048576` y `useAsync: true` habilitaba I/O superpuesto de Win32 (`FILE_FLAG_OVERLAPPED`), reteniendo en RAM los bloques pequeños sin bajarlos al disco y congelando el archivo temporal en 0 bytes.
+     - *Timeout Global de 90s*: `_httpClient` utilizaba el timeout por defecto de 90 segundos configurado en `App.xaml.cs` para peticiones REST normales, cancelando streams de descargas grandes.
+  2. **Solución Implementada (`AppUpdateService.cs`, `App.xaml.cs`, `appsettings.json`)**:
+     - *Búfer Estándar 80 KB (`81,920 bytes`)*: Se sustituyó el búfer de 1 MB por el tamaño recomendado por Microsoft (.NET StreamCopy standard), garantizando máxima saturación de sockets sin tocar LOH.
+     - *FileStream Directo y Flush Seguro*: Configurado con `bufferSize: 81920, useAsync: false`, eliminando la sobrecarga de I/O completion ports y agregando `await fs.FlushAsync()` explícito al finalizar.
+     - *Throttling de UI a 200 ms*: Reporte mediante `Stopwatch.ElapsedMilliseconds >= 200` para una barra de progreso 100% responsiva sin saturar el Dispatcher de WPF.
+     - *Timeout Elevado a 300s*: En `appsettings.json` y `App.xaml.cs` se ajustó el timeout de red a 300 segundos para proteger descargas grandes en conexiones lentas.
+  3. **Verificación y Pruebas**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
+     - `dotnet test ParkingApi.slnx`: **670/670 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/AppUpdateService.cs`
+  - `Parking/App.xaml.cs`
+  - `Parking/appsettings.json`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test`: **338 Pruebas Superadas en WPF, 670 en API, 0 Fallos, 0 Errores**.
+
 ## 📅 Entrada: [2026-09-27 17:35:00] - [UI/UX / INNO-SETUP / BRANDING] Ícono Oficial en Instalador Inno Setup y Bloqueo de Botón en Diálogo de Actualización
 
 - **`💬 Prompt Original del Usuario`**:

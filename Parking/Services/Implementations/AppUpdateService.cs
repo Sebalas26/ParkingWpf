@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Parking.Data.Factories;
@@ -167,6 +168,23 @@ public class AppUpdateService : IAppUpdateService
                 ? $"api/v1/app-update/download/{release.LatestVersion}"
                 : release.DownloadEndpoint.TrimStart('/');
 
+            // CRÍTICO: Crear un HttpClient DEDICADO y AISLADO para la descarga.
+            // El HttpClient singleton es compartido con PingAsync/SyncEngine que usan
+            // CancellationTokens de 8s. Cuando un health-check se cancela, el SocketsHttpHandler
+            // puede matar la conexión TCP activa de descarga (comparten pool de sockets).
+            var downloadHandler = new HttpClientHandler();
+            var baseUri = _httpClient.BaseAddress;
+            if (baseUri != null && (baseUri.Host.Contains("localhost") || baseUri.Host.Contains("127.0.0.1")))
+            {
+                downloadHandler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+            }
+
+            using var downloadClient = new HttpClient(downloadHandler)
+            {
+                BaseAddress = baseUri,
+                Timeout = TimeSpan.FromMinutes(10) // 10 minutos exclusivos para la descarga
+            };
+
             var license = _licenseService.GetCurrentLicense();
             using var downloadReq = new HttpRequestMessage(HttpMethod.Get, downloadUrl);
             if (license != null && !string.IsNullOrWhiteSpace(license.DeviceToken))
@@ -175,7 +193,7 @@ public class AppUpdateService : IAppUpdateService
             }
             downloadReq.Headers.Add("X-Machine-Fingerprint", _fingerprintService.GetMachineFingerprint());
 
-            var downloadResp = await _httpClient.SendAsync(downloadReq, HttpCompletionOption.ResponseHeadersRead);
+            using var downloadResp = await downloadClient.SendAsync(downloadReq, HttpCompletionOption.ResponseHeadersRead);
             if (!downloadResp.IsSuccessStatusCode)
             {
                 progress?.Report(new UpdateProgressReport
@@ -190,37 +208,43 @@ public class AppUpdateService : IAppUpdateService
 
             var totalBytes = downloadResp.Content.Headers.ContentLength ?? (release.PackageSizeBytes > 0 ? release.PackageSizeBytes : 65L * 1024 * 1024);
             var downloadedBytes = 0L;
-            var buffer = new byte[1048576]; // Búfer de alto rendimiento (1 MB)
+            var buffer = new byte[81920]; // 80 KB: Tamaño óptimo para evitar LOH y alineado con TCP Window
 
-            await using (var responseStream = await downloadResp.Content.ReadAsStreamAsync())
-            await using (var fs = new FileStream(tempZipPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 1048576, useAsync: true))
+            await using var responseStream = await downloadResp.Content.ReadAsStreamAsync();
+            await using var fs = new FileStream(tempZipPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 65536, useAsync: false);
+
+            int bytesRead;
+            var stopwatch = Stopwatch.StartNew();
+
+            while (true)
             {
-                int bytesRead;
-                var lastReportTime = DateTime.UtcNow;
+                // Timeout individual por lectura: 60 segundos de inactividad máxima por chunk
+                using var readCts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+                bytesRead = await responseStream.ReadAsync(buffer.AsMemory(0, buffer.Length), readCts.Token);
 
-                while ((bytesRead = await responseStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                if (bytesRead == 0)
+                    break;
+
+                fs.Write(buffer, 0, bytesRead); // Escritura síncrona directa: evita overhead async en FileStream no-async
+                downloadedBytes += bytesRead;
+
+                if (stopwatch.ElapsedMilliseconds >= 250 || downloadedBytes >= totalBytes)
                 {
-                    await fs.WriteAsync(buffer.AsMemory(0, bytesRead));
-                    downloadedBytes += bytesRead;
+                    var progressFraction = totalBytes > 0 ? Math.Min(1.0, (double)downloadedBytes / totalBytes) : 0.5;
+                    var percent = 30 + (int)(progressFraction * 55.0);
+                    var mbDownloaded = downloadedBytes / (1024.0 * 1024.0);
+                    var mbTotal = totalBytes / (1024.0 * 1024.0);
 
-                    // Reporte continuo fluido (30% -> 85%) cada 250ms o al finalizar
-                    var now = DateTime.UtcNow;
-                    if ((now - lastReportTime).TotalMilliseconds >= 250 || downloadedBytes >= totalBytes)
+                    progress?.Report(new UpdateProgressReport
                     {
-                        lastReportTime = now;
-                        var progressFraction = totalBytes > 0 ? Math.Min(1.0, (double)downloadedBytes / totalBytes) : 0.5;
-                        var percent = 30 + (int)(progressFraction * 55.0);
-                        var mbDownloaded = downloadedBytes / (1024.0 * 1024.0);
-                        var mbTotal = totalBytes / (1024.0 * 1024.0);
-
-                        progress?.Report(new UpdateProgressReport
-                        {
-                            StepDescription = $"Descargando actualización: {mbDownloaded:F1} MB de {mbTotal:F1} MB ({percent}%)...",
-                            Percentage = Math.Min(85, percent)
-                        });
-                    }
+                        StepDescription = $"Descargando actualización: {mbDownloaded:F1} MB de {mbTotal:F1} MB ({percent}%)...",
+                        Percentage = Math.Min(85, percent)
+                    });
+                    stopwatch.Restart();
                 }
             }
+
+            fs.Flush();
 
             // 4. VERIFICACIÓN CRIPTOGRÁFICA DEL HASH SHA-256
             progress?.Report(new UpdateProgressReport

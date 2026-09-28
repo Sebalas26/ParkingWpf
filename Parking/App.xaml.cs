@@ -215,7 +215,7 @@ public partial class App : Application
                 handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
             }
 
-            var timeoutSeconds = int.TryParse(_configuration["ApiSettings:TimeoutSeconds"], out var ts) && ts > 0 ? ts : 90;
+            var timeoutSeconds = int.TryParse(_configuration["ApiSettings:TimeoutSeconds"], out var ts) && ts > 0 ? ts : 300;
 
             return new HttpClient(handler)
             {
