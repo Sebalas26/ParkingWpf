@@ -113,6 +113,18 @@ public class ApiBranchSyncDto
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
 
+    [JsonPropertyName("ticketPolicy")]
+    public string? TicketPolicy { get; set; }
+
+    [JsonPropertyName("printPolicyOnEntry")]
+    public bool PrintPolicyOnEntry { get; set; } = false;
+
+    [JsonPropertyName("ticketAdditionalInfo")]
+    public string? TicketAdditionalInfo { get; set; }
+
+    [JsonPropertyName("printAdditionalInfoOnEntry")]
+    public bool PrintAdditionalInfoOnEntry { get; set; } = false;
+
     [JsonPropertyName("createdAtUtc")]
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

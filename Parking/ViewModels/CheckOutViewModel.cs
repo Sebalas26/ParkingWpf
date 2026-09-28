@@ -257,11 +257,7 @@ public partial class CheckOutViewModel : ViewModelBase
                name.IndexOf("electr", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
-    public bool IsElectronicInvoicingSectionVisible =>
-        HasElectronicInvoicingEnabled ||
-        EmitElectronicInvoice ||
-        (SelectedPaymentMethodEntity?.RequiresResolution == true) ||
-        (SelectedResolution != null && IsElectronicResolutionDefensive(SelectedResolution));
+    public bool IsElectronicInvoicingSectionVisible => EmitElectronicInvoice;
 
     private readonly DispatcherTimer _agreementPopupTimer;
     private readonly DispatcherTimer _agreementTooltipTimer;

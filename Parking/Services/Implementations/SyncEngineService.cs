@@ -702,6 +702,10 @@ public class SyncEngineService : ISyncEngineService
                         existingBranch.NightStayMinMinutes = br.NightStayMinMinutes;
                         existingBranch.EntryGracePeriodMinutes = br.EntryGracePeriodMinutes;
                         existingBranch.ExitGracePeriodMinutes = br.ExitGracePeriodMinutes;
+                        existingBranch.TicketPolicy = br.TicketPolicy;
+                        existingBranch.PrintPolicyOnEntry = br.PrintPolicyOnEntry;
+                        existingBranch.TicketAdditionalInfo = br.TicketAdditionalInfo;
+                        existingBranch.PrintAdditionalInfoOnEntry = br.PrintAdditionalInfoOnEntry;
                         existingBranch.IsActive = br.IsActive;
                     }
                     else
@@ -738,6 +742,10 @@ public class SyncEngineService : ISyncEngineService
                             NightStayMinMinutes = br.NightStayMinMinutes,
                             EntryGracePeriodMinutes = br.EntryGracePeriodMinutes,
                             ExitGracePeriodMinutes = br.ExitGracePeriodMinutes,
+                            TicketPolicy = br.TicketPolicy,
+                            PrintPolicyOnEntry = br.PrintPolicyOnEntry,
+                            TicketAdditionalInfo = br.TicketAdditionalInfo,
+                            PrintAdditionalInfoOnEntry = br.PrintAdditionalInfoOnEntry,
                             IsActive = br.IsActive,
                             CreatedAtUtc = br.CreatedAtUtc
                         });
@@ -771,6 +779,10 @@ public class SyncEngineService : ISyncEngineService
                             b.NightStayMinMinutes = br.NightStayMinMinutes;
                             b.EntryGracePeriodMinutes = br.EntryGracePeriodMinutes;
                             b.ExitGracePeriodMinutes = br.ExitGracePeriodMinutes;
+                            b.TicketPolicy = br.TicketPolicy;
+                            b.PrintPolicyOnEntry = br.PrintPolicyOnEntry;
+                            b.TicketAdditionalInfo = br.TicketAdditionalInfo;
+                            b.PrintAdditionalInfoOnEntry = br.PrintAdditionalInfoOnEntry;
                             if (br.CompanyId.HasValue && br.CompanyId.Value > 0)
                             {
                                 b.CompanyId = br.CompanyId.Value;
@@ -783,6 +795,10 @@ public class SyncEngineService : ISyncEngineService
                     {
                         userBranch.TotalCapacity = br.TotalCapacity;
                         userBranch.Name = br.Name;
+                        userBranch.TicketPolicy = br.TicketPolicy;
+                        userBranch.PrintPolicyOnEntry = br.PrintPolicyOnEntry;
+                        userBranch.TicketAdditionalInfo = br.TicketAdditionalInfo;
+                        userBranch.PrintAdditionalInfoOnEntry = br.PrintAdditionalInfoOnEntry;
                         userBranch.Address = br.Address;
                         userBranch.Phone = br.Phone;
                         userBranch.City = br.City;

@@ -120,6 +120,19 @@ public class BranchModel
     [JsonPropertyName("operatingHours")]
     public List<BranchOperatingHour> OperatingHours { get; set; } = new();
 
+    [JsonPropertyName("ticketPolicy")]
+    public string? TicketPolicy { get; set; }
+
+    [JsonPropertyName("printPolicyOnEntry")]
+    public bool PrintPolicyOnEntry { get; set; }
+
+    [JsonPropertyName("ticketAdditionalInfo")]
+    public string? TicketAdditionalInfo { get; set; }
+
+    [JsonPropertyName("printAdditionalInfoOnEntry")]
+    public bool PrintAdditionalInfoOnEntry { get; set; }
+
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
 }
+

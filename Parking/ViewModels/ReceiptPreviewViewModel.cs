@@ -908,11 +908,27 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             ElectronicInvoiceQrImage = null;
         }
 
-        // Evaluar políticas de impresión para Información Adicional y Póliza (asociadas a la Resolución de Facturación)
+        // Evaluar políticas de impresión para Información Adicional y Póliza (asociadas a la Sede o Resolución de Facturación)
         try
         {
             using var db = _connectionManager.CreateDbContext();
             var branchId = currentBranch?.Id ?? ticket.BranchId ?? _sessionService.CurrentBranch?.Id;
+            string? branchPolicy = currentBranch?.TicketPolicy ?? _sessionService.CurrentBranch?.TicketPolicy;
+            bool branchPrintPolicyOnEntry = currentBranch?.PrintPolicyOnEntry ?? _sessionService.CurrentBranch?.PrintPolicyOnEntry ?? false;
+            string? branchAdditionalInfo = currentBranch?.TicketAdditionalInfo ?? _sessionService.CurrentBranch?.TicketAdditionalInfo;
+            bool branchPrintAdditionalInfoOnEntry = currentBranch?.PrintAdditionalInfoOnEntry ?? _sessionService.CurrentBranch?.PrintAdditionalInfoOnEntry ?? false;
+
+            if (string.IsNullOrWhiteSpace(branchPolicy) && string.IsNullOrWhiteSpace(branchAdditionalInfo) && branchId.HasValue)
+            {
+                var dbBranch = db.Branches.FirstOrDefault(b => b.Id == branchId.Value);
+                if (dbBranch != null)
+                {
+                    branchPolicy = dbBranch.TicketPolicy;
+                    branchPrintPolicyOnEntry = dbBranch.PrintPolicyOnEntry;
+                    branchAdditionalInfo = dbBranch.TicketAdditionalInfo;
+                    branchPrintAdditionalInfoOnEntry = dbBranch.PrintAdditionalInfoOnEntry;
+                }
+            }
 
             if (!IsExitReceipt)
             {
@@ -934,12 +950,46 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                     }
                 }
 
-                TicketPolicy = (entryRes?.PrintPolicyOnEntry == true || !string.IsNullOrWhiteSpace(entryRes?.TicketPolicy))
-                    ? entryRes?.TicketPolicy?.Trim()
-                    : null;
-                TicketAdditionalInfo = (entryRes?.PrintAdditionalInfoOnEntry == true || !string.IsNullOrWhiteSpace(entryRes?.TicketAdditionalInfo))
-                    ? entryRes?.TicketAdditionalInfo?.Trim()
-                    : null;
+                // 1. Póliza en Tiquete de Entrada: Prioridad a la Sede, luego Resolución
+                string? resolvedPolicy = null;
+                if (branchPrintPolicyOnEntry && !string.IsNullOrWhiteSpace(branchPolicy))
+                {
+                    resolvedPolicy = branchPolicy.Trim();
+                }
+                else if (entryRes?.PrintPolicyOnEntry == true && !string.IsNullOrWhiteSpace(entryRes.TicketPolicy))
+                {
+                    resolvedPolicy = entryRes.TicketPolicy.Trim();
+                }
+                else if (!string.IsNullOrWhiteSpace(branchPolicy))
+                {
+                    resolvedPolicy = branchPolicy.Trim();
+                }
+                else if (!string.IsNullOrWhiteSpace(entryRes?.TicketPolicy))
+                {
+                    resolvedPolicy = entryRes.TicketPolicy.Trim();
+                }
+
+                // 2. Información Adicional en Tiquete de Entrada: Prioridad a la Sede, luego Resolución
+                string? resolvedAdditionalInfo = null;
+                if (branchPrintAdditionalInfoOnEntry && !string.IsNullOrWhiteSpace(branchAdditionalInfo))
+                {
+                    resolvedAdditionalInfo = branchAdditionalInfo.Trim();
+                }
+                else if (entryRes?.PrintAdditionalInfoOnEntry == true && !string.IsNullOrWhiteSpace(entryRes.TicketAdditionalInfo))
+                {
+                    resolvedAdditionalInfo = entryRes.TicketAdditionalInfo.Trim();
+                }
+                else if (!string.IsNullOrWhiteSpace(branchAdditionalInfo))
+                {
+                    resolvedAdditionalInfo = branchAdditionalInfo.Trim();
+                }
+                else if (!string.IsNullOrWhiteSpace(entryRes?.TicketAdditionalInfo))
+                {
+                    resolvedAdditionalInfo = entryRes.TicketAdditionalInfo.Trim();
+                }
+
+                TicketPolicy = resolvedPolicy;
+                TicketAdditionalInfo = resolvedAdditionalInfo;
             }
             else
             {
@@ -961,12 +1011,14 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                             .FirstOrDefault();
                 }
 
+                // Póliza en Tiquete de Salida: Resolución o Sede
                 TicketPolicy = (exitRes?.PrintPolicyOnExit == true || !string.IsNullOrWhiteSpace(exitRes?.TicketPolicy))
                     ? exitRes?.TicketPolicy?.Trim()
-                    : null;
+                    : (!string.IsNullOrWhiteSpace(branchPolicy) ? branchPolicy.Trim() : null);
+
                 TicketAdditionalInfo = (exitRes?.PrintAdditionalInfoOnExit == true || !string.IsNullOrWhiteSpace(exitRes?.TicketAdditionalInfo))
                     ? exitRes?.TicketAdditionalInfo?.Trim()
-                    : null;
+                    : (!string.IsNullOrWhiteSpace(branchAdditionalInfo) ? branchAdditionalInfo.Trim() : null);
             }
         }
         catch

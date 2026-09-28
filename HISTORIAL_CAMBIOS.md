@@ -1,5 +1,70 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-28 14:45:00] - [PRINTING / POLICIES / CHECKOUT / FISCAL] Soporte de Póliza y Campo Adicional de la Sede en Impresión y Automatización de Facturación Electrónica DIAN en Checkout (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"En el WPF falta que lo que se configura en la sede para poliza y campo adicional no se esta mostrando bien en la impresión si me explico, segundo se debe validar bien por que ese boton e emitir factura Dian no va no se pro que esta hay, por que eso esta afectado por que el sistema ya sabe si algun metodo de pago fue configurado por factura electronica el sistema ya lo va a tomar entonces no hay necsidad de eso si me explico. analisa y configuralo."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Propiedades de Póliza e Información Adicional en Entidad y Modelo de Sede (`Branch.cs`, `BranchModel.cs`, `BootstrapSyncResponse.cs`, `SyncEngineService.cs`)**:
+     - *Diagnóstico*: En la base de datos central y en la PWA se incorporaron los campos `TicketPolicy`, `PrintPolicyOnEntry`, `TicketAdditionalInfo` y `PrintAdditionalInfoOnEntry` a nivel de Sede (`Branch`). Sin embargo, en el cliente WPF ni la entidad EF Core `Branch`, ni el modelo de sesión en memoria `BranchModel`, ni el DTO de bootstrap `ApiBranchSyncDto` tenían estas 4 propiedades. Por ende, la información configurada en la sede nunca se recibía en la sincronización local SQLite ni se encontraba accesible para la tirilla de impresión.
+     - *Solución*:
+       - Se agregaron las 4 propiedades tipadas a `Branch` (SQLite/EF Core), a `BranchModel` (sesión en memoria) y a `ApiBranchSyncDto` (payload de sincronización API).
+       - En `SyncEngineService.cs` se actualizó el mapeo bidireccional y de bootstrap (`existingBranch`, `new Branch`, `_sessionService.UpdateCurrentBranch`, `userBranch`).
+  2. **Resolución Jerárquica de Póliza y Texto Adicional en Tirillas de Entrada y Salida (`ReceiptPreviewViewModel.cs`)**:
+     - *Diagnóstico*: En `LoadTicket()`, la resolución de pólizas e información legal se limitaba prioritariamente a las resoluciones de facturación. Si la sede tenía su propia póliza o cláusula legal configurada, no se tomaba como fuente primordial.
+     - *Solución*: Se implementó la resolución jerárquica con prioridad a la sede activa (`currentBranch` / `_sessionService.CurrentBranch` / consulta a `db.Branches`):
+       - Tiquete de entrada: si la sede tiene `PrintPolicyOnEntry == true` y texto en `TicketPolicy`, se imprime de forma prioritaria sobre la resolución. Misma prioridad para `TicketAdditionalInfo` con `PrintAdditionalInfoOnEntry`.
+       - Tiquete de salida: si la resolución no define póliza o texto adicional, o si la sede los tiene definidos, se imprimen fielmente.
+  3. **Supresión del Checkbox Manual de Factura DIAN en Checkout (`CheckOutDialog.xaml`, `CheckOutViewModel.cs`)**:
+     - *Diagnóstico*: En el diálogo de cobro de salida de vehículos (`CheckOutDialog.xaml`), existía un control interactivo `CheckBox` con `IsChecked="{Binding EmitElectronicInvoice}"`. La regla de negocio estipula que el sistema determina 100% de forma automática si la transacción es DIAN según el medio de pago o la resolución seleccionada; permitir manipular este toggle manualmente generaba inconsistencias fiscales y confusión en el operador.
+     - *Solución*:
+       - Se removió el `CheckBox` interactivo del XAML y se sustituyó por una cabecera informativa elegante con ícono de documento fiscal DIAN y mensaje claro: *"FACTURACIÓN ELECTRÓNICA DIAN ACTIVA (Determinada automáticamente según el medio de pago)"*.
+       - En `CheckOutViewModel.cs`, la propiedad `IsElectronicInvoicingSectionVisible` ahora expone limpiamente `EmitElectronicInvoice`, manteniendo vinculada la validación de cliente sin toggle manual.
+  4. **Verificación y Pruebas Unitarias**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **100% Superado (352 Pruebas Superadas, 0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Entities/Branch.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CheckOutDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **352 Pruebas Superadas (100% Éxito, 0 Fallos)**.
+
+---
+
+## 📅 Entrada: [2026-09-28 14:15:00] - [CONFIG / VERSIONING] Configuración Explícita de Versión del Ensamblado en Parking.csproj (Soporte Anti-Bloqueo de Actualización en Desarrollo Local)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Tengo un duda como le subo la version al WPF por que si ya tengotodos los cambios pero existe una versión arriba me pide actualziar no deberia por que siempre que compilo es en la version 1.0.0 eso donde se configura ? ... sii y así yo lo pueda modificar si me explico."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Configuración Explícita de Versión en `Parking.csproj`**:
+     - *Diagnóstico*: En los proyectos .NET SDK, si no se definen propiedades explícitas de versión en el `.csproj`, el compilador asigna por defecto `1.0.0.0`. En tiempo de ejecución, `AppUpdateService` lee `Assembly.GetExecutingAssembly().GetName().Version` (`1.0.0`) y consulta al endpoint `/api/v1/app-update/check?currentVersion=1.0.0`. Al existir en la nube una versión superior registrada (`1.0.1`), el sistema exigía actualizar y bloqueaba la operación de desarrollo.
+     - *Solución*: Se incorporaron en [`Parking/Parking.csproj`](file:///c:/Users/miguelagutierrezg/Documents/Parking/Parking/Parking.csproj) las etiquetas declarativas `<Version>1.0.1</Version>`, `<AssemblyVersion>1.0.1</AssemblyVersion>`, `<FileVersion>1.0.1</FileVersion>` e `<InformationalVersion>1.0.1</InformationalVersion>`, permitiendo al desarrollador modificar manualmente la versión base cada vez que se incremente un release sin depender exclusivamente del parámetro de empaquetado.
+  2. **Verificación y Pruebas**:
+     - Inspección del binario compilado `Parking.dll`: `FileVersion: 1.0.1`, `ProductVersion: 1.0.1`.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **100% de Pruebas Superadas (352 tests superados, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Parking.csproj`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **352 Pruebas Superadas (100% Éxito, 0 Fallos)**.
+
+---
+
 ## 📅 Entrada: [2026-09-28 14:00:00] - [PRINTING / POLICIES] Inclusión Obligatoria de Póliza y Cláusulas en Tiquete de Entrada y Salida (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
