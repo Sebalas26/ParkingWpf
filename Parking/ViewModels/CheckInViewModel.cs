@@ -230,10 +230,21 @@ public partial class CheckInViewModel : ViewModelBase
             }
         };
 
-        _sessionService.ActiveBranchChanged += async _ =>
+        _sessionService.ActiveBranchChanged += branch =>
         {
             if (!string.IsNullOrWhiteSpace(PlateNumber)) return;
-            try { await InitializeAsync(); } catch { }
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(async () =>
+                {
+                    try { await InitializeAsync(); } catch { }
+                });
+            }
+            else
+            {
+                _ = InitializeAsync();
+            }
         };
 
         _feedbackTimer = new DispatcherTimer
@@ -702,7 +713,7 @@ public partial class CheckInViewModel : ViewModelBase
                 ? _authService.CurrentUser.FullName
                 : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.FullName)
                     ? _sessionService.CurrentUser.FullName
-                    : (_sessionService.CurrentUser?.Username ?? "Operador General"));
+                    : (_sessionService.CurrentUser?.Username ?? string.Empty));
 
             decimal? customRate = IsMonthlySubscriber ? 0m : SelectedRate?.HourRate;
             if (!IsMonthlySubscriber && (!customRate.HasValue || customRate.Value <= 0))

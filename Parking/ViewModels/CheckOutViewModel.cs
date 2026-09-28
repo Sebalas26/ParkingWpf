@@ -422,10 +422,21 @@ public partial class CheckOutViewModel : ViewModelBase
             }
         };
 
-        _sessionService.ActiveBranchChanged += async _ =>
+        _sessionService.ActiveBranchChanged += branch =>
         {
             if (SelectedTicket != null) return;
-            try { await InitializeAsync(); } catch { }
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(async () =>
+                {
+                    try { await InitializeAsync(); } catch { }
+                });
+            }
+            else
+            {
+                _ = InitializeAsync();
+            }
         };
 
         _liveCalculationTimer = new DispatcherTimer

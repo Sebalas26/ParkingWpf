@@ -31,7 +31,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private readonly IPermissionService _permissionService;
 
     [ObservableProperty]
-    private string _branchName = "Sede Principal";
+    private string _branchName = string.Empty;
 
     [ObservableProperty]
     private bool _isOnlineMode = true;
@@ -75,7 +75,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
     private IReadOnlyList<WorkShift> _shiftHistory = new List<WorkShift>();
 
     [ObservableProperty]
-    private string _operatorName = "Operador General";
+    private string _operatorName = string.Empty;
 
     [ObservableProperty]
     private bool _isShiftOwner = true;
@@ -182,8 +182,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
         _syncEngine = syncEngine;
         _sessionService = sessionService;
         _permissionService = permissionService;
-        _operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
-        _branchName = _sessionService.CurrentBranch?.Name ?? "Sede Principal";
+        _operatorName = _authService.CurrentUser?.FullName ?? string.Empty;
+        _branchName = _sessionService.CurrentBranch?.Name ?? string.Empty;
         _canOpenMultipleShifts = _sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false;
         _isOnlineMode = _syncEngine.IsOnline;
         _syncStatusText = _isOnlineMode ? "Sincronizado" : "Modo Local";
@@ -240,19 +240,33 @@ public partial class ShiftClosureViewModel : ViewModelBase
             }
         };
 
-        _sessionService.ActiveBranchChanged += async branch =>
+        _sessionService.ActiveBranchChanged += branch =>
         {
-            BranchName = branch?.Name ?? _sessionService.CurrentBranch?.Name ?? "Sede Principal";
-            CanOpenMultipleShifts = branch?.AllowMultipleOpenShifts ?? _sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false;
-            SelectNewRegisterModeCommand.NotifyCanExecuteChanged();
-            try { await LoadShiftDataAsync(); } catch { }
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(async () =>
+                {
+                    BranchName = branch?.Name ?? _sessionService.CurrentBranch?.Name ?? string.Empty;
+                    CanOpenMultipleShifts = branch?.AllowMultipleOpenShifts ?? _sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false;
+                    SelectNewRegisterModeCommand.NotifyCanExecuteChanged();
+                    try { await LoadShiftDataAsync(); } catch { }
+                });
+            }
+            else
+            {
+                BranchName = branch?.Name ?? _sessionService.CurrentBranch?.Name ?? string.Empty;
+                CanOpenMultipleShifts = branch?.AllowMultipleOpenShifts ?? _sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false;
+                SelectNewRegisterModeCommand.NotifyCanExecuteChanged();
+                _ = LoadShiftDataAsync();
+            }
         };
     }
 
     public override async Task InitializeAsync()
     {
-        OperatorName = _authService.CurrentUser?.FullName ?? "Operador General";
-        BranchName = _sessionService.CurrentBranch?.Name ?? "Sede Principal";
+        OperatorName = _authService.CurrentUser?.FullName ?? string.Empty;
+        BranchName = _sessionService.CurrentBranch?.Name ?? string.Empty;
         CanOpenMultipleShifts = _sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false;
         SelectNewRegisterModeCommand.NotifyCanExecuteChanged();
         IsOnlineMode = _syncEngine.IsOnline;

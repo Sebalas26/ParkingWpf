@@ -57,6 +57,24 @@ public class EfShiftService : IShiftService
 
     private int? CurrentBranchId => _sessionService.CurrentBranch?.Id ?? _sessionService.CurrentBranchId;
 
+    private int ResolveCurrentUserId()
+    {
+        var currentUser = _authService.CurrentUser;
+        if (currentUser?.ServerUserId.HasValue == true && currentUser.ServerUserId.Value != 0)
+        {
+            return currentUser.ServerUserId.Value;
+        }
+
+        if (currentUser?.UserId != null && currentUser.UserId != Guid.Empty)
+        {
+            var hash = Math.Abs(currentUser.UserId.GetHashCode());
+            if (hash == 0) hash = 1;
+            return -hash;
+        }
+
+        return 0;
+    }
+
     public async Task<WorkShift> OpenShiftAsync(decimal baseAmount, string? notes = null, string? cashRegisterName = null)
     {
         var branchId = CurrentBranchId;
@@ -108,7 +126,7 @@ public class EfShiftService : IShiftService
             }
         }
 
-        var operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
+        var operatorName = _authService.CurrentUser?.FullName ?? _authService.CurrentUser?.Username ?? string.Empty;
         var request = new OpenShiftApiRequest
         {
             BranchId = branchId.Value,
@@ -155,7 +173,7 @@ public class EfShiftService : IShiftService
             ShiftId = Guid.NewGuid(),
             BranchId = branchId.Value,
             CompanyId = companyId.Value,
-            UserId = _authService.CurrentUser?.ServerUserId ?? 1,
+            UserId = ResolveCurrentUserId(),
             OperatorName = operatorName,
             CashRegisterName = !string.IsNullOrWhiteSpace(cashRegisterName) ? cashRegisterName : "Caja Principal",
             StartTimeUtc = DateTime.UtcNow,
@@ -369,13 +387,10 @@ public class EfShiftService : IShiftService
             query = query.Where(s => s.BranchId == branchId.Value);
         }
 
-        if (queryUserId.HasValue && queryUserId.Value > 0)
+        var resolvedUserId = ResolveCurrentUserId();
+        if (resolvedUserId != 0)
         {
-            query = query.Where(s => s.UserId == queryUserId.Value);
-        }
-        else if (currentUser != null && !string.IsNullOrWhiteSpace(currentUser.FullName))
-        {
-            query = query.Where(s => s.OperatorName == currentUser.FullName || s.OperatorName == currentUser.Username);
+            query = query.Where(s => s.UserId == resolvedUserId);
         }
         else
         {
@@ -402,6 +417,20 @@ public class EfShiftService : IShiftService
     {
         branchId ??= CurrentBranchId;
         if (!branchId.HasValue || branchId.Value <= 0) return Array.Empty<WorkShift>();
+
+        var resolvedUserId = ResolveCurrentUserId();
+        var currentShiftId = CurrentShift?.ShiftId;
+
+        bool IsCurrentUserShift(WorkShift s)
+        {
+            if (currentShiftId.HasValue && currentShiftId.Value != Guid.Empty && s.ShiftId == currentShiftId.Value)
+                return true;
+
+            if (resolvedUserId != 0 && s.UserId == resolvedUserId)
+                return true;
+
+            return false;
+        }
 
         if (IsOnline)
         {
@@ -445,7 +474,7 @@ public class EfShiftService : IShiftService
                         _shiftDbLock.Release();
                     }
 
-                    return apiShifts;
+                    return apiShifts.Where(s => !IsCurrentUserShift(s)).ToList();
                 }
             }
             catch { }
@@ -453,10 +482,12 @@ public class EfShiftService : IShiftService
 
         // Fallback SQLite local
         using var db = _connectionManager.CreateDbContext();
-        return await db.WorkShifts
+        var shifts = await db.WorkShifts
             .Where(s => s.BranchId == branchId.Value && s.Status == 0)
             .OrderByDescending(s => s.StartTimeUtc)
             .ToListAsync();
+
+        return shifts.Where(s => !IsCurrentUserShift(s)).ToList();
     }
 
     public async Task<ShiftSummaryModel> GetCurrentShiftSummaryAsync()
@@ -497,7 +528,7 @@ public class EfShiftService : IShiftService
         var endTime = targetShift?.EndTimeUtc ?? DateTime.UtcNow;
         var isClosed = targetShift != null && targetShift.Status != 0;
         var baseAmount = targetShift?.BaseAmount ?? 0m;
-        var operatorName = targetShift?.OperatorName ?? (_authService.CurrentUser?.FullName ?? "Operador General");
+        var operatorName = targetShift?.OperatorName ?? _authService.CurrentUser?.FullName ?? _authService.CurrentUser?.Username ?? string.Empty;
 
         var ticketsQuery = db.ParkingTickets.AsNoTracking().AsQueryable();
         if (branchId.HasValue && branchId.Value > 0)
@@ -653,7 +684,7 @@ public class EfShiftService : IShiftService
         {
             ShiftId = shiftId,
             BranchId = branchId,
-            UserId = targetShift?.UserId ?? (_authService.CurrentUser?.ServerUserId ?? 1),
+            UserId = targetShift?.UserId ?? ResolveCurrentUserId(),
             OperatorName = operatorName,
             StartTimeUtc = startTime,
             BaseAmount = baseAmount,
@@ -823,32 +854,29 @@ public class EfShiftService : IShiftService
                                               (u.Username != null && u.Username.ToLower() == handoverToUserName.ToLower()) || 
                                               (u.FullName != null && u.FullName.ToLower() == handoverToUserName.ToLower()));
 
-                if (userEntity?.ServerUserId.HasValue == true && userEntity.ServerUserId.Value > 0)
+                if (userEntity != null)
                 {
-                    resolvedUserId = userEntity.ServerUserId.Value;
-                }
-                else
-                {
-                    var previousShift = await dbLookup.WorkShifts
-                        .AsNoTracking()
-                        .Where(s => s.OperatorName == handoverToUserName && s.UserId > 0)
-                        .OrderByDescending(s => s.StartTimeUtc)
-                        .FirstOrDefaultAsync();
-
-                    if (previousShift != null)
+                    if (userEntity.ServerUserId.HasValue && userEntity.ServerUserId.Value != 0)
                     {
-                        resolvedUserId = previousShift.UserId;
+                        resolvedUserId = userEntity.ServerUserId.Value;
+                    }
+                    else if (userEntity.UserId != Guid.Empty)
+                    {
+                        var hash = Math.Abs(userEntity.UserId.GetHashCode());
+                        if (hash == 0) hash = 1;
+                        resolvedUserId = -hash;
                     }
                 }
             }
 
             // Si aún no se resuelve, verificar la sesión del usuario actual
-            if (!resolvedUserId.HasValue || resolvedUserId.Value <= 0)
+            if (!resolvedUserId.HasValue || resolvedUserId.Value == 0)
             {
-                resolvedUserId = _authService.CurrentUser?.ServerUserId;
+                var curId = ResolveCurrentUserId();
+                if (curId != 0) resolvedUserId = curId;
             }
 
-            if (!resolvedUserId.HasValue || resolvedUserId.Value <= 0)
+            if (!resolvedUserId.HasValue || resolvedUserId.Value == 0)
             {
                 throw new InvalidOperationException($"No se pudo resolver el identificador de usuario para el operador receptor '{handoverToUserName}'. No es posible abrir el turno de relevo sin un usuario válido.");
             }

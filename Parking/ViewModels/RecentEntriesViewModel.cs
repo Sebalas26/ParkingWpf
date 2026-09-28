@@ -67,13 +67,39 @@ public partial class RecentEntriesViewModel : ViewModelBase
         _shiftService = shiftService;
         _sessionService = sessionService;
 
-        _ticketService.TicketRegistered += (s, e) => _ = LoadEntriesAsync();
+        _ticketService.TicketRegistered += (s, e) =>
+        {
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(async () => await LoadEntriesAsync());
+            }
+            else
+            {
+                _ = LoadEntriesAsync();
+            }
+        };
         _ticketService.TicketCompleted += (s, e) =>
         {
-            _ = LoadEntriesAsync();
-            if (SelectedTab == 2)
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
             {
-                _ = LoadHistoricalEntriesAsync();
+                dispatcher.InvokeAsync(async () =>
+                {
+                    await LoadEntriesAsync();
+                    if (SelectedTab == 2)
+                    {
+                        await LoadHistoricalEntriesAsync();
+                    }
+                });
+            }
+            else
+            {
+                _ = LoadEntriesAsync();
+                if (SelectedTab == 2)
+                {
+                    _ = LoadHistoricalEntriesAsync();
+                }
             }
         };
     }

@@ -1,6 +1,48 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
-## 📅 Entrada: [2026-09-28 00:00:00] - [FEATURE / BILLING / PRINTING] Migración de Políticas e Info Adicional a Resoluciones en WPF y Sync Engine
+## 📅 Entrada: [2026-09-28 08:35:00] - [BUGFIX / CORE / SHIFTS / ARCHITECTURE] Blindaje de Hilos UI (Dispatcher) en Login, Eliminación Total de Data Quemada ("Sede Principal") e Identificación 100% Relacional de Turnos (Cero Comparación por Texto)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"mira se esta craseahndo al momento de loguearme y me sale este error que sucede que se rompio o por que esta las pruebas, revisa por que sucedio."_
+  > _"como así que se tiene quemado lo de sede principal. por que compara con texto eso esta ilogico el sistema no debería hacer nada de eso ."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Blindaje de Subprocesos Cruzados (Cross-Thread Dispatcher) en Login**:
+     - *Causa Raíz*: Al iniciar sesión mediante *Fast-Login*, `_syncEngine.PerformFullSyncAsync()` se ejecuta en segundo plano. Cuando `SyncEngineService` recibe datos de la sede, dispara `_sessionService.UpdateCurrentBranch`, el cual detona el evento `ActiveBranchChanged` desde un hilo secundario del ThreadPool.
+     - En `ShiftClosureViewModel.cs`, la suscripción a `ActiveBranchChanged` ejecutaba `SelectNewRegisterModeCommand.NotifyCanExecuteChanged()` directamente en el hilo de fondo sin verificar `Dispatcher.CheckAccess()`, detonando `System.InvalidOperationException: 'El subproceso que realiza la llamada no puede obtener acceso a este objeto porque el propietario es otro subproceso.'`.
+     - Se blindaron con verificación de `System.Windows.Application.Current?.Dispatcher` las suscripciones a `ActiveBranchChanged` en `ShiftClosureViewModel.cs`, `CheckInViewModel.cs` y `CheckOutViewModel.cs`, así como `TicketRegistered` y `TicketCompleted` en `RecentEntriesViewModel.cs`.
+  2. **Eliminación Total de Cadenas Quemadas (Hardcoded Data)**:
+     - En estricto apego a la **Regla de Oro #8 (Prohibición estricta de data quemada)**, se erradicaron por completo las cadenas `"Sede Principal"` y `"Operador General"` en `ShiftClosureViewModel.cs`, `CheckInViewModel.cs` y `EfShiftService.cs`, garantizando que la sede y el operador se resuelvan exclusivamente de la sesión real o queden en `string.Empty`.
+  3. **Identificación 100% Relacional (Cero Comparación por Texto)**:
+     - Se erradicó por completo el antipatrón de comparar turnos por cadenas de texto (`OperatorName == currentUser.FullName`).
+     - Se implementó `ResolveCurrentUserId()` en `EfShiftService.cs`: si el usuario viene del API central utiliza su `ServerUserId`, y si opera en modo offline sin ID de servidor, genera de manera determinística un identificador único negativo a partir del `Guid` del usuario (`CurrentUser.UserId`), evitando colisiones y eliminando el valor quemado `UserId = 1`.
+     - En `EfShiftService.cs`:
+       - `OpenShiftAsync`: asigna `UserId = ResolveCurrentUserId()`.
+       - `RefreshCurrentShiftAsync`: filtra estrictamente por `s.UserId == resolvedUserId`.
+       - `GetActiveShiftsByBranchAsync`: excluye de forma puramente relacional el turno propio (`s.UserId != resolvedUserId && s.ShiftId != currentShiftId`), permitiendo que el operador solo vea otras cajas disponibles para relevar sin relevarse a sí mismo.
+       - `GetShiftSummaryByIdAsync`: reemplazó el quemado `?? 1` por `ResolveCurrentUserId()`.
+       - `HandoverAndOpenNextShiftAsync`: resuelve correctamente IDs offline negativos sin fallos de validación.
+  4. **Superación del 100% de Pruebas Unitarias**:
+     - Se corrigieron los 3 fallos en `ShiftFlowSimulationTests.cs`:
+       - `Simulation_OfflineLogin_WithExistingShift_IdentifiesOwnShiftAndExcludesFromOtherShifts`: Superado.
+       - `Simulation_BranchWithOtherOperatorShift_ExcludesOwnAndReturnsOnlyOtherOperatorShift`: Superado.
+       - `Simulation_OfflineOpenShift_WithoutServerUserId_AssignsNegativeUniqueIdAndPreventsCollision`: Superado.
+     - Ejecución de `dotnet test ParkingWpf.slnx`: **342 de 342 pruebas superadas (0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/ViewModels/RecentEntriesViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **342 Pruebas Superadas (0 Fallos)**.
+
+---
+
 
 - **`💬 Prompt Original del Usuario`**:
   > _"ayudame con el tema de la impresion de las politicas y la informacion adicional de impresion en las tirillas de parqueadero wpf y pwa. 1. debes de cambiar de lugar en base de datos ya no va a depender de las sedes si no de las resoluciones de facturacion. 2. el modal de parametrizar sedes tendra un tab llamado impresion donde se listaran las resoluciones de facturacion asociadas a la sede y tendran los campos de poliza y informacion adicional cada resolucion podra tener su propia informacion adicional y polizas y opciones de impresion segun aplique en ingreso y salida (recuerda que hay resoluciones que son electronicas y otras de tirilla pos). 3. elimina de la sede estas opciones de polizas y informacion adicional. 4. organiza la impresion en wpf y pwa para que tome los datos de la resolucion asignada tanto al ingresar como al salir del parqueadero. 5. el orden de las polizas sera primero la poliza en negrilla y luego la informacion adicional. 6. elimina del formulario de editar sede la opcion de polizas y informacion adicional. la opcion de ancho de papel si se queda en la sede porque es una configuracion de la sede no de la resolucion."_
