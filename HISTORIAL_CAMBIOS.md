@@ -1,6 +1,52 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
-## 📅 Entrada: [2026-09-28 12:30:00] - [FEATURE / UI / SYNC / CUSTOMERS] Columna de Estado de Sincronización (Insignias Verde/Naranja) y Botón de Reintento en Tabla de Clientes
+## 📅 Entrada: [2026-09-28 13:00:00] - [BUGFIX / PRINTING / DEPLOYMENT] Detección Automática de Impresoras Térmicas Directas (Cero Cuadros de Diálogo) y Compilación de Instalador Setup Windows con Inno Setup 6
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"tengo este fallo no genera el instalador, segundo se tiene el fallo en el wpf que cuando se le de imprimir no esta mandado a imprimir el deberia validar que impresora esta conectada y mandar a imprimir directamente si me epxlico ? eos no esta pasando ."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Generación del Instalador Oficial de Windows con Inno Setup 6**:
+     - *Causa raíz*: El entorno local carecía de `ISCC.exe` (`Inno Setup 6`). El script `Scripts/publish-release.ps1` omitía la generación del ejecutable instalador desplegando el aviso de herramienta no encontrada.
+     - *Resolución*: Se instaló Inno Setup 6 (`JRSoftware.InnoSetup` v6.7.3) mediante `winget`.
+     - *Validación*: Se ejecutó `publish-release.ps1 -Version 1.0.1`, generando exitosamente `Releases/v1.0.1/ParkFlow_Setup_v1.0.1.exe` (46.96 MB), comprimido con LZMA2/max, configurado con ícono institucional `parkpoint.ico`, accesos directos de escritorio/inicio y soporte multi-usuario con permisos locales.
+  2. **Detección Dinámica de Impresoras y Flujo de Impresión Directa en WPF (Cero PrintDialog)**:
+     - *Causa raíz*:
+       a) `ReceiptPreviewDialog.xaml` tenía doble suscripción en el botón "Imprimir Tiquete": ejecutaba `Command="{Binding PrintTicketCommand}"` (que llamaba a un servicio mock de logging) y a la vez `Click="PrintButton_Click"` (que ejecutaba code-behind con `printDialog.ShowDialog()`), abriendo el cuadro de diálogo de Windows del sistema operativo.
+       b) En `ReceiptPreviewDialog_PreviewKeyDown`, al presionar Enter, se llamaba `PrintTicketCommand`, luego `ShowDialog()` y se cerraba de inmediato la ventana (`Close()`), provocando que la impresión nunca llegara físicamente a la cola o se cancelara abruptamente.
+     - *Nueva Arquitectura de Impresión*:
+       a) Se diseñó e implementó `IPrinterDiscoveryService` y `PrinterDiscoveryService` en `Parking/Services/`:
+          - `GetInstalledPrinters()`: Inspecciona colas locales y de red registradas en `LocalPrintServer`.
+          - `ResolveConnectedPrinter()`: Identifica de forma inteligente la impresora conectada y en línea, priorizando impresoras térmicas POS (`pos`, `thermal`, `receipt`, `ticket`, `epson`, `bixolon`, `star`, `tm-`, `xp-`, `zj-`, `58`, `80`) o recurriendo a la impresora predeterminada activa del sistema operativo si no está fuera de línea.
+          - `PrintVisualDirect(Visual, jobTitle)`: Envía el árbol visual (`TicketPrintableContent`) directamente a la cola de impresión seleccionada mediante `printQueue.CreatePrintJob()` y `AddJob()`, respetando el formato de 58mm u 80mm configurado en la sede, sin abrir diálogos de selección.
+       b) `ReceiptPreviewViewModel`: Expone `DetectedPrinterName`, `HasConnectedPrinter`, `PrintStatusMessage` y el delegado asíncrono `DirectPrintHandler`.
+       c) `ReceiptPreviewDialog.xaml`:
+          - Se eliminó el manejador `Click="PrintButton_Click"`.
+          - Se actualizó el footer inferior para mostrar el nombre de la impresora detectada en tiempo real (ej. `Impresora: POS-80`) y el mensaje de confirmación/error.
+       d) `ReceiptPreviewDialog.xaml.cs`:
+          - En `Loaded`: Conecta `DirectPrintHandler` con `_printerDiscovery.PrintVisualDirect(TicketPrintableContent, ...)`.
+          - En `PreviewKeyDown` (Enter): Ejecuta `PrintTicketCommand` e imprime directamente, esperando una breve pausa para confirmar visualmente antes de cerrar.
+  3. **Pruebas y Verificación**:
+     - Se crearon pruebas unitarias en `Parking.UnitTests/Services/PrinterDiscoveryServiceTests.cs`.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **352 de 352 pruebas superadas (100% éxito, 0 fallos)**.
+     - `publish-release.ps1 -Version 1.0.1`: **Compilación Release win-x64, empaquetado ZIP OTA (61.88 MB) e instalador Setup .exe (46.96 MB) generados exitosamente**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Contracts/IPrinterDiscoveryService.cs` (Nuevo)
+  - `Parking/Services/Implementations/PrinterDiscoveryService.cs` (Nuevo)
+  - `Parking/App.xaml.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking/Views/ReceiptPreviewDialog.xaml.cs`
+  - `Parking.UnitTests/Services/PrinterDiscoveryServiceTests.cs` (Nuevo)
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **352 Pasadas, 0 Fallidas (100% éxito)**.
+  - `publish-release.ps1`: **`ParkFlow_Setup_v1.0.1.exe` generado (46.96 MB)**.
+
+---
 
 - **`💬 Prompt Original del Usuario`**:
   > _"Peor si quisiera que esa fila tuviera un campo de estaod de sincronizacion para que a nivel de front se sepa si se sincrono el cliente"_

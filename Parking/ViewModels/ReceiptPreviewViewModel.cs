@@ -22,6 +22,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private readonly IDbConnectionManager _connectionManager;
     private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
     private readonly IPricingCalculatorService _pricingCalculator;
+    private readonly IPrinterDiscoveryService? _printerDiscovery;
     private readonly IPermissionService? _permissionService;
 
     [ObservableProperty]
@@ -356,12 +357,24 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
     public event Action? RequestClose;
 
+    [ObservableProperty]
+    private string _detectedPrinterName = "Detectando impresora...";
+
+    [ObservableProperty]
+    private bool _hasConnectedPrinter;
+
+    [ObservableProperty]
+    private string? _printStatusMessage;
+
+    public Func<Task<(bool Success, string? PrinterName, string? ErrorMessage)>>? DirectPrintHandler { get; set; }
+
     public ReceiptPreviewViewModel(
         IReceiptPrinterService printerService,
         ISessionService sessionService,
         IDbConnectionManager connectionManager,
         Microsoft.Extensions.Configuration.IConfiguration configuration,
         IPricingCalculatorService pricingCalculator,
+        IPrinterDiscoveryService? printerDiscovery = null,
         IPermissionService? permissionService = null)
     {
         _printerService = printerService;
@@ -369,7 +382,43 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         _connectionManager = connectionManager;
         _configuration = configuration;
         _pricingCalculator = pricingCalculator;
+        _printerDiscovery = printerDiscovery;
         _permissionService = permissionService;
+
+        RefreshDetectedPrinter();
+    }
+
+    public void RefreshDetectedPrinter()
+    {
+        try
+        {
+            if (_printerDiscovery != null)
+            {
+                var q = _printerDiscovery.ResolveConnectedPrinter();
+                if (q != null)
+                {
+                    DetectedPrinterName = q.Name;
+                    HasConnectedPrinter = !q.IsOffline;
+                    PrintStatusMessage = q.IsOffline ? "Impresora desconectada" : $"Lista en {q.Name}";
+                }
+                else
+                {
+                    DetectedPrinterName = "Sin impresora conectada";
+                    HasConnectedPrinter = false;
+                    PrintStatusMessage = "No se detectó impresora";
+                }
+            }
+            else
+            {
+                DetectedPrinterName = "Impresora estándar";
+                HasConnectedPrinter = true;
+            }
+        }
+        catch
+        {
+            DetectedPrinterName = "Sin impresora";
+            HasConnectedPrinter = false;
+        }
     }
 
     public void LoadTicket(ParkingTicket ticket, BillingResolution? resolution = null)
@@ -377,6 +426,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         Ticket = ticket;
         Resolution = resolution;
         PrintSuccess = false;
+        PrintStatusMessage = null;
+        RefreshDetectedPrinter();
         IsShiftCloseReceipt = false;
         Shift = null;
         ShiftSummary = null;
@@ -923,6 +974,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         Shift = shift;
         ShiftSummary = summary;
         PrintSuccess = false;
+        PrintStatusMessage = null;
+        RefreshDetectedPrinter();
 
         IsShiftCloseReceipt = true;
         IsEntryTicket = false;
@@ -1129,17 +1182,33 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         IsPrinting = true;
         try
         {
-            if (IsShiftCloseReceipt && Shift != null)
+            if (DirectPrintHandler != null)
             {
-                PrintSuccess = await _printerService.PrintShiftCloseReceiptAsync(Shift, ShiftSummary);
-            }
-            else if (Ticket.Status == Core.Enums.TicketStatus.Completed || Ticket.ExitTimeUtc.HasValue || Ticket.ExitTime.HasValue)
-            {
-                PrintSuccess = await _printerService.PrintExitReceiptAsync(Ticket);
+                var (success, printerName, error) = await DirectPrintHandler.Invoke();
+                PrintSuccess = success;
+                if (success)
+                {
+                    PrintStatusMessage = $"Enviado a: {printerName}";
+                }
+                else
+                {
+                    PrintStatusMessage = error ?? "Fallo al enviar a la impresora";
+                }
             }
             else
             {
-                PrintSuccess = await _printerService.PrintEntryTicketAsync(Ticket);
+                if (IsShiftCloseReceipt && Shift != null)
+                {
+                    PrintSuccess = await _printerService.PrintShiftCloseReceiptAsync(Shift, ShiftSummary);
+                }
+                else if (Ticket.Status == Core.Enums.TicketStatus.Completed || Ticket.ExitTimeUtc.HasValue || Ticket.ExitTime.HasValue)
+                {
+                    PrintSuccess = await _printerService.PrintExitReceiptAsync(Ticket);
+                }
+                else
+                {
+                    PrintSuccess = await _printerService.PrintEntryTicketAsync(Ticket);
+                }
             }
         }
         finally

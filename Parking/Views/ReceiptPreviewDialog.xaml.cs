@@ -1,14 +1,24 @@
+using System;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using Microsoft.Extensions.DependencyInjection;
+using Parking.Services.Contracts;
+using Parking.Services.Implementations;
 using Parking.ViewModels;
 
 namespace Parking.Views;
 
 public partial class ReceiptPreviewDialog : Window
 {
+    private readonly IPrinterDiscoveryService _printerDiscovery;
+
     public ReceiptPreviewDialog()
     {
         InitializeComponent();
+        _printerDiscovery = App.CurrentServices?.GetService<IPrinterDiscoveryService>() 
+            ?? new PrinterDiscoveryService();
+
         Loaded += ReceiptPreviewDialog_Loaded;
         PreviewKeyDown += ReceiptPreviewDialog_PreviewKeyDown;
     }
@@ -23,10 +33,13 @@ public partial class ReceiptPreviewDialog : Window
                 if (vm.PrintTicketCommand.CanExecute(null))
                 {
                     await vm.PrintTicketCommand.ExecuteAsync(null);
+                    if (vm.PrintSuccess)
+                    {
+                        await Task.Delay(350);
+                        Close();
+                    }
                 }
             }
-            PrintVisualTicket();
-            Close();
         }
         else if (e.Key == Key.Escape)
         {
@@ -35,29 +48,18 @@ public partial class ReceiptPreviewDialog : Window
         }
     }
 
-    private void PrintButton_Click(object sender, RoutedEventArgs e)
-    {
-        PrintVisualTicket();
-    }
-
-    private void PrintVisualTicket()
-    {
-        try
-        {
-            var printDialog = new System.Windows.Controls.PrintDialog();
-            if (printDialog.ShowDialog() == true)
-            {
-                printDialog.PrintVisual(TicketPrintableContent, "ParkingFlow POS - Comprobante");
-            }
-        }
-        catch (System.Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ReceiptPreviewDialog] Error al imprimir visual: {ex.Message}");
-        }
-    }
-
     private void ReceiptPreviewDialog_Loaded(object sender, RoutedEventArgs e)
     {
+        if (DataContext is ReceiptPreviewViewModel vm)
+        {
+            vm.DirectPrintHandler = () =>
+            {
+                var result = _printerDiscovery.PrintVisualDirect(TicketPrintableContent, "ParkingFlow POS - Comprobante");
+                return Task.FromResult(result);
+            };
+            vm.RefreshDetectedPrinter();
+        }
+
         if (Owner != null)
         {
             if (Owner.WindowState == WindowState.Maximized)

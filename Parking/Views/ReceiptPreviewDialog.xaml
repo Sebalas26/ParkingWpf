@@ -20,6 +20,7 @@
         <conv:CurrencyConverter x:Key="CurrencyConv"/>
         <conv:VehicleTypeToStringConverter x:Key="VehicleTypeStrConv"/>
         <conv:BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <conv:BooleanToVisibilityConverter x:Key="InverseBoolToVis" Invert="True"/>
         <conv:NullToVisibilityConverter x:Key="NullToVis"/>
         <conv:Base64ToImageConverter x:Key="Base64ToImageConv"/>
     </Window.Resources>
@@ -1032,14 +1033,35 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Visibility="{Binding PrintSuccess, Converter={StaticResource BoolToVis}}">
-                        <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushSuccess}" Width="14" Height="14" Stretch="Uniform" Margin="0,0,6,0"/>
-                        <TextBlock Text="Tiquete enviado a impresión" Foreground="{DynamicResource BrushSuccess}" FontSize="11" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Center">
+                        <!-- Impresora Detectada -->
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Path Data="{StaticResource IconPrint}" 
+                                  Fill="{DynamicResource BrushTextSecondary}" 
+                                  Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0"/>
+                            <TextBlock Text="{Binding DetectedPrinterName, StringFormat='{}Impresora: {0}'}" 
+                                       Foreground="{DynamicResource BrushTextSecondary}" 
+                                       FontSize="11" 
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Mensaje de Estado / Éxito -->
+                        <StackPanel Orientation="Horizontal" 
+                                    VerticalAlignment="Center" 
+                                    Margin="0,2,0,0"
+                                    Visibility="{Binding PrintSuccess, Converter={StaticResource BoolToVis}}">
+                            <Path Data="{StaticResource IconCheck}" Fill="{DynamicResource BrushSuccess}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,4,0"/>
+                            <TextBlock Text="{Binding PrintStatusMessage, FallbackValue='Tiquete enviado a impresión'}" 
+                                       Foreground="{DynamicResource BrushSuccess}" 
+                                       FontSize="11" 
+                                       FontWeight="Bold"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Command="{Binding PrintTicketCommand}"
-                                Click="PrintButton_Click"
                                 Style="{StaticResource ModernButton}"
                                 Margin="0,0,8,0"
                                 Padding="16,6">

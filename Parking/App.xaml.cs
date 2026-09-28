@@ -27,6 +27,7 @@ public partial class App : Application
     private static Mutex? _singleInstanceMutex;
 
     public IServiceProvider Services => _serviceProvider;
+    public static IServiceProvider? CurrentServices => (Current as App)?._serviceProvider;
 
     public App()
     {
@@ -250,6 +251,7 @@ public partial class App : Application
         services.AddSingleton<IMonthlySubscriptionService, EfMonthlySubscriptionService>();
         services.AddSingleton<IBarcodeGeneratorService, Code128BarcodeGeneratorService>();
         services.AddSingleton<IReceiptPrinterService, MockReceiptPrinterService>();
+        services.AddSingleton<IPrinterDiscoveryService, PrinterDiscoveryService>();
         services.AddSingleton<IAnalyticsService, EfAnalyticsService>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IDialogService, DialogService>();
