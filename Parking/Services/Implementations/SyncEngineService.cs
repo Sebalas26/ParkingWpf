@@ -2292,8 +2292,8 @@ public class SyncEngineService : ISyncEngineService
             if (processed.Count > 0)
             {
                 db.PendingSyncItems.RemoveRange(processed);
-                await db.SaveChangesAsync();
             }
+            await db.SaveChangesAsync();
 
             await RefreshPendingCountAsync();
             NotifySyncStatusChanged(SyncStatusDescription);

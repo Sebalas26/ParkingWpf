@@ -1,5 +1,34 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-28 11:30:00] - [BUGFIX / SYNC / CUSTOMERS / UI] Mapeo de Identificación DIAN en Edición de Clientes, Persistencia Incondicional de Errores de Sincronización y Logging Robusto
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"valida si tiene huecos tecnicos y dar con la solucion definitiva este plan que me creaste"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Mapeo de Tipos de Documento en Formulario de Edición (`CustomersViewModel.cs`)**:
+     - *Causa Raíz*: Cuando un cliente se descarga desde el API remoto hacia SQLite, el backend almacena los IDs internos 1..5 (`1: CC, 2: CE, 3: NIT, 4: Pasaporte, 5: Otro/Doc Extranjero`). Sin embargo, el ComboBox del formulario de clientes en WPF espera los códigos DIAN (`13, 22, 31, 41, 42`). Al abrir un cliente previamente descargado de la nube para edición, `FormIdentificationTypeId` se asignaba directamente en `1..5`, dejando el desplegable deseleccionado o en blanco.
+     - *Solución*: Se implementó un mapeo por expresión switch: `1 => 13, 2 => 22, 3 => 31, 4 => 41, 5 => 42, _ => customer.IdentificationTypeId`, permitiendo que el selector coincida perfectamente sin alterar el valor de catálogo.
+  2. **Eliminación de `catch { }` Silencioso y Feedback Preciso (`CustomersViewModel.cs`)**:
+     - *Causa Raíz*: Al invocar `_apiClient.CreateCustomerAsync` tras guardar en base local, un bloque `catch { }` vacío suprimía cualquier excepción (errores HTTP 400 por rechazos del API o fallos de red), mostrando siempre al usuario un falso diálogo de éxito: *"ha sido registrado exitosamente"*, ocultando que el cliente no se había subido a la nube.
+     - *Solución*: Se reemplazó por captura con logging a `App.LogException(ex, "CustomersViewModel.SaveCustomerAsync.ImmediateSync")`. Se condicionó el feedback: si `pending.IsProcessed == true`, notifica registro y sincronización exitosa en la nube; si quedó pendiente (sin red o diferido), notifica con advertencia amigable: *"El cliente se guardó en este equipo y se sincronizará automáticamente con la nube."*
+  3. **Persistencia Incondicional de Reintentos y Diagnóstico (`SyncEngineService.cs`)**:
+     - *Causa Raíz*: En `ProcessPendingCustomersAsync`, `await db.SaveChangesAsync()` se encontraba dentro de `if (processed.Count > 0)`. Si un lote de clientes fallaba contra el API (`processed.Count == 0`), los incrementos de `item.RetryCount++` y el detalle de `item.LastError` no se persistían en SQLite, impidiendo que el contador de reintentos alcanzara el límite de 3 para desatascar la cola en fallos irrecuperables.
+     - *Solución*: Se movió `await db.SaveChangesAsync()` fuera del condicional para garantizar que cualquier actualización a `RetryCount` y `LastError` quede grabada en SQLite en cada intento.
+  4. **Pruebas y Verificación**:
+     - `dotnet build`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **348 de 348 pruebas superadas (100% éxito, 0 fallos, 0 omitidas)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CustomersViewModel.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **348 Pasadas, 0 Fallidas (100%)**.
+
+---
+
 ## 📅 Entrada: [2026-09-28 08:55:00] - [BUGFIX / CORE / SYNC / UI] Blindaje de Sincronización en Cambio de Sede (Upsert Defensivo de Clientes por DocumentNumber/CompanyId) y Ocultamiento de Historial de Cierres de Caja
 
 - **`💬 Prompt Original del Usuario`**:

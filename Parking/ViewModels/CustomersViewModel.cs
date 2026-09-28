@@ -332,7 +332,15 @@ public partial class CustomersViewModel : ViewModelBase
 
         IsEditing = true;
         FormCustomerId = customer.CustomerId;
-        FormIdentificationTypeId = customer.IdentificationTypeId;
+        FormIdentificationTypeId = customer.IdentificationTypeId switch
+        {
+            1 => 13,
+            2 => 22,
+            3 => 31,
+            4 => 41,
+            5 => 42,
+            _ => customer.IdentificationTypeId
+        };
         FormDocumentNumber = customer.DocumentNumber;
         FormCheckDigit = customer.CheckDigit;
         FormPersonType = customer.PersonType ?? (customer.IdentificationTypeId == 31 ? "Company" : "Person");
@@ -590,11 +598,22 @@ public partial class CustomersViewModel : ViewModelBase
                         await db.SaveChangesAsync();
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    App.LogException(ex, "CustomersViewModel.SaveCustomerAsync.ImmediateSync");
+                }
 
                 IsFormOpen = false;
                 await LoadCustomersAsync();
-                await _dialogService.ShowAlertAsync("Cliente Creado", $"El cliente '{newCustomer.FullName}' ha sido registrado exitosamente.", DialogNotificationType.Success);
+
+                if (pending.IsProcessed)
+                {
+                    await _dialogService.ShowAlertAsync("Cliente Creado", $"El cliente '{newCustomer.FullName}' ha sido registrado y sincronizado exitosamente con la nube.", DialogNotificationType.Success);
+                }
+                else
+                {
+                    await _dialogService.ShowAlertAsync("Cliente Guardado Localmente", $"El cliente '{newCustomer.FullName}' se guardó en este equipo y se sincronizará automáticamente con la nube.", DialogNotificationType.Warning);
+                }
             }
         }
         catch (Exception ex)
