@@ -247,12 +247,12 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
     private void UpdatePermissions()
     {
-        CanWithdrawCash = _permissionService.HasPermission("shifts.blind_count");
-        CanCloseShift = _permissionService.HasPermission("shifts.close");
-        CanHandoverShift = _permissionService.HasPermission("shifts.close");
-        CanExportShift = _permissionService.HasPermission("shifts.reprint_closure");
-        CanViewShiftHistory = _permissionService.HasPermission("shifts.view_history");
-        CanOpenShift = _permissionService.HasPermission("shifts.open");
+        CanWithdrawCash = _permissionService.HasPermission("shifts.blind_count") || _permissionService.HasPermission("shift.blind_count");
+        CanCloseShift = _permissionService.HasPermission("shifts.close") || _permissionService.HasPermission("shift.close");
+        CanHandoverShift = _permissionService.HasPermission("shifts.close") || _permissionService.HasPermission("shift.close") || _permissionService.HasPermission("shifts.handover");
+        CanExportShift = _permissionService.HasPermission("shifts.reprint_closure") || _permissionService.HasPermission("shift.export") || _permissionService.HasPermission("wpf.shifts.reprint_closure");
+        CanViewShiftHistory = _permissionService.HasPermission("shifts.view_history") || _permissionService.HasPermission("shift.view_history");
+        CanOpenShift = _permissionService.HasPermission("shifts.open") || _permissionService.HasPermission("shift.open");
     }
 
     partial void OnActualCashCountedChanged(decimal value)
@@ -621,6 +621,9 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 : $"{Notes} (Relevo entregado a {SelectedHandoverUser.FullName})";
 
             // Cerrar turno saliente y abrir inmediatamente el nuevo turno
+            var outgoingShiftId = currentShiftId ?? _shiftService.CurrentShift?.ShiftId;
+            var outgoingSummary = Summary;
+
             await _shiftService.HandoverAndOpenNextShiftAsync(
                 verifiedCash,
                 note,
@@ -629,14 +632,32 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 verifiedCash,
                 currentShiftId);
 
+            // Consultar datos del turno saliente cerrado para comprobante de arqueo
+            WorkShift? closedShift = null;
+            if (outgoingShiftId.HasValue)
+            {
+                using var dbLookup = _connectionManager.CreateDbContext();
+                closedShift = await dbLookup.WorkShifts.AsNoTracking().FirstOrDefaultAsync(s => s.ShiftId == outgoingShiftId.Value);
+            }
+
+            // Preguntar al usuario si desea imprimir la tirilla oficial de cierre de caja
+            var shouldPrint = await _dialogService.ShowConfirmationAsync(
+                "Entrega y Relevo Registrado",
+                $"El turno de '{outgoingOperatorName}' ha sido entregado exitosamente a '{SelectedHandoverUser.FullName}'.\n\n" +
+                $"• Total Arqueo en Gaveta: ${verifiedCash:N0}\n" +
+                $"• Total Tiquetes Liquidados: {outgoingSummary.TotalTicketsProcessed}\n\n" +
+                "¿Desea imprimir el comprobante de cierre de caja?",
+                DialogNotificationType.Question,
+                "Sí, imprimir tirilla",
+                "No, omitir");
+
+            if (shouldPrint && closedShift != null)
+            {
+                await _dialogService.ShowShiftClosurePreviewAsync(closedShift, outgoingSummary);
+            }
+
             // Cambiar la sesión activa al operador receptor autenticado una vez abierto el nuevo turno
             _authService.SwitchCurrentUser(authResult.Session);
-
-            await _dialogService.ShowAlertAsync(
-                "Entrega de Turno Exitosa",
-                $"El turno ha sido entregado exitosamente a {SelectedHandoverUser.FullName}.\n" +
-                $"El nuevo turno ha quedado abierto con base de ${verifiedCash:N0}.",
-                DialogNotificationType.Success);
 
             ActualCashCounted = 0m;
             Notes = null;
@@ -729,6 +750,9 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 : $"{Notes} (Relevo de '{targetShift.CashRegisterName}' asumido por {incomingUser.FullName})";
 
             // Cerrar turno saliente y abrir inmediatamente el nuevo turno a nombre del operador entrante
+            var targetShiftId = targetShift.ShiftId;
+            var targetSummary = SelectedShiftToRelieveSummary ?? await _shiftService.GetShiftSummaryByIdAsync(targetShift.ShiftId);
+
             await _shiftService.HandoverAndOpenNextShiftAsync(
                 verifiedCash,
                 note,
@@ -738,16 +762,31 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 targetShift.ShiftId,
                 targetShift.CashRegisterName);
 
+            // Consultar datos del turno saliente cerrado para comprobante de arqueo
+            WorkShift? closedShift = null;
+            using (var dbLookup = _connectionManager.CreateDbContext())
+            {
+                closedShift = await dbLookup.WorkShifts.AsNoTracking().FirstOrDefaultAsync(s => s.ShiftId == targetShiftId);
+            }
+
+            // Preguntar al usuario si desea imprimir la tirilla oficial de cierre de la caja relevada
+            var shouldPrint = await _dialogService.ShowConfirmationAsync(
+                "Turno Asumido con Éxito",
+                $"Has recibido la caja '{targetShift.CashRegisterName}' de '{targetShift.OperatorName}'.\n\n" +
+                $"• Base Recibida: ${verifiedCash:N0}\n" +
+                $"• Tiquetes Liquidados en Turno Saliente: {targetSummary.TotalTicketsProcessed}\n\n" +
+                "¿Desea imprimir el comprobante de cierre de la caja relevada?",
+                DialogNotificationType.Question,
+                "Sí, imprimir tirilla",
+                "No, omitir");
+
+            if (shouldPrint && closedShift != null)
+            {
+                await _dialogService.ShowShiftClosurePreviewAsync(closedShift, targetSummary);
+            }
+
             // Sincronizar y recargar sesión activa con la matriz de permisos para el nuevo operador
             _authService.SwitchCurrentUser(authResult.Session);
-
-            await _dialogService.ShowAlertAsync(
-                "Turno Asumido con Éxito",
-                $"Has recibido la caja '{targetShift.CashRegisterName}' correctamente.\n\n" +
-                $"• Base Inicial de tu Turno: ${verifiedCash:N0}\n" +
-                $"• Operador a Cargo: {incomingUser.FullName}\n\n" +
-                $"Ya puedes comenzar a registrar ingresos y cobros en el parqueadero.",
-                DialogNotificationType.Success);
 
             ActualCashCounted = 0m;
             Notes = null;
@@ -1117,7 +1156,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
             HasAvailableHandoverUsers = AvailableUsers.Count > 0;
             SelectedHandoverUser = AvailableUsers.FirstOrDefault();
 
-            ShiftHistory = await _shiftService.GetShiftHistoryAsync(DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
+            var allHistory = await _shiftService.GetShiftHistoryAsync(DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
+            ShiftHistory = allHistory.Where(s => s.Status == 1).OrderByDescending(s => s.EndTimeUtc ?? s.ClosedAtUtc ?? s.CreatedAtUtc).ToList();
         }
         catch (Exception ex)
         {

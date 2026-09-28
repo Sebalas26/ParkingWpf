@@ -1,6 +1,39 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
-## 📅 Entrada: [2026-09-27] - [BUGFIX / MULTI-SEDE / OFFLINE] Corrección de Huecos Técnicos en Validación de Caja Única Offline
+## 📅 Entrada: [2026-09-27] - [FEATURE / WPF / POS / SHIFTS] Impresión de Cierre de Caja en Relevo/Entrega, Confirmación Interactiva e Historial con Cierre Digital
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Valida porque en el wpf aun no tieene la impresion del cierre de caja , eso ya lo tiene el pwa. elabora el plan, pero tambien agrega la pregunta de imprimir o no. tmbien ten en cuenta que la impresion del cierre es cuando cierren, no tener el boton mientras la caja este abierta. No se pregunta ni permite imprimir en los flujos de relevo y entrega de turno (HandoverShiftAsync / TakeOverShiftAsync). esto si deberia de aplicar, es decir que el cierre de caja o el relevo"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Confirmación Interactiva en Cierres y Relevos**:
+     - Se integró el diálogo modal interactivo (`_dialogService.ShowConfirmationAsync`) preguntando *¿Desea imprimir el comprobante de cierre de caja?* con opciones `Sí, imprimir tirilla` / `No, omitir` en los cuatro flujos de cierre:
+       - Cierre directo / Fin de jornada (`CloseShiftDirectAsync`).
+       - Cierre administrativo de caja ajena (`CloseOtherShiftDirectAsync`).
+       - Entrega de turno y relevo en caliente (`HandoverShiftAsync`).
+       - Asunción y toma de relevo de caja entrante (`TakeOverShiftAsync`).
+     - Al seleccionar afirmativamente, se abre la vista previa oficial (`_dialogService.ShowShiftClosurePreviewAsync`) con los datos consolidados y auditados del turno saliente cerrado.
+  2. **Regla de Negocio: Cero Impresión con Caja Abierta**:
+     - Se auditó y garantizó que en la tarjeta operativa principal de caja activa (`HasActiveShift == true`) no exista ningún botón de impresión preventiva, limitando las acciones únicamente a retiro, cierre y relevo.
+  3. **Historial de Turnos Cerrados y Cierre Digital (Paridad con PWA)**:
+     - Se incorporó en `ShiftClosureView.xaml` una sección dedicada para el **Historial de Cierres de Caja**, condicionada al permiso `shifts.view_history`.
+     - DataGrid con diseño Glassmorphism corporativo que lista los últimos turnos finalizados (`Status == 1`), con columnas de Caja, Operador, Horario, Base Inicial, Total Cobrado, Contado y Acción.
+     - Botón de acción **`Cierre Digital`** (icono de impresora) protegido por el permiso `shifts.reprint_closure` (con soporte para alias `shift.export` y `wpf.shifts.reprint_closure`) que invoca `PrintShiftReceiptCommand` para reimprimir en cualquier momento la tirilla térmica oficial.
+  4. **Impresión Real en Windows**:
+     - En `ReceiptPreviewDialog.xaml` y `ReceiptPreviewDialog.xaml.cs`, se enlazó el contenedor visual del tiquete (`TicketPrintableContent`) directamente con el driver de Windows mediante `PrintDialog.PrintVisual`, permitiendo la impresión física en impresoras térmicas (58mm / 80mm) con soporte para Enter y Click.
+
+- **`📦 Componentes Modificados`**:
+  - `(WPF) Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `(WPF) Parking/Views/ShiftClosureView.xaml`
+  - `(WPF) Parking/Views/ReceiptPreviewDialog.xaml`
+  - `(WPF) Parking/Views/ReceiptPreviewDialog.xaml.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **337/337 Pruebas Superadas (100% Correctas, 0 Fallos)**.
+
+---
 
 - **`💬 Prompt Original del Usuario`**:
   > _"valida si tiene huecos tecnicos para evitar errores, recuerda que eso debe controlar el abrir caja desde wpf y pwa"_

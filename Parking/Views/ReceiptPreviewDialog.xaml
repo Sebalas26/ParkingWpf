@@ -73,7 +73,7 @@
                         Margin="0,0,0,12"
                         MaxHeight="480">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <Grid HorizontalAlignment="Stretch" Margin="0,0">
+                        <Grid x:Name="TicketPrintableContent" HorizontalAlignment="Stretch" Margin="0,0">
 
                             <!-- ============================================================= -->
                             <!-- A. PLANTILLA RECIBO DE PAGO POS ESTÁNDAR                      -->
@@ -1001,6 +1001,7 @@
 
                     <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                         <Button Command="{Binding PrintTicketCommand}"
+                                Click="PrintButton_Click"
                                 Style="{StaticResource ModernButton}"
                                 Margin="0,0,8,0"
                                 Padding="16,6">

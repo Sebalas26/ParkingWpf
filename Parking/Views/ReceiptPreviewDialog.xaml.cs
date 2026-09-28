@@ -25,12 +25,34 @@ public partial class ReceiptPreviewDialog : Window
                     await vm.PrintTicketCommand.ExecuteAsync(null);
                 }
             }
+            PrintVisualTicket();
             Close();
         }
         else if (e.Key == Key.Escape)
         {
             e.Handled = true;
             Close();
+        }
+    }
+
+    private void PrintButton_Click(object sender, RoutedEventArgs e)
+    {
+        PrintVisualTicket();
+    }
+
+    private void PrintVisualTicket()
+    {
+        try
+        {
+            var printDialog = new System.Windows.Controls.PrintDialog();
+            if (printDialog.ShowDialog() == true)
+            {
+                printDialog.PrintVisual(TicketPrintableContent, "ParkingFlow POS - Comprobante");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ReceiptPreviewDialog] Error al imprimir visual: {ex.Message}");
         }
     }
 
