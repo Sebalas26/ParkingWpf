@@ -260,6 +260,12 @@ public class DbConnectionManager : IDbConnectionManager
                     ""TechnicalKey"" TEXT NULL,
                     ""IsActive"" INTEGER NOT NULL DEFAULT 1,
                     ""IsElectronicResolution"" INTEGER NOT NULL DEFAULT 0,
+                    ""TicketPolicy"" TEXT NULL,
+                    ""PrintPolicyOnEntry"" INTEGER NOT NULL DEFAULT 0,
+                    ""PrintPolicyOnExit"" INTEGER NOT NULL DEFAULT 0,
+                    ""TicketAdditionalInfo"" TEXT NULL,
+                    ""PrintAdditionalInfoOnEntry"" INTEGER NOT NULL DEFAULT 0,
+                    ""PrintAdditionalInfoOnExit"" INTEGER NOT NULL DEFAULT 0,
                     ""CreatedAtUtc"" TEXT NOT NULL
                 );
 
@@ -291,6 +297,10 @@ public class DbConnectionManager : IDbConnectionManager
 
             // 1. Auto-Migración Dinámica de Esquema SQLite basada en el Modelo de EF Core
             await AutoMigrateDatabaseAsync(context);
+
+            // 1.1 Eliminación del índice UNIQUE en Stores(TaxId) para permitir múltiples sedes con el mismo NIT
+            try { await context.Database.ExecuteSqlRawAsync("DROP INDEX IF EXISTS \"IX_Stores_TaxId\";"); } catch { }
+            try { await context.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS \"IX_Stores_TaxId\" ON \"Stores\" (\"TaxId\");"); } catch { }
 
             // 2. Ajustes semánticos de compatibilidad histórica
             try { await context.Database.ExecuteSqlRawAsync("UPDATE \"VehicleRates\" SET \"GracePeriodMinutes\" = 0;"); } catch { }

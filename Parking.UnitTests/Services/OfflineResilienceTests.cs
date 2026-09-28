@@ -663,6 +663,42 @@ public class OfflineResilienceTests : IDisposable
         grace.Should().Be(0);
     }
 
+    [Fact]
+    public void LoginViewModel_WhenConnectionStateChangedFires_UpdatesIsOnlineAndNetworkStatusText()
+    {
+        // Arrange
+        _mockApiClient.Setup(a => a.PingAsync(It.IsAny<int>())).ReturnsAsync(false);
+        var mockAuthService = new Mock<IAuthService>();
+        var mockPermissionService = new Mock<IPermissionService>();
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        var loginVm = new Parking.ViewModels.LoginViewModel(
+            mockAuthService.Object,
+            _mockSessionService.Object,
+            _mockApiClient.Object,
+            syncEngine,
+            mockPermissionService.Object);
+
+        // Act - Simular que el cliente API detecta servidor online
+        _mockApiClient.Raise(a => a.ConnectionStateChanged += null, true);
+
+        // Assert
+        loginVm.IsOnline.Should().BeTrue();
+        loginVm.NetworkStatusText.Should().Be("API Central Online");
+
+        // Act - Simular que cae la conexión
+        _mockApiClient.Raise(a => a.ConnectionStateChanged += null, false);
+
+        // Assert
+        loginVm.IsOnline.Should().BeFalse();
+        loginVm.NetworkStatusText.Should().Be("Modo Offline (Sin Conexión)");
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

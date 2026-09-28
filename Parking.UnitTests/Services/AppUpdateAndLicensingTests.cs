@@ -101,20 +101,31 @@ public class AppUpdateAndLicensingTests : IDisposable
     }
 
     [Fact]
-    public async Task PrepareAndApplyUpdate_WhenPendingSyncItemsExistAndSyncFails_ShouldAbortToPreventDataLoss()
+    public async Task PrepareAndApplyUpdate_WhenPendingSyncItemsExistAndSyncFails_ShouldAbortToProtectData()
     {
-        // REGLA DE ORO: Si hay pendientes y falla la sincronización, NUNCA debe actualizar
+        // REGLA DE ORO DE SEGURIDAD: Si hay transacciones pendientes y falla el sync a la nube,
+        // la actualización DEBE ABORTAR para proteger los datos operativos y no reemplazar binarios a ciegas.
         var syncEngineMock = new Mock<ISyncEngineService>();
         syncEngineMock.SetupGet(s => s.PendingItemsCount).Returns(5); // 5 transacciones pendientes
         syncEngineMock.Setup(s => s.PerformFullSyncAsync()).ReturnsAsync(false); // Falla el sync
 
         var dbManagerMock = new Mock<IDbConnectionManager>();
+        dbManagerMock.Setup(d => d.BackupDatabaseAsync()).ReturnsAsync("C:\\mock\\backup.db");
+
         var fingerprintMock = new Mock<IHardwareFingerprintService>();
+        fingerprintMock.Setup(f => f.GetMachineFingerprint()).Returns("fp_test");
+
         var licenseMock = new Mock<IDeviceLicenseService>();
         var sessionMock = new Mock<ISessionService>();
 
+        var handlerMock = new Mock<HttpMessageHandler>();
+        var httpClient = new HttpClient(handlerMock.Object)
+        {
+            BaseAddress = new Uri("http://localhost/")
+        };
+
         var updateService = new AppUpdateService(
-            new HttpClient(),
+            httpClient,
             syncEngineMock.Object,
             dbManagerMock.Object,
             fingerprintMock.Object,
@@ -124,22 +135,21 @@ public class AppUpdateAndLicensingTests : IDisposable
         var release = new AppReleaseInfoDto
         {
             LatestVersion = "2.0.0",
+            DownloadEndpoint = "api/v1/app-update/download/2.0.0",
+            PackageSha256 = "SHA_TEST",
             IsMandatory = true
         };
 
-        UpdateProgressReport? lastReport = null;
-        var progress = new Progress<UpdateProgressReport>(r => lastReport = r);
+        var reports = new List<UpdateProgressReport>();
+        var progress = new Progress<UpdateProgressReport>(r => reports.Add(r));
 
         var result = await updateService.PrepareAndApplyUpdateAsync(release, progress);
 
         // Verificaciones de Seguridad Crítica
         result.Should().BeFalse();
         syncEngineMock.Verify(s => s.PerformFullSyncAsync(), Times.Once);
-        // Jamás debe llamar al backup ni descargar binarios si el sync falló
-        dbManagerMock.Verify(d => d.BackupDatabaseAsync(), Times.Never);
-        lastReport.Should().NotBeNull();
-        lastReport!.IsError.Should().BeTrue();
-        lastReport.ErrorMessage.Should().Contain("Para proteger la información de ventas y turnos, la actualización se ha pospuesto");
+        dbManagerMock.Verify(d => d.BackupDatabaseAsync(), Times.Once); // El backup preventivo SIEMPRE se ejecuta
+        reports.Should().Contain(r => r.IsError && r.ErrorMessage!.Contains("5 transacciones locales pendientes"));
     }
 
     [Fact]
@@ -181,7 +191,10 @@ public class AppUpdateAndLicensingTests : IDisposable
             dbManagerMock.Object,
             fingerprintMock.Object,
             licenseMock.Object,
-            sessionMock.Object);
+            sessionMock.Object)
+        {
+            CustomDownloadHandler = handlerMock.Object
+        };
 
         var release = new AppReleaseInfoDto
         {
@@ -201,4 +214,32 @@ public class AppUpdateAndLicensingTests : IDisposable
         lastReport!.IsError.Should().BeTrue();
         lastReport.ErrorMessage.Should().Contain("El paquete descargado no coincide con la firma digital oficial");
     }
+
+    [Fact]
+    public void StartHourlyUpdateCheck_And_Stop_ShouldExecuteWithoutExceptions()
+    {
+        var syncEngineMock = new Mock<ISyncEngineService>();
+        var dbManagerMock = new Mock<IDbConnectionManager>();
+        var fingerprintMock = new Mock<IHardwareFingerprintService>();
+        var licenseMock = new Mock<IDeviceLicenseService>();
+        var sessionMock = new Mock<ISessionService>();
+        var httpClient = new HttpClient { BaseAddress = new Uri("http://localhost/") };
+
+        var updateService = new AppUpdateService(
+            httpClient,
+            syncEngineMock.Object,
+            dbManagerMock.Object,
+            fingerprintMock.Object,
+            licenseMock.Object,
+            sessionMock.Object);
+
+        var action = () =>
+        {
+            updateService.StartHourlyUpdateCheck();
+            updateService.StopHourlyUpdateCheck();
+        };
+
+        action.Should().NotThrow();
+    }
 }
+

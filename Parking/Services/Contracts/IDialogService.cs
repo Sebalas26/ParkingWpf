@@ -1,12 +1,14 @@
 using System.Threading.Tasks;
 using Parking.Core.Enums;
 using Parking.Entities;
+using Parking.Models.ApiModels;
 
 namespace Parking.Services.Contracts;
 
 public interface IDialogService
 {
     Task ShowReceiptPreviewAsync(ParkingTicket ticket, BillingResolution? resolution = null);
+    Task ShowShiftClosurePreviewAsync(WorkShift shift, ShiftSummaryModel? summary = null);
     Task ShowAlertAsync(string title, string message, DialogNotificationType type = DialogNotificationType.Information);
     Task<bool> ShowConfirmationAsync(string title, string message, DialogNotificationType type = DialogNotificationType.Question, string confirmText = "Confirmar", string cancelText = "Cancelar");
     Task<bool> ShowSyncProgressModalAsync(ISyncEngineService syncEngine);
@@ -15,4 +17,3 @@ public interface IDialogService
     Task<Customer?> ShowCustomerSelectionDialogAsync(string? defaultPlate = null);
     Task<bool> ShowAppUpdateDialogAsync(Models.AppReleaseInfoDto release);
 }
-

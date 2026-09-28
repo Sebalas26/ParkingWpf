@@ -41,6 +41,7 @@ public class WorkShift
     public TimeSpan Duration => (EndTimeUtc ?? DateTime.UtcNow) - StartTimeUtc;
     public string FormattedDuration => $"{(int)Duration.TotalHours}h {Duration.Minutes}m";
     public decimal TotalRevenue => TotalCashCollected + TotalCardCollected + TotalTransferCollected;
+    public bool IsClosed => Status == 1;
 }
 
 public class ShiftStatusJsonConverter : JsonConverter<int>

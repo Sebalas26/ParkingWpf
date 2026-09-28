@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -14,11 +15,40 @@ namespace Parking.ViewModels;
 
 public partial class LoginViewModel : ViewModelBase
 {
+    public string AppVersionDisplay
+    {
+        get
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            var infoVer = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (!string.IsNullOrWhiteSpace(infoVer))
+            {
+                var plusIdx = infoVer.IndexOf('+');
+                return "v" + (plusIdx > 0 ? infoVer[..plusIdx] : infoVer);
+            }
+            var ver = asm.GetName().Version;
+            return ver != null ? $"v{ver.Major}.{ver.Minor}.{ver.Build}" : "v1.0.0";
+        }
+    }
     private readonly IAuthService _authService;
     private readonly ISessionService _sessionService;
     private readonly IApiClientService _apiClient;
     private readonly ISyncEngineService _syncEngine;
     private readonly IPermissionService _permissionService;
+    private readonly IAppUpdateService? _updateService;
+    private readonly IDialogService? _dialogService;
+
+    [ObservableProperty]
+    private bool _showUpdateSuccessMessage;
+
+    [ObservableProperty]
+    private string _updateSuccessMessage = "Listo, sistema actualizado";
+
+    public bool IsPostUpdateLaunch
+    {
+        get => ShowUpdateSuccessMessage;
+        set => ShowUpdateSuccessMessage = value;
+    }
 
     [ObservableProperty]
     private string _username = string.Empty;
@@ -54,13 +84,35 @@ public partial class LoginViewModel : ViewModelBase
         ISessionService sessionService,
         IApiClientService apiClient,
         ISyncEngineService syncEngine,
-        IPermissionService permissionService)
+        IPermissionService permissionService,
+        IAppUpdateService? updateService = null,
+        IDialogService? dialogService = null)
     {
         _authService = authService;
         _sessionService = sessionService;
         _apiClient = apiClient;
         _syncEngine = syncEngine;
         _permissionService = permissionService;
+        _updateService = updateService;
+        _dialogService = dialogService;
+
+        _apiClient.ConnectionStateChanged += isOnline =>
+        {
+            var app = Application.Current;
+            if (app?.Dispatcher != null && !app.Dispatcher.CheckAccess())
+            {
+                app.Dispatcher.InvokeAsync(() =>
+                {
+                    IsOnline = isOnline;
+                    NetworkStatusText = isOnline ? "API Central Online" : "Modo Offline (Sin Conexión)";
+                });
+            }
+            else
+            {
+                IsOnline = isOnline;
+                NetworkStatusText = isOnline ? "API Central Online" : "Modo Offline (Sin Conexión)";
+            }
+        };
 
         _ = CheckInitialConnectionAsync();
     }
@@ -69,7 +121,8 @@ public partial class LoginViewModel : ViewModelBase
     {
         try
         {
-            var isAvailable = await _apiClient.PingAsync();
+            NetworkStatusText = "Comprobando conexión...";
+            var isAvailable = await _apiClient.PingAsync(8);
             IsOnline = isAvailable;
             NetworkStatusText = isAvailable ? "API Central Online" : "Modo Offline (Sin Conexión)";
         }
@@ -176,38 +229,63 @@ public partial class LoginViewModel : ViewModelBase
 
             _sessionService.SetSession(authResult.User, branches, selectedBranch);
 
-            // Ejecutar Sincronización Visual con Barra de Progreso
-            IsSyncing = true;
-            BusyMessage = "Sincronizando con Servidor Central...";
-            SyncProgressPercentage = 10;
-            SyncStepDescription = "Iniciando transferencia de datos...";
+            // Bifurcación Fast-Login: verificar si SQLite local ya tiene catálogo descargado para esta sede
+            var hasLocalData = await _syncEngine.HasLocalBranchDataAsync(selectedBranch.Id);
 
-            var progress = new Progress<SyncProgressReport>(report =>
+            if (!hasLocalData)
             {
-                SyncProgressPercentage = report.Percentage;
-                SyncStepDescription = !string.IsNullOrWhiteSpace(report.DetailMessage)
-                    ? report.DetailMessage
-                    : report.CurrentStepTitle;
-            });
+                // Descarga inicial interactiva (PC nuevo o base de datos vacía)
+                IsSyncing = true;
+                BusyMessage = "Descargando catálogo inicial de la sede...";
+                SyncProgressPercentage = 10;
+                SyncStepDescription = "Iniciando transferencia de datos...";
 
-            try
-            {
-                var syncResult = await _syncEngine.PerformFullSyncWithProgressAsync(progress);
-                if (syncResult.Success)
+                var progress = new Progress<SyncProgressReport>(report =>
                 {
-                    IsOnline = true;
-                    NetworkStatusText = "API Central Online";
+                    SyncProgressPercentage = report.Percentage;
+                    SyncStepDescription = !string.IsNullOrWhiteSpace(report.DetailMessage)
+                        ? report.DetailMessage
+                        : report.CurrentStepTitle;
+                });
+
+                try
+                {
+                    var syncResult = await _syncEngine.PerformFullSyncWithProgressAsync(progress);
+                    if (syncResult.Success)
+                    {
+                        IsOnline = true;
+                        NetworkStatusText = "API Central Online";
+                    }
+                    else
+                    {
+                        IsOnline = false;
+                        NetworkStatusText = "Modo Offline (Sin Conexión)";
+                    }
                 }
-                else
+                catch
                 {
                     IsOnline = false;
                     NetworkStatusText = "Modo Offline (Sin Conexión)";
                 }
             }
-            catch
+            else
             {
-                IsOnline = false;
-                NetworkStatusText = "Modo Offline (Sin Conexión)";
+                // Fast-Login (< 1 segundo): La estación ya cuenta con tarifas y usuarios. Acceso instantáneo
+                IsOnline = _syncEngine.IsOnline;
+                NetworkStatusText = _syncEngine.IsOnline ? "API Central Online" : "Modo Offline (Sin Conexión)";
+
+                // Sincronización en segundo plano sin bloquear la terminal operativa
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _syncEngine.PerformFullSyncAsync();
+                    }
+                    catch (Exception syncEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[FastLogin Background Sync] {syncEx.Message}");
+                    }
+                });
             }
 
             // Validar Horario de Atención de la Sede para el día de hoy
@@ -230,6 +308,48 @@ public partial class LoginViewModel : ViewModelBase
                     HasError = true;
                     ErrorMessage = $"La sede '{activeBranch.Name}' se encuentra cerrada el día de hoy ({dayName}) según el horario de atención configurado.";
                     return;
+                }
+            }
+
+            // 4. REGLA DE ORO DE ACTUALIZACIÓN: Comprobar si existe una actualización obligatoria disponible
+            if (_updateService != null && _dialogService != null)
+            {
+                try
+                {
+                    BusyMessage = "Comprobando actualizaciones de sistema...";
+                    var release = await _updateService.CheckForUpdateAsync();
+                    if (release != null && release.HasUpdate)
+                    {
+                        // Si aún quedan transacciones pendientes tras el sync, forzar subida total
+                        if (_syncEngine.PendingItemsCount > 0)
+                        {
+                            BusyMessage = $"Subiendo {_syncEngine.PendingItemsCount} transacciones a la nube antes de actualizar...";
+                            await _syncEngine.PerformFullSyncAsync();
+                        }
+
+                        if (_syncEngine.PendingItemsCount > 0)
+                        {
+                            // REGLA DE ORO: Bloquear actualización si no se garantiza el 100% de datos en la nube
+                            HasError = true;
+                            ErrorMessage = $"Existe una actualización obligatoria ({release.LatestVersion}), pero hay {_syncEngine.PendingItemsCount} transacciones locales que no se pudieron subir a la nube. Por seguridad de sus datos, verifique la conexión antes de actualizar.";
+                            _sessionService.Clear();
+                            _apiClient.ClearAuthToken();
+                            return;
+                        }
+
+                        // Datos 100% en la nube: Proceder con la actualización obligatoria inmediata
+                        IsBusy = false;
+                        IsSyncing = false;
+                        _sessionService.Clear();
+                        _apiClient.ClearAuthToken();
+
+                        await _dialogService.ShowAppUpdateDialogAsync(release);
+                        return; // No navegar a MainShellWindow, la app se cerrará y relanzará con el micro-updater
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LOGIN UPDATE CHECK WARNING] {ex.Message}");
                 }
             }
 

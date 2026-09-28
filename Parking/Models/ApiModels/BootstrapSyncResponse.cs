@@ -529,6 +529,24 @@ public class ApiBillingResolutionSyncDto
 
     [JsonPropertyName("isElectronicResolution")]
     public bool IsElectronicResolution { get; set; } = false;
+
+    [JsonPropertyName("ticketPolicy")]
+    public string? TicketPolicy { get; set; }
+
+    [JsonPropertyName("printPolicyOnEntry")]
+    public bool PrintPolicyOnEntry { get; set; }
+
+    [JsonPropertyName("printPolicyOnExit")]
+    public bool PrintPolicyOnExit { get; set; }
+
+    [JsonPropertyName("ticketAdditionalInfo")]
+    public string? TicketAdditionalInfo { get; set; }
+
+    [JsonPropertyName("printAdditionalInfoOnEntry")]
+    public bool PrintAdditionalInfoOnEntry { get; set; }
+
+    [JsonPropertyName("printAdditionalInfoOnExit")]
+    public bool PrintAdditionalInfoOnExit { get; set; }
 }
 
 public class ApiWorkShiftSyncDto

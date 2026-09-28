@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -104,6 +105,15 @@ public partial class CheckInViewModel : ViewModelBase
 
     [ObservableProperty]
     private IReadOnlyList<ParkingTicket> _recentEntries = new List<ParkingTicket>();
+
+    [ObservableProperty]
+    private string _recentEntriesSearchQuery = string.Empty;
+
+    partial void OnRecentEntriesSearchQueryChanged(string value)
+    {
+        RecentEntriesCurrentPage = 1;
+        UpdateRecentEntriesPage();
+    }
 
     partial void OnNotesChanged(string? value)
     {
@@ -313,9 +323,24 @@ public partial class CheckInViewModel : ViewModelBase
         catch { }
     }
 
+    public List<ParkingTicket> GetFilteredRecentEntries()
+    {
+        if (string.IsNullOrWhiteSpace(RecentEntriesSearchQuery))
+        {
+            return _allRecentEntries;
+        }
+
+        var q = RecentEntriesSearchQuery.Trim().ToUpperInvariant();
+        return _allRecentEntries
+            .Where(t => (!string.IsNullOrEmpty(t.PlateNumber) && t.PlateNumber.ToUpperInvariant().Contains(q))
+                     || (!string.IsNullOrEmpty(t.TicketNumber) && t.TicketNumber.ToUpperInvariant().Contains(q)))
+            .ToList();
+    }
+
     public void UpdateRecentEntriesPage()
     {
-        RecentEntriesTotalPages = Math.Max(1, (int)Math.Ceiling(_allRecentEntries.Count / (double)RecentEntriesPageSize));
+        var filtered = GetFilteredRecentEntries();
+        RecentEntriesTotalPages = Math.Max(1, (int)Math.Ceiling(filtered.Count / (double)RecentEntriesPageSize));
         if (RecentEntriesCurrentPage > RecentEntriesTotalPages)
         {
             RecentEntriesCurrentPage = RecentEntriesTotalPages;
@@ -329,13 +354,65 @@ public partial class CheckInViewModel : ViewModelBase
         RecentEntriesPageIndicator = $"Pág. {RecentEntriesCurrentPage} de {RecentEntriesTotalPages}";
         CanShowPreviousRecentEntriesPage = RecentEntriesCurrentPage > 1;
         CanShowNextRecentEntriesPage = RecentEntriesCurrentPage < RecentEntriesTotalPages;
-        RecentEntries = _allRecentEntries
+        RecentEntries = filtered
             .Skip((RecentEntriesCurrentPage - 1) * RecentEntriesPageSize)
             .Take(RecentEntriesPageSize)
             .ToList();
 
         PreviousRecentEntriesPageCommand.NotifyCanExecuteChanged();
         NextRecentEntriesPageCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand]
+    private void ClearRecentEntriesSearch()
+    {
+        RecentEntriesSearchQuery = string.Empty;
+    }
+
+    [RelayCommand]
+    private async Task ProcessRecentEntriesSearchOrCheckOutAsync()
+    {
+        var query = RecentEntriesSearchQuery?.Trim();
+        if (string.IsNullOrWhiteSpace(query)) return;
+
+        // 1. Coincidencia exacta en memoria (por placa o tiquete)
+        var match = _allRecentEntries.FirstOrDefault(t =>
+            string.Equals(t.PlateNumber?.Trim(), query, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(t.TicketNumber?.Trim(), query, StringComparison.OrdinalIgnoreCase));
+
+        // 2. Si no hay coincidencia exacta pero el filtro arrojó exactamente 1 resultado
+        if (match == null)
+        {
+            var filtered = GetFilteredRecentEntries();
+            if (filtered.Count == 1)
+            {
+                match = filtered[0];
+            }
+        }
+
+        // 3. Fallback de búsqueda activa en base de datos si no estaba cargado en memoria local
+        if (match == null)
+        {
+            try
+            {
+                match = await _ticketService.FindActiveTicketAsync(query);
+            }
+            catch { }
+        }
+
+        // 4. Si se encontró el vehículo activo:
+        if (match != null)
+        {
+            await CheckOutVehicleAsync(match);
+            RecentEntriesSearchQuery = string.Empty;
+        }
+        else
+        {
+            await _dialogService.ShowAlertAsync(
+                "Vehículo No Encontrado",
+                $"No se encontró ningún vehículo activo en patio con la placa o número de tiquete '{query}'.",
+                DialogNotificationType.Warning);
+        }
     }
 
     [RelayCommand(CanExecute = nameof(CanGoToPreviousRecentEntriesPage))]

@@ -1,7 +1,10 @@
-using System;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
@@ -21,6 +24,7 @@ public partial class App : Application
     private IServiceProvider _serviceProvider = null!;
     private IConfiguration _configuration = null!;
     private static readonly object _logLock = new();
+    private static Mutex? _singleInstanceMutex;
 
     public IServiceProvider Services => _serviceProvider;
 
@@ -38,6 +42,70 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        try
+        {
+            SetCurrentProcessExplicitAppUserModelID("ParkFlow.Desktop.Wpf");
+        }
+        catch { }
+
+        // 0. Instancia única a nivel de sistema operativo para prevenir múltiples procesos huérfanos
+        _singleInstanceMutex = new Mutex(true, "ParkingFlow_WPF_SingleInstance_Mutex", out bool createdNew);
+        if (!createdNew)
+        {
+            var currentPid = Environment.ProcessId;
+            var existingProcesses = Process.GetProcessesByName("Parking")
+                .Where(p => p.Id != currentPid)
+                .ToList();
+
+            bool windowActivated = false;
+            foreach (var proc in existingProcesses)
+            {
+                try
+                {
+                    if (proc.MainWindowHandle != IntPtr.Zero)
+                    {
+                        if (IsIconic(proc.MainWindowHandle))
+                        {
+                            ShowWindow(proc.MainWindowHandle, SW_RESTORE);
+                        }
+                        else
+                        {
+                            ShowWindow(proc.MainWindowHandle, SW_SHOW);
+                        }
+                        SetForegroundWindow(proc.MainWindowHandle);
+                        windowActivated = true;
+                        break;
+                    }
+                }
+                catch { }
+            }
+
+            if (windowActivated)
+            {
+                Shutdown(0);
+                return;
+            }
+
+            // Si el proceso previo no tiene ventana (proceso zombie en segundo plano),
+            // lo terminamos automáticamente para recuperar la terminal de forma transparente y desatendida.
+            foreach (var proc in existingProcesses)
+            {
+                try
+                {
+                    proc.Kill();
+                    proc.WaitForExit(2000);
+                }
+                catch { }
+            }
+
+            try
+            {
+                _singleInstanceMutex?.Dispose();
+                _singleInstanceMutex = new Mutex(true, "ParkingFlow_WPF_SingleInstance_Mutex", out createdNew);
+            }
+            catch { }
+        }
+
         base.OnStartup(e);
 
         // Prevenir que WPF apague la aplicación si se cierra un diálogo modal previo a la ventana principal
@@ -77,21 +145,38 @@ public partial class App : Application
                 }
             }
 
-            // 2. Comprobación de Actualizaciones Remotas en Segundo Plano
+            // 2. Comprobación y Sondeo Periódico de Actualizaciones Remotas (1 Hora y Notificaciones)
+            _isPostUpdateLaunch = e.Args != null && e.Args.Any(a => a.Equals("--updated", StringComparison.OrdinalIgnoreCase));
+
+            var updateService = _serviceProvider.GetRequiredService<IAppUpdateService>();
+            updateService.StartHourlyUpdateCheck();
+            updateService.UpdateDetected += release =>
+            {
+                Dispatcher.InvokeAsync(async () =>
+                {
+                    var dialogService = _serviceProvider.GetRequiredService<IDialogService>();
+                    await dialogService.ShowAppUpdateDialogAsync(release);
+                });
+            };
+
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await Task.Delay(2000); // Esperar que la UI inicial esté cargada
-                    var updateService = _serviceProvider.GetRequiredService<IAppUpdateService>();
+                    await Task.Delay(1500); // Esperar que la UI inicial esté cargada
                     var release = await updateService.CheckForUpdateAsync();
                     if (release != null && release.HasUpdate)
                     {
-                        await Dispatcher.InvokeAsync(() =>
+                        var syncEngine = _serviceProvider.GetRequiredService<ISyncEngineService>();
+                        // Si la cola local está limpia (0 pendientes), se puede actualizar inmediatamente en el login
+                        if (syncEngine.PendingItemsCount == 0)
                         {
-                            var dialogService = _serviceProvider.GetRequiredService<IDialogService>();
-                            _ = dialogService.ShowAppUpdateDialogAsync(release);
-                        });
+                            await Dispatcher.InvokeAsync(() =>
+                            {
+                                var dialogService = _serviceProvider.GetRequiredService<IDialogService>();
+                                _ = dialogService.ShowAppUpdateDialogAsync(release);
+                            });
+                        }
                     }
                 }
                 catch { }
@@ -130,10 +215,12 @@ public partial class App : Application
                 handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
             }
 
+            var timeoutSeconds = int.TryParse(_configuration["ApiSettings:TimeoutSeconds"], out var ts) && ts > 0 ? ts : 300;
+
             return new HttpClient(handler)
             {
                 BaseAddress = new Uri(apiBaseUrl.TrimEnd('/') + "/"),
-                Timeout = TimeSpan.FromSeconds(30)
+                Timeout = TimeSpan.FromSeconds(timeoutSeconds)
             };
         });
 
@@ -200,37 +287,121 @@ public partial class App : Application
         services.AddTransient<AppUpdateDialog>();
     }
 
+    protected override void OnExit(ExitEventArgs e)
+    {
+        try
+        {
+            if (_singleInstanceMutex != null)
+            {
+                _singleInstanceMutex.ReleaseMutex();
+                _singleInstanceMutex.Dispose();
+                _singleInstanceMutex = null;
+            }
+        }
+        catch { }
+        base.OnExit(e);
+        Environment.Exit(e.ApplicationExitCode);
+    }
+
+    private bool _isTransitioningToLogin = false;
+    private bool _isPostUpdateLaunch = false;
+
     private void ShowLoginWindow()
     {
+        // Cerrar cualquier ventana residual previa para garantizar una única ventana visible
+        foreach (Window w in Current.Windows)
+        {
+            if (w is not LoginWindow)
+            {
+                try { w.Close(); } catch { }
+            }
+        }
+
         var loginWindow = _serviceProvider.GetRequiredService<LoginWindow>();
         var loginViewModel = _serviceProvider.GetRequiredService<LoginViewModel>();
 
+        if (_isPostUpdateLaunch)
+        {
+            loginViewModel.IsPostUpdateLaunch = true;
+            _isPostUpdateLaunch = false; // Consumir bandera para no repetir en futuros relevos
+        }
+
+        bool isNavigatingToShell = false;
         loginViewModel.LoginSuccessful += () =>
         {
+            isNavigatingToShell = true;
             ShowMainShellWindow();
-            loginWindow.Close();
+            try { loginWindow.Close(); } catch { }
+        };
+
+        loginWindow.Closed += (s, e) =>
+        {
+            // Si el usuario cerró la ventana de login sin haber iniciado sesión y no hay ventanas visibles, salir
+            if (!isNavigatingToShell)
+            {
+                bool hasOtherWindows = false;
+                foreach (Window w in Current.Windows)
+                {
+                    if (w != loginWindow && w.IsVisible)
+                    {
+                        hasOtherWindows = true;
+                        break;
+                    }
+                }
+                if (!hasOtherWindows)
+                {
+                    Shutdown(0);
+                }
+            }
         };
 
         loginWindow.DataContext = loginViewModel;
         MainWindow = loginWindow;
-        ShutdownMode = ShutdownMode.OnMainWindowClose;
         loginWindow.Show();
+    }
+
+    private void OnShellLogoutRequested()
+    {
+        _isTransitioningToLogin = true;
+        try
+        {
+            ShowLoginWindow();
+        }
+        finally
+        {
+            _isTransitioningToLogin = false;
+        }
     }
 
     private async void ShowMainShellWindow()
     {
+        // Cerrar ventanas de login existentes antes de mostrar la terminal
+        foreach (Window w in Current.Windows)
+        {
+            if (w is LoginWindow)
+            {
+                try { w.Close(); } catch { }
+            }
+        }
+
         var shellWindow = _serviceProvider.GetRequiredService<MainShellWindow>();
         var shellViewModel = _serviceProvider.GetRequiredService<MainShellViewModel>();
 
-        shellViewModel.LogoutRequested += () =>
+        // Desuscribir previamente para evitar acumulación de delegados en MainShellViewModel (Singleton)
+        shellViewModel.LogoutRequested -= OnShellLogoutRequested;
+        shellViewModel.LogoutRequested += OnShellLogoutRequested;
+
+        shellWindow.Closed += (s, e) =>
         {
-            ShowLoginWindow();
-            shellWindow.Close();
+            // Si la terminal se cerró por el usuario (Alt+F4 o botón salir) y no por un logout hacia login, salir
+            if (!_isTransitioningToLogin)
+            {
+                Shutdown(0);
+            }
         };
 
         shellWindow.DataContext = shellViewModel;
         MainWindow = shellWindow;
-        ShutdownMode = ShutdownMode.OnMainWindowClose;
         shellWindow.Show();
 
         await shellViewModel.InitializeAsync();
@@ -318,6 +489,25 @@ public partial class App : Application
             // Ignorar errores al escribir logs
         }
     }
+
+    #endregion
+
+    #region Win32 Native Interop
+
+    [DllImport("shell32.dll", SetLastError = true)]
+    private static extern void SetCurrentProcessExplicitAppUserModelID([MarshalAs(UnmanagedType.LPWStr)] string appId);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsIconic(IntPtr hWnd);
+
+    private const int SW_RESTORE = 9;
+    private const int SW_SHOW = 5;
 
     #endregion
 }

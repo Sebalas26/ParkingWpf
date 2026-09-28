@@ -88,11 +88,21 @@ public class ParkingApiClient : IApiClientService
         _httpClient.DefaultRequestHeaders.Authorization = null;
     }
 
-    public async Task<bool> PingAsync()
+    public async Task<bool> PingAsync(int timeoutSeconds = 8)
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3.5));
+        // 1. Verificación rápida de interfaz física de red en Windows
+        if (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+        {
+            ReportConnectionState(false);
+            return false;
+        }
+
+        var effectiveTimeout = timeoutSeconds > 0 ? timeoutSeconds : 8;
+
+        // Primer intento con timeout calibrado
         try
         {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(effectiveTimeout));
             var response = await _httpClient.GetAsync($"{BaseUrl}/health", cts.Token);
             if (!response.IsSuccessStatusCode)
             {
@@ -106,6 +116,27 @@ public class ParkingApiClient : IApiClientService
             }
         }
         catch { }
+
+        // Reintento defensivo rápido si la conexión a internet está activa en Windows (absorbe latencia DNS / TLS en frío)
+        if (!BaseUrl.Contains("localhost") && System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+        {
+            try
+            {
+                using var ctsRetry = new CancellationTokenSource(TimeSpan.FromSeconds(effectiveTimeout));
+                var response = await _httpClient.GetAsync($"{BaseUrl}/health", ctsRetry.Token);
+                if (!response.IsSuccessStatusCode)
+                {
+                    response = await _httpClient.GetAsync($"{BaseUrl}/api/health", ctsRetry.Token);
+                }
+
+                if (response.IsSuccessStatusCode && IsGenuineApiResponse(response))
+                {
+                    ReportConnectionState(true);
+                    return true;
+                }
+            }
+            catch { }
+        }
 
         // Solo intentar fallback a localhost si la URL base configurada es de desarrollo local
         if (BaseUrl.Contains("localhost"))
@@ -136,7 +167,7 @@ public class ParkingApiClient : IApiClientService
 
     public async Task<BootstrapSyncResponse?> GetBootstrapAsync(int? branchId = null)
     {
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90));
         try
         {
             var url = branchId.HasValue 
@@ -333,28 +364,32 @@ public class ParkingApiClient : IApiClientService
         }
         catch (HttpRequestException)
         {
-            var fallbackUrl = BaseUrl.Contains("7023") ? "http://localhost:5135" : "https://localhost:7023";
-            try
+            // Solo intentar fallback si la URL configurada apunta a desarrollo local
+            if (BaseUrl.Contains("localhost"))
             {
-                using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(12));
-                var response = await _httpClient.PostAsJsonAsync($"{fallbackUrl}/api/auth/login", request, ctsFallback.Token);
-                if (response.IsSuccessStatusCode)
+                var fallbackUrl = BaseUrl.Contains("7023") ? "http://localhost:5135" : "https://localhost:7023";
+                try
                 {
-                    BaseUrl = fallbackUrl;
-                    var result = await response.Content.ReadFromJsonAsync<LoginApiResponse>(JsonOptions, ctsFallback.Token);
-                    if (result != null && !string.IsNullOrEmpty(result.Token))
+                    using var ctsFallback = new CancellationTokenSource(TimeSpan.FromSeconds(12));
+                    var response = await _httpClient.PostAsJsonAsync($"{fallbackUrl}/api/auth/login", request, ctsFallback.Token);
+                    if (response.IsSuccessStatusCode)
                     {
-                        SetAuthToken(result.Token);
+                        BaseUrl = fallbackUrl;
+                        var result = await response.Content.ReadFromJsonAsync<LoginApiResponse>(JsonOptions, ctsFallback.Token);
+                        if (result != null && !string.IsNullOrEmpty(result.Token))
+                        {
+                            SetAuthToken(result.Token);
+                        }
+                        return result;
                     }
-                    return result;
+                    else
+                    {
+                        var errorResult = await response.Content.ReadFromJsonAsync<LoginApiResponse>(JsonOptions, ctsFallback.Token);
+                        return errorResult ?? new LoginApiResponse { Success = false, ErrorMessage = "Credenciales incorrectas o usuario inactivo." };
+                    }
                 }
-                else
-                {
-                    var errorResult = await response.Content.ReadFromJsonAsync<LoginApiResponse>(JsonOptions, ctsFallback.Token);
-                    return errorResult ?? new LoginApiResponse { Success = false, ErrorMessage = "Credenciales incorrectas o usuario inactivo." };
-                }
+                catch { }
             }
-            catch { }
         }
         catch { }
 

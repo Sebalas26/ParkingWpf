@@ -40,10 +40,13 @@ public partial class AppUpdateViewModel : ObservableObject
     public void Initialize(AppReleaseInfoDto release)
     {
         ReleaseInfo = release;
-        CanCancel = !release.IsMandatory;
-        StatusMessage = release.IsMandatory
-            ? "Esta actualización es obligatoria para garantizar la estabilidad y compatibilidad con el servidor central."
-            : "Una nueva versión se encuentra disponible con mejoras y optimizaciones.";
+        if (string.IsNullOrWhiteSpace(ReleaseInfo.ReleaseNotes))
+        {
+            ReleaseInfo.ReleaseNotes = "Esta versión incluye mejoras generales de rendimiento, seguridad en base de datos local y optimizaciones de sincronización.";
+        }
+        // Regla de Oro: En ParkFlow las actualizaciones son 100% obligatorias para garantizar la integridad
+        CanCancel = false;
+        StatusMessage = "Esta actualización es de aplicación obligatoria para garantizar la estabilidad, tarifas y compatibilidad con el servidor central.";
     }
 
     [RelayCommand]

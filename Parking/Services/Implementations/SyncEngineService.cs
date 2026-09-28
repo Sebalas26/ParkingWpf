@@ -28,6 +28,7 @@ public class SyncEngineService : ISyncEngineService
     private readonly object _offlineProbeLock = new();
     private readonly SemaphoreSlim _pendingQueueLock = new(1, 1);
     private int _offlineAttemptCount = 0;
+    private static bool _hasRunInitialMigration;
 
     public event EventHandler<string>? SyncStatusChanged;
     public event Action<int>? TotalCapacityChanged;
@@ -118,7 +119,13 @@ public class SyncEngineService : ISyncEngineService
         {
             signalRClient.ConnectionStatusChanged += isConnected =>
             {
-                SetOnlineStatus(isConnected);
+                // SignalR es un canal de notificaciones push en tiempo real, NO la autoridad de red de la terminal.
+                // Si conecta exitosamente y el sistema estaba en modo offline, conmuta inmediatamente a online:
+                if (isConnected && !_isOnline)
+                {
+                    SetOnlineStatus(true);
+                }
+                // Si SignalR se desconecta o renueva socket WebSocket, NUNCA degradar la terminal a offline si la API REST está funcionando.
             };
         }
 
@@ -224,13 +231,13 @@ public class SyncEngineService : ISyncEngineService
             });
             await Task.Delay(150, ct);
 
-            // 3. Descargar Novedades Centrales (Bootstrap 100% Tablas) (50%)
+            // 3. Descargar Novedades Centrales (Bootstrap 100% Tablas) (45% -> 55%)
             progress.Report(new SyncProgressReport
             {
-                Percentage = 50,
+                Percentage = 45,
                 StepIndex = 3,
-                CurrentStepTitle = "Descargando catálogos y registros desde el servidor...",
-                DetailMessage = "Solicitando datos de todas las entidades desde el API Central..."
+                CurrentStepTitle = "Descargando catálogos del servidor central...",
+                DetailMessage = "Consultando tarifas, usuarios y parámetros operativos..."
             });
 
             var currentBranchId = _sessionService.CurrentBranch?.Id;
@@ -249,6 +256,14 @@ public class SyncEngineService : ISyncEngineService
                 result.Message = "El servidor no respondió con los datos de sincronización.";
                 return result;
             }
+
+            progress.Report(new SyncProgressReport
+            {
+                Percentage = 55,
+                StepIndex = 3,
+                CurrentStepTitle = "Datos centrales recibidos",
+                DetailMessage = "Actualizando catálogos y parámetros corporativos en SQLite..."
+            });
 
             if (bootstrap.TotalCapacity > 0)
             {
@@ -402,15 +417,16 @@ public class SyncEngineService : ISyncEngineService
 
             using var db = _dbManager.CreateDbContext();
 
-            if (_dbManager is DbConnectionManager concreteManager)
+            if (_dbManager is DbConnectionManager concreteManager && !_hasRunInitialMigration)
             {
                 await concreteManager.AutoMigrateDatabaseAsync(db);
+                _hasRunInitialMigration = true;
             }
 
-            // 4. Paso 3: Sincronizar Roles y Usuarios (60%)
+            // 4. Paso 3: Sincronizar Roles y Usuarios (65%)
             progress.Report(new SyncProgressReport
             {
-                Percentage = 60,
+                Percentage = 65,
                 StepIndex = 3,
                 CurrentStepTitle = "Sincronizando Usuarios, Roles y Permisos...",
                 DetailMessage = $"Procesando {bootstrap.Users?.Count ?? 0} usuarios de MySQL..."
@@ -547,9 +563,17 @@ public class SyncEngineService : ISyncEngineService
                     && (string.IsNullOrEmpty(currentUsername) || u.Username.ToLowerInvariant() != currentUsername)
                     && string.IsNullOrWhiteSpace(u.PasswordHash)
                 ).ToList();
-                if (usersToDelete.Count > 0)
+                foreach (var user in usersToDelete)
                 {
-                    db.Users.RemoveRange(usersToDelete);
+                    bool isReferenced = await db.UserSessions.AnyAsync(s => s.UserId == user.UserId, ct);
+                    if (isReferenced)
+                    {
+                        user.IsActive = false;
+                    }
+                    else
+                    {
+                        db.Users.Remove(user);
+                    }
                 }
 
                 foreach (var apiUser in bootstrap.Users)
@@ -574,6 +598,10 @@ public class SyncEngineService : ISyncEngineService
                     var existing = localUsers.FirstOrDefault(u => u.Username.ToLower() == apiUser.Username.ToLower());
                     if (existing != null)
                     {
+                        if (apiUser.Id > 0)
+                        {
+                            existing.ServerUserId = apiUser.Id;
+                        }
                         existing.FullName = fullName;
                         existing.Email = apiUser.Email;
                         if (apiUser.CompanyId.HasValue && apiUser.CompanyId.Value > 0)
@@ -590,6 +618,7 @@ public class SyncEngineService : ISyncEngineService
                         db.Users.Add(new User
                         {
                             UserId = Guid.NewGuid(),
+                            ServerUserId = apiUser.Id > 0 ? apiUser.Id : null,
                             Username = apiUser.Username,
                             FullName = fullName,
                             Email = apiUser.Email,
@@ -1056,9 +1085,17 @@ public class SyncEngineService : ISyncEngineService
                 var incomingAgIds = bootstrap.Agreements.Select(a => a.AgreementId).ToHashSet();
                 var localAgreements = await db.CommercialAgreements.ToListAsync(ct);
                 var agsToDelete = localAgreements.Where(a => !incomingAgIds.Contains(a.AgreementId)).ToList();
-                if (agsToDelete.Count > 0)
+                foreach (var ag in agsToDelete)
                 {
-                    db.CommercialAgreements.RemoveRange(agsToDelete);
+                    bool isReferenced = await db.TicketDiscounts.AnyAsync(td => td.AgreementId == ag.AgreementId, ct);
+                    if (isReferenced)
+                    {
+                        ag.IsActive = false;
+                    }
+                    else
+                    {
+                        db.CommercialAgreements.Remove(ag);
+                    }
                 }
             }
 
@@ -1067,9 +1104,17 @@ public class SyncEngineService : ISyncEngineService
                 var incomingStoreIds = bootstrap.Stores.Select(s => s.StoreId).ToHashSet();
                 var localStores = await db.Stores.ToListAsync(ct);
                 var storesToDelete = localStores.Where(s => !incomingStoreIds.Contains(s.StoreId)).ToList();
-                if (storesToDelete.Count > 0)
+                foreach (var store in storesToDelete)
                 {
-                    db.Stores.RemoveRange(storesToDelete);
+                    bool isReferenced = await db.TicketDiscounts.AnyAsync(td => td.StoreId == store.StoreId, ct);
+                    if (isReferenced)
+                    {
+                        store.IsActive = false;
+                    }
+                    else
+                    {
+                        db.Stores.Remove(store);
+                    }
                 }
 
                 foreach (var store in bootstrap.Stores)
@@ -1386,9 +1431,17 @@ public class SyncEngineService : ISyncEngineService
                 var incomingResIds = bootstrap.Resolutions.Select(r => r.ResolutionId).ToHashSet();
                 var localResolutions = await db.BillingResolutions.ToListAsync(ct);
                 var resToDelete = localResolutions.Where(r => !incomingResIds.Contains(r.ResolutionId)).ToList();
-                if (resToDelete.Count > 0)
+                foreach (var res in resToDelete)
                 {
-                    db.BillingResolutions.RemoveRange(resToDelete);
+                    bool isReferenced = await db.ParkingTickets.AnyAsync(pt => pt.ResolutionId == res.ResolutionId, ct);
+                    if (isReferenced)
+                    {
+                        res.IsActive = false;
+                    }
+                    else
+                    {
+                        db.BillingResolutions.Remove(res);
+                    }
                 }
 
                 foreach (var res in bootstrap.Resolutions)
@@ -1410,6 +1463,12 @@ public class SyncEngineService : ISyncEngineService
                         existing.TechnicalKey = res.TechnicalKey;
                         existing.IsActive = res.IsActive;
                         existing.IsElectronicResolution = res.IsElectronicResolution;
+                        existing.TicketPolicy = res.TicketPolicy;
+                        existing.PrintPolicyOnEntry = res.PrintPolicyOnEntry;
+                        existing.PrintPolicyOnExit = res.PrintPolicyOnExit;
+                        existing.TicketAdditionalInfo = res.TicketAdditionalInfo;
+                        existing.PrintAdditionalInfoOnEntry = res.PrintAdditionalInfoOnEntry;
+                        existing.PrintAdditionalInfoOnExit = res.PrintAdditionalInfoOnExit;
                     }
                     else
                     {
@@ -1430,6 +1489,12 @@ public class SyncEngineService : ISyncEngineService
                             TechnicalKey = res.TechnicalKey,
                             IsActive = res.IsActive,
                             IsElectronicResolution = res.IsElectronicResolution,
+                            TicketPolicy = res.TicketPolicy,
+                            PrintPolicyOnEntry = res.PrintPolicyOnEntry,
+                            PrintPolicyOnExit = res.PrintPolicyOnExit,
+                            TicketAdditionalInfo = res.TicketAdditionalInfo,
+                            PrintAdditionalInfoOnEntry = res.PrintAdditionalInfoOnEntry,
+                            PrintAdditionalInfoOnExit = res.PrintAdditionalInfoOnExit,
                             CreatedAtUtc = DateTime.UtcNow
                         });
                     }
@@ -2084,6 +2149,67 @@ public class SyncEngineService : ISyncEngineService
                             }
                         }
                     }
+                    else if (item.OperationType == "CloseShift")
+                    {
+                        var req = JsonSerializer.Deserialize<CloseShiftApiRequest>(item.PayloadJson, ParkingApiClient.JsonOptions);
+                        if (req != null)
+                        {
+                            var result = await _apiClient.CloseShiftAsync(req);
+                            if (result != null)
+                            {
+                                item.IsProcessed = true;
+                                var localShift = await db.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == req.ShiftId);
+                                if (localShift != null)
+                                {
+                                    localShift.IsSynchronized = true;
+                                    await db.SaveChangesAsync();
+                                }
+                            }
+                            else if (IsOnline)
+                            {
+                                // Si estamos online y el API no devolvió turno (ej: ya fue cerrado centralmente),
+                                // marcar como procesado para no atascar la cola y reconciliar localmente
+                                item.IsProcessed = true;
+                                var localShift = await db.WorkShifts.FirstOrDefaultAsync(s => s.ShiftId == req.ShiftId);
+                                if (localShift != null)
+                                {
+                                    localShift.IsSynchronized = true;
+                                    await db.SaveChangesAsync();
+                                }
+                            }
+                        }
+                    }
+                    else if (item.OperationType == "OpenShift")
+                    {
+                        var req = JsonSerializer.Deserialize<OpenShiftApiRequest>(item.PayloadJson, ParkingApiClient.JsonOptions);
+                        if (req != null)
+                        {
+                            try
+                            {
+                                var result = await _apiClient.OpenShiftAsync(req);
+                                if (result != null)
+                                {
+                                    item.IsProcessed = true;
+                                    var localShift = await db.WorkShifts.FirstOrDefaultAsync(s => s.BranchId == req.BranchId && s.UserId == req.UserId && s.Status == 0);
+                                    if (localShift != null)
+                                    {
+                                        localShift.IsSynchronized = true;
+                                        await db.SaveChangesAsync();
+                                    }
+                                }
+                            }
+                            catch (InvalidOperationException ex) when (ex.Message.Contains("existe un turno abierto", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("already", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("400"))
+                            {
+                                item.IsProcessed = true;
+                                var localShift = await db.WorkShifts.FirstOrDefaultAsync(s => s.BranchId == req.BranchId && s.UserId == req.UserId && s.Status == 0);
+                                if (localShift != null)
+                                {
+                                    localShift.IsSynchronized = true;
+                                    await db.SaveChangesAsync();
+                                }
+                            }
+                        }
+                    }
                 }
                 catch (InvalidOperationException ex) when (ex.Message == "404_NOT_FOUND")
                 {
@@ -2229,6 +2355,26 @@ public class SyncEngineService : ISyncEngineService
                 catch { }
                 _offlineProbeCts = null;
             }
+        }
+    }
+
+    /// <summary>
+    /// Verifica si la base de datos local SQLite ya cuenta con información operativa descargada para la sede (tarifas y usuarios).
+    /// Permite decidir entre un Fast-Login (< 1s) o la sincronización inicial interactiva (PC nuevo).
+    /// </summary>
+    public async Task<bool> HasLocalBranchDataAsync(int branchId)
+    {
+        try
+        {
+            using var db = _dbManager.CreateDbContext();
+            var hasRates = await db.VehicleRates.AnyAsync(r => r.BranchId == branchId && r.IsActive);
+            var hasUsers = await db.Users.AnyAsync(u => u.IsActive);
+            return hasRates && hasUsers;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[HasLocalBranchDataAsync] Error comprobando existencia de datos locales: {ex.Message}");
+            return false;
         }
     }
 }

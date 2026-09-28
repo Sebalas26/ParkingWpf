@@ -22,4 +22,11 @@ public class BillingResolution
     public bool IsActive { get; set; } = true;
     public bool IsElectronicResolution { get; set; } = false;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    public string? TicketPolicy { get; set; }
+    public bool PrintPolicyOnEntry { get; set; }
+    public bool PrintPolicyOnExit { get; set; }
+    public string? TicketAdditionalInfo { get; set; }
+    public bool PrintAdditionalInfoOnEntry { get; set; }
+    public bool PrintAdditionalInfoOnExit { get; set; }
 }

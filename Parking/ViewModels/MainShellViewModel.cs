@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
@@ -16,6 +18,22 @@ namespace Parking.ViewModels;
 
 public partial class MainShellViewModel : ViewModelBase
 {
+    public string AppVersionDisplay
+    {
+        get
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            var infoVer = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (!string.IsNullOrWhiteSpace(infoVer))
+            {
+                var plusIdx = infoVer.IndexOf('+');
+                return "v" + (plusIdx > 0 ? infoVer[..plusIdx] : infoVer);
+            }
+            var ver = asm.GetName().Version;
+            return ver != null ? $"v{ver.Major}.{ver.Minor}.{ver.Build}" : "v1.0.0";
+        }
+    }
+
     private static readonly CultureInfo SpanishCulture = new("es-ES");
     private readonly IAuthService _authService;
     private readonly ISessionService _sessionService;
@@ -28,6 +46,7 @@ public partial class MainShellViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly IShiftService _shiftService;
     private readonly ISignalRClientService _signalRClient;
+    private readonly IAppUpdateService? _updateService;
     private readonly DispatcherTimer _clockTimer;
 
     [ObservableProperty]
@@ -166,7 +185,8 @@ public partial class MainShellViewModel : ViewModelBase
         IBackgroundSyncScheduler backgroundSync,
         IDialogService dialogService,
         IShiftService shiftService,
-        ISignalRClientService signalRClient)
+        ISignalRClientService signalRClient,
+        IAppUpdateService? updateService = null)
     {
         _authService = authService;
         _sessionService = sessionService;
@@ -179,6 +199,23 @@ public partial class MainShellViewModel : ViewModelBase
         _dialogService = dialogService;
         _shiftService = shiftService;
         _signalRClient = signalRClient;
+        _updateService = updateService;
+
+        if (_updateService != null)
+        {
+            _updateService.UpdateDetected += release =>
+            {
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher != null && !dispatcher.CheckAccess())
+                {
+                    dispatcher.InvokeAsync(async () => await _dialogService.ShowAppUpdateDialogAsync(release));
+                }
+                else
+                {
+                    _ = _dialogService.ShowAppUpdateDialogAsync(release);
+                }
+            };
+        }
 
         _backgroundSync.SyncTriggered += (s, e) =>
         {
@@ -538,9 +575,8 @@ public partial class MainShellViewModel : ViewModelBase
                     {
                         SyncStatusText = $"Caja cerrada centralmente ({DateTime.Now.ToString("hh:mm tt", CultureInfo.InvariantCulture)})";
                         
-                        // Si ya no había turno activo en este terminal (por ejemplo, el usuario lo cerró localmente),
-                        // o si el operador ya se encuentra en la pantalla de control de turno/cierre, omitir el diálogo modal invasivo
-                        if (!hadActiveShiftLocally || ActiveView is ShiftClosureViewModel)
+                        // Si el operador local aún conserva su turno activo, o no tenía turno, o se encuentra en control de caja, omitir
+                        if (!hadActiveShiftLocally || HasActiveShift || ActiveView is ShiftClosureViewModel)
                         {
                             return;
                         }
@@ -671,6 +707,33 @@ public partial class MainShellViewModel : ViewModelBase
                     IsRealtimeSyncing = false;
                     RealtimeSyncMessage = string.Empty;
                 }
+            }
+            return;
+        }
+
+        // 7. Manejo reactivo de Actualización Disponible (publicada desde PWA)
+        if (notification.EventType == "AppReleaseAvailable")
+        {
+            if (_updateService != null)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var release = await _updateService.CheckForUpdateAsync();
+                        if (release != null && release.HasUpdate)
+                        {
+                            await Application.Current.Dispatcher.InvokeAsync(async () =>
+                            {
+                                await _dialogService.ShowAppUpdateDialogAsync(release);
+                            });
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[APP UPDATE ERROR] Error al procesar notificación de actualización en vivo: {ex.Message}");
+                    }
+                });
             }
             return;
         }

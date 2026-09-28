@@ -8,6 +8,7 @@ public partial class MainShellWindow : Window
     public MainShellWindow()
     {
         InitializeComponent();
+        Parking.Core.Helpers.WindowIconHelper.EnsureWindowIcon(this);
     }
 
     private void MinimizeButton_Click(object sender, RoutedEventArgs e)

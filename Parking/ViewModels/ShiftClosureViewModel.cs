@@ -149,6 +149,17 @@ public partial class ShiftClosureViewModel : ViewModelBase
     public bool IsRelieveSectionVisible => !HasActiveShift && HasOtherActiveShifts && IsRelieveModeSelected;
     public bool IsOpenNewRegisterSectionVisible => !HasActiveShift && (!HasOtherActiveShifts || !IsRelieveModeSelected);
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanSelectNewRegisterMode))]
+    [NotifyPropertyChangedFor(nameof(NewRegisterModeToolTip))]
+    private bool _canOpenMultipleShifts;
+
+    public bool CanSelectNewRegisterMode => CanOpenMultipleShifts;
+
+    public string NewRegisterModeToolTip => CanOpenMultipleShifts
+        ? "Abrir una nueva caja independiente en esta sede"
+        : "Esta sede no permite múltiples cajas abiertas simultáneamente. Debe relevar la caja activa.";
+
     public ShiftClosureViewModel(
         IShiftService shiftService,
         IAuthService authService,
@@ -173,6 +184,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
         _permissionService = permissionService;
         _operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
         _branchName = _sessionService.CurrentBranch?.Name ?? "Sede Principal";
+        _canOpenMultipleShifts = _sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false;
         _isOnlineMode = _syncEngine.IsOnline;
         _syncStatusText = _isOnlineMode ? "Sincronizado" : "Modo Local";
 
@@ -231,6 +243,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
         _sessionService.ActiveBranchChanged += async branch =>
         {
             BranchName = branch?.Name ?? _sessionService.CurrentBranch?.Name ?? "Sede Principal";
+            CanOpenMultipleShifts = branch?.AllowMultipleOpenShifts ?? _sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false;
+            SelectNewRegisterModeCommand.NotifyCanExecuteChanged();
             try { await LoadShiftDataAsync(); } catch { }
         };
     }
@@ -239,6 +253,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
     {
         OperatorName = _authService.CurrentUser?.FullName ?? "Operador General";
         BranchName = _sessionService.CurrentBranch?.Name ?? "Sede Principal";
+        CanOpenMultipleShifts = _sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false;
+        SelectNewRegisterModeCommand.NotifyCanExecuteChanged();
         IsOnlineMode = _syncEngine.IsOnline;
         SyncStatusText = IsOnlineMode ? "Sincronizado" : "Modo Local";
         UpdatePermissions();
@@ -247,12 +263,12 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
     private void UpdatePermissions()
     {
-        CanWithdrawCash = _permissionService.HasPermission("shifts.blind_count");
-        CanCloseShift = _permissionService.HasPermission("shifts.close");
-        CanHandoverShift = _permissionService.HasPermission("shifts.close");
-        CanExportShift = _permissionService.HasPermission("shifts.reprint_closure");
-        CanViewShiftHistory = _permissionService.HasPermission("shifts.view_history");
-        CanOpenShift = _permissionService.HasPermission("shifts.open");
+        CanWithdrawCash = _permissionService.HasPermission("shifts.blind_count") || _permissionService.HasPermission("shift.blind_count");
+        CanCloseShift = _permissionService.HasPermission("shifts.close") || _permissionService.HasPermission("shift.close");
+        CanHandoverShift = _permissionService.HasPermission("shifts.close") || _permissionService.HasPermission("shift.close") || _permissionService.HasPermission("shifts.handover");
+        CanExportShift = _permissionService.HasPermission("shifts.reprint_closure") || _permissionService.HasPermission("shift.export") || _permissionService.HasPermission("wpf.shifts.reprint_closure");
+        CanViewShiftHistory = _permissionService.HasPermission("shifts.view_history") || _permissionService.HasPermission("shift.view_history");
+        CanOpenShift = _permissionService.HasPermission("shifts.open") || _permissionService.HasPermission("shift.open");
     }
 
     partial void OnActualCashCountedChanged(decimal value)
@@ -330,9 +346,10 @@ public partial class ShiftClosureViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanSelectNewRegisterMode))]
     private void SelectNewRegisterMode()
     {
+        if (!CanSelectNewRegisterMode) return;
         IsRelieveModeSelected = false;
         ActualCashCounted = 0m;
         CashDifference = 0m;
@@ -400,6 +417,19 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 "No cuenta con permisos para abrir nuevos turnos operativos (shift.open).",
                 DialogNotificationType.Warning);
             return;
+        }
+        
+        var branch = _sessionService.CurrentBranch;
+        if (branch != null && !branch.AllowMultipleOpenShifts)
+        {
+            if (OtherActiveShifts.Any())
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Caja Única Activa",
+                    $"Esta sede opera bajo modalidad de Caja Única y ya cuenta con un turno activo. Debes cerrar el turno actual antes de abrir uno nuevo.",
+                    DialogNotificationType.Warning);
+                return;
+            }
         }
 
         if ((NewShiftBaseAmount ?? 0m) <= 0)
@@ -502,13 +532,20 @@ public partial class ShiftClosureViewModel : ViewModelBase
         {
             var closedShift = await _shiftService.CloseShiftAsync(ActualCashCounted, Notes, null, null);
 
-            await _dialogService.ShowAlertAsync(
-                "Turno Cerrado con Éxito",
+            var shouldPrint = await _dialogService.ShowConfirmationAsync(
+                "Cierre de Turno Registrado",
                 $"El turno ha sido cerrado formalmente.\n\n" +
                 $"• Total Arqueo en Gaveta: ${ActualCashCounted:N0}\n" +
                 $"• Total Tiquetes Liquidados: {Summary.TotalTicketsProcessed}\n\n" +
-                $"La caja ha finalizado su jornada.",
-                DialogNotificationType.Success);
+                "¿Desea imprimir el comprobante de cierre de caja?",
+                DialogNotificationType.Question,
+                "Sí, imprimir tirilla",
+                "No, omitir");
+
+            if (shouldPrint && closedShift != null)
+            {
+                await _dialogService.ShowShiftClosurePreviewAsync(closedShift, Summary);
+            }
 
             ActualCashCounted = 0m;
             Notes = null;
@@ -600,10 +637,10 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 ? $"Relevo entregado por {outgoingOperatorName} a {SelectedHandoverUser.FullName}. Base entregada: ${verifiedCash:N0}"
                 : $"{Notes} (Relevo entregado a {SelectedHandoverUser.FullName})";
 
-            // Cambiar de inmediato la sesión activa al operador receptor autenticado
-            _authService.SwitchCurrentUser(authResult.Session);
-
             // Cerrar turno saliente y abrir inmediatamente el nuevo turno
+            var outgoingShiftId = currentShiftId ?? _shiftService.CurrentShift?.ShiftId;
+            var outgoingSummary = Summary;
+
             await _shiftService.HandoverAndOpenNextShiftAsync(
                 verifiedCash,
                 note,
@@ -613,10 +650,14 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 currentShiftId);
 
             await _dialogService.ShowAlertAsync(
-                "Entrega de Turno Exitosa",
-                $"El turno ha sido entregado exitosamente a {SelectedHandoverUser.FullName}.\n" +
-                $"El nuevo turno ha quedado abierto con base de ${verifiedCash:N0}.",
+                "Entrega y Relevo Registrado",
+                $"El turno de '{outgoingOperatorName}' ha sido entregado exitosamente a '{SelectedHandoverUser.FullName}'.\n\n" +
+                $"• Total Arqueo en Gaveta: ${verifiedCash:N0}\n" +
+                $"• Total Tiquetes Liquidados: {outgoingSummary.TotalTicketsProcessed}",
                 DialogNotificationType.Success);
+
+            // Cambiar la sesión activa al operador receptor autenticado una vez abierto el nuevo turno
+            _authService.SwitchCurrentUser(authResult.Session);
 
             ActualCashCounted = 0m;
             Notes = null;
@@ -708,8 +749,9 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 ? $"Relevo de '{targetShift.CashRegisterName}' asumido por {incomingUser.FullName}. Base recibida: ${verifiedCash:N0}"
                 : $"{Notes} (Relevo de '{targetShift.CashRegisterName}' asumido por {incomingUser.FullName})";
 
-            // Sincronizar y recargar sesión activa con la matriz de permisos
-            _authService.SwitchCurrentUser(authResult.Session);
+            // Cerrar turno saliente y abrir inmediatamente el nuevo turno a nombre del operador entrante
+            var targetShiftId = targetShift.ShiftId;
+            var targetSummary = SelectedShiftToRelieveSummary ?? await _shiftService.GetShiftSummaryByIdAsync(targetShift.ShiftId);
 
             await _shiftService.HandoverAndOpenNextShiftAsync(
                 verifiedCash,
@@ -722,11 +764,13 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
             await _dialogService.ShowAlertAsync(
                 "Turno Asumido con Éxito",
-                $"Has recibido la caja '{targetShift.CashRegisterName}' correctamente.\n\n" +
-                $"• Base Inicial de tu Turno: ${verifiedCash:N0}\n" +
-                $"• Operador a Cargo: {incomingUser.FullName}\n\n" +
-                $"Ya puedes comenzar a registrar ingresos y cobros en el parqueadero.",
+                $"Has recibido la caja '{targetShift.CashRegisterName}' de '{targetShift.OperatorName}'.\n\n" +
+                $"• Base Recibida: ${verifiedCash:N0}\n" +
+                $"• Tiquetes Liquidados en Turno Saliente: {targetSummary.TotalTicketsProcessed}",
                 DialogNotificationType.Success);
+
+            // Sincronizar y recargar sesión activa con la matriz de permisos para el nuevo operador
+            _authService.SwitchCurrentUser(authResult.Session);
 
             ActualCashCounted = 0m;
             Notes = null;
@@ -778,8 +822,20 @@ public partial class ShiftClosureViewModel : ViewModelBase
         BusyMessage = "Cerrando caja del operador...";
         try
         {
-            await _shiftService.CloseSpecificShiftAsync(targetShift.ShiftId, ActualCashCounted, Notes);
-            await _dialogService.ShowAlertAsync("Caja Cerrada", $"La caja de '{targetShift.OperatorName}' ha sido cerrada exitosamente.", DialogNotificationType.Success);
+            var closedOtherShift = await _shiftService.CloseSpecificShiftAsync(targetShift.ShiftId, ActualCashCounted, Notes);
+
+            var shouldPrint = await _dialogService.ShowConfirmationAsync(
+                "Cierre de Turno Registrado",
+                $"La caja de '{targetShift.OperatorName}' ha sido cerrada exitosamente.\n\n¿Desea imprimir el comprobante de cierre de caja?",
+                DialogNotificationType.Question,
+                "Sí, imprimir tirilla",
+                "No, omitir");
+
+            if (shouldPrint)
+            {
+                await _dialogService.ShowShiftClosurePreviewAsync(closedOtherShift ?? targetShift, summary);
+            }
+
             ActualCashCounted = 0m;
             Notes = null;
             await LoadShiftDataAsync();
@@ -792,6 +848,22 @@ public partial class ShiftClosureViewModel : ViewModelBase
         {
             IsBusy = false;
             BusyMessage = null;
+        }
+    }
+
+    [RelayCommand]
+    private async Task PrintShiftReceiptAsync(WorkShift? shift)
+    {
+        if (shift == null) return;
+
+        try
+        {
+            var summary = await _shiftService.GetShiftSummaryByIdAsync(shift.ShiftId);
+            await _dialogService.ShowShiftClosurePreviewAsync(shift, summary);
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowAlertAsync("Error", $"No fue posible generar la tirilla de cierre: {ex.Message}", DialogNotificationType.Error);
         }
     }
 
@@ -899,6 +971,9 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 var localBranch = currentBranchId.HasValue
                     ? await dbCheck.Branches.AsNoTracking().FirstOrDefaultAsync(b => b.Id == currentBranchId.Value)
                     : null;
+
+                CanOpenMultipleShifts = localBranch?.AllowMultipleOpenShifts ?? (_sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false);
+                SelectNewRegisterModeCommand.NotifyCanExecuteChanged();
 
                 var configuredBranchBase = (localBranch != null && localBranch.DefaultInitialCash > 0)
                     ? localBranch.DefaultInitialCash
@@ -1048,7 +1123,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
             HasAvailableHandoverUsers = AvailableUsers.Count > 0;
             SelectedHandoverUser = AvailableUsers.FirstOrDefault();
 
-            ShiftHistory = await _shiftService.GetShiftHistoryAsync(DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
+            var allHistory = await _shiftService.GetShiftHistoryAsync(DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
+            ShiftHistory = allHistory.Where(s => s.Status == 1).OrderByDescending(s => s.EndTimeUtc ?? s.ClosedAtUtc ?? s.CreatedAtUtc).ToList();
         }
         catch (Exception ex)
         {

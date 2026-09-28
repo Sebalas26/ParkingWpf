@@ -8,7 +8,7 @@
         WindowStartupLocation="CenterScreen"
         WindowStyle="None"
         AllowsTransparency="True"
-        Background="#B3000000"
+        Background="Transparent"
         ShowInTaskbar="False"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
@@ -109,7 +109,7 @@
                               Margin="0,0,10,0"
                               VerticalAlignment="Center"/>
                         <TextBlock Grid.Column="1"
-                                   Text="Protección activa: Antes de actualizar se sincronizarán al 100% sus ventas locales y se creará una copia de seguridad preventiva de la base de datos."
+                                   Text="Protección activa: Su base de datos local y transacciones se respaldan de forma preventiva antes de aplicar la actualización."
                                    FontSize="12"
                                    Foreground="{DynamicResource BrushTextSecondary}"
                                    TextWrapping="Wrap"/>
@@ -192,25 +192,13 @@
                 </Border>
 
                 <!-- Botones de Acción -->
-                <Grid Grid.Row="4">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-
-                    <Button Grid.Column="0"
-                            Style="{StaticResource SecondaryButton}"
-                            Content="Posponer"
-                            Height="42"
-                            Margin="0,0,12,0"
-                            Visibility="{Binding CanCancel, Converter={StaticResource BoolToVis}}"
-                            Command="{Binding CancelCommand}"/>
-
-                    <Button Grid.Column="1"
-                            Style="{StaticResource ModernButton}"
-                            Content="Actualizar Ahora"
-                            Height="42"
-                            MinWidth="200"
+                <Grid Grid.Row="4" Visibility="{Binding IsUpdating, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
+                    <Button Style="{StaticResource ModernButton}"
+                            Content="Sincronizar y Actualizar Ahora"
+                            Height="46"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Stretch"
                             Command="{Binding StartUpdateCommand}"/>
                 </Grid>
             </Grid>
