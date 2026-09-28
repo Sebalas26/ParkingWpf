@@ -1,3 +1,37 @@
+# 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
+
+## 📅 Entrada: [2026-09-27 23:15:00] - [FEATURE / RECEIPT / SHIFT CLOSURE] Optimización de Tirilla Térmica de Cierre de Caja en WPF: RBAC 4/4 Mensualidades, Solo Salidas de Caja, Conteo de Convenios y Medios de Pago Dinámicos
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Ayudame a mejorar un poco mas la impresion de la caja al darle salida para la wpf y pwa, pues estoy viendo que hay campos que no aplican y otros reemplazarlos por otros, quiero la data real, nada de datos mockeados y valores. -Ingresos: Si la empresa maneja mensualidades muestre si no no, puedes saber si el cliente maneja mensualidades si el permiso del rol sobre mensualidades y abonados en terminal estan activos los 4/4, si no estan habilitados, oculta esa info de la impresion. - movimiento de caja: Solo muestra salidas de caja, porque en mi pway wpf solo tengo retiros de caja parciales. - resumen: Falta agregar cuantos convenios se aplicaron, ahi esta el total descuentos pero falto decir cuantos se aplicaron. - Total por metodo de pago: Carga los metodos de pago reales porque veo unos inventados como credito bancario eso no existe"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Modelos (`ShiftApiModels.cs`)**:
+     - Se añadió `TotalCollectedStr` a `ShiftPaymentMethodItem` para formatear el recaudo en moneda colombiana (`C0`, `es-CO`).
+  2. **ViewModel de Previsualización (`ReceiptPreviewViewModel.cs`)**:
+     - Se inyectó `IPermissionService` en el constructor.
+     - Se añadieron `HasSubscriptionsModule`, `ShiftDiscountTicketsCount` y `ShiftPaymentMethods` (`ObservableCollection<ShiftPaymentMethodItem>`).
+     - En `LoadShiftClosure`:
+       - Se evalúa si la terminal cuenta con los 4 permisos activos: `wpf.subscriptions.view`, `wpf.subscriptions.create`, `wpf.subscriptions.renew`, `wpf.subscriptions.cancel` para asignar `HasSubscriptionsModule`.
+       - Se asigna `ShiftDiscountTicketsCount = summary?.TotalDiscountTickets ?? 0;`.
+       - Se puebla `ShiftPaymentMethods` con el desglose real `summary?.PaymentMethodsBreakdown`, o fallback dinámico a Efectivo, Tarjetas, Transferencias.
+  3. **Vista de Tirilla Térmica (`ReceiptPreviewDialog.xaml`)**:
+     - **Ingresos**: Fila de mensualidades condicionada con `Visibility="{Binding HasSubscriptionsModule, Converter={StaticResource BoolToVis}}"`.
+     - **Movimientos de Caja**: Se eliminó la fila `(+) Ingresos Efectivo`. Solo se presenta `(-) Salidas / Retiros`.
+     - **Resumen Financiero**: Se incluye la cantidad de convenios en `Convenios / Descuentos ({ShiftDiscountTicketsCount}):`.
+     - **Medios de Pago**: Se reemplazó el bloque estático de 3 medios por un `ItemsControl` enlazado a `ShiftPaymentMethods` que muestra los nombres y montos reales de la sede.
+  4. **Compilación**:
+     - `dotnet build ParkingWpf.slnx /p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Models/ApiModels/ShiftApiModels.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+
 # Historial Oficial de Modificaciones y Control de Cambios
 
 ## 📅 Entrada: [2026-09-27 22:05:00] - [FEATURE / WPF / POS / SHIFTS] Eliminación de Tirilla de Turno Anterior y Bloqueo Preventivo de Nueva Caja en Modalidad Caja Única

@@ -1,5 +1,6 @@
 using Parking.Models.ApiModels;
 using System;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
@@ -21,6 +22,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private readonly IDbConnectionManager _connectionManager;
     private readonly Microsoft.Extensions.Configuration.IConfiguration _configuration;
     private readonly IPricingCalculatorService _pricingCalculator;
+    private readonly IPermissionService? _permissionService;
 
     [ObservableProperty]
     private ParkingTicket _ticket = new();
@@ -72,6 +74,15 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
     [ObservableProperty]
     private string _shiftDurationStr = string.Empty;
+
+    [ObservableProperty]
+    private bool _hasSubscriptionsModule = true;
+
+    [ObservableProperty]
+    private int _shiftDiscountTicketsCount;
+
+    [ObservableProperty]
+    private ObservableCollection<ShiftPaymentMethodItem> _shiftPaymentMethods = new();
 
     [ObservableProperty]
     private string _shiftParqueosAmountStr = "$ 0";
@@ -350,13 +361,15 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         ISessionService sessionService,
         IDbConnectionManager connectionManager,
         Microsoft.Extensions.Configuration.IConfiguration configuration,
-        IPricingCalculatorService pricingCalculator)
+        IPricingCalculatorService pricingCalculator,
+        IPermissionService? permissionService = null)
     {
         _printerService = printerService;
         _sessionService = sessionService;
         _connectionManager = connectionManager;
         _configuration = configuration;
         _pricingCalculator = pricingCalculator;
+        _permissionService = permissionService;
     }
 
     public void LoadTicket(ParkingTicket ticket, BillingResolution? resolution = null)
@@ -1029,6 +1042,29 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         ShiftCashCollectedStr = cash.ToString("C0", ci);
         ShiftCardCollectedStr = card.ToString("C0", ci);
         ShiftTransferCollectedStr = transfer.ToString("C0", ci);
+
+        HasSubscriptionsModule = _permissionService == null || (
+            _permissionService.HasPermission("wpf.subscriptions.view") &&
+            _permissionService.HasPermission("wpf.subscriptions.create") &&
+            _permissionService.HasPermission("wpf.subscriptions.renew") &&
+            _permissionService.HasPermission("wpf.subscriptions.cancel")
+        );
+        ShiftDiscountTicketsCount = summary?.TotalDiscountTickets ?? 0;
+
+        ShiftPaymentMethods.Clear();
+        if (summary?.PaymentMethodsBreakdown != null && summary.PaymentMethodsBreakdown.Any())
+        {
+            foreach (var pm in summary.PaymentMethodsBreakdown)
+            {
+                ShiftPaymentMethods.Add(pm);
+            }
+        }
+        else
+        {
+            ShiftPaymentMethods.Add(new ShiftPaymentMethodItem { Name = "Efectivo", TotalCollected = cash });
+            ShiftPaymentMethods.Add(new ShiftPaymentMethodItem { Name = "Tarjetas", TotalCollected = card });
+            ShiftPaymentMethods.Add(new ShiftPaymentMethodItem { Name = "Transferencias / QR", TotalCollected = transfer });
+        }
 
         ShiftVehiclesExitedCount = summary != null && summary.TotalTicketsProcessed > 0 ? summary.TotalTicketsProcessed : shift.TotalTicketsProcessed;
         ShiftVehiclesInYardCount = yardCount;

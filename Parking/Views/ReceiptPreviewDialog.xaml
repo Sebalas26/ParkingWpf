@@ -870,7 +870,11 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Convenios / Descuentos:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
+                                        <Run Text="Convenios / Descuentos ("/>
+                                        <Run Text="{Binding ShiftDiscountTicketsCount, Mode=OneWay}"/>
+                                        <Run Text="):"/>
+                                    </TextBlock>
                                     <TextBlock Grid.Column="1" Text="{Binding ShiftDiscountsStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
                                 <Grid Margin="0,1">
@@ -911,30 +915,24 @@
 
                                 <!-- 7. Medios de Pago -->
                                 <TextBlock Text="MEDIOS DE PAGO" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
-                                <Grid Margin="0,1">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="• Efectivo:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftCashCollectedStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                </Grid>
-                                <Grid Margin="0,1">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="• Tarjetas:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftCardCollectedStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                </Grid>
-                                <Grid Margin="0,1,0,6">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="• Transferencias / QR:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftTransferCollectedStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                </Grid>
+                                <ItemsControl ItemsSource="{Binding ShiftPaymentMethods}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,1">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
+                                                    <Run Text="• "/>
+                                                    <Run Text="{Binding Name, Mode=OneWay}"/>
+                                                    <Run Text=":"/>
+                                                </TextBlock>
+                                                <TextBlock Grid.Column="1" Text="{Binding TotalCollectedStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
 

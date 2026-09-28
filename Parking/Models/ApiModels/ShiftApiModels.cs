@@ -72,4 +72,6 @@ public class ShiftPaymentMethodItem
     public string DisplayAmount => IsCountOnly
         ? $"{TransactionCount} {(TransactionCount == 1 ? "Tiquete" : "Tiquetes")}"
         : TotalCollected.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("en-US"));
+
+    public string TotalCollectedStr => TotalCollected.ToString("C0", System.Globalization.CultureInfo.GetCultureInfo("es-CO"));
 }
