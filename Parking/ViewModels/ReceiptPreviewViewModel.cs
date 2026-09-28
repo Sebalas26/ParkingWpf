@@ -857,26 +857,48 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             ElectronicInvoiceQrImage = null;
         }
 
-        // Evaluar políticas de impresión para Información Adicional y Póliza
-        if (currentBranch != null)
+        // Evaluar políticas de impresión para Información Adicional y Póliza (asociadas a la Resolución de Facturación)
+        try
         {
+            using var db = _connectionManager.CreateDbContext();
+            var branchId = currentBranch?.Id ?? ticket.BranchId ?? _sessionService.CurrentBranch?.Id;
+
             if (!IsExitReceipt)
             {
-                TicketPolicy = currentBranch.PrintPolicyOnEntry ? currentBranch.TicketPolicy?.Trim() : null;
-                TicketAdditionalInfo = currentBranch.PrintAdditionalInfoOnEntry ? currentBranch.TicketAdditionalInfo?.Trim() : null;
+                var entryRes = resolution;
+                if (entryRes == null || (!entryRes.PrintPolicyOnEntry && !entryRes.PrintAdditionalInfoOnEntry))
+                {
+                    entryRes = db.BillingResolutions
+                        .Where(r => r.IsActive && (r.BranchId == branchId || r.BranchId == null))
+                        .OrderByDescending(r => !r.IsElectronicResolution) // Priorizar resolución POS
+                        .FirstOrDefault(r => r.PrintPolicyOnEntry || r.PrintAdditionalInfoOnEntry)
+                        ?? entryRes;
+                }
+
+                TicketPolicy = entryRes?.PrintPolicyOnEntry == true ? entryRes.TicketPolicy?.Trim() : null;
+                TicketAdditionalInfo = entryRes?.PrintAdditionalInfoOnEntry == true ? entryRes.TicketAdditionalInfo?.Trim() : null;
             }
             else
             {
-                TicketPolicy = IsFvmInvoice 
-                    ? (currentBranch.PrintPolicyOnExitElectronic ? currentBranch.TicketPolicy?.Trim() : null)
-                    : (currentBranch.PrintPolicyOnExitPos ? currentBranch.TicketPolicy?.Trim() : null);
+                var exitRes = resolution;
+                if (exitRes == null && ticket.ResolutionId.HasValue)
+                {
+                    exitRes = db.BillingResolutions.FirstOrDefault(r => r.ResolutionId == ticket.ResolutionId.Value);
+                }
 
-                TicketAdditionalInfo = IsFvmInvoice
-                    ? (currentBranch.PrintAdditionalInfoOnExitElectronic ? currentBranch.TicketAdditionalInfo?.Trim() : null)
-                    : (currentBranch.PrintAdditionalInfoOnExitPos ? currentBranch.TicketAdditionalInfo?.Trim() : null);
+                if (exitRes == null)
+                {
+                    exitRes = db.BillingResolutions
+                        .Where(r => r.IsActive && (r.BranchId == branchId || r.BranchId == null))
+                        .OrderByDescending(r => r.IsElectronicResolution == IsFvmInvoice)
+                        .FirstOrDefault();
+                }
+
+                TicketPolicy = exitRes?.PrintPolicyOnExit == true ? exitRes.TicketPolicy?.Trim() : null;
+                TicketAdditionalInfo = exitRes?.PrintAdditionalInfoOnExit == true ? exitRes.TicketAdditionalInfo?.Trim() : null;
             }
         }
-        else
+        catch
         {
             TicketPolicy = null;
             TicketAdditionalInfo = null;

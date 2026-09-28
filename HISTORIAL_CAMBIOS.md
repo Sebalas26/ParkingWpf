@@ -1,5 +1,45 @@
 # ðŸ“œ HISTORIAL DE CAMBIOS Y CONTEXTO TÃ‰CNICO MULTI-PC (PARKING WPF)
 
+## ðŸ“… Entrada: [2026-09-28 00:00:00] - [FEATURE / BILLING / PRINTING] MigraciÃ³n de PolÃ­ticas e Info Adicional a Resoluciones en WPF y Sync Engine
+
+- **`ðŸ’¬ Prompt Original del Usuario`**:
+  > _"ayudame con el tema de la impresion de las politicas y la informacion adicional de impresion en las tirillas de parqueadero wpf y pwa. 1. debes de cambiar de lugar en base de datos ya no va a depender de las sedes si no de las resoluciones de facturacion. 2. el modal de parametrizar sedes tendra un tab llamado impresion donde se listaran las resoluciones de facturacion asociadas a la sede y tendran los campos de poliza y informacion adicional cada resolucion podra tener su propia informacion adicional y polizas y opciones de impresion segun aplique en ingreso y salida (recuerda que hay resoluciones que son electronicas y otras de tirilla pos). 3. elimina de la sede estas opciones de polizas y informacion adicional. 4. organiza la impresion en wpf y pwa para que tome los datos de la resolucion asignada tanto al ingresar como al salir del parqueadero. 5. el orden de las polizas sera primero la poliza en negrilla y luego la informacion adicional. 6. elimina del formulario de editar sede la opcion de polizas y informacion adicional. la opcion de ancho de papel si se queda en la sede porque es una configuracion de la sede no de la resolucion."_
+
+- **`ðŸ¤– Resumen TÃ©cnico para la IA`**:
+  1. **Entidades y Modelos (`Branch.cs`, `BranchModel.cs`, `BillingResolution.cs`)**:
+     - Se eliminaron `TicketPolicy`, `TicketAdditionalInfo` y los booleanos de impresiÃ³n de `Branch` y `BranchModel`.
+     - Se aÃ±adieron `TicketPolicy`, `PrintPolicyOnEntry`, `PrintPolicyOnExit`, `TicketAdditionalInfo`, `PrintAdditionalInfoOnEntry`, `PrintAdditionalInfoOnExit` a `BillingResolution`.
+  2. **Contratos de SincronizaciÃ³n y Motor Offline (`BootstrapSyncResponse.cs` & `SyncEngineService.cs`)**:
+     - `ApiBillingResolutionSyncDto` ampliado con mapeo `[JsonPropertyName]` de los 6 campos.
+     - `SyncEngineService` replica e hidrata las 6 propiedades tanto en actualizaciÃ³n como en inserciÃ³n local en SQLite.
+  3. **Gestor de Esquema SQLite (`DbConnectionManager.cs`)**:
+     - DDL de `CREATE TABLE IF NOT EXISTS "BillingResolutions"` actualizado con las 6 columnas.
+     - `AutoMigrateDatabaseAsync` garantiza la creaciÃ³n dinÃ¡mica con `ALTER TABLE` si no existÃ­an en SQLite.
+  4. **ViewModel y Vista de Tirilla TÃ©rmica (`ReceiptPreviewViewModel.cs` & `ReceiptPreviewDialog.xaml`)**:
+     - `ReceiptPreviewViewModel.LoadTicket`:
+       - Para salida (`IsExitReceipt`): Obtiene la resoluciÃ³n asociada al tiquete (`ticket.ResolutionId`) o fallback a la resoluciÃ³n de la sede segÃºn `IsFvmInvoice`. EvalÃºa `PrintPolicyOnExit` y `PrintAdditionalInfoOnExit`.
+       - Para ingreso (`!IsExitReceipt`): Busca la resoluciÃ³n activa de la sede que tenga activado `PrintPolicyOnEntry` o `PrintAdditionalInfoOnEntry` (priorizando POS).
+     - `ReceiptPreviewDialog.xaml`:
+       - Se garantiza que en todas las plantillas (Ingreso, Factura ElectrÃ³nica y Recibo POS), la PÃ³liza (`TicketPolicy`) se imprime primero con `FontWeight="Bold"`, y a continuaciÃ³n la InformaciÃ³n Adicional (`TicketAdditionalInfo`).
+  5. **VerificaciÃ³n y Pruebas**:
+     - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (0 Fallos)**.
+
+- **`ðŸ“¦ Componentes Modificados`**:
+  - `Parking/Entities/Branch.cs`
+  - `Parking/Entities/BillingResolution.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Data/Factories/DbConnectionManager.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`âœ… VerificaciÃ³n y CompilaciÃ³n`**:
+  - `dotnet test ParkingWpf.slnx`: **338 Pruebas Superadas (0 Fallos)**.
+
+---
+
 ## ðŸ“… Entrada: [2026-09-27 23:15:00] - [FEATURE / RECEIPT / SHIFT CLOSURE] OptimizaciÃ³n de Tirilla TÃ©rmica de Cierre de Caja en WPF: RBAC 4/4 Mensualidades, Solo Salidas de Caja, Conteo de Convenios y Medios de Pago DinÃ¡micos
 
 - **`ðŸ’¬ Prompt Original del Usuario`**:
@@ -7328,18 +7368,18 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
   - `dotnet build Parking/Parking.csproj -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
   - `dotnet build Parking.UnitTests/Parking.UnitTests.csproj -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
 
-### 2023-10-XX - Modificación de Políticas de Impresión PWA/WPF
+### 2023-10-XX - Modificaciï¿½n de Polï¿½ticas de Impresiï¿½n PWA/WPF
 
 **?? Prompt Original del Usuario:**
-La impresión del cierre de caja es cuando cierren, no tener el botón mientras la caja esté abierta. En PWA necesito que borres el bloque legal estático/quemado de la etiqueta de salida por los 2 campos que te pedí agregar.
+La impresiï¿½n del cierre de caja es cuando cierren, no tener el botï¿½n mientras la caja estï¿½ abierta. En PWA necesito que borres el bloque legal estï¿½tico/quemado de la etiqueta de salida por los 2 campos que te pedï¿½ agregar.
 
-**?? Resumen Técnico para la IA:**
-- **Arquitectura y Modelos**: Se actualizaron las entidades Branch y BranchModel añadiendo los campos TicketPolicy, TicketAdditionalInfo y booleanos de impresión. En WPF, se actualizó la lógica en ReceiptPreviewViewModel para inyectar estos textos dinámicos según reglas de negocio.
-- **Validaciones**: Se agregó un helper CustomDownloadHandler temporal en AppUpdateService para que el test con mock HttpClient pase exitosamente.
-- **UI/UX**: Se actualizó ReceiptPreviewDialog.xaml reemplazando los textos legales estáticos en POS y Factura Electrónica por los textos dinámicos de póliza e info adicional. En ShiftClosureView.xaml, se ocultó el botón de impresión del comprobante de cierre (Visibility en DataGrid) evaluando la nueva propiedad IsClosed del turno (evitando que se imprima mientras está abierto).
+**?? Resumen Tï¿½cnico para la IA:**
+- **Arquitectura y Modelos**: Se actualizaron las entidades Branch y BranchModel aï¿½adiendo los campos TicketPolicy, TicketAdditionalInfo y booleanos de impresiï¿½n. En WPF, se actualizï¿½ la lï¿½gica en ReceiptPreviewViewModel para inyectar estos textos dinï¿½micos segï¿½n reglas de negocio.
+- **Validaciones**: Se agregï¿½ un helper CustomDownloadHandler temporal en AppUpdateService para que el test con mock HttpClient pase exitosamente.
+- **UI/UX**: Se actualizï¿½ ReceiptPreviewDialog.xaml reemplazando los textos legales estï¿½ticos en POS y Factura Electrï¿½nica por los textos dinï¿½micos de pï¿½liza e info adicional. En ShiftClosureView.xaml, se ocultï¿½ el botï¿½n de impresiï¿½n del comprobante de cierre (Visibility en DataGrid) evaluando la nueva propiedad IsClosed del turno (evitando que se imprima mientras estï¿½ abierto).
 
 **?? Componentes Modificados:**
 - ParkingWpf/Parking/Entities/Branch.cs`n- ParkingWpf/Parking/Models/BranchModel.cs`n- ParkingWpf/Parking/ViewModels/ReceiptPreviewViewModel.cs`n- ParkingWpf/Parking/ViewModels/ShiftClosureViewModel.cs`n- ParkingWpf/Parking/Views/ReceiptPreviewDialog.xaml`n- ParkingWpf/Parking/Views/ShiftClosureView.xaml`n- ParkingWpf/Parking/Entities/WorkShift.cs`n- ParkingWpf/Parking/Services/Implementations/AppUpdateService.cs`n- ParkingWpf/Parking.UnitTests/Services/AppUpdateAndLicensingTests.cs`n
-**? Verificación y Compilación:**
+**? Verificaciï¿½n y Compilaciï¿½n:**
 - dotnet build: 0 Errores.
 - dotnet test: 100% Pruebas Superadas (338/338).

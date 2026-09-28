@@ -38,14 +38,6 @@ public class Branch
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
-    public string? TicketPolicy { get; set; }
-    public string? TicketAdditionalInfo { get; set; }
-    public bool PrintPolicyOnEntry { get; set; }
-    public bool PrintAdditionalInfoOnEntry { get; set; }
-    public bool PrintPolicyOnExitElectronic { get; set; }
-    public bool PrintAdditionalInfoOnExitElectronic { get; set; }
-    public bool PrintPolicyOnExitPos { get; set; }
-    public bool PrintAdditionalInfoOnExitPos { get; set; }
 
     public virtual ICollection<BranchOperatingHour> OperatingHours { get; set; } = new List<BranchOperatingHour>();
 }

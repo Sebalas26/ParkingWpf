@@ -122,27 +122,4 @@ public class BranchModel
 
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
-    [JsonPropertyName("ticketPolicy")]
-    public string? TicketPolicy { get; set; }
-
-    [JsonPropertyName("ticketAdditionalInfo")]
-    public string? TicketAdditionalInfo { get; set; }
-
-    [JsonPropertyName("printPolicyOnEntry")]
-    public bool PrintPolicyOnEntry { get; set; }
-
-    [JsonPropertyName("printAdditionalInfoOnEntry")]
-    public bool PrintAdditionalInfoOnEntry { get; set; }
-
-    [JsonPropertyName("printPolicyOnExitElectronic")]
-    public bool PrintPolicyOnExitElectronic { get; set; }
-
-    [JsonPropertyName("printAdditionalInfoOnExitElectronic")]
-    public bool PrintAdditionalInfoOnExitElectronic { get; set; }
-
-    [JsonPropertyName("printPolicyOnExitPos")]
-    public bool PrintPolicyOnExitPos { get; set; }
-
-    [JsonPropertyName("printAdditionalInfoOnExitPos")]
-    public bool PrintAdditionalInfoOnExitPos { get; set; }
 }

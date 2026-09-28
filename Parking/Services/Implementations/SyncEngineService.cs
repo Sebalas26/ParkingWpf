@@ -1463,6 +1463,12 @@ public class SyncEngineService : ISyncEngineService
                         existing.TechnicalKey = res.TechnicalKey;
                         existing.IsActive = res.IsActive;
                         existing.IsElectronicResolution = res.IsElectronicResolution;
+                        existing.TicketPolicy = res.TicketPolicy;
+                        existing.PrintPolicyOnEntry = res.PrintPolicyOnEntry;
+                        existing.PrintPolicyOnExit = res.PrintPolicyOnExit;
+                        existing.TicketAdditionalInfo = res.TicketAdditionalInfo;
+                        existing.PrintAdditionalInfoOnEntry = res.PrintAdditionalInfoOnEntry;
+                        existing.PrintAdditionalInfoOnExit = res.PrintAdditionalInfoOnExit;
                     }
                     else
                     {
@@ -1483,6 +1489,12 @@ public class SyncEngineService : ISyncEngineService
                             TechnicalKey = res.TechnicalKey,
                             IsActive = res.IsActive,
                             IsElectronicResolution = res.IsElectronicResolution,
+                            TicketPolicy = res.TicketPolicy,
+                            PrintPolicyOnEntry = res.PrintPolicyOnEntry,
+                            PrintPolicyOnExit = res.PrintPolicyOnExit,
+                            TicketAdditionalInfo = res.TicketAdditionalInfo,
+                            PrintAdditionalInfoOnEntry = res.PrintAdditionalInfoOnEntry,
+                            PrintAdditionalInfoOnExit = res.PrintAdditionalInfoOnExit,
                             CreatedAtUtc = DateTime.UtcNow
                         });
                     }
