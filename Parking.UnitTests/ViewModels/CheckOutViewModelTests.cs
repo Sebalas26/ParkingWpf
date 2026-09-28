@@ -1194,6 +1194,73 @@ public class CheckOutViewModelTests : IDisposable
         vm.ShowCustomerWarning.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task OnSelectedTicketChanged_WhenTicketSelected_AutoSelectsDefaultPaymentMethodAndConfiguredResolution()
+    {
+        // Arrange
+        var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS Estándar", IsElectronicResolution = false };
+        var feRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FE", Name = "Facturación Electrónica", IsElectronicResolution = true };
+        _mockBillingResolutionService.Setup(b => b.GetActiveResolutionsByBranchAsync(It.IsAny<int?>()))
+            .ReturnsAsync(new List<BillingResolution> { posRes, feRes });
+
+        var vm = CreateViewModel();
+
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "ABC123",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-30)
+        };
+
+        // Act
+        vm.SelectedTicket = ticket;
+        await Task.Delay(100);
+
+        // Assert
+        vm.SelectedPaymentMethodEntity.Should().NotBeNull();
+        vm.SelectedPaymentMethodEntity!.Id.Should().Be(1);
+        vm.SelectedResolution.Should().NotBeNull();
+        vm.SelectedResolution.Should().Be(posRes);
+        vm.ShowResolutionWarning.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task OnSelectedTicketChanged_WithConfiguredDefaultResolutionOnMethod_LoadsAndSelectsTargetResolution()
+    {
+        // Arrange
+        var customRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "RES-CUSTOM", Name = "Resolución Especial", IsElectronicResolution = false };
+        _mockBillingResolutionService.Setup(b => b.GetActiveResolutionsByBranchAsync(It.IsAny<int?>()))
+            .ReturnsAsync(new List<BillingResolution> { customRes });
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            var pm = db.PaymentMethods.First(p => p.Id == 1);
+            pm.DefaultResolutionId = customRes.ResolutionId.ToString();
+            db.SaveChanges();
+        }
+
+        var vm = CreateViewModel();
+
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "XYZ987",
+            VehicleType = VehicleType.Motorcycle,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-15)
+        };
+
+        // Act
+        vm.SelectedTicket = ticket;
+        await Task.Delay(100);
+
+        // Assert
+        vm.SelectedPaymentMethodEntity.Should().NotBeNull();
+        vm.SelectedResolution.Should().NotBeNull();
+        vm.SelectedResolution.Should().Be(customRes);
+        vm.ShowResolutionWarning.Should().BeFalse();
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

@@ -1,5 +1,42 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-28 15:20:00] - [CHECKOUT / RESOLUTION / DATA-DRIVEN / BUGFIX] Carga y Preselección Automática de Resolución por Defecto en Checkout sin Datos Quemados (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Miremos en el WPF... resulta y pasa que cuando yo voy a liquidar algo, por defecto el método de pago me trae efectivo, pero ese método tiene configurado... o la app específicamente ese o cualquier otro que tenga configurado una resolución, y no la está cargando, ¿sí? Entonces yo creo que debería el método de pago estar... o si lo carga por defecto, validar si tiene una resolución para que la cargue por defecto, ¿si me explico? Porque es que no lo está haciendo, me toca seleccionarlo. En el PWA funciona diferente, primero se selecciona y después la carga, pero en este pues como viene por defecto, debería validar si tiene una regla por defecto de alguna resolución, y eso no lo está haciendo... como así que efectivo puede tener cualquier nombre por que vas a quemar efectivo ese solo era de ejemplo eso depende del nombre del medio de pago configurado nada de eso puede estar qumado. revisa eso logico el backend o la sqllite devuelve la data y la pinta del orden que llega pero ya tiene la data entonces no deberia dejar quemado textos si me explico."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Eliminación de Borrado Forzado (`CheckOutViewModel.cs`)**:
+     - *Diagnóstico*: En `OnSelectedTicketChanged`, al abrir el diálogo de liquidación de salida, existía la instrucción `SelectedResolution = null;`. Dado que `_selectedPaymentMethodEntity` ya tenía guardado el primer método desde la inicialización, la asignación `SelectedPaymentMethodEntity = AvailablePaymentMethods.FirstOrDefault();` resultaba en un no-op que no disparaba `OnSelectedPaymentMethodEntityChanged`. Como consecuencia, `ApplyPaymentMethodResolutionFilter` jamás se ejecutaba al abrir el modal, y el ComboBox de *Resolución / Doc \** permanecía completamente vacío (`null`), obligando al usuario a seleccionarla manualmente o alternar el método.
+     - *Solución*:
+       - Se eliminó el borrado `SelectedResolution = null;`.
+       - Se invoca explícitamente `ApplyPaymentMethodResolutionFilter(defaultMethod)` al seleccionar un tiquete.
+  2. **Arquitectura 100% Basada en Datos (Cero Nombres Quemados - Regla de Oro 4 y 8)**:
+     - El método de pago inicial es estrictamente el primer registro activo devuelto por SQLite / API para la sede (`AvailablePaymentMethods.FirstOrDefault()`), sin asumir nombres como *"Efectivo"*.
+     - Se evalúan las propiedades relacionales del método:
+       - Si tiene `DefaultResolutionId` configurado en base de datos: se busca y autoselecciona exactamente esa resolución en `AvailableResolutions`. Si es electrónica, activa `EmitElectronicInvoice = true`; si es estándar (POS), mantiene `EmitElectronicInvoice = false`.
+       - Si tiene `RequiresResolution == true` (exige facturación electrónica): se filtra a resoluciones electrónicas y se selecciona su `DefaultResolutionId` o la primera electrónica.
+       - Si no tiene resolución específica ni exige electrónica: se autoselecciona la primera resolución POS estándar de la sede (`AutoSelectStandardResolution()`).
+       - En ningún caso el campo de resolución queda en `null` si existen resoluciones disponibles en la sede, y `ShowResolutionWarning` se actualiza dinámicamente (`SelectedResolution == null`).
+  3. **Pruebas Unitarias Automatizadas (`CheckOutViewModelTests.cs`)**:
+     - Se incorporaron las pruebas:
+       - `OnSelectedTicketChanged_WhenTicketSelected_AutoSelectsDefaultPaymentMethodAndConfiguredResolution`: Certifica que al abrir un tiquete, el método de pago toma la resolución POS por defecto sin quedar vacía.
+       - `OnSelectedTicketChanged_WithConfiguredDefaultResolutionOnMethod_LoadsAndSelectsTargetResolution`: Certifica que un método con `DefaultResolutionId` personalizado en la base de datos autoselecciona exactamente dicha resolución configurada.
+  4. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **100% Superado (354 pruebas superadas, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **354 Pruebas Superadas (100% Éxito, 0 Fallos)**.
+
+---
+
 ## 📅 Entrada: [2026-09-28 14:45:00] - [PRINTING / POLICIES / CHECKOUT / FISCAL] Soporte de Póliza y Campo Adicional de la Sede en Impresión y Automatización de Facturación Electrónica DIAN en Checkout (WPF)
 
 - **`💬 Prompt Original del Usuario`**:

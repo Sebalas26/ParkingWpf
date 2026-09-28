@@ -817,7 +817,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 }
                 else
                 {
-                    // No exige FE de forma obligatoria, pero puede tener resolución por defecto configurada
+                    // No exige FE de forma obligatoria, pero tiene resolución por defecto configurada en base de datos
                     FilteredResolutions.Clear();
                     foreach (var r in AvailableResolutions)
                     {
@@ -830,7 +830,21 @@ public partial class CheckOutViewModel : ViewModelBase
                         targetResolution = AvailableResolutions.FirstOrDefault(r => r.ResolutionId.ToString().Equals(method.DefaultResolutionId, StringComparison.OrdinalIgnoreCase));
                     }
 
-                    SelectedResolution = targetResolution ?? AvailableResolutions.FirstOrDefault();
+                    SelectedResolution = targetResolution 
+                        ?? AvailableResolutions.FirstOrDefault(r => !IsElectronicResolutionDefensive(r)) 
+                        ?? AvailableResolutions.FirstOrDefault();
+
+                    if (SelectedResolution != null && IsElectronicResolutionDefensive(SelectedResolution))
+                    {
+                        EmitElectronicInvoice = true;
+                        _ = LoadCustomersAsync();
+                    }
+                    else if (!ForceElectronicInvoiceOnCheckout)
+                    {
+                        EmitElectronicInvoice = false;
+                    }
+
+                    ShowResolutionWarning = SelectedResolution == null;
                 }
             }
             else
@@ -842,7 +856,6 @@ public partial class CheckOutViewModel : ViewModelBase
                 IsResolutionLocked = false;
                 ResolutionLockReason = string.Empty;
                 CanToggleElectronicInvoice = !ForceElectronicInvoiceOnCheckout;
-                ShowResolutionWarning = false;
                 ShowCustomerWarning = false;
 
                 FilteredResolutions.Clear();
@@ -862,6 +875,8 @@ public partial class CheckOutViewModel : ViewModelBase
                         AutoSelectStandardResolution();
                     }
                 }
+
+                ShowResolutionWarning = SelectedResolution == null;
             }
         }
         finally
@@ -1358,11 +1373,6 @@ public partial class CheckOutViewModel : ViewModelBase
             RecalculateLiveFee();
             AmountTendered = CalculatedFee;
 
-            SelectedPaymentMethodEntity = AvailablePaymentMethods.FirstOrDefault();
-            SelectedResolution = null;
-            ShowPaymentMethodWarning = false;
-            ShowResolutionWarning = false;
-
             HasElectronicInvoicingEnabled = _sessionService.CurrentUser?.HasElectronicInvoicingEnabled ?? false;
             ForceElectronicInvoiceOnCheckout = _sessionService.CurrentUser?.ForceElectronicInvoiceOnCheckout ?? false;
             CanToggleElectronicInvoice = !ForceElectronicInvoiceOnCheckout;
@@ -1372,6 +1382,11 @@ public partial class CheckOutViewModel : ViewModelBase
             QuickCustomerFeedback = null;
 
             ExitNotes = string.Empty;
+
+            var defaultMethod = AvailablePaymentMethods.FirstOrDefault();
+            SelectedPaymentMethodEntity = defaultMethod;
+            ShowPaymentMethodWarning = false;
+            ApplyPaymentMethodResolutionFilter(defaultMethod);
 
             if (HasElectronicInvoicingEnabled)
             {
