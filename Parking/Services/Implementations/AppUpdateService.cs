@@ -246,6 +246,11 @@ public class AppUpdateService : IAppUpdateService
 
             fs.Flush();
 
+            // Cerrar explícitamente los streams antes de la verificación SHA-256
+            // porque fs tiene FileShare.None y bloquearía la apertura para lectura
+            await fs.DisposeAsync();
+            await responseStream.DisposeAsync();
+
             // 4. VERIFICACIÓN CRIPTOGRÁFICA DEL HASH SHA-256
             progress?.Report(new UpdateProgressReport
             {
