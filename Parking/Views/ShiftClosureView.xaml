@@ -871,7 +871,7 @@
                                     <DataTemplate>
                                         <Button Command="{Binding DataContext.PrintShiftReceiptCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
-                                                Visibility="{Binding DataContext.CanExportShift, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}"
+                                                Visibility="{Binding IsClosed, Converter={StaticResource BoolToVis}}"
                                                 Style="{StaticResource SecondaryButton}"
                                                 Padding="10,5"
                                                 Height="28"

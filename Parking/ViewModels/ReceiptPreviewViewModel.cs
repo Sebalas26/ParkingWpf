@@ -200,6 +200,21 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private string _discountAmountStr = "$ 0";
 
     [ObservableProperty]
+    private string? _ticketPolicy;
+
+    [ObservableProperty]
+    private string? _ticketAdditionalInfo;
+
+    [ObservableProperty]
+    private bool _hasTicketPolicy;
+
+    [ObservableProperty]
+    private bool _hasTicketAdditionalInfo;
+
+    [ObservableProperty]
+    private bool _hasTicketPolicyOrAdditionalInfo;
+
+    [ObservableProperty]
     private string _subtotalStr = string.Empty;
 
     [ObservableProperty]
@@ -828,6 +843,35 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             ConsultationQrCodeImage = Services.Implementations.QrCodeGeneratorService.GenerateQrCode(PublicConsultationUrl, 8);
             ElectronicInvoiceQrImage = null;
         }
+
+        // Evaluar políticas de impresión para Información Adicional y Póliza
+        if (currentBranch != null)
+        {
+            if (!IsExitReceipt)
+            {
+                TicketPolicy = currentBranch.PrintPolicyOnEntry ? currentBranch.TicketPolicy?.Trim() : null;
+                TicketAdditionalInfo = currentBranch.PrintAdditionalInfoOnEntry ? currentBranch.TicketAdditionalInfo?.Trim() : null;
+            }
+            else
+            {
+                TicketPolicy = IsFvmInvoice 
+                    ? (currentBranch.PrintPolicyOnExitElectronic ? currentBranch.TicketPolicy?.Trim() : null)
+                    : (currentBranch.PrintPolicyOnExitPos ? currentBranch.TicketPolicy?.Trim() : null);
+
+                TicketAdditionalInfo = IsFvmInvoice
+                    ? (currentBranch.PrintAdditionalInfoOnExitElectronic ? currentBranch.TicketAdditionalInfo?.Trim() : null)
+                    : (currentBranch.PrintAdditionalInfoOnExitPos ? currentBranch.TicketAdditionalInfo?.Trim() : null);
+            }
+        }
+        else
+        {
+            TicketPolicy = null;
+            TicketAdditionalInfo = null;
+        }
+
+        HasTicketPolicy = !string.IsNullOrWhiteSpace(TicketPolicy);
+        HasTicketAdditionalInfo = !string.IsNullOrWhiteSpace(TicketAdditionalInfo);
+        HasTicketPolicyOrAdditionalInfo = HasTicketPolicy || HasTicketAdditionalInfo;
     }
 
     private static string GenerateCufe(string numFac, DateTime fechaFac, decimal valFac, string nitEmisor)

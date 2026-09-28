@@ -318,6 +318,21 @@
                                            HorizontalAlignment="Center"
                                            Margin="0,2,0,6"/>
 
+                                <!-- Información Adicional y Póliza -->
+                                <StackPanel Visibility="{Binding HasTicketPolicyOrAdditionalInfo, Converter={StaticResource BoolToVis}}" Margin="0,2,0,4">
+                                    <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,2,0,4"/>
+                                    <TextBlock Text="{Binding TicketPolicy}"
+                                               Visibility="{Binding HasTicketPolicy, Converter={StaticResource BoolToVis}}"
+                                               FontSize="8.5" FontWeight="Bold"
+                                               FontFamily="{StaticResource FontFamilyMonospace}"
+                                               Foreground="#000000" TextAlignment="Center" TextWrapping="Wrap" Margin="0,1"/>
+                                    <TextBlock Text="{Binding TicketAdditionalInfo}"
+                                               Visibility="{Binding HasTicketAdditionalInfo, Converter={StaticResource BoolToVis}}"
+                                               FontSize="8"
+                                               FontFamily="{StaticResource FontFamilyMonospace}"
+                                               Foreground="#000000" TextAlignment="Center" TextWrapping="Wrap" Margin="0,1,0,2"/>
+                                </StackPanel>
+
                             </StackPanel>
 
                             <!-- ============================================================= -->
@@ -427,6 +442,21 @@
                                            Foreground="#000000"
                                            HorizontalAlignment="Center"
                                            Margin="0,0,0,6"/>
+
+                                <!-- Información Adicional y Póliza -->
+                                <StackPanel Visibility="{Binding HasTicketPolicyOrAdditionalInfo, Converter={StaticResource BoolToVis}}" Margin="0,2,0,4">
+                                    <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,2,0,4"/>
+                                    <TextBlock Text="{Binding TicketPolicy}"
+                                               Visibility="{Binding HasTicketPolicy, Converter={StaticResource BoolToVis}}"
+                                               FontSize="8.5" FontWeight="Bold"
+                                               FontFamily="{StaticResource FontFamilyMonospace}"
+                                               Foreground="#000000" TextAlignment="Center" TextWrapping="Wrap" Margin="0,1"/>
+                                    <TextBlock Text="{Binding TicketAdditionalInfo}"
+                                               Visibility="{Binding HasTicketAdditionalInfo, Converter={StaticResource BoolToVis}}"
+                                               FontSize="8"
+                                               FontFamily="{StaticResource FontFamilyMonospace}"
+                                               Foreground="#000000" TextAlignment="Center" TextWrapping="Wrap" Margin="0,1,0,2"/>
+                                </StackPanel>
                             </StackPanel>
 
                             <!-- ============================================================= -->
@@ -686,13 +716,23 @@
                                            TextWrapping="Wrap"
                                            Margin="0,2,0,8"/>
 
-                                <!-- 8. Pie Legal y Resolución DIAN -->
-                                <TextBlock Text="IVA REGIMEN COMUN" FontSize="9" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="NO SOMOS GRANDES CONTRIBUYENTES" FontSize="9" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                                <!-- 8. Resolución DIAN y Pólizas -->
                                 <TextBlock Text="{Binding DianResolutionText}" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
                                 <TextBlock Text="{Binding DianRangeText}" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="ESTA FACTURA DE VENTA SE ASIMILA EN TODOS" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="SUS EFECTOS LEGALES A LA LETRA DE CAMBIO ART. 774 CC" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,8"/>
+                                
+                                <StackPanel Visibility="{Binding HasTicketPolicyOrAdditionalInfo, Converter={StaticResource BoolToVis}}" Margin="0,4,0,4">
+                                    <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,2,0,4"/>
+                                    <TextBlock Text="{Binding TicketPolicy}"
+                                               Visibility="{Binding HasTicketPolicy, Converter={StaticResource BoolToVis}}"
+                                               FontSize="8.5" FontWeight="Bold"
+                                               FontFamily="{StaticResource FontFamilyMonospace}"
+                                               Foreground="#000000" TextAlignment="Center" TextWrapping="Wrap" Margin="0,1"/>
+                                    <TextBlock Text="{Binding TicketAdditionalInfo}"
+                                               Visibility="{Binding HasTicketAdditionalInfo, Converter={StaticResource BoolToVis}}"
+                                               FontSize="8"
+                                               FontFamily="{StaticResource FontFamilyMonospace}"
+                                               Foreground="#000000" TextAlignment="Center" TextWrapping="Wrap" Margin="0,1,0,2"/>
+                                </StackPanel>
 
                             </StackPanel>
 

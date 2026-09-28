@@ -649,29 +649,12 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 verifiedCash,
                 currentShiftId);
 
-            // Consultar datos del turno saliente cerrado para comprobante de arqueo
-            WorkShift? closedShift = null;
-            if (outgoingShiftId.HasValue)
-            {
-                using var dbLookup = _connectionManager.CreateDbContext();
-                closedShift = await dbLookup.WorkShifts.AsNoTracking().FirstOrDefaultAsync(s => s.ShiftId == outgoingShiftId.Value);
-            }
-
-            // Preguntar al usuario si desea imprimir la tirilla oficial de cierre de caja
-            var shouldPrint = await _dialogService.ShowConfirmationAsync(
+            await _dialogService.ShowAlertAsync(
                 "Entrega y Relevo Registrado",
                 $"El turno de '{outgoingOperatorName}' ha sido entregado exitosamente a '{SelectedHandoverUser.FullName}'.\n\n" +
                 $"• Total Arqueo en Gaveta: ${verifiedCash:N0}\n" +
-                $"• Total Tiquetes Liquidados: {outgoingSummary.TotalTicketsProcessed}\n\n" +
-                "¿Desea imprimir el comprobante de cierre de caja?",
-                DialogNotificationType.Question,
-                "Sí, imprimir tirilla",
-                "No, omitir");
-
-            if (shouldPrint && closedShift != null)
-            {
-                await _dialogService.ShowShiftClosurePreviewAsync(closedShift, outgoingSummary);
-            }
+                $"• Total Tiquetes Liquidados: {outgoingSummary.TotalTicketsProcessed}",
+                DialogNotificationType.Success);
 
             // Cambiar la sesión activa al operador receptor autenticado una vez abierto el nuevo turno
             _authService.SwitchCurrentUser(authResult.Session);
@@ -779,28 +762,12 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 targetShift.ShiftId,
                 targetShift.CashRegisterName);
 
-            // Consultar datos del turno saliente cerrado para comprobante de arqueo
-            WorkShift? closedShift = null;
-            using (var dbLookup = _connectionManager.CreateDbContext())
-            {
-                closedShift = await dbLookup.WorkShifts.AsNoTracking().FirstOrDefaultAsync(s => s.ShiftId == targetShiftId);
-            }
-
-            // Preguntar al usuario si desea imprimir la tirilla oficial de cierre de la caja relevada
-            var shouldPrint = await _dialogService.ShowConfirmationAsync(
+            await _dialogService.ShowAlertAsync(
                 "Turno Asumido con Éxito",
                 $"Has recibido la caja '{targetShift.CashRegisterName}' de '{targetShift.OperatorName}'.\n\n" +
                 $"• Base Recibida: ${verifiedCash:N0}\n" +
-                $"• Tiquetes Liquidados en Turno Saliente: {targetSummary.TotalTicketsProcessed}\n\n" +
-                "¿Desea imprimir el comprobante de cierre de la caja relevada?",
-                DialogNotificationType.Question,
-                "Sí, imprimir tirilla",
-                "No, omitir");
-
-            if (shouldPrint && closedShift != null)
-            {
-                await _dialogService.ShowShiftClosurePreviewAsync(closedShift, targetSummary);
-            }
+                $"• Tiquetes Liquidados en Turno Saliente: {targetSummary.TotalTicketsProcessed}",
+                DialogNotificationType.Success);
 
             // Sincronizar y recargar sesión activa con la matriz de permisos para el nuevo operador
             _authService.SwitchCurrentUser(authResult.Session);

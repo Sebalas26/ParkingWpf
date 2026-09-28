@@ -24,6 +24,8 @@ public class AppUpdateService : IAppUpdateService
     private readonly ISessionService _sessionService;
     private readonly System.Windows.Threading.DispatcherTimer _periodicTimer = new();
 
+    public HttpMessageHandler? CustomDownloadHandler { get; set; }
+
     public event Action<AppReleaseInfoDto>? UpdateDetected;
 
     public AppUpdateService(
@@ -172,11 +174,11 @@ public class AppUpdateService : IAppUpdateService
             // El HttpClient singleton es compartido con PingAsync/SyncEngine que usan
             // CancellationTokens de 8s. Cuando un health-check se cancela, el SocketsHttpHandler
             // puede matar la conexión TCP activa de descarga (comparten pool de sockets).
-            var downloadHandler = new HttpClientHandler();
+            HttpMessageHandler downloadHandler = CustomDownloadHandler ?? new HttpClientHandler();
             var baseUri = _httpClient.BaseAddress;
-            if (baseUri != null && (baseUri.Host.Contains("localhost") || baseUri.Host.Contains("127.0.0.1")))
+            if (downloadHandler is HttpClientHandler handler && baseUri != null && (baseUri.Host.Contains("localhost") || baseUri.Host.Contains("127.0.0.1")))
             {
-                downloadHandler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+                handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
             }
 
             using var downloadClient = new HttpClient(downloadHandler)
@@ -184,6 +186,7 @@ public class AppUpdateService : IAppUpdateService
                 BaseAddress = baseUri,
                 Timeout = TimeSpan.FromMinutes(10) // 10 minutos exclusivos para la descarga
             };
+
 
             var license = _licenseService.GetCurrentLicense();
             using var downloadReq = new HttpRequestMessage(HttpMethod.Get, downloadUrl);

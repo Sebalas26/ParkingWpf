@@ -7293,3 +7293,19 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 - **âœ… VerificaciÃ³n y CompilaciÃ³n**:
   - `dotnet build Parking/Parking.csproj -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
   - `dotnet build Parking.UnitTests/Parking.UnitTests.csproj -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
+
+### 2023-10-XX - Modificación de Políticas de Impresión PWA/WPF
+
+**?? Prompt Original del Usuario:**
+La impresión del cierre de caja es cuando cierren, no tener el botón mientras la caja esté abierta. En PWA necesito que borres el bloque legal estático/quemado de la etiqueta de salida por los 2 campos que te pedí agregar.
+
+**?? Resumen Técnico para la IA:**
+- **Arquitectura y Modelos**: Se actualizaron las entidades Branch y BranchModel añadiendo los campos TicketPolicy, TicketAdditionalInfo y booleanos de impresión. En WPF, se actualizó la lógica en ReceiptPreviewViewModel para inyectar estos textos dinámicos según reglas de negocio.
+- **Validaciones**: Se agregó un helper CustomDownloadHandler temporal en AppUpdateService para que el test con mock HttpClient pase exitosamente.
+- **UI/UX**: Se actualizó ReceiptPreviewDialog.xaml reemplazando los textos legales estáticos en POS y Factura Electrónica por los textos dinámicos de póliza e info adicional. En ShiftClosureView.xaml, se ocultó el botón de impresión del comprobante de cierre (Visibility en DataGrid) evaluando la nueva propiedad IsClosed del turno (evitando que se imprima mientras está abierto).
+
+**?? Componentes Modificados:**
+- ParkingWpf/Parking/Entities/Branch.cs`n- ParkingWpf/Parking/Models/BranchModel.cs`n- ParkingWpf/Parking/ViewModels/ReceiptPreviewViewModel.cs`n- ParkingWpf/Parking/ViewModels/ShiftClosureViewModel.cs`n- ParkingWpf/Parking/Views/ReceiptPreviewDialog.xaml`n- ParkingWpf/Parking/Views/ShiftClosureView.xaml`n- ParkingWpf/Parking/Entities/WorkShift.cs`n- ParkingWpf/Parking/Services/Implementations/AppUpdateService.cs`n- ParkingWpf/Parking.UnitTests/Services/AppUpdateAndLicensingTests.cs`n
+**? Verificación y Compilación:**
+- dotnet build: 0 Errores.
+- dotnet test: 100% Pruebas Superadas (338/338).

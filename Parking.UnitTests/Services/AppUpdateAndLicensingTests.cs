@@ -191,7 +191,10 @@ public class AppUpdateAndLicensingTests : IDisposable
             dbManagerMock.Object,
             fingerprintMock.Object,
             licenseMock.Object,
-            sessionMock.Object);
+            sessionMock.Object)
+        {
+            CustomDownloadHandler = handlerMock.Object
+        };
 
         var release = new AppReleaseInfoDto
         {
