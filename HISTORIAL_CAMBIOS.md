@@ -1,6 +1,33 @@
 # Historial Oficial de Modificaciones y Control de Cambios
 
-<<<<<<< HEAD
+## 📅 Entrada: [2026-09-27 22:05:00] - [FEATURE / WPF / POS / SHIFTS] Eliminación de Tirilla de Turno Anterior y Bloqueo Preventivo de Nueva Caja en Modalidad Caja Única
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"ayudame a eliminar este flujo en mi wpf, ya que no deberia permitirle al usuario impirmir tirilla de cirre del turno anterior, esto el usuario lo podra ser desde el pwa si cuenta con permisos"_
+  > _"agregale al plan este cambio tambien: Segun la configuracion de la sede, no permite mas caja abiertas, entonces en el wpf voy al modulo de control de turnos y el me sale el boton de abrir nueva caja aparte, pero el deberia estar inhabilitado , ademas me sale un erorr rojo, creoq ue es por lo mismo que detecta que ya hay una caja abierta"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Eliminación de Reimpresión de Tirilla de Cierre de Turno Anterior (`ShiftClosureView.xaml`, `ShiftClosureViewModel.cs`)**:
+     - *Justificación y Seguridad Operativa*: Un operador entrante que se dispone a abrir turno no debe imprimir ni auditar la tirilla térmica detallada del turno previo desde WPF. Dicha auditoría corresponde a la PWA bajo los permisos RBAC pertinentes (`shifts.reprint_closure`).
+     - *Modificación Quirúrgica*:
+       - En `ShiftClosureView.xaml`, se removió el botón *"Imprimir Tirilla de Cierre"* (`PrintLastClosedShiftReceiptCommand`) dentro de la tarjeta de **Custodia del Turno Anterior**, preservando intacta la visualización del monto recibido en custodia (`LastClosedShift.ActualCashCounted`), el operador previo y la fecha/hora.
+       - En `ShiftClosureViewModel.cs`, se eliminó el método huérfano `PrintLastClosedShiftReceiptAsync` con su comando `[RelayCommand]`.
+  2. **Bloqueo Preventivo del Botón "Abrir Nueva Caja Aparte" en Sede de Caja Única**:
+     - *Causa Raíz*: Cuando una sede opera con `AllowMultipleOpenShifts = false` y ya existen cajas/turnos abiertos (`HasOtherActiveShifts == true`), el botón *"Abrir Nueva Caja Aparte"* (`SelectNewRegisterModeCommand`) permanecía habilitado en la cabecera selectora de modalidad. Al pulsarlo y enviar la apertura, el sistema fallaba en la validación defensiva arrojando una alerta roja/excepción.
+     - *Solución*:
+       - Se introdujo la propiedad observable `CanOpenMultipleShifts` en `ShiftClosureViewModel.cs`, sincronizada con la sede activa (`_sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false` y `localBranch.AllowMultipleOpenShifts`).
+       - Se integró `CanExecute = nameof(CanSelectNewRegisterMode)` en `SelectNewRegisterModeCommand` y se notificó su cambio mediante `SelectNewRegisterModeCommand.NotifyCanExecuteChanged()`.
+       - Se agregaron las propiedades `CanSelectNewRegisterMode` y `NewRegisterModeToolTip` con mensaje contextual informativo.
+       - En `ShiftClosureView.xaml`, se vinculó `IsEnabled="{Binding CanOpenMultipleShifts}"` y `ToolTip="{Binding NewRegisterModeToolTip}"` al botón *"Abrir Nueva Caja Aparte"*, incorporando un trigger visual para estado inactivo (`Opacity="0.45"`, `Background="#F1F5F9"`, `BrushTextMuted`).
+
+- **`📦 Componentes Modificados`**:
+  - `(WPF) Parking/Views/ShiftClosureView.xaml`
+  - `(WPF) Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx /p:EnableWindowsTargeting=true`: **Compilación Correcta (0 Errores, 0 Advertencias)**.
+
 ## 📅 Entrada: [2026-09-27] - [FEATURE / WPF / POS / SHIFTS] Impresión de Cierre de Caja en Relevo/Entrega, Confirmación Interactiva e Historial con Cierre Digital
 
 - **`💬 Prompt Original del Usuario`**:
@@ -28,7 +55,6 @@
   - `(WPF) Parking/Views/ShiftClosureView.xaml`
   - `(WPF) Parking/Views/ReceiptPreviewDialog.xaml`
   - `(WPF) Parking/Views/ReceiptPreviewDialog.xaml.cs`
-=======
 ## 📅 Entrada: [2026-09-27 18:50:00] - [PERFORMANCE / NETWORK / STREAMING] Optimización Crítica de Streaming de Descarga (Búfer 80 KB LOH-Safe) y Timeout Desacoplado en WPF
 
 - **`💬 Prompt Original del Usuario`**:
@@ -133,7 +159,6 @@
   - `Parking/Services/Implementations/SyncEngineService.cs`
   - `Parking/Services/Implementations/AppUpdateService.cs`
   - `Parking/ViewModels/LoginViewModel.cs`
->>>>>>> 5d3f48fa3f2abc0098dd3fd424443b6d6d479d4e
   - `HISTORIAL_CAMBIOS.md`
 
 - **`✅ Verificación y Compilación`**:

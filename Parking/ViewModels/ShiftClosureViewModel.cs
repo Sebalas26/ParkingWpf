@@ -149,6 +149,17 @@ public partial class ShiftClosureViewModel : ViewModelBase
     public bool IsRelieveSectionVisible => !HasActiveShift && HasOtherActiveShifts && IsRelieveModeSelected;
     public bool IsOpenNewRegisterSectionVisible => !HasActiveShift && (!HasOtherActiveShifts || !IsRelieveModeSelected);
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanSelectNewRegisterMode))]
+    [NotifyPropertyChangedFor(nameof(NewRegisterModeToolTip))]
+    private bool _canOpenMultipleShifts;
+
+    public bool CanSelectNewRegisterMode => CanOpenMultipleShifts;
+
+    public string NewRegisterModeToolTip => CanOpenMultipleShifts
+        ? "Abrir una nueva caja independiente en esta sede"
+        : "Esta sede no permite múltiples cajas abiertas simultáneamente. Debe relevar la caja activa.";
+
     public ShiftClosureViewModel(
         IShiftService shiftService,
         IAuthService authService,
@@ -173,6 +184,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
         _permissionService = permissionService;
         _operatorName = _authService.CurrentUser?.FullName ?? "Operador General";
         _branchName = _sessionService.CurrentBranch?.Name ?? "Sede Principal";
+        _canOpenMultipleShifts = _sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false;
         _isOnlineMode = _syncEngine.IsOnline;
         _syncStatusText = _isOnlineMode ? "Sincronizado" : "Modo Local";
 
@@ -231,6 +243,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
         _sessionService.ActiveBranchChanged += async branch =>
         {
             BranchName = branch?.Name ?? _sessionService.CurrentBranch?.Name ?? "Sede Principal";
+            CanOpenMultipleShifts = branch?.AllowMultipleOpenShifts ?? _sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false;
+            SelectNewRegisterModeCommand.NotifyCanExecuteChanged();
             try { await LoadShiftDataAsync(); } catch { }
         };
     }
@@ -239,6 +253,8 @@ public partial class ShiftClosureViewModel : ViewModelBase
     {
         OperatorName = _authService.CurrentUser?.FullName ?? "Operador General";
         BranchName = _sessionService.CurrentBranch?.Name ?? "Sede Principal";
+        CanOpenMultipleShifts = _sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false;
+        SelectNewRegisterModeCommand.NotifyCanExecuteChanged();
         IsOnlineMode = _syncEngine.IsOnline;
         SyncStatusText = IsOnlineMode ? "Sincronizado" : "Modo Local";
         UpdatePermissions();
@@ -330,9 +346,10 @@ public partial class ShiftClosureViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanSelectNewRegisterMode))]
     private void SelectNewRegisterMode()
     {
+        if (!CanSelectNewRegisterMode) return;
         IsRelieveModeSelected = false;
         ActualCashCounted = 0m;
         CashDifference = 0m;
@@ -868,26 +885,6 @@ public partial class ShiftClosureViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task PrintLastClosedShiftReceiptAsync()
-    {
-        if (LastClosedShift == null)
-        {
-            await _dialogService.ShowAlertAsync("Información", "No hay registro de un turno cerrado previamente para imprimir.", DialogNotificationType.Information);
-            return;
-        }
-
-        try
-        {
-            var summary = await _shiftService.GetShiftSummaryByIdAsync(LastClosedShift.ShiftId);
-            await _dialogService.ShowShiftClosurePreviewAsync(LastClosedShift, summary);
-        }
-        catch (Exception ex)
-        {
-            await _dialogService.ShowAlertAsync("Error", $"No fue posible generar la tirilla de cierre: {ex.Message}", DialogNotificationType.Error);
-        }
-    }
-
-    [RelayCommand]
     private async Task PrintShiftReceiptAsync(WorkShift? shift)
     {
         if (shift == null) return;
@@ -1007,6 +1004,9 @@ public partial class ShiftClosureViewModel : ViewModelBase
                 var localBranch = currentBranchId.HasValue
                     ? await dbCheck.Branches.AsNoTracking().FirstOrDefaultAsync(b => b.Id == currentBranchId.Value)
                     : null;
+
+                CanOpenMultipleShifts = localBranch?.AllowMultipleOpenShifts ?? (_sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false);
+                SelectNewRegisterModeCommand.NotifyCanExecuteChanged();
 
                 var configuredBranchBase = (localBranch != null && localBranch.DefaultInitialCash > 0)
                     ? localBranch.DefaultInitialCash
