@@ -220,6 +220,20 @@
                                    Foreground="#94A3B8"
                                    Margin="0,0,0,18"/>
 
+                        <!-- Banner de Confirmación: Sistema Actualizado -->
+                        <Border Background="#2610B981"
+                                BorderBrush="#5510B981"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="10,8"
+                                Margin="0,0,0,14"
+                                Visibility="{Binding ShowUpdateSuccessMessage, Converter={StaticResource BoolToVis}}">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Data="{StaticResource IconCheckCircle}" Fill="#34D399" Width="14" Height="14" Stretch="Uniform" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding UpdateSuccessMessage}" Foreground="#6EE7B7" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
                         <!-- Alerta de Error -->
                         <Border Background="#28EF4444"
                                 BorderBrush="#55EF4444"
@@ -421,9 +435,9 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Pie Inferior con Versión -->
+                <!-- Pie Inferior con Versión Dinámica -->
                 <TextBlock Grid.Row="2"
-                           Text="• Versión v0.1.2 • © PARKING FLOW"
+                           Text="{Binding AppVersionDisplay, StringFormat='• Versión {0} • © PARKING FLOW'}"
                            Foreground="#64748B"
                            FontSize="11"
                            FontWeight="SemiBold"

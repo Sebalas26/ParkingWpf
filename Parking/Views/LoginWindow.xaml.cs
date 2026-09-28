@@ -9,6 +9,7 @@ public partial class LoginWindow : Window
     public LoginWindow()
     {
         InitializeComponent();
+        Parking.Core.Helpers.WindowIconHelper.EnsureWindowIcon(this);
         Loaded += OnLoaded;
     }
 

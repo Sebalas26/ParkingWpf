@@ -199,6 +199,7 @@ public partial class MainWindow : Window
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = exePath,
+                    Arguments = "--updated",
                     WorkingDirectory = _targetDir,
                     UseShellExecute = true
                 });

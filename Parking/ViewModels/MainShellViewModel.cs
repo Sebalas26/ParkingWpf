@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
@@ -17,6 +18,22 @@ namespace Parking.ViewModels;
 
 public partial class MainShellViewModel : ViewModelBase
 {
+    public string AppVersionDisplay
+    {
+        get
+        {
+            var asm = Assembly.GetExecutingAssembly();
+            var infoVer = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            if (!string.IsNullOrWhiteSpace(infoVer))
+            {
+                var plusIdx = infoVer.IndexOf('+');
+                return "v" + (plusIdx > 0 ? infoVer[..plusIdx] : infoVer);
+            }
+            var ver = asm.GetName().Version;
+            return ver != null ? $"v{ver.Major}.{ver.Minor}.{ver.Build}" : "v1.0.0";
+        }
+    }
+
     private static readonly CultureInfo SpanishCulture = new("es-ES");
     private readonly IAuthService _authService;
     private readonly ISessionService _sessionService;
@@ -183,6 +200,22 @@ public partial class MainShellViewModel : ViewModelBase
         _shiftService = shiftService;
         _signalRClient = signalRClient;
         _updateService = updateService;
+
+        if (_updateService != null)
+        {
+            _updateService.UpdateDetected += release =>
+            {
+                var dispatcher = Application.Current?.Dispatcher;
+                if (dispatcher != null && !dispatcher.CheckAccess())
+                {
+                    dispatcher.InvokeAsync(async () => await _dialogService.ShowAppUpdateDialogAsync(release));
+                }
+                else
+                {
+                    _ = _dialogService.ShowAppUpdateDialogAsync(release);
+                }
+            };
+        }
 
         _backgroundSync.SyncTriggered += (s, e) =>
         {

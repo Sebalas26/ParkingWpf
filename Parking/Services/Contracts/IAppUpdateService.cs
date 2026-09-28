@@ -8,4 +8,7 @@ public interface IAppUpdateService
 {
     Task<AppReleaseInfoDto?> CheckForUpdateAsync();
     Task<bool> PrepareAndApplyUpdateAsync(AppReleaseInfoDto release, IProgress<UpdateProgressReport>? progress = null);
+    void StartHourlyUpdateCheck();
+    void StopHourlyUpdateCheck();
+    event Action<AppReleaseInfoDto>? UpdateDetected;
 }

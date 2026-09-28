@@ -19,13 +19,22 @@ param(
     [string]$Version,
 
     [Parameter(Mandatory=$false)]
-    [bool]$IsMandatory = $false,
+    $IsMandatory = $true,
 
     [Parameter(Mandatory=$false)]
     [string]$ReleaseNotes = "Actualizacion y optimizaciones de estabilidad de ParkFlow Desktop."
 )
 
 $ErrorActionPreference = "Stop"
+
+$isMandatoryBool = if ($IsMandatory -is [bool]) { 
+    $IsMandatory 
+} elseif ($IsMandatory -is [System.Management.Automation.SwitchParameter]) { 
+    $IsMandatory.IsPresent 
+} else { 
+    $valStr = $IsMandatory.ToString().Trim('$', ' ', '"', "'")
+    if ($valStr -eq "1" -or $valStr -eq "true" -or $valStr -eq "True") { $true } else { $false }
+}
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $rootDir = (Resolve-Path "$scriptDir\..").Path
@@ -70,10 +79,20 @@ dotnet publish "$rootDir\ParkFlow.Updater\ParkFlow.Updater.csproj" `
 # 4. Limpiar archivos no deseados en la distribucion (PDBs pesados de desarrollo, configs locales, bases de datos)
 Write-Host "`n[3/5] Depurando paquete para distribucion..." -ForegroundColor Yellow
 Get-ChildItem -Path $stagingDir -Filter "*.pdb" | Remove-Item -Force
+Get-ChildItem -Path $stagingDir -Filter "*.xml" | Remove-Item -Force
 Get-ChildItem -Path $stagingDir -Filter "*.db*" | Remove-Item -Force
 Get-ChildItem -Path $stagingDir -Filter "license.dat" | Remove-Item -Force
 if (Test-Path "$stagingDir\appsettings.Development.json") {
     Remove-Item "$stagingDir\appsettings.Development.json" -Force
+}
+
+# Depurar carpetas satélites de idiomas de EF Core / .NET no utilizadas (Ahorra ~20 MB de peso muerto)
+$satelliteCultures = @('cs','de','es','fr','it','ja','ko','pl','pt-BR','ru','tr','zh-Hans','zh-Hant')
+foreach ($culture in $satelliteCultures) {
+    $culturePath = "$stagingDir\$culture"
+    if (Test-Path $culturePath) {
+        Remove-Item $culturePath -Recurse -Force
+    }
 }
 
 # 5. Generar archivo comprimido ZIP
@@ -94,7 +113,7 @@ $mbSize = [math]::Round($packageSize / 1MB, 2)
 $manifest = [PSCustomObject]@{
     version = $Version
     minSupportedVersion = "1.0.0"
-    isMandatory = $IsMandatory
+    isMandatory = $isMandatoryBool
     packageFileName = $zipFileName
     packageSha256 = $sha256
     packageSizeBytes = $packageSize
@@ -104,11 +123,36 @@ $manifest = [PSCustomObject]@{
 
 $manifest | ConvertTo-Json -Depth 4 | Set-Content -Path $manifestFilePath -Encoding UTF8
 
+# 8. Compilar instalador oficial de Windows con Inno Setup si está disponible
+$isccCandidates = @(
+    "$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe",
+    "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+    "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+)
+$isccPath = $isccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+$setupExePath = "$outputDir\ParkFlow_Setup_v$Version.exe"
+
+if ($isccPath) {
+    Write-Host "`n[6/6] Compilando instalador oficial de Windows (Setup Wizard)..." -ForegroundColor Yellow
+    $installerIssPath = "$scriptDir\installer.iss"
+    & "$isccPath" /Q /DMyAppVersion="$Version" /O"$outputDir" "$installerIssPath"
+    if (Test-Path $setupExePath) {
+        $setupSize = [math]::Round((Get-Item $setupExePath).Length / 1MB, 2)
+        Write-Host "  -> Instalador Windows generado: $setupExePath ($setupSize MB)" -ForegroundColor Green
+    }
+} else {
+    Write-Host "`n[Aviso] Inno Setup 6 no encontrado en el sistema. Se omite la generacion del Setup .exe." -ForegroundColor Gray
+}
+
 Write-Host "`n================================================================================" -ForegroundColor Cyan
-Write-Host "  PAQUETE GENERADO EXITOSAMENTE" -ForegroundColor Green
+Write-Host "  VERSION v$Version PUBLICADA EXITOSAMENTE" -ForegroundColor Green
 Write-Host "================================================================================" -ForegroundColor Cyan
-Write-Host "  - Archivo ZIP:    $zipFilePath" -ForegroundColor White
-Write-Host "  - Tamano:         $mbSize MB ($packageSize bytes)" -ForegroundColor White
-Write-Host "  - Hash SHA-256:   $sha256" -ForegroundColor Green
-Write-Host "  - Manifiesto:     $manifestFilePath" -ForegroundColor White
+if (Test-Path $setupExePath) {
+    Write-Host "  - Instalador Setup: $setupExePath" -ForegroundColor Green
+}
+Write-Host "  - Paquete ZIP (OTA):$zipFilePath" -ForegroundColor White
+Write-Host "  - Tamano ZIP:       $mbSize MB ($packageSize bytes)" -ForegroundColor White
+Write-Host "  - Hash SHA-256:     $sha256" -ForegroundColor Cyan
+Write-Host "  - Manifiesto JSON:  $manifestFilePath" -ForegroundColor White
 Write-Host "================================================================================" -ForegroundColor Cyan
+

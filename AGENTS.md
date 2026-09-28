@@ -4,9 +4,20 @@ Este documento define las **Reglas de Oro y Estándares Obligatorios** para cual
 
 ---
 
-## 🛑 1. REGLA DE ORO: PLANIFICACIÓN PREVIA OBLIGATORIA
-1. **Nunca modificar ni crear código directamente** ante una nueva solicitud o cambio de comportamiento sin antes elaborar un **Plan de Arquitectura e Implementación** detallado (`implementation_plan.md`).
-2. **Esperar siempre la aprobación explícita del usuario** antes de ejecutar cualquier edición en los archivos del proyecto.
+## 🛑 1. REGLA DE ORO: PLANIFICACIÓN CERRADA Y EJECUCIÓN DIRECTA (CERO DOBLE ANÁLISIS / CERO DESVIACIÓN)
+1. **Fase de Planificación (`implementation_plan.md`) - Análisis Agotado al 100%**:
+   - Todo diagnóstico de causa raíz, inspección de dependencias y evaluación de impacto DEBE quedar resuelto y cerrado durante la elaboración del plan.
+   - El plan debe listar con precisión quirúrgica:
+     a) Archivos exactos que se van a modificar, crear o eliminar.
+     b) Métodos, líneas, modelos y validaciones exactas a implementar.
+     c) Pruebas automatizadas y comandos de verificación final.
+   - Queda prohibido dejar puntos abiertos o aplazar el análisis técnico para la fase de implementación.
+2. **Aprobación del Usuario ("Proceder", "Adelante", "Aprobado") = Orden Estricta de Ejecución Directa**:
+   - Al recibir la confirmación del usuario, la IA tiene **ESTRICTAMENTE PROHIBIDO volver a hacer análisis preliminares, re-diagnosticar, buscar archivos de nuevo para repensar la solución o entrar en bucles de doble procesamiento**.
+   - La IA debe iniciar **INMEDIATAMENTE la ejecución física de las modificaciones pactadas en el plan**, aplicando los cambios archivo por archivo sin vacilar.
+3. **Cero Tolerancia a Desviaciones o Cambios de Alcance**:
+   - Durante la ejecución, la IA debe limitarse estrictamente a lo aprobado en el plan.
+   - Queda prohibido inventar cambios no acordados, omitir pasos planificados o alterar la solución técnica aprobada por el usuario.
 
 ---
 
@@ -109,6 +120,26 @@ Este documento define las **Reglas de Oro y Estándares Obligatorios** para cual
 3. **Validaciones Claras de Obligatoriedad**:
    - Si un campo es obligatorio, debe validar activamente y notificar en pantalla si el usuario omite su ingreso, permitiendo ingresar `0` si la regla de negocio no aplica para esa sede.
 
+
+---
+
+## 🛑 9. REGLA DE ORO: ACTUALIZACIONES OBLIGATORIAS Y SINCRONIZACIÓN PREVIA AL 100% (CERO PÉRDIDA DE DATOS)
+> [!CAUTION]
+> **PROHIBICIÓN ESTRICTA DE ACTUALIZAR SIN SUBIR EL 100% DE LA INFORMACIÓN A LA NUBE**:
+> Jamás aplicar una actualización de binarios si existen transacciones locales en cola (`PendingItemsCount > 0`) que no hayan sido confirmadas en el servidor central.
+
+1. **Garantía Total de Información en la Nube (`PendingItemsCount == 0`)**:
+   - Antes de iniciar la descarga y reemplazo de binarios, el sistema DEBE sincronizar forzosamente todas las transacciones locales. Si la sincronización falla por caída de red, la actualización se suspende de inmediato para proteger los datos operativos.
+2. **Cero Posposición (Obligatoriedad Absoluta)**:
+   - Las actualizaciones no son opcionales ni postergables (`CanCancel = false`). No existe el botón *"Posponer"*.
+3. **Validación en el Login**:
+   - Al abrir la aplicación o hacer clic en *"Iniciar Sesión"*, el sistema verifica si existe una nueva versión. Si hay actualización disponible, sincroniza todo a la nube y exige actualizar antes de permitir el acceso operativo a `MainShellWindow`.
+4. **Sondeo Periódico en Caliente (1 Hora) y Notificación SignalR**:
+   - Mientras la terminal esté en operación, el sistema sondea el API cada 1 hora y atiende eventos SignalR `AppReleaseAvailable`.
+   - Al detectar una nueva versión en caliente: sincroniza al 100% las ventas/turnos, respalda la BD local, cierra formalmente la sesión del operador y lanza el actualizador, retornando a la pantalla de Login.
+5. **Confirmación Visual de Sistema Actualizado**:
+   - Tras el reinicio con la nueva versión, el micro-actualizador invoca `Parking.exe --updated`, desplegando en la pantalla de Login el mensaje verde: *"Listo, sistema actualizado"*.
+   - Ver protocolo maestro en [`PROTOCOLO_ACTUALIZACIONES_OBLIGATORIAS.md`](file:///c:/Users/migue/source/repos/ParkingWpf/PROTOCOLO_ACTUALIZACIONES_OBLIGATORIAS.md).
 
 ---
 

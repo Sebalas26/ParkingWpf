@@ -145,21 +145,38 @@ public partial class App : Application
                 }
             }
 
-            // 2. Comprobación de Actualizaciones Remotas en Segundo Plano
+            // 2. Comprobación y Sondeo Periódico de Actualizaciones Remotas (1 Hora y Notificaciones)
+            _isPostUpdateLaunch = e.Args != null && e.Args.Any(a => a.Equals("--updated", StringComparison.OrdinalIgnoreCase));
+
+            var updateService = _serviceProvider.GetRequiredService<IAppUpdateService>();
+            updateService.StartHourlyUpdateCheck();
+            updateService.UpdateDetected += release =>
+            {
+                Dispatcher.InvokeAsync(async () =>
+                {
+                    var dialogService = _serviceProvider.GetRequiredService<IDialogService>();
+                    await dialogService.ShowAppUpdateDialogAsync(release);
+                });
+            };
+
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await Task.Delay(2000); // Esperar que la UI inicial esté cargada
-                    var updateService = _serviceProvider.GetRequiredService<IAppUpdateService>();
+                    await Task.Delay(1500); // Esperar que la UI inicial esté cargada
                     var release = await updateService.CheckForUpdateAsync();
                     if (release != null && release.HasUpdate)
                     {
-                        await Dispatcher.InvokeAsync(() =>
+                        var syncEngine = _serviceProvider.GetRequiredService<ISyncEngineService>();
+                        // Si la cola local está limpia (0 pendientes), se puede actualizar inmediatamente en el login
+                        if (syncEngine.PendingItemsCount == 0)
                         {
-                            var dialogService = _serviceProvider.GetRequiredService<IDialogService>();
-                            _ = dialogService.ShowAppUpdateDialogAsync(release);
-                        });
+                            await Dispatcher.InvokeAsync(() =>
+                            {
+                                var dialogService = _serviceProvider.GetRequiredService<IDialogService>();
+                                _ = dialogService.ShowAppUpdateDialogAsync(release);
+                            });
+                        }
                     }
                 }
                 catch { }
@@ -198,7 +215,7 @@ public partial class App : Application
                 handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) => true;
             }
 
-            var timeoutSeconds = int.TryParse(_configuration["ApiSettings:TimeoutSeconds"], out var ts) && ts > 0 ? ts : 90;
+            var timeoutSeconds = int.TryParse(_configuration["ApiSettings:TimeoutSeconds"], out var ts) && ts > 0 ? ts : 300;
 
             return new HttpClient(handler)
             {
@@ -287,6 +304,7 @@ public partial class App : Application
     }
 
     private bool _isTransitioningToLogin = false;
+    private bool _isPostUpdateLaunch = false;
 
     private void ShowLoginWindow()
     {
@@ -301,6 +319,12 @@ public partial class App : Application
 
         var loginWindow = _serviceProvider.GetRequiredService<LoginWindow>();
         var loginViewModel = _serviceProvider.GetRequiredService<LoginViewModel>();
+
+        if (_isPostUpdateLaunch)
+        {
+            loginViewModel.IsPostUpdateLaunch = true;
+            _isPostUpdateLaunch = false; // Consumir bandera para no repetir en futuros relevos
+        }
 
         bool isNavigatingToShell = false;
         loginViewModel.LoginSuccessful += () =>

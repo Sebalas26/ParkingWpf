@@ -3,7 +3,9 @@
 ; ==============================================================================
 
 #define MyAppName "ParkFlow Desktop"
-#define MyAppVersion "1.0.0"
+#ifndef MyAppVersion
+#define MyAppVersion "1.1.0"
+#endif
 #define MyAppPublisher "ParkFlow Systems"
 #define MyAppURL "https://parking-flow.com"
 #define MyAppExeName "Parking.exe"
@@ -21,6 +23,8 @@ DefaultDirName={localappdata}\Programs\ParkFlow
 DefaultGroupName=ParkFlow
 DisableProgramGroupPage=yes
 OutputBaseFilename=ParkFlow_Setup_v{#MyAppVersion}
+SetupIconFile=..\Parking\Resources\parkpoint.ico
+UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
@@ -45,9 +49,9 @@ Name: "{localappdata}\ParkFlow\Temp"
 Source: "..\Releases\v{#MyAppVersion}\Staging\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; IconFilename: "{app}\{#MyAppExeName}"
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

@@ -74,3 +74,10 @@ Ante cada petición sobre el proyecto WPF, el agente debe responder estructurand
 2. **Evaluación de Impacto Offline/Online:** Cómo afecta la sincronización, la base local y la UI.
 3. **Código de Producción Seguro:** Modificaciones completas, tipadas, asíncronas y con captura defensiva de errores.
 4. **Validación de Contratos y Base de Datos:** Verificación de que los tipos y esquemas coinciden de extremo a extremo.
+
+---
+
+## 8. PROTOCOLO DE PLANIFICACIÓN CERRADA Y EJECUCIÓN DIRECTA (CERO DOBLE ANÁLISIS / CERO DESVIACIÓN)
+1. **Plan Exhaustivo y Cerrado:** Todo diagnóstico, análisis de hilos UI, contratos XAML y servicios debe quedar resuelto al 100% en el `implementation_plan.md`. Queda prohibido posponer análisis.
+2. **Proceder = Ejecución Inmediata:** Al recibir la orden de proceder/aprobación del usuario, la IA tiene terminantemente prohibido volver a analizar, investigar desde cero o repensar la solución. Se debe proceder de inmediato a aplicar las modificaciones acordadas.
+3. **Cero Desviación:** Prohibido alterar el alcance pactado, agregar funcionalidades no solicitadas o desviar la solución técnica aprobada.
