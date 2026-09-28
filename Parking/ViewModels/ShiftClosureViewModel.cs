@@ -281,7 +281,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
         CanCloseShift = _permissionService.HasPermission("shifts.close") || _permissionService.HasPermission("shift.close");
         CanHandoverShift = _permissionService.HasPermission("shifts.close") || _permissionService.HasPermission("shift.close") || _permissionService.HasPermission("shifts.handover");
         CanExportShift = _permissionService.HasPermission("shifts.reprint_closure") || _permissionService.HasPermission("shift.export") || _permissionService.HasPermission("wpf.shifts.reprint_closure");
-        CanViewShiftHistory = _permissionService.HasPermission("shifts.view_history") || _permissionService.HasPermission("shift.view_history");
+        CanViewShiftHistory = false; // Temporalmente deshabilitado a solicitud del usuario mientras se valida por permisos
         CanOpenShift = _permissionService.HasPermission("shifts.open") || _permissionService.HasPermission("shift.open");
     }
 
@@ -1137,8 +1137,15 @@ public partial class ShiftClosureViewModel : ViewModelBase
             HasAvailableHandoverUsers = AvailableUsers.Count > 0;
             SelectedHandoverUser = AvailableUsers.FirstOrDefault();
 
-            var allHistory = await _shiftService.GetShiftHistoryAsync(DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
-            ShiftHistory = allHistory.Where(s => s.Status == 1).OrderByDescending(s => s.EndTimeUtc ?? s.ClosedAtUtc ?? s.CreatedAtUtc).ToList();
+            if (CanViewShiftHistory)
+            {
+                var allHistory = await _shiftService.GetShiftHistoryAsync(DateTime.UtcNow.AddDays(-7), DateTime.UtcNow);
+                ShiftHistory = allHistory.Where(s => s.Status == 1).OrderByDescending(s => s.EndTimeUtc ?? s.ClosedAtUtc ?? s.CreatedAtUtc).ToList();
+            }
+            else
+            {
+                ShiftHistory = new List<WorkShift>();
+            }
         }
         catch (Exception ex)
         {

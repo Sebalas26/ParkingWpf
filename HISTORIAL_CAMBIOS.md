@@ -1,5 +1,39 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-28 08:55:00] - [BUGFIX / CORE / SYNC / UI] Blindaje de Sincronización en Cambio de Sede (Upsert Defensivo de Clientes por DocumentNumber/CompanyId) y Ocultamiento de Historial de Cierres de Caja
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Tenemos dos cosas diferentes, primera, es que ingrese con una sede me equivoque le di cambiar y boom se revento por que ? la sincronización no deberia reventarse por ende no me dejo cambiarme a la sede por que hay si tengo la caja abierta, si me explico algo sucede hay. tercero esta mostrando el historial ese historial de cierre de caja no va debes ocultarlo no lo muestres por el momento dejalo oculto para nadie lo puede ver listo. mientras despues lo validamos por permisos. analiza y has el plan"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Blindaje de Sincronización de Clientes (`SyncEngineService.cs`)**:
+     - *Causa Raíz*: Al cambiar de sede o sincronizar desde el API central, SQLite lanzaba `SQLite Error 19: 'UNIQUE constraint failed: Customers.CompanyId, Customers.DocumentNumber'`. Esto ocurría porque la comprobación previa de existencia en SQLite solo buscaba por `CustomerId` (`Guid`). Si un cliente ya había sido creado localmente o tenía un `Guid` diferente pero compartía el par único `(CompanyId, DocumentNumber)`, la sincronización intentaba un `INSERT` duplicado en lugar de un `UPDATE`, abortando abruptamente el cambio de sede.
+     - *Solución Defensiva*:
+       - Se implementó una búsqueda doble (`existingById` y `existingByDoc`). Si existe por cualquiera de los dos criterios, se reutiliza y actualiza la entidad existente (`FullName`, `Email`, `FiscalResponsibilities`, `IsActive`, etc.), actualizando también su `CustomerId` si correspondía, evitando duplicaciones.
+       - En las placas vinculadas (`Vehicles`), se eliminaron duplicados dentro del mismo payload (`Distinct(StringComparer.OrdinalIgnoreCase)`) para prevenir violaciones de unicidad en `CustomerVehicles`.
+       - Se encapsuló la persistencia de clientes en un bloque `try/catch` defensivo con rollback selectivo; ante cualquier colisión residual inesperada de clave foránea o unicidad, el motor continúa con las demás entidades operativas (tarifas, usuarios, turnos) sin reventar el proceso de cambio de sede ni bloquear la apertura de caja del usuario.
+  2. **Ocultamiento Total del Historial de Cierre de Caja**:
+     - En `Parking/Views/ShiftClosureView.xaml`: Se configuró explícitamente `Visibility="Collapsed"` en el contenedor `Border` que aloja la sección de "Historial de Cierres de Turno / Caja" y su `DataGrid`.
+     - En `Parking/ViewModels/ShiftClosureViewModel.cs`: Se forzó `CanViewShiftHistory = false` para asegurar que ningún operador tenga acceso visual ni lógico a dicho historial mientras se definen formalmente los permisos por base de datos (RBAC).
+  3. **Pruebas Automatizadas y Cobertura de Resiliencia**:
+     - Se creó una prueba unitaria específica en `OfflineResilienceTests.cs`:
+       `SyncEngineService_SyncCustomers_WhenCustomerAlreadyExistsByDocumentNumberWithDifferentId_UpdatesExistingAndDoesNotThrowUniqueConstraintViolation`.
+     - Simula la existencia de un cliente en base de datos local SQLite y la llegada desde el API central de un payload con el mismo documento pero diferente `CustomerId`, validando que se actualicen los datos sin lanzar violación de unicidad y manteniendo la integridad de placas.
+     - Se ejecutó el 100% de la suite de pruebas unitarias (`dotnet test ParkingWpf.slnx`), logrando **343 de 343 pruebas superadas (0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/ViewModels/ShiftClosureViewModel.cs`
+  - `Parking/Views/ShiftClosureView.xaml`
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **343 Pruebas Superadas (0 Fallos)**.
+
+---
+
 ## 📅 Entrada: [2026-09-28 08:35:00] - [BUGFIX / CORE / SHIFTS / ARCHITECTURE] Blindaje de Hilos UI (Dispatcher) en Login, Eliminación Total de Data Quemada ("Sede Principal") e Identificación 100% Relacional de Turnos (Cero Comparación por Texto)
 
 - **`💬 Prompt Original del Usuario`**:

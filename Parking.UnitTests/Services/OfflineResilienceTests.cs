@@ -699,6 +699,83 @@ public class OfflineResilienceTests : IDisposable
         loginVm.NetworkStatusText.Should().Be("Modo Offline (Sin Conexión)");
     }
 
+    [Fact]
+    public async Task SyncEngineService_SyncCustomers_WhenCustomerAlreadyExistsByDocumentNumberWithDifferentId_UpdatesExistingAndDoesNotThrowUniqueConstraintViolation()
+    {
+        // Arrange
+        var localCustId = Guid.NewGuid();
+        var remoteCustId = Guid.NewGuid();
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.Customers.Add(new Parking.Entities.Customer
+            {
+                CustomerId = localCustId,
+                CompanyId = 5,
+                IdentificationTypeId = 13,
+                DocumentNumber = "901234567",
+                PersonType = "Company",
+                FullName = "Empresa Local Existente",
+                Email = "local@empresa.com",
+                FiscalResponsibilities = "R-99-PN",
+                IsActive = true,
+                CreatedAtUtc = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var bootstrap = new BootstrapSyncResponse
+        {
+            TotalCapacity = 50,
+            CompanyId = 5,
+            CompanyName = "Empresa Central",
+            Customers = new List<ApiCustomerSyncDto>
+            {
+                new ApiCustomerSyncDto
+                {
+                    CustomerId = remoteCustId, // ID diferente proveniente del API central
+                    CompanyId = 5,
+                    IdentificationTypeId = 13,
+                    DocumentNumber = "901234567", // Mismo documento
+                    PersonType = "Company",
+                    FullName = "Empresa Central Actualizada",
+                    Email = "central@empresa.com",
+                    FiscalResponsibilities = "R-99-PN",
+                    IsActive = true,
+                    PlateNumbers = new List<string> { "XYZ123", "XYZ123" } // Placas duplicadas en el lote para probar robustez
+                }
+            }
+        };
+
+        _mockApiClient.Setup(a => a.PingAsync(It.IsAny<int>())).ReturnsAsync(true);
+        _mockApiClient.Setup(a => a.GetBootstrapAsync(It.IsAny<int?>()))
+            .ReturnsAsync(bootstrap);
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        // Act
+        var result = await syncEngine.PerformFullSyncAsync();
+
+        // Assert
+        result.Should().BeTrue();
+
+        using (var dbAssert = _connectionManager.CreateDbContext())
+        {
+            var customers = dbAssert.Customers.Include(c => c.Vehicles).ToList();
+            customers.Should().HaveCount(1);
+            customers[0].DocumentNumber.Should().Be("901234567");
+            customers[0].FullName.Should().Be("Empresa Central Actualizada");
+            customers[0].Email.Should().Be("central@empresa.com");
+            customers[0].Vehicles.Should().HaveCount(1);
+            customers[0].Vehicles.First().PlateNumber.Should().Be("XYZ123");
+        }
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

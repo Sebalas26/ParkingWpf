@@ -758,8 +758,8 @@
                 </Border>
             </StackPanel>
 
-            <!-- 6. Historial de Turnos y Cierres de Caja Anteriores (Reimpresión de Cierre Digital) -->
-            <Border Visibility="{Binding CanViewShiftHistory, Converter={StaticResource BoolToVis}}"
+            <!-- 6. Historial de Turnos y Cierres de Caja Anteriores (Oculto temporalmente a solicitud del usuario) -->
+            <Border Visibility="Collapsed"
                     Background="{DynamicResource BrushSurfaceBackground}"
                     BorderBrush="{DynamicResource BrushBorderSubtle}"
                     BorderThickness="1"

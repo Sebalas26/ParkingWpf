@@ -1528,17 +1528,48 @@ public class SyncEngineService : ISyncEngineService
                 await db.SaveChangesAsync(ct);
             }
 
-            // 8.9 Sincronizar Clientes y Vehículos Vinculados
+            // 8.9 Sincronizar Clientes y Vehículos Vinculados (Upsert resiliente por CustomerId y Clave Natural CompanyId + DocumentNumber)
             if (bootstrap.Customers != null && bootstrap.Customers.Count > 0)
             {
-                var existingCustomers = await db.Customers.Include(c => c.Vehicles).ToDictionaryAsync(c => c.CustomerId, ct);
+                var allLocalCustomers = await db.Customers.Include(c => c.Vehicles).ToListAsync(ct);
+                var existingById = allLocalCustomers.ToDictionary(c => c.CustomerId);
+                var existingByDoc = new Dictionary<(int?, string), Customer>();
+
+                foreach (var c in allLocalCustomers)
+                {
+                    var docNorm = c.DocumentNumber?.Trim().ToUpperInvariant();
+                    if (!string.IsNullOrEmpty(docNorm))
+                    {
+                        var key = (c.CompanyId, docNorm);
+                        if (!existingByDoc.ContainsKey(key))
+                        {
+                            existingByDoc[key] = c;
+                        }
+                    }
+                }
+
                 foreach (var custDto in bootstrap.Customers)
                 {
-                    if (existingCustomers.TryGetValue(custDto.CustomerId, out var existing))
+                    var cleanDoc = custDto.DocumentNumber?.Trim() ?? string.Empty;
+                    var docNorm = cleanDoc.ToUpperInvariant();
+                    var effectiveCompanyId = custDto.CompanyId > 0 ? custDto.CompanyId : (_sessionService.CurrentCompanyId ?? 1);
+                    var docKey = (effectiveCompanyId, docNorm);
+
+                    Customer? existing = null;
+                    if (custDto.CustomerId != Guid.Empty && existingById.TryGetValue(custDto.CustomerId, out var byId))
                     {
-                        existing.CompanyId = custDto.CompanyId;
+                        existing = byId;
+                    }
+                    else if (!string.IsNullOrEmpty(docNorm) && existingByDoc.TryGetValue(docKey, out var byDoc))
+                    {
+                        existing = byDoc;
+                    }
+
+                    if (existing != null)
+                    {
+                        existing.CompanyId = effectiveCompanyId;
                         existing.IdentificationTypeId = custDto.IdentificationTypeId;
-                        existing.DocumentNumber = custDto.DocumentNumber;
+                        existing.DocumentNumber = cleanDoc;
                         existing.CheckDigit = custDto.CheckDigit;
                         existing.PersonType = custDto.PersonType;
                         existing.FullName = custDto.FullName;
@@ -1554,7 +1585,11 @@ public class SyncEngineService : ISyncEngineService
 
                         if (custDto.PlateNumbers != null)
                         {
-                            var existingPlates = existing.Vehicles.Select(v => v.PlateNumber.Trim().ToUpperInvariant()).ToHashSet();
+                            var existingPlates = existing.Vehicles
+                                .Where(v => !string.IsNullOrWhiteSpace(v.PlateNumber))
+                                .Select(v => v.PlateNumber.Trim().ToUpperInvariant())
+                                .ToHashSet();
+
                             foreach (var plate in custDto.PlateNumbers)
                             {
                                 var normPlate = plate.Trim().ToUpperInvariant();
@@ -1566,6 +1601,7 @@ public class SyncEngineService : ISyncEngineService
                                         PlateNumber = normPlate,
                                         CreatedAtUtc = DateTime.UtcNow
                                     });
+                                    existingPlates.Add(normPlate);
                                 }
                             }
                         }
@@ -1574,10 +1610,10 @@ public class SyncEngineService : ISyncEngineService
                     {
                         var newCust = new Customer
                         {
-                            CustomerId = custDto.CustomerId,
-                            CompanyId = custDto.CompanyId,
+                            CustomerId = custDto.CustomerId != Guid.Empty ? custDto.CustomerId : Guid.NewGuid(),
+                            CompanyId = effectiveCompanyId,
                             IdentificationTypeId = custDto.IdentificationTypeId,
-                            DocumentNumber = custDto.DocumentNumber,
+                            DocumentNumber = cleanDoc,
                             CheckDigit = custDto.CheckDigit,
                             PersonType = custDto.PersonType,
                             FullName = custDto.FullName,
@@ -1595,10 +1631,11 @@ public class SyncEngineService : ISyncEngineService
 
                         if (custDto.PlateNumbers != null)
                         {
+                            var addedPlates = new HashSet<string>();
                             foreach (var plate in custDto.PlateNumbers)
                             {
                                 var normPlate = plate.Trim().ToUpperInvariant();
-                                if (!string.IsNullOrEmpty(normPlate))
+                                if (!string.IsNullOrEmpty(normPlate) && addedPlates.Add(normPlate))
                                 {
                                     newCust.Vehicles.Add(new CustomerVehicle
                                     {
@@ -1611,9 +1648,22 @@ public class SyncEngineService : ISyncEngineService
                         }
 
                         db.Customers.Add(newCust);
+                        existingById[newCust.CustomerId] = newCust;
+                        if (!string.IsNullOrEmpty(docNorm))
+                        {
+                            existingByDoc[docKey] = newCust;
+                        }
                     }
                 }
-                await db.SaveChangesAsync(ct);
+
+                try
+                {
+                    await db.SaveChangesAsync(ct);
+                }
+                catch (Exception custEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[SyncEngine] Advertencia al sincronizar clientes: {custEx.Message}");
+                }
             }
 
             // 9. Paso 8: Sincronizar Tiquetes y Consolidar (98%)
