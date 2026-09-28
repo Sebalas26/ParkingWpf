@@ -3,12 +3,13 @@
 ## 📅 Entrada: [2026-09-28 08:55:00] - [BUGFIX / CORE / SYNC / UI] Blindaje de Sincronización en Cambio de Sede (Upsert Defensivo de Clientes por DocumentNumber/CompanyId) y Ocultamiento de Historial de Cierres de Caja
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Tenemos dos cosas diferentes, primera, es que ingrese con una sede me equivoque le di cambiar y boom se revento por que ? la sincronización no deberia reventarse por ende no me dejo cambiarme a la sede por que hay si tengo la caja abierta, si me explico algo sucede hay. tercero esta mostrando el historial ese historial de cierre de caja no va debes ocultarlo no lo muestres por el momento dejalo oculto para nadie lo puede ver listo. mientras despues lo validamos por permisos. analiza y has el plan"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Blindaje de Sincronización de Clientes (`SyncEngineService.cs`)**:
-     - *Causa Raíz*: Al cambiar de sede o sincronizar desde el API central, SQLite lanzaba `SQLite Error 19: 'UNIQUE constraint failed: Customers.CompanyId, Customers.DocumentNumber'`. Esto ocurría porque la comprobación previa de existencia en SQLite solo buscaba por `CustomerId` (`Guid`). Si un cliente ya había sido creado localmente o tenía un `Guid` diferente pero compartía el par único `(CompanyId, DocumentNumber)`, la sincronización intentaba un `INSERT` duplicado en lugar de un `UPDATE`, abortando abruptamente el cambio de sede.
-     - *Solución Defensiva*:
+     - _Causa Raíz_: Al cambiar de sede o sincronizar desde el API central, SQLite lanzaba `SQLite Error 19: 'UNIQUE constraint failed: Customers.CompanyId, Customers.DocumentNumber'`. Esto ocurría porque la comprobación previa de existencia en SQLite solo buscaba por `CustomerId` (`Guid`). Si un cliente ya había sido creado localmente o tenía un `Guid` diferente pero compartía el par único `(CompanyId, DocumentNumber)`, la sincronización intentaba un `INSERT` duplicado en lugar de un `UPDATE`, abortando abruptamente el cambio de sede.
+     - _Solución Defensiva_:
        - Se implementó una búsqueda doble (`existingById` y `existingByDoc`). Si existe por cualquiera de los dos criterios, se reutiliza y actualiza la entidad existente (`FullName`, `Email`, `FiscalResponsibilities`, `IsActive`, etc.), actualizando también su `CustomerId` si correspondía, evitando duplicaciones.
        - En las placas vinculadas (`Vehicles`), se eliminaron duplicados dentro del mismo payload (`Distinct(StringComparer.OrdinalIgnoreCase)`) para prevenir violaciones de unicidad en `CustomerVehicles`.
        - Se encapsuló la persistencia de clientes en un bloque `try/catch` defensivo con rollback selectivo; ante cualquier colisión residual inesperada de clave foránea o unicidad, el motor continúa con las demás entidades operativas (tarifas, usuarios, turnos) sin reventar el proceso de cambio de sede ni bloquear la apertura de caja del usuario.
@@ -26,23 +27,60 @@
   - `Parking/ViewModels/ShiftClosureViewModel.cs`
   - `Parking/Views/ShiftClosureView.xaml`
   - `Parking.UnitTests/Services/OfflineResilienceTests.cs`
+
+## 📅 Entrada: [2026-09-28 08:57:00] - [BUGFIX / MULTI-TENANCY / SYNC / CUSTOMERS] Corrección Definitiva de Tenancy Leak en Clientes, Homologación de Regex de Correo Electrónico DIAN y Blindaje Anti-Atascos en Cola de Sincronización
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"ayudame analizar donde esta el error. En el pwa cuando ingreso a la empresa parkingPrueba / clientes no veo clientes creados, pero cuando ingreso al wpf si veo unos, analizando los clienters que me muestra el wpf con la empresa parkingPrueba pertenecen a parkgo, Analiza donde esta el error, de paso analiza si al crear el cliente desde el wpf"_
+  > _"analiza si hay huecos tecnicos y solucionar el error definitivo , ahi si despues crea el plan"_
+  > _"si ejecutalo"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Corrección de Tenancy Leak en Directorio y Vistas Locales de Clientes**:
+     - _Causa Raíz_: Las consultas a `db.Customers` en `CustomersViewModel.cs`, `CheckOutViewModel.cs` y `CustomerSelectionDialog.xaml.cs` hacían `Where(c => c.IsActive)` sin filtrar por `CompanyId`. Debido a que la base de datos local SQLite almacena transacciones y catálogos de múltiples sedes/empresas que hayan iniciado sesión, los clientes de _Parkgo_ se mostraban al operar en _parkingPrueba_.
+     - _Solución_: En estricto cumplimiento de la **Regla de Oro de Tenancy Leak**, se inyectó el filtrado obligatorio por `CompanyId` de la sesión actual (`c.CompanyId == companyId.Value`) en todas las consultas LINQ locales.
+     - _Unicidad por Empresa_: Las validaciones de duplicados de documento en los 3 formularios ahora filtran por `c.CompanyId == companyId && c.DocumentNumber == docClean`, permitiendo que clientes con mismo documento existan válidamente en diferentes empresas.
+  2. **Homologación de Validación de Correo Electrónico (TLD DIAN)**:
+     - _Causa Raíz_: Los formularios de WPF permitían correos como `usuario@dominio.c` mediante el regex laxo `^[^@\s]+@[^@\s]+\.[^@\s]+$`. El backend API `CustomerService.cs` exige estrictamente un dominio de nivel superior de mínimo 2 letras (`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`). Al enviarse a la API central, esta retornaba `400 Bad Request`.
+     - _Solución_: Se homologó el regex canónico `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$` en `CustomersViewModel.cs`, `CheckOutViewModel.cs` y `CustomerSelectionDialog.xaml.cs`, impidiendo que datos inválidos entren a la base local de SQLite. Se agregó validación de código DANE (mínimo 4 caracteres).
+  3. **Blindaje de la Cola de Sincronización (`ParkingApiClient.cs` & `SyncEngineService.cs`)**:
+     - _Causa Raíz_: En `CustomersViewModel.cs`, tras encolar el `PendingSyncItem`, se intentaba llamar directamente a `_apiClient.CreateCustomerAsync(...)`, pero no se actualizaba el estado `IsProcessed` ni se removía el ítem. Posteriormente, `SyncEngineService.ProcessPendingQueueAsync` reenviaba la solicitud y recibía `409 Conflict` ("Ya existe un cliente..."). `ParkingApiClient` silenciaba este conflicto retornando `null`, lo que impedía que `item.IsProcessed` cambiara a `true` y dejaba el registro atascado de forma infinita en SQLite con `RetryCount` sin incrementar.
+     - _Solución_:
+       - `ParkingApiClient.CreateCustomerAsync`: Si el API retorna `409 Conflict` (el cliente ya existe en MySQL/API), se considera resuelto y se retorna el modelo de cliente para conciliar la cola. Si retorna `400 BadRequest`, se lanza `InvalidOperationException("400_BAD_REQUEST: ...")` con el detalle del error.
+       - `SyncEngineService.ProcessPendingQueueAsync`: Si `result == null`, incrementa `RetryCount` y registra `LastError`. Si recibe `400_BAD_REQUEST` con `RetryCount >= 3`, marca `IsProcessed = true` para no bloquear indefinidamente la cola ni las actualizaciones obligatorias.
+       - `CustomersViewModel.SaveCustomerAsync`: Si la llamada directa al API es exitosa, marca `pending.IsProcessed = true` y remueve el ítem de `PendingSyncItems`.
+  4. **Nuevas Pruebas Unitarias**:
+     - Se añadió `ValidateForm_EmailValidation_StrictFormat` en `CustomersViewModelTests.cs` validando el rechazo de `.c` y aceptación de `.co` y `.com`.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CustomersViewModel.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CustomerSelectionDialog.xaml.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking.UnitTests/ViewModels/CustomersViewModelTests.cs`
   - `HISTORIAL_CAMBIOS.md`
 
 - **`✅ Verificación y Compilación`**:
   - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
-  - `dotnet test ParkingWpf.slnx` -> **343 Pruebas Superadas (0 Fallos)**.
+    <<<<<<< HEAD
+  - # `dotnet test ParkingWpf.slnx` -> **343 Pruebas Superadas (0 Fallos)**.
+  - `dotnet test ParkingWpf.slnx` -> **347 de 347 Pruebas Superadas (100% OK, 0 Fallos)**.
+    > > > > > > > debae7503d863e9e3664c23547d686980d82e368
 
 ---
 
 ## 📅 Entrada: [2026-09-28 08:35:00] - [BUGFIX / CORE / SHIFTS / ARCHITECTURE] Blindaje de Hilos UI (Dispatcher) en Login, Eliminación Total de Data Quemada ("Sede Principal") e Identificación 100% Relacional de Turnos (Cero Comparación por Texto)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"mira se esta craseahndo al momento de loguearme y me sale este error que sucede que se rompio o por que esta las pruebas, revisa por que sucedio."_
   > _"como así que se tiene quemado lo de sede principal. por que compara con texto eso esta ilogico el sistema no debería hacer nada de eso ."_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Blindaje de Subprocesos Cruzados (Cross-Thread Dispatcher) en Login**:
-     - *Causa Raíz*: Al iniciar sesión mediante *Fast-Login*, `_syncEngine.PerformFullSyncAsync()` se ejecuta en segundo plano. Cuando `SyncEngineService` recibe datos de la sede, dispara `_sessionService.UpdateCurrentBranch`, el cual detona el evento `ActiveBranchChanged` desde un hilo secundario del ThreadPool.
+     - _Causa Raíz_: Al iniciar sesión mediante _Fast-Login_, `_syncEngine.PerformFullSyncAsync()` se ejecuta en segundo plano. Cuando `SyncEngineService` recibe datos de la sede, dispara `_sessionService.UpdateCurrentBranch`, el cual detona el evento `ActiveBranchChanged` desde un hilo secundario del ThreadPool.
      - En `ShiftClosureViewModel.cs`, la suscripción a `ActiveBranchChanged` ejecutaba `SelectNewRegisterModeCommand.NotifyCanExecuteChanged()` directamente en el hilo de fondo sin verificar `Dispatcher.CheckAccess()`, detonando `System.InvalidOperationException: 'El subproceso que realiza la llamada no puede obtener acceso a este objeto porque el propietario es otro subproceso.'`.
      - Se blindaron con verificación de `System.Windows.Application.Current?.Dispatcher` las suscripciones a `ActiveBranchChanged` en `ShiftClosureViewModel.cs`, `CheckInViewModel.cs` y `CheckOutViewModel.cs`, así como `TicketRegistered` y `TicketCompleted` en `RecentEntriesViewModel.cs`.
   2. **Eliminación Total de Cadenas Quemadas (Hardcoded Data)**:
@@ -77,8 +115,8 @@
 
 ---
 
-
 - **`💬 Prompt Original del Usuario`**:
+
   > _"ayudame con el tema de la impresion de las politicas y la informacion adicional de impresion en las tirillas de parqueadero wpf y pwa. 1. debes de cambiar de lugar en base de datos ya no va a depender de las sedes si no de las resoluciones de facturacion. 2. el modal de parametrizar sedes tendra un tab llamado impresion donde se listaran las resoluciones de facturacion asociadas a la sede y tendran los campos de poliza y informacion adicional cada resolucion podra tener su propia informacion adicional y polizas y opciones de impresion segun aplique en ingreso y salida (recuerda que hay resoluciones que son electronicas y otras de tirilla pos). 3. elimina de la sede estas opciones de polizas y informacion adicional. 4. organiza la impresion en wpf y pwa para que tome los datos de la resolucion asignada tanto al ingresar como al salir del parqueadero. 5. el orden de las polizas sera primero la poliza en negrilla y luego la informacion adicional. 6. elimina del formulario de editar sede la opcion de polizas y informacion adicional. la opcion de ancho de papel si se queda en la sede porque es una configuracion de la sede no de la resolucion."_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -119,6 +157,7 @@
 ## 📅 Entrada: [2026-09-27 23:15:00] - [FEATURE / RECEIPT / SHIFT CLOSURE] Optimización de Tirilla Térmica de Cierre de Caja en WPF: RBAC 4/4 Mensualidades, Solo Salidas de Caja, Conteo de Convenios y Medios de Pago Dinámicos
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Ayudame a mejorar un poco mas la impresion de la caja al darle salida para la wpf y pwa, pues estoy viendo que hay campos que no aplican y otros reemplazarlos por otros, quiero la data real, nada de datos mockeados y valores. -Ingresos: Si la empresa maneja mensualidades muestre si no no, puedes saber si el cliente maneja mensualidades si el permiso del rol sobre mensualidades y abonados en terminal estan activos los 4/4, si no estan habilitados, oculta esa info de la impresion. - movimiento de caja: Solo muestra salidas de caja, porque en mi pway wpf solo tengo retiros de caja parciales. - resumen: Falta agregar cuantos convenios se aplicaron, ahi esta el total descuentos pero falto decir cuantos se aplicaron. - Total por metodo de pago: Carga los metodos de pago reales porque veo unos inventados como credito bancario eso no existe"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -153,22 +192,23 @@
 ## 📅 Entrada: [2026-09-27 22:05:00] - [FEATURE / WPF / POS / SHIFTS] Eliminación de Tirilla de Turno Anterior y Bloqueo Preventivo de Nueva Caja en Modalidad Caja Única
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"ayudame a eliminar este flujo en mi wpf, ya que no deberia permitirle al usuario impirmir tirilla de cirre del turno anterior, esto el usuario lo podra ser desde el pwa si cuenta con permisos"_
   > _"agregale al plan este cambio tambien: Segun la configuracion de la sede, no permite mas caja abiertas, entonces en el wpf voy al modulo de control de turnos y el me sale el boton de abrir nueva caja aparte, pero el deberia estar inhabilitado , ademas me sale un erorr rojo, creoq ue es por lo mismo que detecta que ya hay una caja abierta"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Eliminación de Reimpresión de Tirilla de Cierre de Turno Anterior (`ShiftClosureView.xaml`, `ShiftClosureViewModel.cs`)**:
-     - *Justificación y Seguridad Operativa*: Un operador entrante que se dispone a abrir turno no debe imprimir ni auditar la tirilla térmica detallada del turno previo desde WPF. Dicha auditoría corresponde a la PWA bajo los permisos RBAC pertinentes (`shifts.reprint_closure`).
-     - *Modificación Quirúrgica*:
-       - En `ShiftClosureView.xaml`, se removió el botón *"Imprimir Tirilla de Cierre"* (`PrintLastClosedShiftReceiptCommand`) dentro de la tarjeta de **Custodia del Turno Anterior**, preservando intacta la visualización del monto recibido en custodia (`LastClosedShift.ActualCashCounted`), el operador previo y la fecha/hora.
+     - _Justificación y Seguridad Operativa_: Un operador entrante que se dispone a abrir turno no debe imprimir ni auditar la tirilla térmica detallada del turno previo desde WPF. Dicha auditoría corresponde a la PWA bajo los permisos RBAC pertinentes (`shifts.reprint_closure`).
+     - _Modificación Quirúrgica_:
+       - En `ShiftClosureView.xaml`, se removió el botón _"Imprimir Tirilla de Cierre"_ (`PrintLastClosedShiftReceiptCommand`) dentro de la tarjeta de **Custodia del Turno Anterior**, preservando intacta la visualización del monto recibido en custodia (`LastClosedShift.ActualCashCounted`), el operador previo y la fecha/hora.
        - En `ShiftClosureViewModel.cs`, se eliminó el método huérfano `PrintLastClosedShiftReceiptAsync` con su comando `[RelayCommand]`.
   2. **Bloqueo Preventivo del Botón "Abrir Nueva Caja Aparte" en Sede de Caja Única**:
-     - *Causa Raíz*: Cuando una sede opera con `AllowMultipleOpenShifts = false` y ya existen cajas/turnos abiertos (`HasOtherActiveShifts == true`), el botón *"Abrir Nueva Caja Aparte"* (`SelectNewRegisterModeCommand`) permanecía habilitado en la cabecera selectora de modalidad. Al pulsarlo y enviar la apertura, el sistema fallaba en la validación defensiva arrojando una alerta roja/excepción.
-     - *Solución*:
+     - _Causa Raíz_: Cuando una sede opera con `AllowMultipleOpenShifts = false` y ya existen cajas/turnos abiertos (`HasOtherActiveShifts == true`), el botón _"Abrir Nueva Caja Aparte"_ (`SelectNewRegisterModeCommand`) permanecía habilitado en la cabecera selectora de modalidad. Al pulsarlo y enviar la apertura, el sistema fallaba en la validación defensiva arrojando una alerta roja/excepción.
+     - _Solución_:
        - Se introdujo la propiedad observable `CanOpenMultipleShifts` en `ShiftClosureViewModel.cs`, sincronizada con la sede activa (`_sessionService.CurrentBranch?.AllowMultipleOpenShifts ?? false` y `localBranch.AllowMultipleOpenShifts`).
        - Se integró `CanExecute = nameof(CanSelectNewRegisterMode)` en `SelectNewRegisterModeCommand` y se notificó su cambio mediante `SelectNewRegisterModeCommand.NotifyCanExecuteChanged()`.
        - Se agregaron las propiedades `CanSelectNewRegisterMode` y `NewRegisterModeToolTip` con mensaje contextual informativo.
-       - En `ShiftClosureView.xaml`, se vinculó `IsEnabled="{Binding CanOpenMultipleShifts}"` y `ToolTip="{Binding NewRegisterModeToolTip}"` al botón *"Abrir Nueva Caja Aparte"*, incorporando un trigger visual para estado inactivo (`Opacity="0.45"`, `Background="#F1F5F9"`, `BrushTextMuted`).
+       - En `ShiftClosureView.xaml`, se vinculó `IsEnabled="{Binding CanOpenMultipleShifts}"` y `ToolTip="{Binding NewRegisterModeToolTip}"` al botón _"Abrir Nueva Caja Aparte"_, incorporando un trigger visual para estado inactivo (`Opacity="0.45"`, `Background="#F1F5F9"`, `BrushTextMuted`).
 
 - **`📦 Componentes Modificados`**:
   - `(WPF) Parking/Views/ShiftClosureView.xaml`
@@ -181,11 +221,12 @@
 ## 📅 Entrada: [2026-09-27] - [FEATURE / WPF / POS / SHIFTS] Impresión de Cierre de Caja en Relevo/Entrega, Confirmación Interactiva e Historial con Cierre Digital
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Valida porque en el wpf aun no tieene la impresion del cierre de caja , eso ya lo tiene el pwa. elabora el plan, pero tambien agrega la pregunta de imprimir o no. tmbien ten en cuenta que la impresion del cierre es cuando cierren, no tener el boton mientras la caja este abierta. No se pregunta ni permite imprimir en los flujos de relevo y entrega de turno (HandoverShiftAsync / TakeOverShiftAsync). esto si deberia de aplicar, es decir que el cierre de caja o el relevo"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Confirmación Interactiva en Cierres y Relevos**:
-     - Se integró el diálogo modal interactivo (`_dialogService.ShowConfirmationAsync`) preguntando *¿Desea imprimir el comprobante de cierre de caja?* con opciones `Sí, imprimir tirilla` / `No, omitir` en los cuatro flujos de cierre:
+     - Se integró el diálogo modal interactivo (`_dialogService.ShowConfirmationAsync`) preguntando _¿Desea imprimir el comprobante de cierre de caja?_ con opciones `Sí, imprimir tirilla` / `No, omitir` en los cuatro flujos de cierre:
        - Cierre directo / Fin de jornada (`CloseShiftDirectAsync`).
        - Cierre administrativo de caja ajena (`CloseOtherShiftDirectAsync`).
        - Entrega de turno y relevo en caliente (`HandoverShiftAsync`).
@@ -205,21 +246,23 @@
   - `(WPF) Parking/Views/ShiftClosureView.xaml`
   - `(WPF) Parking/Views/ReceiptPreviewDialog.xaml`
   - `(WPF) Parking/Views/ReceiptPreviewDialog.xaml.cs`
+
 ## 📅 Entrada: [2026-09-27 18:50:00] - [PERFORMANCE / NETWORK / STREAMING] Optimización Crítica de Streaming de Descarga (Búfer 80 KB LOH-Safe) y Timeout Desacoplado en WPF
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Ya resolví el API, al API le metí ese transferencia de response forwarding para que descargara a todo lo que da, ahí le metí algo, ¿sí? Ahí le metí esto en el compose y ya. Pero me falta el WPF, o sea, se quedó, ya probé la descarga por fuera y ya funciona bien, super rápido. Pero el WPF no está descargando como debería ser. Algo le hiciste al WPF, algo algo algo pasó. Necesito revisar eso urgente, o sea, revisar eso urgente. No te pongas a hacer curls ni nada porque el API ya responde. Necesito ver el código, ¿qué pasó? ¿Sí?"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Diagnóstico Forense de la Causa Raíz en WPF**:
-     - *Búfer LOH y TCP Window Mismatch*: En versiones previas se asignó un búfer masivo de 1 MB (`new byte[1048576]`) en cada iteración de `ReadAsync`. Los búferes mayores a 85,000 bytes van directo al *Large Object Heap* (LOH) de .NET y provocan pausas por recolección de basura (*GC pauses*), mientras que la ventana TCP de red del kernel entrega fragmentos de entre 8 KB y 64 KB.
-     - *Contención en FileStream Overlapped*: `FileStream` con `bufferSize: 1048576` y `useAsync: true` habilitaba I/O superpuesto de Win32 (`FILE_FLAG_OVERLAPPED`), reteniendo en RAM los bloques pequeños sin bajarlos al disco y congelando el archivo temporal en 0 bytes.
-     - *Timeout Global de 90s*: `_httpClient` utilizaba el timeout por defecto de 90 segundos configurado en `App.xaml.cs` para peticiones REST normales, cancelando streams de descargas grandes.
+     - _Búfer LOH y TCP Window Mismatch_: En versiones previas se asignó un búfer masivo de 1 MB (`new byte[1048576]`) en cada iteración de `ReadAsync`. Los búferes mayores a 85,000 bytes van directo al _Large Object Heap_ (LOH) de .NET y provocan pausas por recolección de basura (_GC pauses_), mientras que la ventana TCP de red del kernel entrega fragmentos de entre 8 KB y 64 KB.
+     - _Contención en FileStream Overlapped_: `FileStream` con `bufferSize: 1048576` y `useAsync: true` habilitaba I/O superpuesto de Win32 (`FILE_FLAG_OVERLAPPED`), reteniendo en RAM los bloques pequeños sin bajarlos al disco y congelando el archivo temporal en 0 bytes.
+     - _Timeout Global de 90s_: `_httpClient` utilizaba el timeout por defecto de 90 segundos configurado en `App.xaml.cs` para peticiones REST normales, cancelando streams de descargas grandes.
   2. **Solución Implementada (`AppUpdateService.cs`, `App.xaml.cs`, `appsettings.json`)**:
-     - *Búfer Estándar 80 KB (`81,920 bytes`)*: Se sustituyó el búfer de 1 MB por el tamaño recomendado por Microsoft (.NET StreamCopy standard), garantizando máxima saturación de sockets sin tocar LOH.
-     - *FileStream Directo y Flush Seguro*: Configurado con `bufferSize: 81920, useAsync: false`, eliminando la sobrecarga de I/O completion ports y agregando `await fs.FlushAsync()` explícito al finalizar.
-     - *Throttling de UI a 200 ms*: Reporte mediante `Stopwatch.ElapsedMilliseconds >= 200` para una barra de progreso 100% responsiva sin saturar el Dispatcher de WPF.
-     - *Timeout Elevado a 300s*: En `appsettings.json` y `App.xaml.cs` se ajustó el timeout de red a 300 segundos para proteger descargas grandes en conexiones lentas.
+     - _Búfer Estándar 80 KB (`81,920 bytes`)_: Se sustituyó el búfer de 1 MB por el tamaño recomendado por Microsoft (.NET StreamCopy standard), garantizando máxima saturación de sockets sin tocar LOH.
+     - _FileStream Directo y Flush Seguro_: Configurado con `bufferSize: 81920, useAsync: false`, eliminando la sobrecarga de I/O completion ports y agregando `await fs.FlushAsync()` explícito al finalizar.
+     - _Throttling de UI a 200 ms_: Reporte mediante `Stopwatch.ElapsedMilliseconds >= 200` para una barra de progreso 100% responsiva sin saturar el Dispatcher de WPF.
+     - _Timeout Elevado a 300s_: En `appsettings.json` y `App.xaml.cs` se ajustó el timeout de red a 300 segundos para proteger descargas grandes en conexiones lentas.
   3. **Verificación y Pruebas**:
      - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
      - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
@@ -237,6 +280,7 @@
 ## 📅 Entrada: [2026-09-27 17:35:00] - [UI/UX / INNO-SETUP / BRANDING] Ícono Oficial en Instalador Inno Setup y Bloqueo de Botón en Diálogo de Actualización
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Otra cosa que se vio es que el instalador no tiene el icono... el icono de Parking Flow, debería tenerlo. Tampoco cuando se abre... o sea el instalador no tiene el icono así como el ejecutable. Debería tenerlo... y dice arriba: 'su base de datos local y transacciones se respaldan de forma preventiva antes de aplicar la actualización'... pero cuando inició la descarga dice: 'Descargando actualización: 0,0 MB de 61,9 MB (30%)...' y ahí se quedó..."_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -246,11 +290,11 @@
      - Se vinculó `IconFilename: "{app}\{#MyAppExeName}"` en los accesos directos del menú de inicio y escritorio.
      - El archivo `ParkFlow_Setup_vX.exe` y sus accesos directos ahora cuentan con la identidad visual oficial de Parking Flow.
   2. **Bloqueo y Ocultamiento de Botón en Actualización (`AppUpdateDialog.xaml`)**:
-     - Se configuró `Visibility="{Binding IsUpdating, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"` sobre el botón principal *"Sincronizar y Actualizar Ahora"*.
+     - Se configuró `Visibility="{Binding IsUpdating, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"` sobre el botón principal _"Sincronizar y Actualizar Ahora"_.
      - Mientras la actualización está en curso, el botón se oculta automáticamente para impedir reintentos concurrentes o confusión del operador.
   3. **Solución Definitiva de Ícono de Ventana en Barra de Tareas (`WindowIconHelper.cs`)**:
-     - *Diagnóstico*: En WPF, cuando una ventana utiliza `WindowStyle="None"` y `AllowsTransparency="True"`, WPF crea una ventana layered y omite enviar el mensaje Win32 `WM_SETICON` al `HWND`. Esto provocaba que Windows Taskbar y Alt+Tab mostraran el ícono genérico en blanco (cuadro blanco/azul).
-     - *Solución*: Se construyó `WindowIconHelper.cs` que en `SourceInitialized` extrae el ícono embebido `parkpoint.ico` (con fallback de `ExtractIcon` sobre el binario) y despacha directamente `SendMessage(hwnd, WM_SETICON, ICON_SMALL/ICON_BIG, hIcon)`. Se enlazó en `LoginWindow.xaml.cs` y `MainShellWindow.xaml.cs`.
+     - _Diagnóstico_: En WPF, cuando una ventana utiliza `WindowStyle="None"` y `AllowsTransparency="True"`, WPF crea una ventana layered y omite enviar el mensaje Win32 `WM_SETICON` al `HWND`. Esto provocaba que Windows Taskbar y Alt+Tab mostraran el ícono genérico en blanco (cuadro blanco/azul).
+     - _Solución_: Se construyó `WindowIconHelper.cs` que en `SourceInitialized` extrae el ícono embebido `parkpoint.ico` (con fallback de `ExtractIcon` sobre el binario) y despacha directamente `SendMessage(hwnd, WM_SETICON, ICON_SMALL/ICON_BIG, hIcon)`. Se enlazó en `LoginWindow.xaml.cs` y `MainShellWindow.xaml.cs`.
   4. **Verificación y Pruebas**:
      - `dotnet build ParkingWpf.slnx`: **0 Errores**.
      - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
@@ -267,6 +311,7 @@
   - `dotnet test`: **338 Pruebas Superadas, 0 Fallos, 0 Errores**.
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Tengo estos problemas se revienta el servidor y no es mi internet tengo 900 MB simetricas si no que al subir se demora demasiado entonces revienta el sistema si me explico. que propones para poder solucionar estos problemas. crea el plan completo para mirar bien el detalle"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -285,12 +330,13 @@
   - `dotnet test`: **338 Pruebas Superadas, 0 Fallos, 0 Errores**.
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"cada vez que me logueo se está quedando en el 50% y se queda ahí un rato... necesitamos revisar cómo mejoramos esos tiempos... elabora el plan completo"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Fast-Login (< 1 Segundo) con Sincronización en Segundo Plano (`LoginViewModel.cs`, `ISyncEngineService.cs`, `SyncEngineService.cs`)**:
-     - *Causa Raíz de Demora*: Cada inicio de sesión ejecutaba síncronamente `PerformFullSyncWithProgressAsync` con barra de progreso y retardos artificiales, incluso en terminales que ya tenían todo el catálogo descargado en SQLite local.
-     - *Solución*: Se implementó el método `HasLocalBranchDataAsync(int branchId)` en `SyncEngineService`, verificando la existencia de tarifas activas (`VehicleRates`) y usuarios locales (`Users`).
+     - _Causa Raíz de Demora_: Cada inicio de sesión ejecutaba síncronamente `PerformFullSyncWithProgressAsync` con barra de progreso y retardos artificiales, incluso en terminales que ya tenían todo el catálogo descargado en SQLite local.
+     - _Solución_: Se implementó el método `HasLocalBranchDataAsync(int branchId)` en `SyncEngineService`, verificando la existencia de tarifas activas (`VehicleRates`) y usuarios locales (`Users`).
      - Si la sede ya cuenta con datos locales (Fast-Login):
        - Se omite la barra de progreso interactiva (`IsSyncing = false`).
        - Se valida la conectividad en milisegundos y se da paso inmediato (< 1s) a `MainShellWindow`.
@@ -298,8 +344,8 @@
      - Si la sede no tiene datos (PC nuevo o base de datos vacía):
        - Se ejecuta la descarga interactiva completa ("Descargando catálogo inicial de la sede...").
   2. **Eliminación del Salto al 50% en el Actualizador (`AppUpdateService.cs`)**:
-     - *Causa Raíz*: Antes de iniciar la conexión HTTP de descarga del archivo ZIP, el servicio reportaba `Percentage = 50`. Luego, al comenzar el streaming de bloques de 80 KB, la fórmula `30 + (fraction * 55)` calculaba 30%, produciendo un retroceso brusco de 50% a 30% que causaba lag y confusión visual.
-     - *Solución*: Se ajustó el reporte previo a la conexión a `Percentage = 25`, logrando una secuencia estrictamente creciente y continua: 10% (verificación) ➔ 25% (conexión) ➔ 30% a 85% (streaming fluido de megabytes en tiempo real) ➔ 90% (hash SHA-256) ➔ 95% (lanzando updater) ➔ 100% (completado).
+     - _Causa Raíz_: Antes de iniciar la conexión HTTP de descarga del archivo ZIP, el servicio reportaba `Percentage = 50`. Luego, al comenzar el streaming de bloques de 80 KB, la fórmula `30 + (fraction * 55)` calculaba 30%, produciendo un retroceso brusco de 50% a 30% que causaba lag y confusión visual.
+     - _Solución_: Se ajustó el reporte previo a la conexión a `Percentage = 25`, logrando una secuencia estrictamente creciente y continua: 10% (verificación) ➔ 25% (conexión) ➔ 30% a 85% (streaming fluido de megabytes en tiempo real) ➔ 90% (hash SHA-256) ➔ 95% (lanzando updater) ➔ 100% (completado).
   3. **Verificación y Pruebas**:
      - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
      - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
@@ -313,16 +359,16 @@
 
 - **`✅ Verificación y Compilación`**:
   - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
-<<<<<<< HEAD
   - `dotnet test ParkingWpf.slnx`: **337/337 Pruebas Superadas (100% Correctas, 0 Fallos)**.
 
 ---
-=======
-  - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
+
+- `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
 
 ## 📅 Entrada: [2026-09-27 15:45:00] - [FEATURE / UX / RESILIENCE / UPDATER] Badge Oficial de Versión en Header, Erradicación de Flapping Offline por SignalR, Versión Dinámica en Login, Background Transparente en Diálogo de Actualización y Descarga por Streaming en Tiempo Real
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"En la primera imagen, no vemos en la parte superior la versión en la que está instalada... En la segunda imagen, hay un cracheo que se ve a cada ratico: modo offline, modo online... como que se desconecta y yo tengo internet super limpio... En el login del WPF, la versión no corresponde a la que lanzamos (dice v0.1.2)... En la última imagen, mira esa ventana negra que se forma atrás, se ve horrible... esa carga que se hace cuando se está descargando el instalador debería ser en tiempo real, ver cómo va cargando... pero llega a 50% y se muere ahí... cada vez que me logueo se está quedando en el 50% y se queda ahí un rato... necesitamos revisar cómo mejoramos esos tiempos."_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -330,8 +376,8 @@
      - Se creó la propiedad `AppVersionDisplay` que lee dinámicamente el `AssemblyInformationalVersion` / `Assembly.GetName().Version` sin requerir data quemada.
      - Se integró un badge con estilo Dark Glassmorphism (`#1E293B`, borde `#334155`, texto cyan `#38BDF8`) en la barra de título superior de `MainShellWindow.xaml` para visualización inmediata en soporte técnico y operación física.
   2. **Erradicación del Parpadeo (Flapping) de Conectividad (`SyncEngineService.cs`)**:
-     - *Causa Raíz*: `SignalRClientService` disparaba `ConnectionStatusChanged(false)` ante reconexiones o renovaciones periódicas del WebSocket, lo cual invocaba ciegamente `SetOnlineStatus(false)` degradando toda la terminal a "Modo Offline Local". La sonda ejecutaba `PingAsync` contra el REST API (que estaba online), restaurando "Modo Online", repitiendo el ciclo indefinidamente.
-     - *Solución*: Se desvinculó la degradación offline de SignalR. SignalR es exclusivamente un bus de eventos push; el estado de conectividad de la terminal se rige estrictamente por la disponibilidad del API REST (`_apiClient.PingAsync`) y la interfaz física de hardware de red en Windows.
+     - _Causa Raíz_: `SignalRClientService` disparaba `ConnectionStatusChanged(false)` ante reconexiones o renovaciones periódicas del WebSocket, lo cual invocaba ciegamente `SetOnlineStatus(false)` degradando toda la terminal a "Modo Offline Local". La sonda ejecutaba `PingAsync` contra el REST API (que estaba online), restaurando "Modo Online", repitiendo el ciclo indefinidamente.
+     - _Solución_: Se desvinculó la degradación offline de SignalR. SignalR es exclusivamente un bus de eventos push; el estado de conectividad de la terminal se rige estrictamente por la disponibilidad del API REST (`_apiClient.PingAsync`) y la interfaz física de hardware de red en Windows.
   3. **Versión Dinámica en Pie de Login (`LoginViewModel.cs`, `LoginWindow.xaml`)**:
      - Se reemplazó el texto estático `Text="• Versión v0.1.2 • © PARKING FLOW"` por el binding reactivo `{Binding AppVersionDisplay, StringFormat='• Versión {0} • © PARKING FLOW'}`.
   4. **Eliminación de Caja Negra en Diálogo de Actualización (`AppUpdateDialog.xaml`)**:
@@ -361,6 +407,7 @@
   - `dotnet test ParkingApi.slnx`: **670/670 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"sabes tengo otra cosa eso genera es un ejecutable pero no un instalador de windows como deberiá ser por que no ? no es posible ?"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -390,20 +437,21 @@
 ## 📅 Entrada: [2026-09-27 14:40:00] - [FEATURE / ARCHITECTURE / UPDATER / RESILIENCE] Blindaje de Actualizaciones Obligatorias, Sondeo Periódico (1h), Sincronización Previa al 100% y Protocolo de Ejecución Directa
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Necesito un análisis completo del WPF, donde verifiquemos, analicemos y contrastemos que esté funcional el tema actualización... que él pueda recibir la actualización desde que... si yo estoy instalado en mi aplicativo, estoy trabajando y ¡pum!, él detectó... yo creería que coloquémoslo cada hora... y cuando se vaya a loguear, sea lo primero que haga... cuando hay una actualización, él debe sí o sí primero subir toda la información a la nube, garantizar que todo esté en la nube... tiene que ser prácticamente obligatoria, tiene que actualizarlo, no la puede posponer... primero valida que toda la información esté arriba en la nube, toda. Ahí sí procede a actualizar... y genera pues el mensajito final 'Listo, sistema actualizado' para así continuar... Si está trabajando ya en el sistema y llega la notificación: valida que toda esa información esté cargada, hace... cierra la sesión normal, actualiza y vuelve y lo deja en el login... Y necesitamos agregar otras reglas en los 3 proyectos... el plan analiza y después cuando lo vamos a implementar vuelve y analiza... el proceder es solo ir a ejecutarlo..."_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Garantía Inviolable de Sincronización al 100% (`AppUpdateService.cs`)**:
      - Se reforzó la verificación de transacciones locales pendientes (`PendingItemsCount`). Si existen registros en cola, se ejecuta `PerformFullSyncAsync()`. Si tras el intento persisten elementos en cola (caída de red / indisponibilidad de API), la actualización se **aborta de inmediato**, impidiendo descargar paquetes o reemplazar binarios hasta asegurar que todos los datos de ventas y turnos estén en la nube.
   2. **Obligatoriedad Absoluta de Actualizaciones (`AppUpdateViewModel.cs`, `AppUpdateDialog.xaml`)**:
-     - Se eliminó el botón *"Posponer"* (`CanCancel = false` incondicionalmente). Toda actualización es obligatoria para garantizar la integridad institucional.
-     - Botón principal transformado en *"Sincronizar y Actualizar Ahora"* ocupando el 100% del ancho del diálogo.
+     - Se eliminó el botón _"Posponer"_ (`CanCancel = false` incondicionalmente). Toda actualización es obligatoria para garantizar la integridad institucional.
+     - Botón principal transformado en _"Sincronizar y Actualizar Ahora"_ ocupando el 100% del ancho del diálogo.
   3. **Sondeo Periódico en Segundo Plano Cada 1 Hora (`IAppUpdateService.cs`, `AppUpdateService.cs`, `App.xaml.cs`)**:
      - Se implementó `StartHourlyUpdateCheck()` con temporizador `DispatcherTimer` de 60 minutos y evento `UpdateDetected`.
      - `App.xaml.cs` inicializa el sondeo al arrancar y suscribe el despachador de diálogos ante nuevas versiones.
   4. **Validación Pre-Ingreso en Login (`LoginViewModel.cs`, `LoginWindow.xaml`)**:
      - En `LoginAsync()`, tras validar credenciales con éxito y sincronizar datos, se consulta `CheckForUpdateAsync()`. Si hay actualización disponible, fuerza la subida total a la nube, limpia la sesión y abre de forma obligatoria el diálogo de actualización, impidiendo acceder a `MainShellWindow` con binarios desactualizados.
-     - Se integró el banner de confirmación visual verde (`#2610B981`) con el ícono `{StaticResource IconCheckCircle}` y el mensaje *"Listo, sistema actualizado"*.
+     - Se integró el banner de confirmación visual verde (`#2610B981`) con el ícono `{StaticResource IconCheckCircle}` y el mensaje _"Listo, sistema actualizado"_.
   5. **Manejo en Caliente y Retorno a Login (`MainShellViewModel.cs`, `AppUpdateService.cs`, `ParkFlow.Updater`)**:
      - `MainShellViewModel` se suscribió a `UpdateDetected`.
      - `AppUpdateService` ejecuta `_sessionService.Clear()` antes de iniciar el reemplazo de binarios para asegurar que el proceso relanzado vuelva a la pantalla de Login.
@@ -428,7 +476,7 @@
   - `Parking/ViewModels/MainShellViewModel.cs`
   - `Parking/App.xaml.cs`
   - `ParkFlow.Updater/MainWindow.xaml.cs`
-  - `PROTOCOLO_ACTUALIZACIONES_OBLIGATORIAS.md` *(Nuevo)*
+  - `PROTOCOLO_ACTUALIZACIONES_OBLIGATORIAS.md` _(Nuevo)_
   - `ParkingWpf/AGENTS.md`
   - `ParkingWpf/.agents/rules/xaml_and_architecture_rules.md`
   - `ParkingApi/AGENTS.md`
@@ -441,10 +489,11 @@
 - **`✅ Verificación y Compilación`**:
   - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
   - `dotnet test ParkingWpf.slnx`: **338/338 Pruebas Superadas (100% Exitosas, 0 Fallos)**.
+
 ## 📅 Entrada: [2026-09-27] - [BUGFIX / MULTI-SEDE / OFFLINE] Corrección de Huecos Técnicos en Validación de Caja Única Offline
->>>>>>> 5d3f48fa3f2abc0098dd3fd424443b6d6d479d4e
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"valida si tiene huecos tecnicos para evitar errores, recuerda que eso debe controlar el abrir caja desde wpf y pwa"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -461,9 +510,11 @@
 - **`✅ Verificación y Compilación`**:
   - `dotnet test ParkingWpf.slnx`: **337/337 Pruebas Superadas (0 Fallos)**
   - `dotnet build`: **0 Errores, 0 Advertencias**.
+
 ## 📅 Entrada: [2026-09-27 10:35:00] - [RELEASE / PACKAGING / DEPLOYMENT] Generación Oficial de Paquete de Distribución ParkFlow Desktop v3.0.0
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"generame del wpf version 3 para probar la actualiacion del wpf cuando cargo en el pwa"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -480,7 +531,7 @@
        - **Firma SHA-256**: `7ac4ca0e8d2612f7f045ae150f77cc19406949bebd740ccd9c95b7baa2085ed7`.
      - Se generó el archivo de manifiesto `release_manifest.json` listo para el módulo de versiones de la PWA.
   3. **Instrucciones para el Usuario**:
-     - Desde la PWA (módulo *Versiones de Escritorio*), el usuario puede cargar directamente `ParkFlow_v3.0.0.zip` con versión `3.0.0`.
+     - Desde la PWA (módulo _Versiones de Escritorio_), el usuario puede cargar directamente `ParkFlow_v3.0.0.zip` con versión `3.0.0`.
 
 - **`📦 Componentes Modificados / Generados`**:
   - `Releases/v3.0.0/ParkFlow_v3.0.0.zip` (Nuevo)
@@ -496,12 +547,13 @@
 ## 📅 Entrada: [2026-09-27 00:10:00] - [BUGFIX / WPF / LIFECYCLE / SHELL-ICON] Erradicación de Procesos Zombie en Segundo Plano, Auto-Rescate de Instancia Única y Garantía del Ícono en Barra de Tareas
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Ajustame esto porque a veces no me carga la imagen del icono de la aplicación del WPF en la barra de tareas. Y ahorita estaba trabajando con ella y se me cerró, pero quedó el segundo plano ahí abierto. ¿Cómo podría evitar esto?"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Diagnóstico Técnico de Procesos Zombie y Bloqueo de Mutex**:
-     - *Causa Raíz de Proceso en Fondo*: Al configurar `ShutdownMode = ShutdownMode.OnExplicitShutdown`, cuando la interfaz gráfica se cerraba, los hilos de fondo (.NET Runtime, `DispatcherTimer` de `BackgroundSyncScheduler`, SignalR, HttpClient) podían mantener vivo el proceso en el Administrador de Tareas. Además, `App.OnExit` carecía de `Environment.Exit()`, convirtiendo a la terminal en un proceso zombie invisible.
-     - *Causa Raíz de Bloqueo*: Al ejecutar nuevamente `Parking.exe`, `Mutex(true, "ParkingFlow_WPF_SingleInstance_Mutex", ...)` detectaba el proceso zombie colgado y arrojaba el diálogo modal *"Parking Flow ya se encuentra en ejecución en este equipo"*, cerrándose y bloqueando permanentemente al usuario hasta reiniciar el equipo.
+     - _Causa Raíz de Proceso en Fondo_: Al configurar `ShutdownMode = ShutdownMode.OnExplicitShutdown`, cuando la interfaz gráfica se cerraba, los hilos de fondo (.NET Runtime, `DispatcherTimer` de `BackgroundSyncScheduler`, SignalR, HttpClient) podían mantener vivo el proceso en el Administrador de Tareas. Además, `App.OnExit` carecía de `Environment.Exit()`, convirtiendo a la terminal en un proceso zombie invisible.
+     - _Causa Raíz de Bloqueo_: Al ejecutar nuevamente `Parking.exe`, `Mutex(true, "ParkingFlow_WPF_SingleInstance_Mutex", ...)` detectaba el proceso zombie colgado y arrojaba el diálogo modal _"Parking Flow ya se encuentra en ejecución en este equipo"_, cerrándose y bloqueando permanentemente al usuario hasta reiniciar el equipo.
   2. **Implementación de Auto-Rescate Inteligente de Instancia Única (`App.xaml.cs`)**:
      - En `App.OnStartup`, cuando `createdNew == false`:
        - Se buscan los procesos activos llamados `Parking` diferentes al PID actual.
@@ -526,6 +578,7 @@
 ## 📅 Entrada: [2026-09-26 23:45:00] - [BUGFIX / WPF / UPDATER] Corrección de Error de Parseo de Argumentos y Validación de Rutas (Error de Reemplazo de Binarios)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Plan de Arquitectura y Corrección: Error de Reemplazo de Binarios en ParkFlow.Updater. Analiza si tiene huecos tecnicos para dar co la solucion definitiva"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -549,17 +602,18 @@
 ## 📅 Entrada: [2026-09-26 23:25:00] - [UI / UX / WPF / CUSTOMERS] Rediseño Estético Institucional Park Point y Control Dinámico de Visibilidad del DV en Directorio de Clientes
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"mejorame el diseño de esta pantalla, ya que no se ve del mismo estilo de mi wpf, adicional veo que me muestra dv pero eso me deberia de salir cuando yo elija nit, si no? ocultalo"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Control Condicional y Dinámico del Dígito de Verificación (`CustomersView.xaml`)**:
-     - *Diagnóstico*: Anteriormente el campo DV se encontraba fijo en la columna 2 del formulario con ancho proporcional `0.6*` y solo deshabilitado (`IsEnabled="{Binding IsNitSelected}"`), mostrándose siempre en pantalla como un cuadro vacío inútil al elegir Cédula de Ciudadanía u otros documentos.
-     - *Implementación*: Se reestructuró la fila de documento en una sub-cuadrícula con columna flexible (`*`) para el número de documento y columna automática (`Auto`) para el DV.
+     - _Diagnóstico_: Anteriormente el campo DV se encontraba fijo en la columna 2 del formulario con ancho proporcional `0.6*` y solo deshabilitado (`IsEnabled="{Binding IsNitSelected}"`), mostrándose siempre en pantalla como un cuadro vacío inútil al elegir Cédula de Ciudadanía u otros documentos.
+     - _Implementación_: Se reestructuró la fila de documento en una sub-cuadrícula con columna flexible (`*`) para el número de documento y columna automática (`Auto`) para el DV.
      - El contenedor `StackPanel` del DV se vinculó reactivamente a `Visibility="{Binding IsNitSelected, Converter={StaticResource BoolToVis}}"`.
-     - Cuando el tipo de documento seleccionado es distinto de NIT (Cédula de Ciudadanía `Id=13`, Cédula de Extranjería `Id=22`, Pasaporte `Id=41`, etc.), `IsNitSelected` es `false`, lo que colapsa el contenedor (`Visibility="Collapsed"`) y permite que el campo *Número Documento* se expanda suavemente al 100% del espacio disponible.
+     - Cuando el tipo de documento seleccionado es distinto de NIT (Cédula de Ciudadanía `Id=13`, Cédula de Extranjería `Id=22`, Pasaporte `Id=41`, etc.), `IsNitSelected` es `false`, lo que colapsa el contenedor (`Visibility="Collapsed"`) y permite que el campo _Número Documento_ se expanda suavemente al 100% del espacio disponible.
      - Al seleccionar **NIT (`Id=31`)**, el campo DV se hace visible automáticamente, con un ancho fijo de 50px, centrado y tipografía `FontFamilyMonospace`.
   2. **Modernización Visual y Alineación al Diseño Oficial Park Point (`CustomersView.xaml`)**:
-     - **Formulario Modal (*Datos Fiscales del Cliente*)**:
+     - **Formulario Modal (_Datos Fiscales del Cliente_)**:
        - Reemplazo de controles crudos de Windows por los estilos del Design System oficial:
          - `Style="{StaticResource ModernComboBox}"` en el selector de tipo de documento (menú flotante moderno con bordes redondeados y sombra suave, eliminando el dropdown gris estándar de Windows).
          - `Style="{StaticResource ModernTextBox}"` en todos los campos de texto (`FormDocumentNumber`, `FormFullName`, `FormTradeName`, `FormEmail`, `FormPhone`, `FormAddress`, `FormCityCode`).
@@ -588,16 +642,17 @@
 ## 📅 Entrada: [2026-09-26 23:12:00] - [FEATURE / WPF / CHECKIN / SEARCH] Búsqueda y Liquidación Rápida con Pistola Lectora en "Últimos Vehículos Ingresados"
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Quisiera que en el WPF, en esa pantalla que te envié, en ese cuadro rojo pequeño existiera un cuadrito donde yo pueda buscar los vehículos que ya han ingresado. O sea en esa lista que está ahí, quisiera que me agregaras el botón para filtrarlos, cosa que cuando yo tenga una pistola lectora y me deje el foco en ese recuadro, al momento de escanear la placa y le dé enter, me filtre y de una vez me permita dar salida..."_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Diseño XAML en Cabecera de Tarjeta (`CheckInView.xaml`)**:
-     - En la tarjeta lateral de *Últimos Vehículos Ingresados*, se transformó el encabezado en un `Grid` de 3 columnas para ubicar el cuadro de búsqueda en el extremo derecho (exactamente en el área señalada por el usuario).
+     - En la tarjeta lateral de _Últimos Vehículos Ingresados_, se transformó el encabezado en un `Grid` de 3 columnas para ubicar el cuadro de búsqueda en el extremo derecho (exactamente en el área señalada por el usuario).
      - Se integró un contenedor `Border` compacto (160x30px) con fondo `#F1F5F9`, bordes redondeados (6px) y recursos oficiales verificados:
        - Ícono vectorial `{StaticResource IconSearch}` (11px).
        - `TextBox` con enlace bidireccional reactivo `RecentEntriesSearchQuery` (`UpdateSourceTrigger=PropertyChanged`).
        - `KeyBinding` a `Key="Enter"` asociado a `ProcessRecentEntriesSearchOrCheckOutCommand` y `Key="Esc"` a `ClearRecentEntriesSearchCommand`.
-       - Placeholder sutil *"Buscar placa..."* visible automáticamente cuando el campo está vacío (`IsHitTestVisible="False"`).
+       - Placeholder sutil _"Buscar placa..."_ visible automáticamente cuando el campo está vacío (`IsHitTestVisible="False"`).
        - Botón de limpieza rápida con `{StaticResource IconClose}` (8px) visible cuando hay texto ingresado.
   2. **Arquitectura y Comportamiento en ViewModel (`CheckInViewModel.cs`)**:
      - **Propiedad Reactiva**: `[ObservableProperty] private string _recentEntriesSearchQuery = string.Empty;` con hook `OnRecentEntriesSearchQueryChanged` que reinicia la página a 1 y actualiza la lista paginada en tiempo real.
@@ -629,13 +684,14 @@
 ## 📅 Entrada: [2026-09-26 15:10:00] - [BUGFIX / ARCHITECTURE / WPF / UPDATE] Actualización Resiliente sin Pérdida de BD Local y Notificación Reactiva SignalR desde PWA
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Analiza porque sale erorr al actualizar el wpf , valida que cuando se notifique desde el pwa que hay una nueva version, el permita sin perder la bd local por temas de seguridad. Analiza huecos tecnicos que este ajuste arregle definitivo el daño y no se dañe nada"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Diagnóstico y Eliminación de Causa Raíz (Bloqueo en Pantalla de Login)**:
-     - *Comportamiento Previo*: Al detectarse una actualización disponible en el arranque de la aplicación (`App.xaml.cs`) o en el diálogo `AppUpdateDialog`, `AppUpdateService.PrepareAndApplyUpdateAsync` abortaba drásticamente el proceso si `_syncEngine.PendingItemsCount > 0` arrojando el error *"Sincronización incompleta: Existen registros en cola local sin sincronizar y no se pudo asegurar la conexión con el servidor. Para proteger la información de ventas y turnos, la actualización se ha pospuesto."*.
-     - *Falla de Diseño Identificada*: En la pantalla de inicio de sesión no existe un operador autenticado (`_sessionService.CurrentUser == null` y `_apiClient` carece de JWT), por lo que los endpoints protegidos del API rechazaban la sincronización inmediata, atrapando a la terminal en un bucle infinito que impedía actualizar.
-     - *Seguridad de Almacenamiento Local*: La base de datos SQLite física (`parkflow_local.db`) no reside en el directorio de binarios de la aplicación, sino en `%LocalAppData%\ParkFlow\Data\`, y el micro-actualizador `ParkFlow.Updater` cuenta con reglas de exclusión inmutables para no tocar archivos `.db`, `.db-wal` ni `.db-shm`.
+     - _Comportamiento Previo_: Al detectarse una actualización disponible en el arranque de la aplicación (`App.xaml.cs`) o en el diálogo `AppUpdateDialog`, `AppUpdateService.PrepareAndApplyUpdateAsync` abortaba drásticamente el proceso si `_syncEngine.PendingItemsCount > 0` arrojando el error _"Sincronización incompleta: Existen registros en cola local sin sincronizar y no se pudo asegurar la conexión con el servidor. Para proteger la información de ventas y turnos, la actualización se ha pospuesto."_.
+     - _Falla de Diseño Identificada_: En la pantalla de inicio de sesión no existe un operador autenticado (`_sessionService.CurrentUser == null` y `_apiClient` carece de JWT), por lo que los endpoints protegidos del API rechazaban la sincronización inmediata, atrapando a la terminal en un bucle infinito que impedía actualizar.
+     - _Seguridad de Almacenamiento Local_: La base de datos SQLite física (`parkflow_local.db`) no reside en el directorio de binarios de la aplicación, sino en `%LocalAppData%\ParkFlow\Data\`, y el micro-actualizador `ParkFlow.Updater` cuenta con reglas de exclusión inmutables para no tocar archivos `.db`, `.db-wal` ni `.db-shm`.
   2. **Arquitectura de Actualización Resiliente (`AppUpdateService.cs`)**:
      - Se reorganizó la secuencia de ejecución:
        1. Se genera primero e incondicionalmente la copia de seguridad preventiva física con timestamp en `%LocalAppData%\ParkFlow\Backups\parkflow_local_backup_{timestamp}.db` mediante `_dbManager.BackupDatabaseAsync()`.
@@ -664,19 +720,16 @@
   - `dotnet test ParkingWpf.slnx`: **334/334 Pruebas Unitarias Superadas (0 Fallos, 100% Correctas)**.
   - `dotnet build ParkingWpf.slnx`: **0 Errores**.
 
-
-
-
-
 ## 📅 Entrada: [2026-09-26 14:15:00] - [FEATURE / WPF / INVOICING / CHECKOUT] Emisión Predeterminada a Consumidor Final (222222222222) y Selector de Factura Personalizada
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"ayudame ajustar algo, cuando le voy a dar salida un vehiculo y la resolucion haya sido factura electronica (fv) no me muestres la pregunta de que si quiero imprimir o no, ellas siempre deben imprimirse tanto en pwa, como en wpf... no me obligues a buscar el cliente por defecto sino que por defecto salga a consumidor final (222222222222) y haya un check que diga factura personalizada que al darle clic si me muestre los campos del cliente para asociarlo"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Arquitectura en ViewModel (`CheckOutViewModel.cs`)**:
-     - *Comportamiento Previo*: Al activar `EmitElectronicInvoice` o resoluciones de factura electrónica (FV / FE), `ConfirmExitAsync` validaba obligatoriamente que `SelectedCustomer != null`, bloqueando el cobro y desplegando una alerta modal de adquirente requerido.
-     - *Nuevo Flujo*:
+     - _Comportamiento Previo_: Al activar `EmitElectronicInvoice` o resoluciones de factura electrónica (FV / FE), `ConfirmExitAsync` validaba obligatoriamente que `SelectedCustomer != null`, bloqueando el cobro y desplegando una alerta modal de adquirente requerido.
+     - _Nuevo Flujo_:
        - Se introdujo la propiedad reactiva `[ObservableProperty] private bool _isCustomCustomer = false;`.
        - Por defecto (`IsCustomCustomer == false`), la liquidación de salida se realiza a **Consumidor Final (222222222222)** sin exigir cliente ni bloquear el botón de cobro.
        - En `ConfirmExitAsync`, la validación de cliente requerido se condicionó a:
@@ -684,9 +737,9 @@
        - Al invocar `ProcessExitAsync`, se envía `(EmitElectronicInvoice && IsCustomCustomer) ? SelectedCustomer?.CustomerId : null`. El backend mapea automáticamente el valor `null` al adquirente Consumidor Final registrado para la compañía.
        - Al finalizar el cobro o cancelar la selección (`CancelSelection`), `IsCustomCustomer` se reinicia de inmediato a `false`.
   2. **Diseño XAML en Diálogo de Cobro (`CheckOutDialog.xaml`)**:
-     - Dentro del panel de Facturación Electrónica DIAN, se integró el selector con CheckBox *"Factura personalizada (Cliente específico)"*.
-     - Cuando `IsCustomCustomer` es `false`, se muestra un banner verde institucional con ícono y texto informativo: *"Consumidor Final (222222222222) - Emisión automática para cuantías menores y público general (no requiere registrar cliente)"*.
-     - Cuando `IsCustomCustomer` es `true`, se despliegan reactivamente el ComboBox de búsqueda de clientes y el botón de *"Nuevo Cliente"*.
+     - Dentro del panel de Facturación Electrónica DIAN, se integró el selector con CheckBox _"Factura personalizada (Cliente específico)"_.
+     - Cuando `IsCustomCustomer` es `false`, se muestra un banner verde institucional con ícono y texto informativo: _"Consumidor Final (222222222222) - Emisión automática para cuantías menores y público general (no requiere registrar cliente)"_.
+     - Cuando `IsCustomCustomer` es `true`, se despliegan reactivamente el ComboBox de búsqueda de clientes y el botón de _"Nuevo Cliente"_.
   3. **Pruebas Unitarias Exhaustivas**:
      - Se actualizó el caso de prueba existente para validar bloqueo únicamente cuando `IsCustomCustomer == true` y no hay cliente seleccionado.
      - Se añadió la prueba unitaria `ProcessPaymentAsync_WhenEmitElectronicInvoiceAndConsumidorFinal_ProcessesExitWithNullCustomer` que certifica el procesamiento exitoso de cobro a Consumidor Final pasando `customerId = null`.
@@ -703,17 +756,16 @@
   - `dotnet test ParkingWpf.slnx`: **334/334 Pruebas Unitarias Superadas (0 Fallos, 100% Correctas)**.
   - `dotnet build -c Release ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
 
-
-
 ## 📅 Entrada: [2026-09-26 13:30:00] - [FEATURE / WPF / INVOICING / PRINT] Auto-Impresión Obligatoria en Facturación Electrónica (Prefijo FV / FE) al Liquidar Salida
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"ayudame ajustar algo, cuando le voy a dar salida un vehiculo y la resolucion haya sido factura electronica (fv) no me muestres la pregunta de que si quiero imprimir o no, ellas siempre deben imprimirse tanto en pwa, como en wpf"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Diagnóstico y Regla Operativa DIAN**:
-     - *Comportamiento Previo*: Al liquidar la salida de un vehículo en `ConfirmExitAsync`, el sistema ejecutaba incondicionalmente el diálogo de confirmación (`_dialogService.ShowConfirmationAsync`: *"¿Desea imprimir la factura / tiquete de salida?"*).
-     - *Requerimiento*: Las resoluciones de Factura Electrónica (prefijo `FV`, `FE`, `FM` o emisión FE activa) tienen obligación fiscal de entrega de comprobante y no deben depender de la confirmación manual del cajero.
+     - _Comportamiento Previo_: Al liquidar la salida de un vehículo en `ConfirmExitAsync`, el sistema ejecutaba incondicionalmente el diálogo de confirmación (`_dialogService.ShowConfirmationAsync`: _"¿Desea imprimir la factura / tiquete de salida?"_).
+     - _Requerimiento_: Las resoluciones de Factura Electrónica (prefijo `FV`, `FE`, `FM` o emisión FE activa) tienen obligación fiscal de entrega de comprobante y no deben depender de la confirmación manual del cajero.
   2. **Implementación de Bypass Condicional en `CheckOutViewModel.cs`**:
      - En `IsElectronicResolutionDefensive(BillingResolution? r)`, se añadieron explícitamente los prefijos `FV` y `FM` (`pfx.StartsWith("FV", StringComparison.OrdinalIgnoreCase)`).
      - En `ConfirmExitAsync`, se determina si la transacción involucró facturación electrónica (`var wasElectronic = EmitElectronicInvoice || IsElectronicResolutionDefensive(resolutionUsed)`).
@@ -728,19 +780,19 @@
   - `dotnet test ParkingWpf.slnx`: **333/333 Pruebas Unitarias Superadas (0 Fallos)**.
   - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
 
-
 ## 📅 Entrada: [2026-09-26 12:35:00] - [FEATURE / WPF / RELEASE / PACKAGING] Empaquetado Autocontenido (.NET Self-Contained) y Blindaje contra Bloqueos de Archivo en Micro-Updater
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"vuelve analizar a ver si tiene huecos tecnicos y que sea la solucion definitiva"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Diagnóstico Técnico Exhaustivo de Despliegue (.NET Runtime Dependency)**:
-     - *Causa Raíz de Solicitud de Runtime*: El script `publish-release.ps1` compilaba las soluciones con `--self-contained false`. Al estar los proyectos configurados en `net10.0-windows`, cualquier PC cliente sin el runtime exacto de .NET 10 para escritorio rechazaba la ejecución con la ventana de diálogo del sistema operativo: *"You must install .NET Desktop Runtime to run this application"*.
-     - *Solución*: Se configuró `--self-contained true` para `Parking.csproj` y `ParkFlow.Updater.csproj`. Esto incluye el motor de ejecución CLR (`coreclr.dll`, `clrjit.dll`, etc.), bibliotecas base del BCL y las librerías nativas de SQLite (`e_sqlite3.dll`) directamente dentro del ZIP de distribución (`~300 archivos`), eliminando al 100% el requisito de instalar .NET o SDKs en los clientes.
+     - _Causa Raíz de Solicitud de Runtime_: El script `publish-release.ps1` compilaba las soluciones con `--self-contained false`. Al estar los proyectos configurados en `net10.0-windows`, cualquier PC cliente sin el runtime exacto de .NET 10 para escritorio rechazaba la ejecución con la ventana de diálogo del sistema operativo: _"You must install .NET Desktop Runtime to run this application"_.
+     - _Solución_: Se configuró `--self-contained true` para `Parking.csproj` y `ParkFlow.Updater.csproj`. Esto incluye el motor de ejecución CLR (`coreclr.dll`, `clrjit.dll`, etc.), bibliotecas base del BCL y las librerías nativas de SQLite (`e_sqlite3.dll`) directamente dentro del ZIP de distribución (`~300 archivos`), eliminando al 100% el requisito de instalar .NET o SDKs en los clientes.
   2. **Detección y Blindaje de Bloqueo de Proceso en `ParkFlow.Updater` (Crucial)**:
-     - *Hueco Técnico Identificado*: Durante una actualización desatendida en caliente iniciada por `AppUpdateService`, `ParkFlow.Updater.exe` se ejecuta desde la carpeta de instalación. Al descomprimir el ZIP de la nueva versión, si el ZIP intentaba sobrescribir `ParkFlow.Updater.exe` mientras este mismo se encontraba corriendo, Windows arrojaba `IOException: The process cannot access the file because it is being used by another process`, abortando catastróficamente la actualización.
-     - *Solución de Protección*: En `ParkFlow.Updater/MainWindow.xaml.cs`, se blindó la llamada de extracción con un bloque `try/catch` defensivo capturando `IOException` cuando la entrada en el archivo ZIP corresponde al propio actualizador (`entry.Name.StartsWith("ParkFlow.Updater")`), permitiendo que la versión activa en memoria finalice la copia de todos los demás componentes del sistema sin colapsar.
+     - _Hueco Técnico Identificado_: Durante una actualización desatendida en caliente iniciada por `AppUpdateService`, `ParkFlow.Updater.exe` se ejecuta desde la carpeta de instalación. Al descomprimir el ZIP de la nueva versión, si el ZIP intentaba sobrescribir `ParkFlow.Updater.exe` mientras este mismo se encontraba corriendo, Windows arrojaba `IOException: The process cannot access the file because it is being used by another process`, abortando catastróficamente la actualización.
+     - _Solución de Protección_: En `ParkFlow.Updater/MainWindow.xaml.cs`, se blindó la llamada de extracción con un bloque `try/catch` defensivo capturando `IOException` cuando la entrada en el archivo ZIP corresponde al propio actualizador (`entry.Name.StartsWith("ParkFlow.Updater")`), permitiendo que la versión activa en memoria finalice la copia de todos los demás componentes del sistema sin colapsar.
 
 - **`📦 Componentes Modificados`**:
   - `Scripts/publish-release.ps1`
@@ -751,15 +803,15 @@
   - `dotnet test ParkingWpf.slnx`: **333/333 Pruebas Unitarias Superadas (0 Fallos)**.
   - `dotnet build ParkFlow.Updater.csproj`: **0 Errores, 0 Advertencias**.
 
-
 ## 📅 Entrada: [2026-09-26 12:15:00] - [BUGFIX / WPF / SYNC / DATABASE] Corrección de Eliminación Destructiva y Error de Integridad Referencial SQLite 19 en SyncEngine (Soft Delete)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"mira que cuando sincronizo, sale ese erorr de foreign key failed. Analiza si hay huecos tecnicos para dar con la solucion defintiva"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Diagnóstico del Error SQLite 19 ('FOREIGN KEY constraint failed')**:
-     - *Causa Raíz*: El motor de sincronización `SyncEngineService.cs` ejecutaba eliminaciones físicas destructivas (`db.Entities.RemoveRange`) sobre catálogos fundamentales (`Users`, `Stores`, `CommercialAgreements`, `BillingResolutions`) al depurar registros que ya no existían en el `bootstrap` del API remoto.
+     - _Causa Raíz_: El motor de sincronización `SyncEngineService.cs` ejecutaba eliminaciones físicas destructivas (`db.Entities.RemoveRange`) sobre catálogos fundamentales (`Users`, `Stores`, `CommercialAgreements`, `BillingResolutions`) al depurar registros que ya no existían en el `bootstrap` del API remoto.
      - Si estas entidades tenían registros dependientes en tablas históricas o transaccionales en la sede (por ejemplo, turnos en `UserSessions`, o descuentos aplicados en `TicketDiscounts`), SQLite bloqueaba estrictamente el borrado en cascada para garantizar la integridad referencial, lanzando el error 19 y abortando prematuramente el proceso de sincronización.
   2. **Implementación de Borrado Lógico (Soft-Delete) y Resolución Defensiva**:
      - Se rediseñaron los bloques de depuración (`agsToDelete`, `storesToDelete`, `usersToDelete`, `resToDelete`) en `SyncEngineService.cs`.
@@ -781,22 +833,22 @@
   - `dotnet test ParkingWpf.slnx`: **333/333 Pruebas Unitarias Superadas (0 Fallos)**.
   - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
 
-
 ## 📅 Entrada: [2026-09-26 01:46:00] - [BUGFIX / WPF / UI / CONVERTER] Corrección de Superposición y Duplicación Visual del Texto e Ícono 'Cargando' en Botón de Login
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Ayudame arreglar el wpf cuando le doy ingresar, el mensaje de cargadno con el icono decarga se ve como duplicado"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Diagnóstico y Causa Raíz de la Superposición Visual (`LoginWindow.xaml`)**:
-     - *Causa Raíz*: El contenedor `StackPanel` correspondiente al estado normal (*"Ingresar"*) del botón de login tenía asignado `Visibility="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"`.
+     - _Causa Raíz_: El contenedor `StackPanel` correspondiente al estado normal (_"Ingresar"_) del botón de login tenía asignado `Visibility="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}"`.
      - `InverseBooleanConverter` devuelve estrictamente un tipo `bool` (`!b`) y **no** un `System.Windows.Visibility`.
      - En el motor de renderizado de WPF, cuando una propiedad de tipo `Visibility` recibe un valor booleano desde un convertidor no compatible, el enlace falla internamente y WPF adopta el valor de respaldo por defecto: **`Visibility.Visible`**.
-     - Por consiguiente, al desencadenarse el comando de login (`IsBusy = true`), el bloque *"Cargando"* pasaba a ser visible mediante `BoolToVis`, pero el bloque *"Ingresar"* permanecía forzado en `Visible`, provocando que ambos textos e íconos se renderizaran superpuestos dentro del mismo `Grid` del botón.
+     - Por consiguiente, al desencadenarse el comando de login (`IsBusy = true`), el bloque _"Cargando"_ pasaba a ser visible mediante `BoolToVis`, pero el bloque _"Ingresar"_ permanecía forzado en `Visible`, provocando que ambos textos e íconos se renderizaran superpuestos dentro del mismo `Grid` del botón.
   2. **Solución Aplicada**:
      - En `Window.Resources` de `LoginWindow.xaml`, se declaró explícitamente la instancia inversa del convertidor de visibilidad: `<conv:BooleanToVisibilityConverter x:Key="InverseBoolToVis" Invert="True"/>`.
      - En el botón de login, se actualizó la visibilidad del estado normal a `Visibility="{Binding IsBusy, Converter={StaticResource InverseBoolToVis}}"`.
-     - Cuando `IsBusy == true`, el bloque *"Ingresar"* conmuta de forma atómica y estricta a `Visibility.Collapsed`, permitiendo que únicamente se muestre el texto *"Cargando"* y el spinner rotatorio `IconRefresh`.
+     - Cuando `IsBusy == true`, el bloque _"Ingresar"_ conmuta de forma atómica y estricta a `Visibility.Collapsed`, permitiendo que únicamente se muestre el texto _"Cargando"_ y el spinner rotatorio `IconRefresh`.
   3. **Verificación y Pruebas Unitarias**:
      - Compilación: `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
      - Pruebas unitarias: `dotnet test ParkingWpf.slnx` -> **100% Superado (333/333 Pruebas Unitarias, 0 Fallos)**.
@@ -811,14 +863,12 @@
 
 ---
 
-
-
 ## 📅 Entrada: [2026-09-26 01:42:00] - [FEATURE / UI / BRANDING / WPF] Reubicación del Logotipo sobre Píldora Hero y Transición a Fondo Blanco en Panel Derecho de LoginWindow
 
 - **`💬 Prompt Original del Usuario`**:
-  > _"Ayudame con esto, veo que el wpf tiene 2 errores con la ui del login,
+  > \_"Ayudame con esto, veo que el wpf tiene 2 errores con la ui del login,
 - el logo quiero que me lo dejes donde te encerre en rojo, y cambiame el fondo de donde esta azul por blanco
-En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agrande en tamaño, eso solo dejame en el pwa , en el wpf no lomodifiques"_
+  En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agrande en tamaño, eso solo dejame en el pwa , en el wpf no lomodifiques"\_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Reubicación Quirúrgica del Logotipo Oficial en Hero Izquierdo (`LoginWindow.xaml`)**:
@@ -849,11 +899,10 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 
 ---
 
-
-
 ## 📅 Entrada: [2026-09-26 01:25:00] - [FEATURE / UI / BRANDING / PARITY] Unificación Estética y Arquitectural del Login WPF con Parking PWA (Split-Screen, Dark Glassmorphism, Card #2A2B2C, Emerald Action & Spinner)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Quisiera que ahora el login del wpf tenga el mismo estilo, pantallas , colores y logica al pwa, ya que los 2 aplicativos y proyectos deben parecersen en el login en cuanto a la UI"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -861,7 +910,7 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
      - Se realizó el rediseño integral de `Parking/Views/LoginWindow.xaml` para replicar fielmente el diseño split-screen, paleta cromática, elevaciones y micro-interacciones de Parking PWA.
      - **Hero Izquierdo (Branding & Identidad Institucional)**:
        - Se incluyó la imagen de fondo oficial `fondopark.jpg` vinculada como recurso de la aplicación (`/Resources/fondopark.jpg`), sobre la cual se aplicó el degradado oscuro neutro (`#CC000000` a `#F20B0F19`) idéntico a la PWA.
-       - Se integró el logotipo oficial recortado en alta resolución (`newlogoblanco.png`) a 220px de ancho y 56px de alto, la pastilla/badge oficial `TERMINAL POS • CONTROL DE ACCESO` (`#10B981` con fondo verde translúcido), el titular tipográfico H1 *"Acceso que mantiene la ciudad en movimiento."* y el texto descriptivo institucional.
+       - Se integró el logotipo oficial recortado en alta resolución (`newlogoblanco.png`) a 220px de ancho y 56px de alto, la pastilla/badge oficial `TERMINAL POS • CONTROL DE ACCESO` (`#10B981` con fondo verde translúcido), el titular tipográfico H1 _"Acceso que mantiene la ciudad en movimiento."_ y el texto descriptivo institucional.
      - **Panel Derecho y Tarjeta Flotante de Inicio de Sesión**:
        - Fondo general del contenedor: `#111827` (superficie carbón institucional).
        - Card del formulario de login: Fondo `#2A2B2C` con radio de curvatura (`CornerRadius="16"`), borde sutil `#374151` y sombra de elevación (`BlurRadius="24"`).
@@ -871,7 +920,7 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
        - Campos de usuario y contraseña con fondo blanco/off-white (`#F9FAFB`), bordes redondeados (`CornerRadius="10"`), iconos vectoriales a la izquierda (`IconUser`, `IconLock`) en `#9CA3AF`, y botón de alternar visibilidad de contraseña con icono dinámico (`IconEye` / `IconEyeOff`).
      - **Botón de Acción Principal y Feedback de Carga**:
        - Botón estilizado con degradado esmeralda institucional (`#07665E` a `#0D9488`), bordes redondeados (`CornerRadius="10"`).
-       - Micro-animación de carga: Durante el estado `IsBusy = true`, el botón conmuta de manera reactiva: oculta *"Ingresar"* y presenta *"Cargando"* acompañado de un spinner circular rotativo (`SpinPath` con animación `DoubleAnimation` infinita de rotación 360° en 1 segundo).
+       - Micro-animación de carga: Durante el estado `IsBusy = true`, el botón conmuta de manera reactiva: oculta _"Ingresar"_ y presenta _"Cargando"_ acompañado de un spinner circular rotativo (`SpinPath` con animación `DoubleAnimation` infinita de rotación 360° en 1 segundo).
      - **Barra de Sincronización Offline y Estado de Red**:
        - Indicador de estado de red superior (badge con dot `#10B981` y texto según `NetworkStatusText` / `IsOnline`).
        - Barra de progreso de sincronización inicial SQLite (`ProgressBar` con `SyncProgressPercentage` y descripción `SyncStepDescription`).
@@ -898,11 +947,10 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 
 ---
 
-
-
 ## 📅 Entrada: [2026-09-26 01:15:00] - [FEATURE / UI / BRANDING] Integración del Nuevo Logotipo Oficial (newlogoblanco.png) en Alta Resolución en LoginWindow (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Veo que el logo sigue con un tamaño pequeño en la pwa y wpf, puedes aumentar el tamaño o necesitas que te lo pase con otras dimensiones?"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -929,26 +977,27 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 ## 📅 Entrada: [2026-09-26 00:15:00] - [BUGFIX / WPF / LOGOUT-LIFECYCLE / SHIFT-HANDOVER / BRANCH-INTEGRITY] Erradicación de Excepción ShutdownMode en Logout, Blindaje Atómico de Relevo de Turnos y Preservación de Sede Operativa (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"cuando le di salir d ela aplicacion me arrojo este error ahora: System.InvalidOperationException: 'No se puede establecer ShutdownMode cuando la aplicación se está deteniendo o ya está detenida.' en Parking.App.ShowLoginWindow() en App.xaml.cs:línea 280"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Erradicación de `InvalidOperationException` al Cerrar Sesión (`App.xaml.cs`)**:
-     - *Causa Raíz*: En `ShowMainShellWindow()`, el manejador `shellWindow.Closed += (s, e) => { if (!isLoggingOut) Shutdown(0); }` era ejecutado cuando el usuario pulsaba el botón rojo de Logout. Dado que `OnShellLogoutRequested` cerraba `shellWindow` antes de que el flujo de logout finalizara, el evento `.Closed` invocaba `Shutdown(0)`, iniciando el proceso de apagado de la aplicación. Al abrir inmediatamente `ShowLoginWindow()`, la asignación de `ShutdownMode` en la línea 280 arrojaba `InvalidOperationException` porque WPF no permite alterar `ShutdownMode` mientras el runtime se está deteniendo.
-     - *Solución*:
+     - _Causa Raíz_: En `ShowMainShellWindow()`, el manejador `shellWindow.Closed += (s, e) => { if (!isLoggingOut) Shutdown(0); }` era ejecutado cuando el usuario pulsaba el botón rojo de Logout. Dado que `OnShellLogoutRequested` cerraba `shellWindow` antes de que el flujo de logout finalizara, el evento `.Closed` invocaba `Shutdown(0)`, iniciando el proceso de apagado de la aplicación. Al abrir inmediatamente `ShowLoginWindow()`, la asignación de `ShutdownMode` en la línea 280 arrojaba `InvalidOperationException` porque WPF no permite alterar `ShutdownMode` mientras el runtime se está deteniendo.
+     - _Solución_:
        - Se estableció `ShutdownMode = ShutdownMode.OnExplicitShutdown;` estrictamente una sola vez en `OnStartup`, eliminando todas las reasignaciones redundantes y peligrosas en tiempo de ejecución.
        - Se introdujo la bandera de control `_isTransitioningToLogin` en `App.xaml.cs`, garantizando que durante la transición de Logout nunca se invoque accidentalmente `Shutdown()`.
        - Se eliminó el manejador defectuoso de `.Closed` en `ShowMainShellWindow()`. El cierre formal de la aplicación se delega a los botones de salida explícita y al menú de apagado.
   2. **Preservación Estricta de Sede en Cambio de Sesión (`AuthService.cs`, `SessionService.cs`)**:
-     - *Causa Raíz*: Al realizar la entrega o relevo de caja, `AuthService.SwitchCurrentUser(authResult.Session)` llamaba a `_sessionService.SetSession(newUser, _userBranches)` pasando `selectedBranch = null`. Esto provocaba que `SessionService.SetSession` reiniciara arbitrariamente `CurrentBranch` a `_userBranches.FirstOrDefault()` (**"Sede Principal"**), provocando el abandono de la sede operativa real.
-     - *Solución*:
+     - _Causa Raíz_: Al realizar la entrega o relevo de caja, `AuthService.SwitchCurrentUser(authResult.Session)` llamaba a `_sessionService.SetSession(newUser, _userBranches)` pasando `selectedBranch = null`. Esto provocaba que `SessionService.SetSession` reiniciara arbitrariamente `CurrentBranch` a `_userBranches.FirstOrDefault()` (**"Sede Principal"**), provocando el abandono de la sede operativa real.
+     - _Solución_:
        - `SwitchCurrentUser` ahora transfiere explícitamente `_sessionService.CurrentBranch`: `_sessionService.SetSession(newUser, _sessionService.UserBranches, _sessionService.CurrentBranch);`.
        - `SessionService.SetSession` protege `CurrentBranch`: si `selectedBranch` es `null`, pero la sede actual pertenece a las sedes asignadas al usuario, **preserva intacta la sede activa**.
   3. **Atomicidad e Integridad de Sede en Relevo de Turnos (`EfShiftService.cs`, `ShiftClosureViewModel.cs`)**:
-     - *Causa Raíz*:
+     - _Causa Raíz_:
        - `HandoverAndOpenNextShiftAsync` cerraba el turno saliente y luego intentaba consultar la caja anterior, usando `branchId = CurrentBranchId` (el cual podía haber cambiado a Sede Principal por el cambio de usuario).
        - El evento `UserSessionChanged` o `SignalR` ejecutaba `RefreshCurrentShiftAsync()` concurrentemente en medio del relevo, destruyendo temporalmente `CurrentShift` en memoria y dejando la pantalla en "SIN TURNO".
        - En `ShiftClosureViewModel`, `_authService.SwitchCurrentUser(authResult.Session)` se invocaba antes de que `HandoverAndOpenNextShiftAsync` abriera el nuevo turno.
-     - *Solución*:
+     - _Solución_:
        - Se introdujo la bandera `_isHandoverInProgress` en `EfShiftService`, bloqueando lecturas intermedias o desasociaciones destructivas de `CurrentShift` durante el relevo atómico.
        - En `HandoverAndOpenNextShiftAsync`, se consulta el turno saliente antes de cerrarlo, heredando obligatoriamente su `BranchId`, `CompanyId` y `CashRegisterName`, blindando la caja contra cualquier desfase de sede.
        - En `ShiftClosureViewModel` (`HandoverShiftAsync` y `TakeOverShiftAsync`), se reordenó la ejecución para abrir primero el nuevo turno (`_shiftService.HandoverAndOpenNextShiftAsync`) y posteriormente conmutar el usuario (`_authService.SwitchCurrentUser`), garantizando que la sesión cambie cuando el nuevo turno ya está persistido en SQLite y en memoria.
@@ -980,21 +1029,22 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 ## 📅 Entrada: [2026-09-25 23:50:00] - [BUGFIX / WPF / LIFECYCLE / CONNECTIVITY / REACTIVE-LOGIN] Erradicación de Excepción ShutdownMode en App.xaml.cs, Calibración de Timeout en PingAsync con Reintento Defensivo y Reactividad en Login
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"ahra ocurrio este error segundo cuando se lanza la aplicaicon de una vez sale modo offline activo por que si esta con internet el debería de una vez validar que esta conectao a internet y que el api responde para estar en linea si me explico."_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Diagnóstico y Corrección de `InvalidOperationException` en `App.xaml.cs` (Línea 286)**:
-     - *Causa Raíz*: En `ShowLoginWindow()`, se asignaba `ShutdownMode = ShutdownMode.OnMainWindowClose;` con `MainWindow = loginWindow`. Al autenticarse, `ShowMainShellWindow()` cerraba `loginWindow` mediante `w.Close()`. Al ser `MainWindow`, WPF interpretaba el cierre como orden de apagado del proceso (`_isShuttingDown = true`). Cuando el código inmediatamente intentaba ejecutar `ShutdownMode = ShutdownMode.OnMainWindowClose;` sobre `shellWindow`, WPF arrojaba `InvalidOperationException: No se puede establecer ShutdownMode cuando la aplicación se está deteniendo o ya está detenida.`.
-     - *Solución*: Se mantuvo de forma permanente `ShutdownMode = ShutdownMode.OnExplicitShutdown;` en toda la aplicación. Se enlazaron manejadores en los eventos `.Closed` de `LoginWindow` y `MainShellWindow` para cerrar el proceso mediante `Shutdown(0)` únicamente cuando el usuario cierra intencionalmente la ventana principal y no se trata de una transición de autenticación o cierre de sesión.
+     - _Causa Raíz_: En `ShowLoginWindow()`, se asignaba `ShutdownMode = ShutdownMode.OnMainWindowClose;` con `MainWindow = loginWindow`. Al autenticarse, `ShowMainShellWindow()` cerraba `loginWindow` mediante `w.Close()`. Al ser `MainWindow`, WPF interpretaba el cierre como orden de apagado del proceso (`_isShuttingDown = true`). Cuando el código inmediatamente intentaba ejecutar `ShutdownMode = ShutdownMode.OnMainWindowClose;` sobre `shellWindow`, WPF arrojaba `InvalidOperationException: No se puede establecer ShutdownMode cuando la aplicación se está deteniendo o ya está detenida.`.
+     - _Solución_: Se mantuvo de forma permanente `ShutdownMode = ShutdownMode.OnExplicitShutdown;` en toda la aplicación. Se enlazaron manejadores en los eventos `.Closed` de `LoginWindow` y `MainShellWindow` para cerrar el proceso mediante `Shutdown(0)` únicamente cuando el usuario cierra intencionalmente la ventana principal y no se trata de una transición de autenticación o cierre de sesión.
   2. **Calibración de Conectividad y Detección en Arranque (`IApiClientService.cs`, `ParkingApiClient.cs`)**:
-     - *Causa Raíz*: `PingAsync` tenía un timeout de apenas 3.5 segundos (`TimeSpan.FromSeconds(3.5)`). En arranque en frío contra el API en la nube (`https://api.parking-flow.com`), la resolución de DNS y la negociación TLS 1.3 inicial superaban este tiempo, provocando que la aplicación abortara el sondeo y marcara de inmediato "Modo Offline Activo". Además, en `LoginAsync`, ante caídas de red se intentaba un fallback a `localhost:7023` aunque `BaseUrl` fuera de producción, generando `HttpRequestException` ruidosas.
-     - *Solución*:
+     - _Causa Raíz_: `PingAsync` tenía un timeout de apenas 3.5 segundos (`TimeSpan.FromSeconds(3.5)`). En arranque en frío contra el API en la nube (`https://api.parking-flow.com`), la resolución de DNS y la negociación TLS 1.3 inicial superaban este tiempo, provocando que la aplicación abortara el sondeo y marcara de inmediato "Modo Offline Activo". Además, en `LoginAsync`, ante caídas de red se intentaba un fallback a `localhost:7023` aunque `BaseUrl` fuera de producción, generando `HttpRequestException` ruidosas.
+     - _Solución_:
        - Se amplió la firma a `Task<bool> PingAsync(int timeoutSeconds = 8)` con valor por defecto de 8s.
        - Se añadió verificación inmediata de enlace de red (`NetworkInterface.GetIsNetworkAvailable()`).
        - Si la conexión física está disponible y el primer intento en frío falla por latencia de handshake, ejecuta un reintento defensivo rápido antes de conmutar a offline.
        - En `LoginAsync`, el fallback a `localhost:7023` solo se intenta si `BaseUrl.Contains("localhost")`.
   3. **Reactividad en Ventana de Login (`LoginViewModel.cs`)**:
-     - Se suscribió `LoginViewModel` al evento `_apiClient.ConnectionStateChanged`. Si la conexión se establece o conmuta mientras el operador está en pantalla de login, el indicador de estado y la píldora se actualizan automáticamente en tiempo real entre *"API Central Online"* y *"Modo Offline (Sin Conexión)"*.
+     - Se suscribió `LoginViewModel` al evento `_apiClient.ConnectionStateChanged`. Si la conexión se establece o conmuta mientras el operador está en pantalla de login, el indicador de estado y la píldora se actualizan automáticamente en tiempo real entre _"API Central Online"_ y _"Modo Offline (Sin Conexión)"_.
   4. **Pruebas y Verificación**:
      - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
      - `dotnet test ParkingWpf.slnx`: **312/312 Pruebas Unitarias Superadas (100% de éxito, 0 Fallos)**. Se añadió la prueba unitaria `LoginViewModel_WhenConnectionStateChangedFires_UpdatesIsOnlineAndNetworkStatusText` en `OfflineResilienceTests.cs`.
@@ -1014,12 +1064,13 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 ---
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Mira tengo este error cada vez que le doy clic a algo mira cuantas ventanas me está abriendo o sea yo no se si sera que por eso es que a la larga el sistema se crashea que esta haciendo el wpf de eso no me habia fijado que esta haciendo eso... al momento de loguearse se esta quedando en el 50% y se queda pegado un buen rato y dice el servidor no respondio con los datos de sincronizacion modo offline activo... cuando ingreso me da recibir turno lo recibe pero queda sin turno, empieza a titilar el tema de sincronizado modo offline sincronizado... tenian abierto en otra pestaña el pwa no fue reactivo... necesitamos corregir eso."_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Prevención de Múltiples Ventanas e Instancias (`App.xaml.cs`)**:
-     - *Mutex de Proceso Único*: Se implementó `_singleInstanceMutex = new Mutex(true, "ParkingFlow_WPF_SingleInstance_Mutex", out bool createdNew);` en `OnStartup`, cerrando cualquier proceso concurrente duplicado silenciosamente con `Shutdown(0)`.
-     - *Fuga de Delegados*: Se reemplazó la suscripción de lambdas anónimas en `shellViewModel.LogoutRequested` por el método `OnShellLogoutRequested` con desuscripción defensiva (`-=`, `+=`), cerrando ventanas residuales antes de instanciar la pantalla de login.
+     - _Mutex de Proceso Único_: Se implementó `_singleInstanceMutex = new Mutex(true, "ParkingFlow_WPF_SingleInstance_Mutex", out bool createdNew);` en `OnStartup`, cerrando cualquier proceso concurrente duplicado silenciosamente con `Shutdown(0)`.
+     - _Fuga de Delegados_: Se reemplazó la suscripción de lambdas anónimas en `shellViewModel.LogoutRequested` por el método `OnShellLogoutRequested` con desuscripción defensiva (`-=`, `+=`), cerrando ventanas residuales antes de instanciar la pantalla de login.
   2. **Ampliación de Timeouts a 90s para Sincronización WAN (`appsettings.json`, `App.xaml.cs`, `ParkingApiClient.cs`)**:
      - Se actualizó `"TimeoutSeconds": 90` en `appsettings.json` y `appsettings.Development.json`.
      - En `App.xaml.cs`, se inyectó la lectura dinámica de `TimeoutSeconds` en el `HttpClient` (con fallback a 90s).
@@ -1035,9 +1086,11 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 ---
 
 =======
+
 ## 📅 Entrada: [2026-09-25 20:10:00] - [FEATURE / UI / UX / CURRENCY / SHIFT CLOSURE] Formato de Pesos Colombianos en Vivo ($ X.XXX) en Conteo Físico de Gaveta (ShiftHandoverAuthDialog y ShiftClosureView) (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"# 🏗️ Plan de Arquitectura e Implementación: Formato de Pesos Colombianos en Efectivo Contado (Caja WPF) ... ejecutame el plan"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -1074,21 +1127,23 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 
 - **`✅ Verificación y Compilación`**:
   - `dotnet test ParkingWpf.slnx` ➔ **329 Pasadas, 0 Fallidas (100% Superadas)**.
+
 ## 📅 Entrada: [2026-09-25 21:55:00] - [SIGNALR / ARCHITECTURE / DESKTOP] Blindaje de Comunicación SignalR, Eliminación de Negociación HTTP, Persistencia Defensiva de Cookies y Corrección de Token JWT (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
-  > _"AUDITORÍA DEL CLIENTE SIGNALR EN WPF:
+
+  > \_"AUDITORÍA DEL CLIENTE SIGNALR EN WPF:
   - Localiza la clase/servicio donde se inicializa 'HubConnectionBuilder' en el proyecto WPF.
   - Evalúa las dos alternativas técnicas y aplica la más robusta:
     A) Omitir la negociación (SkipNegotiation = true) y forzar transporte WebSockets directo.
     B) Habilitar manejo de cookies (CookieContainer) en el cliente SignalR para respetar las Sticky Sessions.
   - Revisa cómo se gestiona el token JWT en el cliente SignalR (AccessTokenProvider) para asegurar que se envíe tanto en la negociación como en el handshake de WebSocket.
-  - Verifica que los nombres de los métodos del Hub invocados por WPF coincidan exactamente con los declarados en el Backend."_
+  - Verifica que los nombres de los métodos del Hub invocados por WPF coincidan exactamente con los declarados en el Backend."\_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Auditoría Técnica y Diagnóstico de `SignalRClientService.cs`**:
-     - *Fallo en Negociación Multi-Réplica*: Al usar negociación HTTP (`SkipNegotiation = false`) y habilitar `LongPolling` como fallback, las peticiones alternaban entre réplicas desincronizadas, arrojando 404 en el connectionId.
-     - *Inversión de Prioridad de Token*: `AccessTokenProvider` evaluaba `_sessionService?.CurrentUser?.SessionToken ?? _apiClient?.AuthToken`. El valor `SessionToken` corresponde a un GUID identificador de sesión (`jti`), mientras que el token JWT firmado requerido para autenticar el handshake de SignalR (`Authorization: Bearer <token>`) reside en `_apiClient.AuthToken`. Esto provocaba potenciales rechazos 401 Unauthorized al intentar la apertura de WebSockets.
+     - _Fallo en Negociación Multi-Réplica_: Al usar negociación HTTP (`SkipNegotiation = false`) y habilitar `LongPolling` como fallback, las peticiones alternaban entre réplicas desincronizadas, arrojando 404 en el connectionId.
+     - _Inversión de Prioridad de Token_: `AccessTokenProvider` evaluaba `_sessionService?.CurrentUser?.SessionToken ?? _apiClient?.AuthToken`. El valor `SessionToken` corresponde a un GUID identificador de sesión (`jti`), mientras que el token JWT firmado requerido para autenticar el handshake de SignalR (`Authorization: Bearer <token>`) reside en `_apiClient.AuthToken`. Esto provocaba potenciales rechazos 401 Unauthorized al intentar la apertura de WebSockets.
   2. **Implementación de Blindaje en `BuildHubConnection()`**:
      - **Transporte Exclusivo WebSockets**: Se configuró `options.Transports = HttpTransportType.WebSockets;`.
      - **Omisión de Negociación (`SkipNegotiation = true`)**: Al conectarse directamente al protocolo WebSocket (`wss://`), se elimina por completo la llamada previa `/hubs/parking/negotiate`, suprimiendo la latencia inicial y erradicando el riesgo de que el `connectionId` sea generado en una réplica y no exista en la otra.
@@ -1125,6 +1180,7 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 ## 📅 Entrada: [2026-09-25 21:38:00] - [BUGFIX / SHIFTS / OUTBOX / SQLITE / RELEVO DE CAJA] Corrección de Restricción Unique en Stores, Persistencia y Resolución Offline de ServerUserId en Relevo de Turnos, Encolamiento Outbox y Remoción de Botón Redundante (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"1. me sale este error en el relevo de turnos de la caja: System.InvalidOperationException: No se pudo resolver el identificador de usuario para el operador receptor 'Carlos Relevo'. No es posible abrir el turno de relevo sin un usuario válido. en Parking.Services.Implementations.EfShiftService.HandoverAndOpenNextShiftAsync(...) en Parking.ViewModels.ShiftClosureViewModel.TakeOverShiftAsync(...) y mira este error también: Microsoft.Data.Sqlite.SqliteException: SQLite Error 19: 'UNIQUE constraint failed: Stores.TaxId'. 2. En relevo de turnos elimina este boton ya que esta seccion es solo para el relevo de turnos: Relevar Caja Existente"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -1161,7 +1217,7 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 
 - **`✅ Verificación y Compilación`**:
   - `dotnet test ParkingWpf.slnx` ➔ **310 Pasadas, 0 Fallidas (100% Superadas)**.
->>>>>>> 50e5e2bcb0b5aac775403adb63c110c7d491439a
+    > > > > > > > 50e5e2bcb0b5aac775403adb63c110c7d491439a
   - `dotnet build ParkingWpf.slnx` ➔ **0 Errores, 0 Advertencias**.
 
 ---
@@ -1169,6 +1225,7 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 ## 📅 Entrada: [2026-09-25 15:52:00] - [BUGFIX / UI / UX / AUTOCOMPLETE / COMBOBOX] Corrección de Sobreescritura y Borrado del Primer Caracter al Buscar Cliente en Checkout (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"valida porque cuando estoy consultando el cliente, voy escribiendo la cedula o nombre, se me pone un 0 al escribir numero y al escribir letras, se me borra la primera letra"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -1199,6 +1256,7 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 ## 📅 Entrada: [2026-09-25 15:35:00] - [BUGFIX / UI / UX / DIALOGS] Corrección de Recorte Inferior de Texto en Cuadros de Conteo y Arqueo de Caja (ShiftHandoverAuthDialog y ShiftClosureView) (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"ajustame el cuadro del cierre de caja en el wpf para que no se vea el cuadro cortado con el texto"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -1231,6 +1289,7 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 ## 📅 Entrada: [2026-09-25 14:35:00] - [BUGFIX / UI / UX / CHECKOUT] Corrección de Selección de Cliente en Checkout (WPF) y Auto-despliegue Reactivo de Resultados al Escribir
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"ayudame con esto, veo que ahora al filtrar cliente, ya no me selecciona cuando lo encuentro, es decir lo busco, me sale pero al clickearlo, no me permite seleecionarlo_
   > _aadicional ayudame a mejorar ese filtro, porque yo escribo la cedula pero para ver los resulados, tengo que desplegar la lista y laconsulta y lista deberia de salir cuando yo ya empiece a ingresar un caracter, ahi si me deberia de salir el filtro ya con la busquedad de los clientes que se puedan relacionar., esto me gustaria que quedara en el pwa y wpf"_
 
@@ -1268,6 +1327,7 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 ## 📅 Entrada: [2026-09-25 13:10:00] - [FEATURE / REDESIGN / BILLING] Rediseño de Tiquete Térmico: Hora 12h sin Segundos (AM/PM), QR Centrado, Atendido por Reubicado y Tipo de Documento Dinámico (CC/NIT/CE/TI/PAS/DIE) (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Quisiera que en la impresiones de tiqueres de entrada y salida de wpf y pwa, en el diseño quiero que en la hora no tenga segundos y no tenga formato 24 horas, muestra el AM o PM_
   > _En el tiquete de salida, el QR de la factura electronca dejamelo centrrado y el atentido porf quiero que lo pongas debajo del total, encima de la linea separadora_
   > _- Asi mismo en la seccion de factura electronica, veo que dice siempre NIT y es un cliente CC, asi que ponga ese dato de acuerdo al tipo de identificacion del cliente seleccionado"_
@@ -1304,6 +1364,7 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 ## 📅 Entrada: [2026-09-25 12:20:00] - [BUGFIX / ARCHITECTURE / OFFLINE / MULTI-SEDE] Consistencia y Completitud de Datos Corporativos de Marca (Parkgo, NIT, Teléfono, Email, Logo) en Modo Offline y Multi-Sede con Auto-Curación en SQLite (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"cuando me logeo offline, encuentro que los datos del parqueadero no se muestran completos, asi mismo cada vez que camio de sede me muestra en uno unos datos y en otro otros datos, ajustalo porque deben estar iguaels y completos"_
   > _"analiza y mira si hay huecos tecnicos"_
 
@@ -1351,6 +1412,7 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
 ## 📅 Entrada: [2026-09-25 11:35:00] - [FEATURE / UX / BILLING] ComboBox de Clientes con Búsqueda por Cédula y Menú de 8 Ítems, Bloqueo de MouseWheel en Facturación, Observaciones de 50 Caracteres, DV Condicional a NIT y Paginador Dinámico (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"ajustame estas cosas del wpf:_
   > _- Esta lista de liquidacion de salida y cobro, en el campo de emitir factura electronica, el campo de cliente deberia ser un campo que permita buscar tambien escribiendo la cedula, mas alla de que muestre la lista que tambien la quiero ver, eso si, si hay muchos datos de clientes, no quiero que se aumente en tamaño la lista, si no que muetres max 8 y ahi para ver los demas, con el scroll en esa lista,_
   > _-Tambien bloqueame que si pongo el mouse cursor encima de los campos de donde me salen las opciones de metodo de pago y resolucion, al scrollear me cambia de opciones cuando no tengo desplegada la opcion , esto puede generar errores de facturacion porque me cambia las oopciones sin yo hacerlas_
@@ -1402,6 +1464,7 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
   - `dotnet test ParkingWpf.slnx` -> **289 Pasadas, 0 Fallidas (100% Superadas)**.
 
 ---
+
 ## 📅 Entrada: [2026-09-25 10:55:00] - [FEATURE / CUSTOMERS / SIIGO] Sincronización de Edición de Clientes con Siigo API y Retroalimentación Detallada al Operador (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
@@ -1431,7 +1494,8 @@ En el pwa reemplazame el logo del login por newlogoblancoX4D.png que ya lo agran
   - `HISTORIAL_CAMBIOS.md`
 
 =======
->>>>>>> 260b19a2421f427b5de4514688f970eb26e4efa2
+
+> > > > > > > 260b19a2421f427b5de4514688f970eb26e4efa2
 
 ## 📅 Entrada: [2026-09-25 09:40:00] - [BUGFIX / SYNC / RATES] Corrección de DbUpdateConcurrencyException en Sincronización de Tarifas, Branch-Scoped Purge y Protección de Integridad en SQLite
 
@@ -7424,10 +7488,10 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
        - Líneas de firma para responsable de caja, C.C. y pie de software `ParkingFlow POS`.
   2. **Flujo de Confirmación al Cerrar Caja**:
      - En `ShiftClosureViewModel.cs` (`CloseShiftDirectAsync` y `CloseOtherShiftDirectAsync`), al cerrarse el turno formalmente, se dispara el cuadro de diálogo:
-       *"¿Desea imprimir el comprobante de cierre de caja? [Sí, imprimir tirilla] / [No, omitir]"*.
-     - Al seleccionar *"Sí, imprimir tirilla"*, se abre de inmediato `ReceiptPreviewDialog` permitiendo previsualizar e imprimir.
+       _"¿Desea imprimir el comprobante de cierre de caja? [Sí, imprimir tirilla] / [No, omitir]"_.
+     - Al seleccionar _"Sí, imprimir tirilla"_, se abre de inmediato `ReceiptPreviewDialog` permitiendo previsualizar e imprimir.
   3. **Reimpresión desde Custodia del Turno Anterior**:
-     - En `ShiftClosureView.xaml`, se agregó el botón *"Imprimir Tirilla de Cierre"* (`PrintLastClosedShiftReceiptCommand` y `PrintShiftReceiptCommand`) para reimprimir el comprobante del último turno cerrado en cualquier momento posterior.
+     - En `ShiftClosureView.xaml`, se agregó el botón _"Imprimir Tirilla de Cierre"_ (`PrintLastClosedShiftReceiptCommand` y `PrintShiftReceiptCommand`) para reimprimir el comprobante del último turno cerrado en cualquier momento posterior.
   4. **Servicios de Diálogos e Impresión**:
      - Se añadió `ShowShiftClosurePreviewAsync(WorkShift, ShiftSummaryModel?)` a `IDialogService` y `DialogService`.
      - Se añadió `PrintShiftCloseReceiptAsync(WorkShift, ShiftSummaryModel?)` a `IReceiptPrinterService` y `MockReceiptPrinterService`.
@@ -7450,12 +7514,14 @@ A partir del **24 de Agosto de 2026**, cualquier agente de IA, desarrollador o m
 La impresi�n del cierre de caja es cuando cierren, no tener el bot�n mientras la caja est� abierta. En PWA necesito que borres el bloque legal est�tico/quemado de la etiqueta de salida por los 2 campos que te ped� agregar.
 
 **?? Resumen T�cnico para la IA:**
+
 - **Arquitectura y Modelos**: Se actualizaron las entidades Branch y BranchModel a�adiendo los campos TicketPolicy, TicketAdditionalInfo y booleanos de impresi�n. En WPF, se actualiz� la l�gica en ReceiptPreviewViewModel para inyectar estos textos din�micos seg�n reglas de negocio.
 - **Validaciones**: Se agreg� un helper CustomDownloadHandler temporal en AppUpdateService para que el test con mock HttpClient pase exitosamente.
 - **UI/UX**: Se actualiz� ReceiptPreviewDialog.xaml reemplazando los textos legales est�ticos en POS y Factura Electr�nica por los textos din�micos de p�liza e info adicional. En ShiftClosureView.xaml, se ocult� el bot�n de impresi�n del comprobante de cierre (Visibility en DataGrid) evaluando la nueva propiedad IsClosed del turno (evitando que se imprima mientras est� abierto).
 
 **?? Componentes Modificados:**
+
 - ParkingWpf/Parking/Entities/Branch.cs`n- ParkingWpf/Parking/Models/BranchModel.cs`n- ParkingWpf/Parking/ViewModels/ReceiptPreviewViewModel.cs`n- ParkingWpf/Parking/ViewModels/ShiftClosureViewModel.cs`n- ParkingWpf/Parking/Views/ReceiptPreviewDialog.xaml`n- ParkingWpf/Parking/Views/ShiftClosureView.xaml`n- ParkingWpf/Parking/Entities/WorkShift.cs`n- ParkingWpf/Parking/Services/Implementations/AppUpdateService.cs`n- ParkingWpf/Parking.UnitTests/Services/AppUpdateAndLicensingTests.cs`n
-**? Verificaci�n y Compilaci�n:**
+  **? Verificaci�n y Compilaci�n:**
 - dotnet build: 0 Errores.
 - dotnet test: 100% Pruebas Superadas (338/338).
