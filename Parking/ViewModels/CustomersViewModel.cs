@@ -118,6 +118,11 @@ public partial class CustomersViewModel : ViewModelBase
     public bool CanManage => _permissionService.HasPermission("invoicing.customers.manage");
     public bool CanDelete => _permissionService.HasPermission("invoicing.customers.delete") || _permissionService.HasPermission("invoicing.customers.manage");
 
+    public ObservableCollection<DaneMunicipality> AvailableMunicipalities { get; } = new();
+
+    [ObservableProperty]
+    private DaneMunicipality? _selectedDaneMunicipality;
+
     public ObservableCollection<Customer> Customers { get; } = new();
 
     public CustomersViewModel(
@@ -136,6 +141,7 @@ public partial class CustomersViewModel : ViewModelBase
 
     public override async Task InitializeAsync()
     {
+        await LoadMunicipalitiesAsync();
         await LoadCustomersAsync();
     }
 
@@ -209,6 +215,51 @@ public partial class CustomersViewModel : ViewModelBase
         return (yRemainder > 1 ? 11 - yRemainder : yRemainder).ToString();
     }
 
+    partial void OnSelectedDaneMunicipalityChanged(DaneMunicipality? value)
+    {
+        if (value != null)
+        {
+            FormCityCode = value.Code;
+            FormStateCode = value.DepartmentCode;
+            FormCityCodeError = null;
+        }
+    }
+
+    public async Task LoadMunicipalitiesAsync()
+    {
+        try
+        {
+            using var db = _connectionManager.CreateDbContext();
+            var munis = await db.DaneMunicipalities
+                .OrderBy(m => m.MunicipalityName)
+                .ToListAsync();
+
+            if (System.Windows.Application.Current?.Dispatcher != null && !System.Windows.Application.Current.Dispatcher.CheckAccess())
+            {
+                await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    AvailableMunicipalities.Clear();
+                    foreach (var m in munis)
+                    {
+                        AvailableMunicipalities.Add(m);
+                    }
+                });
+            }
+            else
+            {
+                AvailableMunicipalities.Clear();
+                foreach (var m in munis)
+                {
+                    AvailableMunicipalities.Add(m);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            App.LogException(ex, "CustomersViewModel.LoadMunicipalitiesAsync");
+        }
+    }
+
     [RelayCommand]
     public async Task LoadCustomersAsync()
     {
@@ -268,6 +319,11 @@ public partial class CustomersViewModel : ViewModelBase
                 Customers.Add(item);
             }
 
+            if (AvailableMunicipalities.Count == 0)
+            {
+                _ = LoadMunicipalitiesAsync();
+            }
+
             TotalCustomersCount = Customers.Count;
         }
         catch (Exception ex)
@@ -307,6 +363,12 @@ public partial class CustomersViewModel : ViewModelBase
         FormEmail = string.Empty;
         FormPhone = string.Empty;
         FormAddress = string.Empty;
+        if (AvailableMunicipalities.Count == 0)
+        {
+            _ = LoadMunicipalitiesAsync();
+        }
+
+        SelectedDaneMunicipality = null;
         FormCityCode = string.Empty;
         FormStateCode = string.Empty;
 
@@ -349,6 +411,15 @@ public partial class CustomersViewModel : ViewModelBase
         FormEmail = customer.Email;
         FormPhone = customer.Phone;
         FormAddress = customer.Address;
+
+        if (AvailableMunicipalities.Count == 0)
+        {
+            _ = LoadMunicipalitiesAsync();
+        }
+
+        SelectedDaneMunicipality = AvailableMunicipalities.FirstOrDefault(m => m.Code == customer.CityCode)
+            ?? AvailableMunicipalities.FirstOrDefault(m => m.MunicipalityName.Equals(customer.CityCode, StringComparison.OrdinalIgnoreCase))
+            ?? AvailableMunicipalities.FirstOrDefault();
         FormCityCode = customer.CityCode;
         FormStateCode = customer.StateCode;
 
@@ -407,10 +478,10 @@ public partial class CustomersViewModel : ViewModelBase
             isValid = false;
         }
 
-        var city = FormCityCode?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(city) || city.Length < 4)
+        var city = SelectedDaneMunicipality?.Code ?? FormCityCode?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(city))
         {
-            FormCityCodeError = "El código DANE del municipio es obligatorio (ej: 11001).";
+            FormCityCodeError = "Debe seleccionar un municipio DANE.";
             isValid = false;
         }
 
@@ -435,10 +506,9 @@ public partial class CustomersViewModel : ViewModelBase
             using var db = _connectionManager.CreateDbContext();
             var docClean = FormDocumentNumber.Trim();
             var companyId = _sessionService.CurrentBranch?.CompanyId ?? _sessionService.CurrentUser?.CompanyId ?? 1;
-            var effectiveCityCode = FormCityCode!.Trim();
-            var effectiveStateCode = !string.IsNullOrWhiteSpace(FormStateCode)
-                ? FormStateCode.Trim()
-                : (effectiveCityCode.Length >= 2 ? effectiveCityCode.Substring(0, 2) : "11");
+            var effectiveCityCode = SelectedDaneMunicipality?.Code ?? FormCityCode?.Trim() ?? "11001";
+            var effectiveStateCode = SelectedDaneMunicipality?.DepartmentCode
+                ?? (!string.IsNullOrWhiteSpace(FormStateCode) ? FormStateCode.Trim() : (effectiveCityCode.Length >= 2 ? effectiveCityCode.Substring(0, 2) : "11"));
 
             if (IsEditing && FormCustomerId.HasValue)
             {

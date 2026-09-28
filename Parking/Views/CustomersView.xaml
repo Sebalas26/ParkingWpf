@@ -476,10 +476,12 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="1">
-                                <TextBlock Text="Municipio / Código DANE *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,5"/>
-                                <TextBox Text="{Binding FormCityCode, UpdateSourceTrigger=PropertyChanged}"
-                                         Style="{StaticResource ModernTextBox}"
-                                         Height="38"/>
+                                <TextBlock Text="Municipio DANE *" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,5"/>
+                                <ComboBox ItemsSource="{Binding AvailableMunicipalities}"
+                                          SelectedItem="{Binding SelectedDaneMunicipality}"
+                                          DisplayMemberPath="MunicipalityName"
+                                          Style="{StaticResource ModernComboBox}"
+                                          Height="38"/>
                                 <TextBlock Text="{Binding FormCityCodeError}"
                                            FontSize="11"
                                            Foreground="{DynamicResource BrushDanger}"

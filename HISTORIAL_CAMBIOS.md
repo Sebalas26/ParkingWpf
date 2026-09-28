@@ -1,5 +1,36 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-28 12:15:00] - [FEATURE / UI / DANE / DIAGNOSTICS] ComboBox Alfabético de Municipios DANE en Gestión de Clientes y Detección de Bloqueos de Firewall (FortiGuard)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"pero todos quedan . Si la conexión falla o el envío queda en cola, notifica: 'El cliente se guardó en este equipo y se sincronizará automáticamente con la nube'. porque? porque falla donde veo el error y como hago para el reintento, adicional veo que no me estan cargando lo municipios que ya me muestra en municipio dane en la pantalla de detalle de corbo y liquidacion en el apartado de clientes /nuevo cliente, alli me debberia d cargar ese listado alfaabetiamente"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Integración de ComboBox de Municipios DANE en Formulario de Clientes (`CustomersView.xaml` & `CustomersViewModel.cs`)**:
+     - *Diagnóstico*: En la pantalla principal de clientes (`CustomersView.xaml`), el campo de municipio era un `TextBox` numérico libre. Esto obligaba al usuario a recordar códigos DANE y facilitaba la entrada de datos erróneos (ej. `1100001`, `1000111`), mientras que en la pantalla de cobro (`CheckOutDialog.xaml`) ya existía un `ComboBox` ordenado alfabéticamente.
+     - *Solución*:
+       - En `CustomersViewModel.cs`: Se expuso `AvailableMunicipalities` (`ObservableCollection<DaneMunicipality>`) y `SelectedDaneMunicipality`. Se implementó `LoadMunicipalitiesAsync()` consultando `db.DaneMunicipalities.OrderBy(m => m.MunicipalityName).ToListAsync()` y despachándolo de forma segura al Dispatcher de UI.
+       - En `CustomersView.xaml`: Se reemplazó el `TextBox` por un `ComboBox` con estilo oficial `ModernComboBox`, enlazado a `AvailableMunicipalities`, `SelectedDaneMunicipality` y `DisplayMemberPath="MunicipalityName"`.
+       - *Cumplimiento de la Regla de Oro 8 (Cero Datos Pre-llenados)*: Al abrir la creación de cliente (`OpenCreateCustomer`), los campos se inicializan estrictamente limpios (`SelectedDaneMunicipality = null; FormCityCode = string.Empty; FormStateCode = string.Empty;`), activando la validación visual requerida si el usuario omite su selección antes de guardar.
+       - *En Edición*: Si el cliente ya tiene un `CityCode`, se localiza y preselecciona automáticamente el municipio correspondiente en el desplegable.
+  2. **Diagnóstico y Captura de Bloqueos de Firewall en Sincronización (`ParkingApiClient.cs`)**:
+     - *Causa Raíz Identificada*: Al auditar la comunicación HTTP contra `https://api.parking-flow.com`, se comprobó que el firewall corporativo de la red (**FortiGuard / Fortinet**) bloquea las peticiones salientes con código `HTTP 403 Forbidden` por catalogar el dominio como *"Unrated"*.
+     - *Mejora de Diagnóstico*: Anteriormente, cualquier código HTTP distinto a 200 o 400 retornaba `null`, asignando en SQLite el mensaje genérico *"No se recibió confirmación del servidor central."*. Ahora, `ParkingApiClient.CreateCustomerAsync` detecta respuestas no exitosas y, ante intercepciones de FortiGuard o errores de servidor, lanza una `InvalidOperationException` detallada (`HTTP_403_FIREWALL: Bloqueado por firewall corporativo FortiGuard...`), permitiendo que el detalle real se registre en `item.LastError` de la cola y en `Logs/ErrorLog_YYYYMMDD.txt`.
+  3. **Pruebas y Verificación**:
+     - `dotnet build`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **348 de 348 pruebas superadas (100% éxito, 0 fallos, 0 omitidas)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CustomersViewModel.cs`
+  - `Parking/Views/CustomersView.xaml`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **348 Pasadas, 0 Fallidas (100%)**.
+
+---
+
 ## 📅 Entrada: [2026-09-28 11:30:00] - [BUGFIX / SYNC / CUSTOMERS / UI] Mapeo de Identificación DIAN en Edición de Clientes, Persistencia Incondicional de Errores de Sincronización y Logging Robusto
 
 - **`💬 Prompt Original del Usuario`**:

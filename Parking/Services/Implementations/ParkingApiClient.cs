@@ -790,6 +790,18 @@ public class ParkingApiClient : IApiClientService
                 throw new InvalidOperationException($"400_BAD_REQUEST: {errorBody}");
             }
 
+            if (!response.IsSuccessStatusCode)
+            {
+                ReportConnectionState(true);
+                var errorBody = await response.Content.ReadAsStringAsync();
+                var shortError = errorBody.Length > 200 ? errorBody.Substring(0, 200) : errorBody;
+                if (shortError.Contains("FortiGuard", StringComparison.OrdinalIgnoreCase))
+                {
+                    shortError = "Bloqueado por firewall corporativo FortiGuard (Categoría Unrated en api.parking-flow.com).";
+                }
+                throw new InvalidOperationException($"HTTP_{(int)response.StatusCode}: {shortError}");
+            }
+
             return null;
         }
         catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
