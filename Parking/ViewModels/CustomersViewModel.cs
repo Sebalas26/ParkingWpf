@@ -313,6 +313,63 @@ public partial class CustomersViewModel : ViewModelBase
                 }
             }
 
+            // Conciliar estado de sincronización con la cola local de SQLite
+            try
+            {
+                var pendingItems = await db.PendingSyncItems.AsNoTracking()
+                    .Where(p => p.OperationType == "CreateCustomer" && !p.IsProcessed)
+                    .ToListAsync();
+
+                if (pendingItems.Count > 0)
+                {
+                    var pendingCustomerIds = new HashSet<Guid>();
+                    var pendingErrors = new Dictionary<Guid, string>();
+
+                    foreach (var p in pendingItems)
+                    {
+                        try
+                        {
+                            using var doc = JsonDocument.Parse(p.PayloadJson);
+                            if (doc.RootElement.TryGetProperty("customerId", out var cIdProp) &&
+                                Guid.TryParse(cIdProp.GetString(), out var cId))
+                            {
+                                pendingCustomerIds.Add(cId);
+                                if (!string.IsNullOrWhiteSpace(p.LastError))
+                                {
+                                    pendingErrors[cId] = p.LastError;
+                                }
+                            }
+                        }
+                        catch { }
+                    }
+
+                    foreach (var item in list)
+                    {
+                        if (pendingCustomerIds.Contains(item.CustomerId))
+                        {
+                            item.IsSynchronized = false;
+                            item.SyncError = pendingErrors.TryGetValue(item.CustomerId, out var err)
+                                ? err
+                                : "Pendiente de sincronizar con el servidor central.";
+                        }
+                        else
+                        {
+                            item.IsSynchronized = true;
+                            item.SyncError = null;
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var item in list)
+                    {
+                        item.IsSynchronized = true;
+                        item.SyncError = null;
+                    }
+                }
+            }
+            catch { }
+
             Customers.Clear();
             foreach (var item in list)
             {
@@ -741,6 +798,81 @@ public partial class CustomersViewModel : ViewModelBase
         catch (Exception ex)
         {
             await _dialogService.ShowAlertAsync("Error", $"No se pudo inactivar el cliente: {ex.Message}", DialogNotificationType.Error);
+        }
+        finally
+        {
+            IsBusy = false;
+            BusyMessage = null;
+        }
+    }
+
+    [RelayCommand]
+    private async Task RetrySyncCustomerAsync(Customer? customer)
+    {
+        if (customer == null) return;
+
+        IsBusy = true;
+        BusyMessage = $"Reintentando sincronizar a {customer.FullName}...";
+
+        try
+        {
+            var apiResult = await _apiClient.CreateCustomerAsync(new CreateCustomerApiRequest
+            {
+                CustomerId = customer.CustomerId,
+                CompanyId = customer.CompanyId,
+                IdentificationTypeId = customer.IdentificationTypeId,
+                DocumentNumber = customer.DocumentNumber,
+                CheckDigit = customer.CheckDigit,
+                PersonType = customer.PersonType,
+                FullName = customer.FullName,
+                TradeName = customer.TradeName,
+                Email = customer.Email,
+                Phone = customer.Phone,
+                Address = customer.Address,
+                CityCode = customer.CityCode,
+                StateCode = customer.StateCode,
+                FiscalResponsibilities = customer.FiscalResponsibilities
+            });
+
+            if (apiResult != null)
+            {
+                using var db = _connectionManager.CreateDbContext();
+                var pendingList = await db.PendingSyncItems
+                    .Where(p => p.OperationType == "CreateCustomer" && !p.IsProcessed)
+                    .ToListAsync();
+
+                var match = pendingList.FirstOrDefault(p =>
+                {
+                    try
+                    {
+                        using var doc = JsonDocument.Parse(p.PayloadJson);
+                        return doc.RootElement.TryGetProperty("customerId", out var cIdProp) &&
+                               Guid.TryParse(cIdProp.GetString(), out var cId) &&
+                               cId == customer.CustomerId;
+                    }
+                    catch { return false; }
+                });
+
+                if (match != null)
+                {
+                    db.PendingSyncItems.Remove(match);
+                    await db.SaveChangesAsync();
+                }
+
+                await LoadCustomersAsync();
+                await _dialogService.ShowAlertAsync("Sincronización Exitosa", $"El cliente '{customer.FullName}' se ha sincronizado exitosamente con la nube.", DialogNotificationType.Success);
+            }
+            else
+            {
+                await LoadCustomersAsync();
+                await _dialogService.ShowAlertAsync("Sincronización Pendiente", "No se pudo sincronizar con la nube en este momento. Verifique la conexión o el firewall de la red.", DialogNotificationType.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            App.LogException(ex, "CustomersViewModel.RetrySyncCustomerAsync");
+            await LoadCustomersAsync();
+            await _dialogService.ShowAlertAsync("Fallo de Sincronización", ex.Message, DialogNotificationType.Error);
         }
         finally
         {

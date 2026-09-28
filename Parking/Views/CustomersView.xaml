@@ -260,11 +260,62 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
+                        <!-- Estado de Sincronización -->
+                        <DataGridTemplateColumn Header="ESTADO" MinWidth="135" Width="1.2*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <!-- Badge Sincronizado (Verde) -->
+                                        <Border Background="#1510B981"
+                                                BorderBrush="#3510B981"
+                                                BorderThickness="1"
+                                                CornerRadius="10"
+                                                Padding="7,3"
+                                                HorizontalAlignment="Left"
+                                                Visibility="{Binding IsSynchronized, Converter={StaticResource BoolToVis}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{StaticResource IconCheck}" Fill="#10B981" Width="10" Height="10" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Sincronizado" FontSize="11" FontWeight="Bold" Foreground="#10B981" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+
+                                        <!-- Badge Sin Sincronizar / Pendiente (Naranja) -->
+                                        <Border Background="#18F59E0B"
+                                                BorderBrush="#40F59E0B"
+                                                BorderThickness="1"
+                                                CornerRadius="10"
+                                                Padding="7,3"
+                                                HorizontalAlignment="Left"
+                                                ToolTip="{Binding SyncError}"
+                                                Visibility="{Binding IsSynchronized, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{StaticResource IconWarning}" Fill="#F59E0B" Width="10" Height="10" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Sin Sincronizar" FontSize="11" FontWeight="Bold" Foreground="#F59E0B" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
                         <!-- Acciones -->
-                        <DataGridTemplateColumn Header="ACCIONES" MinWidth="150" Width="Auto">
+                        <DataGridTemplateColumn Header="ACCIONES" MinWidth="180" Width="Auto">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Button Command="{Binding DataContext.RetrySyncCustomerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Style="{StaticResource SecondaryButton}"
+                                                Padding="8,5"
+                                                Margin="0,0,6,0"
+                                                ToolTip="Reintentar sincronización con la nube"
+                                                Visibility="{Binding IsSynchronized, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Path Data="{StaticResource IconRefresh}" Fill="{DynamicResource BrushPrimary}" Width="11" Height="11" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Reintentar" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource BrushPrimary}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+
                                         <Button Command="{Binding DataContext.OpenEditCustomerCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
                                                 Style="{StaticResource SecondaryButton}"

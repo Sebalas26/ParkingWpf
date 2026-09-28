@@ -1,5 +1,38 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-28 12:30:00] - [FEATURE / UI / SYNC / CUSTOMERS] Columna de Estado de Sincronización (Insignias Verde/Naranja) y Botón de Reintento en Tabla de Clientes
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Peor si quisiera que esa fila tuviera un campo de estaod de sincronizacion para que a nivel de front se sepa si se sincrono el cliente"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Propiedades No Mapeadas en Entidad (`Customer.cs`)**:
+     - Se integraron `[NotMapped] public bool IsSynchronized { get; set; } = true;` y `[NotMapped] public string? SyncError { get; set; }` sin alterar el esquema relacional de SQLite.
+  2. **Conciliación en Carga de Clientes (`CustomersViewModel.cs`)**:
+     - En `LoadCustomersAsync`: Se consultan los registros pendientes de `db.PendingSyncItems` (`OperationType == "CreateCustomer" && !IsProcessed`).
+     - Para cada cliente listado en pantalla: si su `CustomerId` está en la cola pendiente, se establece `IsSynchronized = false` y `SyncError` con el detalle registrado en `item.LastError` (ej. *"HTTP 403: Bloqueado por firewall corporativo FortiGuard..."*). Si no tiene pendientes, se establece `IsSynchronized = true`.
+  3. **Comando de Reintento Individual (`RetrySyncCustomerAsync`)**:
+     - Se implementó `RetrySyncCustomerCommand` con parámetro de cliente para reintentar la llamada directa a `_apiClient.CreateCustomerAsync`. Si el API responde exitosamente, se elimina el ítem de `PendingSyncItems`, se refresca la vista y se notifica éxito al operador.
+  4. **Diseño Visual en DataGrid (`CustomersView.xaml`)**:
+     - Se añadió la columna **`ESTADO`** con dos insignias elegantes:
+       - 🟢 **Sincronizado**: Fondo translúcido verde (`#1510B981`), borde suave, icono `{StaticResource IconCheck}` y texto *"Sincronizado"*.
+       - 🟠 **Sin Sincronizar**: Fondo translúcido naranja (`#18F59E0B`), borde suave, icono `{StaticResource IconWarning}`, texto *"Sin Sincronizar"* y ToolTip informativo con la causa técnica del error (`SyncError`).
+     - En la columna **`ACCIONES`**: Para las filas con `IsSynchronized == false`, se despliega el botón **"Reintentar"** con icono `{StaticResource IconRefresh}` para forzar el reenvío a la nube.
+  5. **Pruebas y Verificación**:
+     - `dotnet build`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **348 de 348 pruebas superadas (100% éxito, 0 fallos, 0 omitidas)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Entities/Customer.cs`
+  - `Parking/ViewModels/CustomersViewModel.cs`
+  - `Parking/Views/CustomersView.xaml`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **348 Pasadas, 0 Fallidas (100%)**.
+
+---
+
 ## 📅 Entrada: [2026-09-28 12:15:00] - [FEATURE / UI / DANE / DIAGNOSTICS] ComboBox Alfabético de Municipios DANE en Gestión de Clientes y Detección de Bloqueos de Firewall (FortiGuard)
 
 - **`💬 Prompt Original del Usuario`**:

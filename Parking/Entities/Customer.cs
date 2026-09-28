@@ -27,6 +27,12 @@ public class Customer
     public virtual ICollection<ParkingTicket> ParkingTickets { get; set; } = new List<ParkingTicket>();
 
     [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public bool IsSynchronized { get; set; } = true;
+
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public string? SyncError { get; set; }
+
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
     public string DisplayText => string.IsNullOrWhiteSpace(DocumentNumber)
         ? FullName
         : $"{FullName} - Doc: {DocumentNumber}";
