@@ -68,7 +68,12 @@ public partial class CustomerSelectionDialog : Window
         try
         {
             using var db = _connectionManager.CreateDbContext();
+            var companyId = _sessionService.CurrentBranch?.CompanyId ?? _sessionService.CurrentUser?.CompanyId;
             var q = db.Customers.AsNoTracking().Where(c => c.IsActive);
+            if (companyId.HasValue && companyId.Value > 0)
+            {
+                q = q.Where(c => c.CompanyId == companyId.Value);
+            }
 
             if (!string.IsNullOrWhiteSpace(query))
             {
@@ -82,7 +87,6 @@ public partial class CustomerSelectionDialog : Window
 
             if (localList.Count == 0 && !string.IsNullOrWhiteSpace(query))
             {
-                var companyId = _sessionService.CurrentBranch?.CompanyId ?? _sessionService.CurrentUser?.CompanyId;
                 var remote = await _apiClient.GetCustomersAsync(query, companyId);
                 if (remote != null && remote.Count > 0)
                 {
@@ -196,9 +200,25 @@ public partial class CustomerSelectionDialog : Window
         }
 
         var email = EmailBox.Text?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(email) || !Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.IgnoreCase))
+        if (string.IsNullOrWhiteSpace(email) || !Regex.IsMatch(email, @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", RegexOptions.IgnoreCase))
         {
-            FormErrorText.Text = "El correo electrónico es obligatorio para emitir la factura a la DIAN.";
+            FormErrorText.Text = "El correo electrónico es obligatorio para emitir la factura a la DIAN (debe incluir dominio válido, ej: cliente@correo.com).";
+            FormErrorText.Visibility = Visibility.Visible;
+            return;
+        }
+
+        var address = AddressBox.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(address) || address.Length < 4)
+        {
+            FormErrorText.Text = "La dirección fiscal es obligatoria para la DIAN (mínimo 4 caracteres).";
+            FormErrorText.Visibility = Visibility.Visible;
+            return;
+        }
+
+        var city = CityBox.Text?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(city) || city.Length < 4)
+        {
+            FormErrorText.Text = "El código DANE del municipio es obligatorio (ej: 11001).";
             FormErrorText.Visibility = Visibility.Visible;
             return;
         }
@@ -209,7 +229,7 @@ public partial class CustomerSelectionDialog : Window
         try
         {
             using var db = _connectionManager.CreateDbContext();
-            var existing = await db.Customers.FirstOrDefaultAsync(c => c.DocumentNumber == doc);
+            var existing = await db.Customers.FirstOrDefaultAsync(c => c.CompanyId == companyId && c.DocumentNumber == doc);
             if (existing != null)
             {
                 SetSelectedCustomer(existing);
@@ -227,8 +247,8 @@ public partial class CustomerSelectionDialog : Window
                 FullName = name,
                 Email = email,
                 Phone = string.IsNullOrWhiteSpace(PhoneBox.Text) ? null : PhoneBox.Text.Trim(),
-                Address = string.IsNullOrWhiteSpace(AddressBox.Text) ? null : AddressBox.Text.Trim(),
-                CityCode = string.IsNullOrWhiteSpace(CityBox.Text) ? null : CityBox.Text.Trim(),
+                Address = address,
+                CityCode = city,
                 FiscalResponsibilities = "R-99-PN",
                 IsActive = true,
                 CreatedAtUtc = DateTime.UtcNow

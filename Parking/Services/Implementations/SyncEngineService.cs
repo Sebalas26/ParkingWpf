@@ -2077,6 +2077,11 @@ public class SyncEngineService : ISyncEngineService
                                     await db.SaveChangesAsync();
                                 }
                             }
+                            else
+                            {
+                                item.RetryCount++;
+                                item.LastError = "No se recibió confirmación del servidor central.";
+                            }
                         }
                     }
                     else if (item.OperationType == "CheckIn")
@@ -2214,6 +2219,17 @@ public class SyncEngineService : ISyncEngineService
                 catch (InvalidOperationException ex) when (ex.Message == "404_NOT_FOUND")
                 {
                     item.IsProcessed = true; // Drop 404 items permanently as they can't be resolved
+                }
+                catch (InvalidOperationException ex) when (ex.Message.StartsWith("400_BAD_REQUEST"))
+                {
+                    item.RetryCount++;
+                    item.LastError = ex.Message;
+                    if (item.RetryCount >= 3)
+                    {
+                        // Si tras 3 intentos el API rechaza por validación de negocio irrecuperable (ej: formato erróneo previo),
+                        // marcar procesado para no atascar de forma indefinida la sincronización de la terminal
+                        item.IsProcessed = true;
+                    }
                 }
                 catch (Exception ex)
                 {

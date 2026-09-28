@@ -750,12 +750,56 @@ public class ParkingApiClient : IApiClientService
                 ReportConnectionState(true);
                 return await response.Content.ReadFromJsonAsync<CustomerApiResponse>(JsonOptions, cts.Token);
             }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                // El cliente ya existe en el servidor central. Se concilia para liberar la cola de sincronización.
+                ReportConnectionState(true);
+                try
+                {
+                    var existingList = await GetCustomersAsync(request.DocumentNumber, request.CompanyId);
+                    var match = existingList?.FirstOrDefault(c => c.DocumentNumber == request.DocumentNumber);
+                    if (match != null) return match;
+                }
+                catch { }
+
+                return new CustomerApiResponse
+                {
+                    CustomerId = request.CustomerId ?? Guid.NewGuid(),
+                    CompanyId = request.CompanyId,
+                    IdentificationTypeId = request.IdentificationTypeId,
+                    DocumentNumber = request.DocumentNumber,
+                    CheckDigit = request.CheckDigit,
+                    PersonType = request.PersonType,
+                    FullName = request.FullName,
+                    TradeName = request.TradeName,
+                    Email = request.Email,
+                    Phone = request.Phone,
+                    Address = request.Address,
+                    CityCode = request.CityCode,
+                    StateCode = request.StateCode,
+                    FiscalResponsibilities = request.FiscalResponsibilities,
+                    IsActive = true
+                };
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            {
+                ReportConnectionState(true);
+                var errorBody = await response.Content.ReadAsStringAsync();
+                throw new InvalidOperationException($"400_BAD_REQUEST: {errorBody}");
+            }
+
             return null;
         }
         catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
         {
             ReportConnectionState(false);
             return null;
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
         }
         catch
         {

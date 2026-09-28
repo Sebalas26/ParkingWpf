@@ -1,5 +1,44 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-28 08:57:00] - [BUGFIX / MULTI-TENANCY / SYNC / CUSTOMERS] Corrección Definitiva de Tenancy Leak en Clientes, Homologación de Regex de Correo Electrónico DIAN y Blindaje Anti-Atascos en Cola de Sincronización
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"ayudame analizar donde esta el error. En el pwa cuando ingreso a la empresa parkingPrueba / clientes no veo clientes creados, pero cuando ingreso al wpf si veo unos, analizando los clienters que me muestra el wpf con la empresa parkingPrueba pertenecen a parkgo, Analiza donde esta el error, de paso analiza si al crear el cliente desde el wpf"_
+  > _"analiza si hay huecos tecnicos y solucionar el error definitivo , ahi si despues crea el plan"_
+  > _"si ejecutalo"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Corrección de Tenancy Leak en Directorio y Vistas Locales de Clientes**:
+     - *Causa Raíz*: Las consultas a `db.Customers` en `CustomersViewModel.cs`, `CheckOutViewModel.cs` y `CustomerSelectionDialog.xaml.cs` hacían `Where(c => c.IsActive)` sin filtrar por `CompanyId`. Debido a que la base de datos local SQLite almacena transacciones y catálogos de múltiples sedes/empresas que hayan iniciado sesión, los clientes de *Parkgo* se mostraban al operar en *parkingPrueba*.
+     - *Solución*: En estricto cumplimiento de la **Regla de Oro de Tenancy Leak**, se inyectó el filtrado obligatorio por `CompanyId` de la sesión actual (`c.CompanyId == companyId.Value`) en todas las consultas LINQ locales.
+     - *Unicidad por Empresa*: Las validaciones de duplicados de documento en los 3 formularios ahora filtran por `c.CompanyId == companyId && c.DocumentNumber == docClean`, permitiendo que clientes con mismo documento existan válidamente en diferentes empresas.
+  2. **Homologación de Validación de Correo Electrónico (TLD DIAN)**:
+     - *Causa Raíz*: Los formularios de WPF permitían correos como `usuario@dominio.c` mediante el regex laxo `^[^@\s]+@[^@\s]+\.[^@\s]+$`. El backend API `CustomerService.cs` exige estrictamente un dominio de nivel superior de mínimo 2 letras (`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`). Al enviarse a la API central, esta retornaba `400 Bad Request`.
+     - *Solución*: Se homologó el regex canónico `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$` en `CustomersViewModel.cs`, `CheckOutViewModel.cs` y `CustomerSelectionDialog.xaml.cs`, impidiendo que datos inválidos entren a la base local de SQLite. Se agregó validación de código DANE (mínimo 4 caracteres).
+  3. **Blindaje de la Cola de Sincronización (`ParkingApiClient.cs` & `SyncEngineService.cs`)**:
+     - *Causa Raíz*: En `CustomersViewModel.cs`, tras encolar el `PendingSyncItem`, se intentaba llamar directamente a `_apiClient.CreateCustomerAsync(...)`, pero no se actualizaba el estado `IsProcessed` ni se removía el ítem. Posteriormente, `SyncEngineService.ProcessPendingQueueAsync` reenviaba la solicitud y recibía `409 Conflict` ("Ya existe un cliente..."). `ParkingApiClient` silenciaba este conflicto retornando `null`, lo que impedía que `item.IsProcessed` cambiara a `true` y dejaba el registro atascado de forma infinita en SQLite con `RetryCount` sin incrementar.
+     - *Solución*: 
+       - `ParkingApiClient.CreateCustomerAsync`: Si el API retorna `409 Conflict` (el cliente ya existe en MySQL/API), se considera resuelto y se retorna el modelo de cliente para conciliar la cola. Si retorna `400 BadRequest`, se lanza `InvalidOperationException("400_BAD_REQUEST: ...")` con el detalle del error.
+       - `SyncEngineService.ProcessPendingQueueAsync`: Si `result == null`, incrementa `RetryCount` y registra `LastError`. Si recibe `400_BAD_REQUEST` con `RetryCount >= 3`, marca `IsProcessed = true` para no bloquear indefinidamente la cola ni las actualizaciones obligatorias.
+       - `CustomersViewModel.SaveCustomerAsync`: Si la llamada directa al API es exitosa, marca `pending.IsProcessed = true` y remueve el ítem de `PendingSyncItems`.
+  4. **Nuevas Pruebas Unitarias**:
+     - Se añadió `ValidateForm_EmailValidation_StrictFormat` en `CustomersViewModelTests.cs` validando el rechazo de `.c` y aceptación de `.co` y `.com`.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CustomersViewModel.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CustomerSelectionDialog.xaml.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking.UnitTests/ViewModels/CustomersViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx` -> **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx` -> **347 de 347 Pruebas Superadas (100% OK, 0 Fallos)**.
+
+---
+
 ## 📅 Entrada: [2026-09-28 08:35:00] - [BUGFIX / CORE / SHIFTS / ARCHITECTURE] Blindaje de Hilos UI (Dispatcher) en Login, Eliminación Total de Data Quemada ("Sede Principal") e Identificación 100% Relacional de Turnos (Cero Comparación por Texto)
 
 - **`💬 Prompt Original del Usuario`**:

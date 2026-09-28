@@ -193,4 +193,39 @@ public class CustomersViewModelTests
         vm.FormPersonType.Should().Be("Person");
         vm.FormCheckDigit.Should().BeNull(); // Debe limpiarse al no ser NIT
     }
+
+    [Theory]
+    [InlineData("usuario@dominio.c", false)]
+    [InlineData("usuario@dominio", false)]
+    [InlineData("usuario@.com", false)]
+    [InlineData("usuario@dominio.co", true)]
+    [InlineData("usuario@dominio.com", true)]
+    public async Task ValidateForm_EmailValidation_StrictFormat(string email, bool shouldBeValid)
+    {
+        var vm = new CustomersViewModel(
+            _mockConnectionManager.Object,
+            _mockApiClient.Object,
+            _mockSessionService.Object,
+            _mockDialogService.Object,
+            _mockPermissionService.Object);
+
+        vm.OpenCreateCustomerCommand.Execute(null);
+        vm.FormDocumentNumber = "12345678";
+        vm.FormFullName = "Test User";
+        vm.FormAddress = "Calle 123";
+        vm.FormCityCode = "11001";
+        vm.FormEmail = email;
+
+        await vm.SaveCustomerCommand.ExecuteAsync(null);
+
+        if (shouldBeValid)
+        {
+            vm.FormEmailError.Should().BeNull();
+        }
+        else
+        {
+            vm.FormEmailError.Should().NotBeNullOrEmpty();
+        }
+    }
 }
+

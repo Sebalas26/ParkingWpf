@@ -545,9 +545,16 @@ public partial class CheckOutViewModel : ViewModelBase
         try
         {
             using var db = _connectionManager.CreateDbContext();
-            var customers = await db.Customers
+            var companyId = _sessionService.CurrentBranch?.CompanyId ?? _sessionService.CurrentUser?.CompanyId;
+            var query = db.Customers
                 .Include(c => c.Vehicles)
-                .Where(c => c.IsActive)
+                .Where(c => c.IsActive);
+            if (companyId.HasValue && companyId.Value > 0)
+            {
+                query = query.Where(c => c.CompanyId == companyId.Value);
+            }
+
+            var customers = await query
                 .OrderBy(c => c.FullName)
                 .ToListAsync();
 
@@ -1602,9 +1609,9 @@ public partial class CheckOutViewModel : ViewModelBase
             NewCustomerEmailError = "El correo electrónico es obligatorio para la DIAN.";
             isValid = false;
         }
-        else if (!Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.IgnoreCase))
+        else if (!Regex.IsMatch(email, @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", RegexOptions.IgnoreCase))
         {
-            NewCustomerEmailError = "Ingrese un correo válido (ej: cliente@correo.com).";
+            NewCustomerEmailError = "Ingrese un correo válido con dominio completo (ej: cliente@correo.com).";
             isValid = false;
         }
 
@@ -1775,7 +1782,7 @@ public partial class CheckOutViewModel : ViewModelBase
 
     partial void OnNewCustomerEmailChanged(string value)
     {
-        if (NewCustomerEmailError != null && Regex.IsMatch(value?.Trim() ?? string.Empty, @"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.IgnoreCase))
+        if (NewCustomerEmailError != null && Regex.IsMatch(value?.Trim() ?? string.Empty, @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", RegexOptions.IgnoreCase))
         {
             NewCustomerEmailError = null;
             if (QuickCustomerFeedback != null) QuickCustomerFeedback = null;
@@ -1814,8 +1821,9 @@ public partial class CheckOutViewModel : ViewModelBase
         try
         {
             using var db = _connectionManager.CreateDbContext();
+            var companyId = _sessionService.CurrentBranch?.CompanyId ?? _sessionService.CurrentUser?.CompanyId ?? 1;
             var docClean = NewCustomerDocumentNumber.Trim();
-            var existing = await db.Customers.Include(c => c.Vehicles).FirstOrDefaultAsync(c => c.DocumentNumber == docClean);
+            var existing = await db.Customers.Include(c => c.Vehicles).FirstOrDefaultAsync(c => c.CompanyId == companyId && c.DocumentNumber == docClean);
             if (existing != null)
             {
                 SelectedCustomer = existing;
@@ -1835,7 +1843,7 @@ public partial class CheckOutViewModel : ViewModelBase
             var newCustomer = new Customer
             {
                 CustomerId = Guid.NewGuid(),
-                CompanyId = _sessionService.CurrentUser?.CompanyId ?? 1,
+                CompanyId = companyId,
                 IdentificationTypeId = idType,
                 DocumentNumber = docClean,
                 CheckDigit = NewCustomerCheckDigit?.Trim(),

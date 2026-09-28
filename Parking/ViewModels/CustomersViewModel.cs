@@ -218,7 +218,12 @@ public partial class CustomersViewModel : ViewModelBase
         try
         {
             using var db = _connectionManager.CreateDbContext();
+            var companyId = _sessionService.CurrentBranch?.CompanyId ?? _sessionService.CurrentUser?.CompanyId;
             var q = db.Customers.AsNoTracking().Where(c => c.IsActive);
+            if (companyId.HasValue && companyId.Value > 0)
+            {
+                q = q.Where(c => c.CompanyId == companyId.Value);
+            }
 
             var query = SearchText?.Trim() ?? string.Empty;
             if (!string.IsNullOrWhiteSpace(query))
@@ -233,7 +238,6 @@ public partial class CustomersViewModel : ViewModelBase
 
             if (list.Count == 0 && !string.IsNullOrWhiteSpace(query))
             {
-                var companyId = _sessionService.CurrentBranch?.CompanyId ?? _sessionService.CurrentUser?.CompanyId;
                 var remote = await _apiClient.GetCustomersAsync(query, companyId);
                 if (remote != null && remote.Count > 0)
                 {
@@ -382,9 +386,9 @@ public partial class CustomersViewModel : ViewModelBase
         }
 
         var email = FormEmail?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(email) || !Regex.IsMatch(email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.IgnoreCase))
+        if (string.IsNullOrWhiteSpace(email) || !Regex.IsMatch(email, @"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", RegexOptions.IgnoreCase))
         {
-            FormEmailError = "El correo electrónico es obligatorio para facturación DIAN.";
+            FormEmailError = "El correo electrónico es obligatorio para facturación DIAN (debe incluir dominio válido, ej: usuario@correo.com).";
             isValid = false;
         }
 
@@ -396,9 +400,9 @@ public partial class CustomersViewModel : ViewModelBase
         }
 
         var city = FormCityCode?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(city))
+        if (string.IsNullOrWhiteSpace(city) || city.Length < 4)
         {
-            FormCityCodeError = "El código DANE del municipio es obligatorio.";
+            FormCityCodeError = "El código DANE del municipio es obligatorio (ej: 11001).";
             isValid = false;
         }
 
@@ -500,10 +504,10 @@ public partial class CustomersViewModel : ViewModelBase
             }
             else
             {
-                var existingDoc = await db.Customers.FirstOrDefaultAsync(c => c.DocumentNumber == docClean);
+                var existingDoc = await db.Customers.FirstOrDefaultAsync(c => c.CompanyId == companyId && c.DocumentNumber == docClean);
                 if (existingDoc != null)
                 {
-                    FormDocumentError = "Ya existe un cliente registrado con este documento.";
+                    FormDocumentError = "Ya existe un cliente registrado con este documento en esta empresa.";
                     FormGeneralError = "El documento ingresado ya se encuentra en uso.";
                     return;
                 }
@@ -561,7 +565,7 @@ public partial class CustomersViewModel : ViewModelBase
 
                 try
                 {
-                    await _apiClient.CreateCustomerAsync(new CreateCustomerApiRequest
+                    var apiResult = await _apiClient.CreateCustomerAsync(new CreateCustomerApiRequest
                     {
                         CustomerId = newCustomer.CustomerId,
                         CompanyId = newCustomer.CompanyId,
@@ -578,6 +582,13 @@ public partial class CustomersViewModel : ViewModelBase
                         StateCode = newCustomer.StateCode,
                         FiscalResponsibilities = newCustomer.FiscalResponsibilities
                     });
+
+                    if (apiResult != null)
+                    {
+                        pending.IsProcessed = true;
+                        db.PendingSyncItems.Remove(pending);
+                        await db.SaveChangesAsync();
+                    }
                 }
                 catch { }
 
