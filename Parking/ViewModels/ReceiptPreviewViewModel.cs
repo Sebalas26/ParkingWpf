@@ -922,12 +922,24 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                     entryRes = db.BillingResolutions
                         .Where(r => r.IsActive && (r.BranchId == branchId || r.BranchId == null))
                         .OrderByDescending(r => !r.IsElectronicResolution) // Priorizar resolución POS
-                        .FirstOrDefault(r => r.PrintPolicyOnEntry || r.PrintAdditionalInfoOnEntry)
-                        ?? entryRes;
+                        .FirstOrDefault(r => r.PrintPolicyOnEntry || r.PrintAdditionalInfoOnEntry);
+
+                    if (entryRes == null)
+                    {
+                        entryRes = db.BillingResolutions
+                            .Where(r => r.IsActive && (r.BranchId == branchId || r.BranchId == null))
+                            .OrderByDescending(r => !r.IsElectronicResolution)
+                            .FirstOrDefault(r => !string.IsNullOrEmpty(r.TicketPolicy) || !string.IsNullOrEmpty(r.TicketAdditionalInfo))
+                            ?? resolution;
+                    }
                 }
 
-                TicketPolicy = entryRes?.PrintPolicyOnEntry == true ? entryRes.TicketPolicy?.Trim() : null;
-                TicketAdditionalInfo = entryRes?.PrintAdditionalInfoOnEntry == true ? entryRes.TicketAdditionalInfo?.Trim() : null;
+                TicketPolicy = (entryRes?.PrintPolicyOnEntry == true || !string.IsNullOrWhiteSpace(entryRes?.TicketPolicy))
+                    ? entryRes?.TicketPolicy?.Trim()
+                    : null;
+                TicketAdditionalInfo = (entryRes?.PrintAdditionalInfoOnEntry == true || !string.IsNullOrWhiteSpace(entryRes?.TicketAdditionalInfo))
+                    ? entryRes?.TicketAdditionalInfo?.Trim()
+                    : null;
             }
             else
             {
@@ -942,11 +954,19 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                     exitRes = db.BillingResolutions
                         .Where(r => r.IsActive && (r.BranchId == branchId || r.BranchId == null))
                         .OrderByDescending(r => r.IsElectronicResolution == IsFvmInvoice)
-                        .FirstOrDefault();
+                        .FirstOrDefault(r => r.PrintPolicyOnExit || r.PrintAdditionalInfoOnExit)
+                        ?? db.BillingResolutions
+                            .Where(r => r.IsActive && (r.BranchId == branchId || r.BranchId == null))
+                            .OrderByDescending(r => r.IsElectronicResolution == IsFvmInvoice)
+                            .FirstOrDefault();
                 }
 
-                TicketPolicy = exitRes?.PrintPolicyOnExit == true ? exitRes.TicketPolicy?.Trim() : null;
-                TicketAdditionalInfo = exitRes?.PrintAdditionalInfoOnExit == true ? exitRes.TicketAdditionalInfo?.Trim() : null;
+                TicketPolicy = (exitRes?.PrintPolicyOnExit == true || !string.IsNullOrWhiteSpace(exitRes?.TicketPolicy))
+                    ? exitRes?.TicketPolicy?.Trim()
+                    : null;
+                TicketAdditionalInfo = (exitRes?.PrintAdditionalInfoOnExit == true || !string.IsNullOrWhiteSpace(exitRes?.TicketAdditionalInfo))
+                    ? exitRes?.TicketAdditionalInfo?.Trim()
+                    : null;
             }
         }
         catch

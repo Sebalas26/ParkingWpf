@@ -1,5 +1,31 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-28 14:00:00] - [PRINTING / POLICIES] Inclusión Obligatoria de Póliza y Cláusulas en Tiquete de Entrada y Salida (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Póliza y Texto Adicional en Tiquete de Entrada (PWA y WPF): Se configuraron pólizas y textos adicionales en la sede/resoluciones, pero solo salían en el tiquete de salida, NO en el de entrada. Debe garantizarse que se muestren en ambos tiquetes tanto en PWA como en WPF."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Resolución Defensiva de Pólizas e Información Adicional en Tiquete de Entrada (`ReceiptPreviewViewModel.cs`)**:
+     - *Diagnóstico*: En `LoadTicket()`, la consulta de resolución para tiquete de entrada (`!IsExitReceipt`) filtraba únicamente resoluciones donde `r.PrintPolicyOnEntry == true || r.PrintAdditionalInfoOnEntry == true`. Si el registro de la resolución activa en base de datos local SQLite no tenía encendida esa bandera específica pero sí contenía el texto legal en `TicketPolicy` / `TicketAdditionalInfo`, `entryRes` quedaba en null o las propiedades se asignaban como `null`.
+     - *Solución*:
+       - Se implementó fallback secuencial en LINQ: primero busca resoluciones con banderas activas de entrada; si no encuentra, busca resoluciones activas de la sede con texto configurado en `TicketPolicy` o `TicketAdditionalInfo`.
+       - Se flexibilizó la asignación: si existe texto en `TicketPolicy`, se asigna directamente al comprobante de entrada independientemente de discrepancias en la bandera booleana.
+       - Misma lógica aplicada a la salida para consistencia total en comprobantes de 58mm y 80mm.
+  2. **Verificación y Pruebas Unitarias**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **100% Superado (352 Pruebas Superadas, 0 Fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **352 Pruebas Superadas (100% Éxito, 0 Fallos)**.
+
+---
+
 ## 📅 Entrada: [2026-09-28 13:00:00] - [BUGFIX / PRINTING / DEPLOYMENT] Detección Automática de Impresoras Térmicas Directas (Cero Cuadros de Diálogo) y Compilación de Instalador Setup Windows con Inno Setup 6
 
 - **`💬 Prompt Original del Usuario`**:
