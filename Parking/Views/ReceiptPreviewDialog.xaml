@@ -91,13 +91,13 @@
                                        Margin="0,0,0,8"
                                        RenderOptions.BitmapScalingMode="HighQuality"
                                        Visibility="{Binding BranchLogoBase64, Converter={StaticResource NullToVis}}"/>
-                                <TextBlock Text="{Binding BranchName}" FontSize="15" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
-                                <TextBlock Text="{Binding BranchNit}" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="{Binding BranchAddress}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="{Binding BranchPhone}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,4"/>
+                                <TextBlock Text="{Binding BranchName}" FontSize="{Binding MonospaceTitleFontSize, FallbackValue=13}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding BranchNit}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,1"/>
+                                <TextBlock Text="{Binding BranchAddress}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,1"/>
+                                <TextBlock Text="{Binding BranchPhone}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,1,0,4"/>
                                 <TextBlock Text="{Binding BranchSchedule}"
                                            Visibility="{Binding HasBranchSchedule, Converter={StaticResource BoolToVis}}"
-                                           FontSize="9.5"
+                                           FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}"
                                            FontFamily="{StaticResource FontFamilyMonospace}"
                                            Foreground="#000000"
                                            HorizontalAlignment="Center"
@@ -114,9 +114,9 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="RECIBO DE CAJA / POS:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="RECIBO DE CAJA / POS:" FontSize="{Binding TicketHeaderFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding InvoiceNumberText}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                        <TextBlock Text="{Binding InvoiceNumberText}" FontSize="{Binding TicketNumberFontSize, FallbackValue=13}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                     </StackPanel>
                                 </Grid>
 
@@ -127,43 +127,41 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="FECHA:   " FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding InvoiceDateStr}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding InvoiceTimeStr}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="FECHA:   " FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding InvoiceDateStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding InvoiceTimeStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <!-- Cliente, NIT, Dir -->
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="65"/>
+                                        <ColumnDefinition Width="Auto" MinWidth="55"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="CLIENTE:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding CustomerName}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="CLIENTE:" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,4,0"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding CustomerName}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
                                 </Grid>
 
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="65"/>
+                                        <ColumnDefinition Width="Auto" MinWidth="55"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="{Binding CustomerIdTypeLabel}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding CustomerNit}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="{Binding CustomerIdTypeLabel}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,4,0"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding CustomerNit}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Grid Margin="0,1,0,8">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="65"/>
+                                        <ColumnDefinition Width="Auto" MinWidth="55"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="DIR:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding CustomerAddress}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                </Grid>
-
-                                <!-- 3. Bloque Central de la Placa -->
+                                    <TextBlock Grid.Column="0" Text="DIR:" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,4,0"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding CustomerAddress}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
+                                </Grid>                                <!-- 3. Bloque Central de la Placa -->
                                 <Border BorderBrush="#000000" BorderThickness="2" CornerRadius="4" Padding="6,4" HorizontalAlignment="Center" Margin="0,4,0,4">
                                     <TextBlock Text="{Binding Ticket.PlateNumber, StringFormat='{}PLACA:  {0}'}"
-                                               FontSize="16"
+                                               FontSize="{Binding PlateFontSize, FallbackValue=15}"
                                                FontWeight="Black"
                                                FontFamily="{StaticResource FontFamilyMonospace}"
                                                Foreground="#000000"
@@ -172,8 +170,8 @@
 
                                 <!-- Tipo de Vehículo y Tarifa -->
                                 <StackPanel HorizontalAlignment="Center" Margin="0,0,0,6">
-                                    <TextBlock Text="{Binding VehicleTypeName, StringFormat='{}VEHÍCULO: {0}'}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="{Binding FormattedRateText}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,0" Visibility="{Binding FormattedRateText, Converter={StaticResource NullToVis}}"/>
+                                    <TextBlock Text="{Binding VehicleTypeName, StringFormat='{}VEHÍCULO: {0}'}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="{Binding FormattedRateText}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,0" Visibility="{Binding FormattedRateText, Converter={StaticResource NullToVis}}"/>
                                 </StackPanel>
 
                                 <!-- Entrada, Salida, Tiempo -->
@@ -183,9 +181,9 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="ENTRADA:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding EntryTimeStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="10,0,0,0"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding EntryDateStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="ENTRADA:" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding EntryTimeStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="6,0,0,0"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding EntryDateStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Grid Margin="0,1">
@@ -194,9 +192,9 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="SALIDA: " FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ExitTimeStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="10,0,0,0"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding ExitDateStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="SALIDA: " FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ExitTimeStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="6,0,0,0"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding ExitDateStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Grid Margin="0,1,0,6">
@@ -204,8 +202,8 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="TIEMPO: " FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding DurationMinutesStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Right" Margin="0,0,10,0"/>
+                                    <TextBlock Grid.Column="0" Text="TIEMPO: " FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding DurationMinutesStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Right" Margin="0,0,4,0"/>
                                 </Grid>
 
                                 <!-- Recargo Tiquete Extraviado si aplica -->
@@ -214,8 +212,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="TIQUETE EXTRAVIADO:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding LostTicketFeeText}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="TIQUETE EXTRAVIADO:" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding LostTicketFeeText}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
@@ -226,8 +224,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="SUBTOTAL:" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding SubtotalStr, StringFormat='{}${0}'}" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="SUBTOTAL:" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding SubtotalStr, StringFormat='{}${0}'}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Grid Margin="0,2">
@@ -235,8 +233,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="CONVENIO:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding AgreementDisplayName}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="CONVENIO:" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding AgreementDisplayName}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Grid Margin="0,2">
@@ -244,8 +242,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="DESCUENTO:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding DiscountAmountStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="DESCUENTO:" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding DiscountAmountStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Grid Margin="0,2">
@@ -253,8 +251,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="BASE GRAVABLE:" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding BaseGravableStr}" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="BASE GRAVABLE:" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding BaseGravableStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Grid Margin="0,2">
@@ -262,20 +260,20 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="  IVA 19%" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Iva19Str}" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="  IVA 19%" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Iva19Str}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <!-- Línea discontinua a la derecha -->
-                                <TextBlock Text="-----------------------" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Right" Margin="0,1"/>
+                                <TextBlock Text="-----------------------" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Right" Margin="0,1"/>
 
                                 <Grid Margin="0,2,0,4">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="TOTAL:" FontSize="14" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding TotalStr}" FontSize="14" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="TOTAL:" FontSize="{Binding MonospaceTitleFontSize, FallbackValue=13}" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding TotalStr}" FontSize="{Binding MonospaceTitleFontSize, FallbackValue=13}" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <!-- Pagado -->
@@ -284,8 +282,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="PAGADO:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding AmountPaidStr, StringFormat='{}${0}'}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="PAGADO:" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding AmountPaidStr, StringFormat='{}${0}'}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <!-- Cambio -->
@@ -294,8 +292,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="CAMBIO:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ChangeGivenStr, StringFormat='{}${0}'}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="CAMBIO:" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ChangeGivenStr, StringFormat='{}${0}'}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <!-- Atendido Por -->
@@ -304,8 +302,8 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Atendido por: " FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding AttendedBy}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
+                                    <TextBlock Grid.Column="0" Text="Atendido por: " FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding AttendedBy}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,2,0,6"/>
@@ -363,13 +361,13 @@
                                        Margin="0,0,0,8"
                                        RenderOptions.BitmapScalingMode="HighQuality"
                                        Visibility="{Binding BranchLogoBase64, Converter={StaticResource NullToVis}}"/>
-                                <TextBlock Text="{Binding BranchName}" FontSize="15" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
-                                <TextBlock Text="{Binding BranchNit}" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="{Binding BranchAddress}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="{Binding BranchPhone}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,4"/>
+                                <TextBlock Text="{Binding BranchName}" FontSize="{Binding MonospaceTitleFontSize, FallbackValue=13}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+                                <TextBlock Text="{Binding BranchNit}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1" TextWrapping="Wrap" TextAlignment="Center"/>
+                                <TextBlock Text="{Binding BranchAddress}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1" TextWrapping="Wrap" TextAlignment="Center"/>
+                                <TextBlock Text="{Binding BranchPhone}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,4" TextWrapping="Wrap" TextAlignment="Center"/>
                                 <TextBlock Text="{Binding BranchSchedule}"
                                            Visibility="{Binding HasBranchSchedule, Converter={StaticResource BoolToVis}}"
-                                           FontSize="9.5"
+                                           FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}"
                                            FontFamily="{StaticResource FontFamilyMonospace}"
                                            Foreground="#000000"
                                            HorizontalAlignment="Center"
@@ -392,15 +390,15 @@
 
                                 <!-- Fecha y Hora contiguas -->
                                 <StackPanel Orientation="Horizontal" Margin="0,2,0,6">
-                                    <TextBlock Text="FECHA: " FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Text="{Binding InvoiceDateStr}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,8,0"/>
-                                    <TextBlock Text="{Binding InvoiceTimeStr}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Text="FECHA: " FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Text="{Binding InvoiceDateStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,8,0"/>
+                                    <TextBlock Text="{Binding InvoiceTimeStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </StackPanel>
 
                                 <!-- Placa del Vehículo -->
                                 <Border BorderBrush="#000000" BorderThickness="2" CornerRadius="4" Padding="6,4" HorizontalAlignment="Center" Margin="0,4,0,4">
                                     <TextBlock Text="{Binding Ticket.PlateNumber, StringFormat='{}PLACA:  {0}'}"
-                                               FontSize="16"
+                                               FontSize="{Binding PlateFontSize, FallbackValue=14}"
                                                FontWeight="Black"
                                                FontFamily="{StaticResource FontFamilyMonospace}"
                                                Foreground="#000000"
@@ -409,8 +407,8 @@
 
                                 <!-- Tipo de Vehículo y Tarifa -->
                                 <StackPanel HorizontalAlignment="Center" Margin="0,0,0,6">
-                                    <TextBlock Text="{Binding VehicleTypeName, StringFormat='{}VEHÍCULO: {0}'}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="{Binding FormattedRateText}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,0" Visibility="{Binding FormattedRateText, Converter={StaticResource NullToVis}}"/>
+                                    <TextBlock Text="{Binding VehicleTypeName, StringFormat='{}VEHÍCULO: {0}'}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+                                    <TextBlock Text="{Binding FormattedRateText}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,0" Visibility="{Binding FormattedRateText, Converter={StaticResource NullToVis}}" TextWrapping="Wrap" TextAlignment="Center"/>
                                 </StackPanel>
 
                                 <!-- Código de Barras / QR -->
@@ -425,7 +423,7 @@
 
                                 <!-- Atendido por -->
                                 <TextBlock Text="{Binding AttendedBy, StringFormat='{}Atendido por: {0}'}"
-                                           FontSize="11"
+                                           FontSize="{Binding MonospaceFontSize, FallbackValue=10}"
                                            FontFamily="{StaticResource FontFamilyMonospace}"
                                            Foreground="#000000"
                                            HorizontalAlignment="Center"
@@ -433,7 +431,7 @@
                                            TextAlignment="Center"
                                            Margin="0,2,0,4"/>
 
-                                <TextBlock Text="Conserve este tiquete para retirar su vehículo." FontSize="9" TextWrapping="Wrap" TextAlignment="Center" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,6"/>
+                                <TextBlock Text="Conserve este tiquete para retirar su vehículo." FontSize="{Binding MonospaceFontSize, FallbackValue=8.5}" TextWrapping="Wrap" TextAlignment="Center" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,6"/>
 
                                 <!-- Información Adicional y Póliza -->
                                 <StackPanel Visibility="{Binding HasTicketPolicyOrAdditionalInfo, Converter={StaticResource BoolToVis}}" Margin="0,2,0,4">
@@ -454,32 +452,38 @@
 
                                 <!-- Código QR de Consulta en Línea para el Cliente -->
                                 <TextBlock Text="CONSULTE SU VEHÍCULO EN LÍNEA"
-                                           FontSize="10"
+                                           FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}"
                                            FontWeight="Bold"
                                            FontFamily="{StaticResource FontFamilyMonospace}"
                                            Foreground="#000000"
                                            HorizontalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
                                            Margin="0,2,0,2"/>
 
                                 <TextBlock Text="Escanee con la cámara de su celular:"
-                                           FontSize="8.5"
+                                           FontSize="{Binding MonospaceFontSize, FallbackValue=8.5}"
                                            FontFamily="{StaticResource FontFamilyMonospace}"
                                            Foreground="#000000"
                                            HorizontalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
                                            Margin="0,0,0,4"/>
 
                                 <Image Source="{Binding ConsultationQrCodeImage}"
-                                       Width="92" Height="92"
+                                       Width="{Binding QrCodeWidth}" Height="{Binding QrCodeWidth}"
                                        Stretch="Uniform"
                                        RenderOptions.BitmapScalingMode="NearestNeighbor"
                                        HorizontalAlignment="Center"
                                        Margin="0,2,0,3"/>
 
                                 <TextBlock Text="Estado, tiempo y cobro en tiempo real"
-                                           FontSize="8"
+                                           FontSize="{Binding MonospaceFontSize, FallbackValue=8}"
                                            FontFamily="{StaticResource FontFamilyMonospace}"
                                            Foreground="#000000"
                                            HorizontalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
                                            Margin="0,0,0,6"/>
 
                                 <!-- Margen inferior extra (~1mm) para evitar corte del cabezal térmico -->
@@ -502,13 +506,13 @@
                                        Margin="0,0,0,8"
                                        RenderOptions.BitmapScalingMode="HighQuality"
                                        Visibility="{Binding BranchLogoBase64, Converter={StaticResource NullToVis}}"/>
-                                <TextBlock Text="{Binding BranchName}" FontSize="15" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
-                                <TextBlock Text="{Binding BranchNit}" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="{Binding BranchAddress}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="{Binding BranchPhone}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,4"/>
+                                <TextBlock Text="{Binding BranchName}" FontSize="{Binding MonospaceTitleFontSize, FallbackValue=13}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+                                <TextBlock Text="{Binding BranchNit}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1" TextWrapping="Wrap" TextAlignment="Center"/>
+                                <TextBlock Text="{Binding BranchAddress}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1" TextWrapping="Wrap" TextAlignment="Center"/>
+                                <TextBlock Text="{Binding BranchPhone}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,4" TextWrapping="Wrap" TextAlignment="Center"/>
                                 <TextBlock Text="{Binding BranchSchedule}"
                                            Visibility="{Binding HasBranchSchedule, Converter={StaticResource BoolToVis}}"
-                                           FontSize="9.5"
+                                           FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}"
                                            FontFamily="{StaticResource FontFamilyMonospace}"
                                            Foreground="#000000"
                                            HorizontalAlignment="Center"
@@ -526,12 +530,12 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <StackPanel Grid.Column="0">
-                                        <TextBlock Text="FACTURA DE VENTA:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                        <TextBlock Text="ELECTRONICA" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                        <TextBlock Text="FACTURA DE VENTA:" FontSize="{Binding TicketHeaderFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                        <TextBlock Text="ELECTRONICA" FontSize="{Binding TicketHeaderFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding InvoicePrefix, StringFormat='{}{0}-'}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,8,0"/>
-                                        <TextBlock Text="{Binding InvoiceNumberStr}" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                        <TextBlock Text="{Binding InvoicePrefix, StringFormat='{}{0}-'}" FontSize="{Binding TicketNumberFontSize, FallbackValue=13}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,8,0"/>
+                                        <TextBlock Text="{Binding InvoiceNumberStr}" FontSize="{Binding TicketNumberFontSize, FallbackValue=13}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                     </StackPanel>
                                 </Grid>
 
@@ -542,43 +546,43 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="FECHA:   " FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding InvoiceDateStr}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding InvoiceTimeStr}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="FECHA:   " FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding InvoiceDateStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding InvoiceTimeStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <!-- Cliente, NIT, Dir -->
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="65"/>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="CLIENTE:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding CustomerName}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="CLIENTE: " FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding CustomerName}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
                                 </Grid>
 
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="65"/>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="{Binding CustomerIdTypeLabel}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding CustomerNit}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="{Binding CustomerIdTypeLabel, StringFormat='{}{0}: '}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding CustomerNit}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
                                 </Grid>
 
                                 <Grid Margin="0,1,0,8">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="65"/>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="DIR:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding CustomerAddress}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="DIR: " FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding CustomerAddress}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
                                 </Grid>
 
                                 <!-- 3. Bloque Central de la Placa -->
                                 <Border BorderBrush="#000000" BorderThickness="2" CornerRadius="4" Padding="6,4" HorizontalAlignment="Center" Margin="0,4,0,4">
                                     <TextBlock Text="{Binding Ticket.PlateNumber, StringFormat='{}PLACA:  {0}'}"
-                                               FontSize="16"
+                                               FontSize="{Binding PlateFontSize, FallbackValue=14}"
                                                FontWeight="Black"
                                                FontFamily="{StaticResource FontFamilyMonospace}"
                                                Foreground="#000000"
@@ -587,8 +591,8 @@
 
                                 <!-- Tipo de Vehículo y Tarifa -->
                                 <StackPanel HorizontalAlignment="Center" Margin="0,0,0,6">
-                                    <TextBlock Text="{Binding VehicleTypeName, StringFormat='{}VEHÍCULO: {0}'}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="{Binding FormattedRateText}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,0" Visibility="{Binding FormattedRateText, Converter={StaticResource NullToVis}}"/>
+                                    <TextBlock Text="{Binding VehicleTypeName, StringFormat='{}VEHÍCULO: {0}'}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+                                    <TextBlock Text="{Binding FormattedRateText}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,0" Visibility="{Binding FormattedRateText, Converter={StaticResource NullToVis}}" TextWrapping="Wrap" TextAlignment="Center"/>
                                 </StackPanel>
 
                                 <!-- Entrada, Salida, Tiempo -->
@@ -598,9 +602,9 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="ENTRADA:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding EntryTimeStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="10,0,0,0"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding EntryDateStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="ENTRADA:" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding EntryTimeStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="10,0,0,0"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding EntryDateStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Grid Margin="0,1">
@@ -609,9 +613,9 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="SALIDA: " FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ExitTimeStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="10,0,0,0"/>
-                                    <TextBlock Grid.Column="2" Text="{Binding ExitDateStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="SALIDA: " FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ExitTimeStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="10,0,0,0"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding ExitDateStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Grid Margin="0,1,0,6">
@@ -619,8 +623,8 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="TIEMPO: " FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding DurationMinutesStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Right" Margin="0,0,10,0"/>
+                                    <TextBlock Grid.Column="0" Text="TIEMPO: " FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding DurationMinutesStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Right" Margin="0,0,10,0"/>
                                 </Grid>
 
                                 <!-- Recargo Tiquete Extraviado si aplica -->
@@ -629,8 +633,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="TIQUETE EXTRAVIADO:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding LostTicketFeeText}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="TIQUETE EXTRAVIADO:" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding LostTicketFeeText}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
@@ -641,8 +645,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="SUBTOTAL:" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding SubtotalStr, StringFormat='{}${0}'}" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="SUBTOTAL:" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding SubtotalStr, StringFormat='{}${0}'}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Grid Margin="0,2">
@@ -650,8 +654,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="CONVENIO:" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding AgreementDisplayName}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="CONVENIO:" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding AgreementDisplayName}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Grid Margin="0,2">
@@ -659,8 +663,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="DESCUENTO:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding DiscountAmountStr}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="DESCUENTO:" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding DiscountAmountStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Grid Margin="0,2">
@@ -668,8 +672,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="BASE GRAVABLE:" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding BaseGravableStr}" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="BASE GRAVABLE:" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding BaseGravableStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Grid Margin="0,2">
@@ -677,20 +681,20 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="  IVA 19%" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding Iva19Str}" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="  IVA 19%" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Iva19Str}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <!-- Línea discontinua a la derecha -->
-                                <TextBlock Text="-----------------------" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Right" Margin="0,1"/>
+                                <TextBlock Text="-----------------------" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Right" Margin="0,1"/>
 
                                 <Grid Margin="0,2,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="TOTAL:" FontSize="14" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding TotalStr}" FontSize="14" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="TOTAL:" FontSize="{Binding MonospaceTitleFontSize, FallbackValue=13}" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding TotalStr}" FontSize="{Binding MonospaceTitleFontSize, FallbackValue=13}" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <!-- Pagado -->
@@ -699,8 +703,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="PAGADO:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding AmountPaidStr, StringFormat='{}${0}'}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="PAGADO:" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding AmountPaidStr, StringFormat='{}${0}'}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <!-- Cambio -->
@@ -709,8 +713,8 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="CAMBIO:" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ChangeGivenStr, StringFormat='{}${0}'}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="CAMBIO:" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ChangeGivenStr, StringFormat='{}${0}'}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <!-- Atendido Por -->
@@ -719,8 +723,8 @@
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Atendido por: " FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding AttendedBy}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
+                                    <TextBlock Grid.Column="0" Text="Atendido por: " FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding AttendedBy}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,2,0,6"/>
@@ -737,7 +741,7 @@
 
                                 <!-- 6. Forma de Pago -->
                                 <TextBlock Text="{Binding PaymentMethodName, StringFormat='{}FORMA DE PAGO: {0}'}"
-                                           FontSize="11"
+                                           FontSize="{Binding MonospaceFontSize, FallbackValue=10}"
                                            FontFamily="{StaticResource FontFamilyMonospace}"
                                            Foreground="#000000"
                                            HorizontalAlignment="Center"
@@ -791,36 +795,36 @@
                                        Margin="0,0,0,8"
                                        RenderOptions.BitmapScalingMode="HighQuality"
                                        Visibility="{Binding BranchLogoBase64, Converter={StaticResource NullToVis}}"/>
-                                <TextBlock Text="{Binding BranchName}" FontSize="15" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
-                                <TextBlock Text="{Binding BranchNit}" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="{Binding BranchAddress}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="{Binding BranchPhone}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,6"/>
+                                <TextBlock Text="{Binding BranchName}" FontSize="{Binding MonospaceTitleFontSize, FallbackValue=13}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding BranchNit}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,1"/>
+                                <TextBlock Text="{Binding BranchAddress}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,1"/>
+                                <TextBlock Text="{Binding BranchPhone}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextAlignment="Center" Margin="0,1,0,6"/>
 
                                 <!-- Línea divisoria continua -->
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="6,0,6,8"/>
 
                                 <!-- 2. Título de Cierre y Turno -->
-                                <TextBlock Text="REPORTE DE CIERRE" FontSize="13" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
-                                <TextBlock Text="{Binding ShiftIdText}" FontSize="12" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,6"/>
+                                <TextBlock Text="REPORTE DE CIERRE" FontSize="{Binding MonospaceTitleFontSize, FallbackValue=12}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                                <TextBlock Text="{Binding ShiftIdText}" FontSize="{Binding MonospaceFontSize, FallbackValue=11}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,6"/>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
 
                                 <!-- 3. Datos del Turno -->
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="75"/>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="CAJERO:" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding CashierName}" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="CAJERO: " FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,4,0"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding CashierName}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
                                 </Grid>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="75"/>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="INICIO:" FontSize="10.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" FontSize="10.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
+                                    <TextBlock Grid.Column="0" Text="INICIO: " FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,4,0"/>
+                                    <TextBlock Grid.Column="1" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
                                         <Run Text="{Binding ShiftStartDateStr, Mode=OneWay}"/>
                                         <Run Text=" "/>
                                         <Run Text="{Binding ShiftStartTimeStr, Mode=OneWay}"/>
@@ -828,11 +832,11 @@
                                 </Grid>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="75"/>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="FIN:" FontSize="10.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" FontSize="10.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
+                                    <TextBlock Grid.Column="0" Text="FIN:    " FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,4,0"/>
+                                    <TextBlock Grid.Column="1" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
                                         <Run Text="{Binding ShiftEndDateStr, Mode=OneWay}"/>
                                         <Run Text=" "/>
                                         <Run Text="{Binding ShiftEndTimeStr, Mode=OneWay}"/>
@@ -840,106 +844,106 @@
                                 </Grid>
                                 <Grid Margin="0,1,0,6">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="75"/>
+                                        <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="DURACIÓN:" FontSize="10.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftDurationStr}" FontSize="10.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="DURACIÓN: " FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,4,0"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftDurationStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
 
                                 <!-- 4. Ingresos por Servicio -->
-                                <TextBlock Text="INGRESOS POR SERVICIO" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
+                                <TextBlock Text="INGRESOS POR SERVICIO" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Parqueos:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftParqueosAmountStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="Parqueos:" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftParqueosAmountStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
                                 <Grid Margin="0,1,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
+                                    <TextBlock Grid.Column="0" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
                                         <Run Text="Mensualidades ("/>
                                         <Run Text="{Binding ShiftMensualidadesCount, Mode=OneWay}"/>
                                         <Run Text="):"/>
                                     </TextBlock>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftMensualidadesAmountStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftMensualidadesAmountStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
 
                                 <!-- 5. Movimientos de Caja Menor -->
-                                <TextBlock Text="MOVIMIENTOS DE CAJA" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
+                                <TextBlock Text="MOVIMIENTOS DE CAJA" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="(+) Ingresos Efectivo:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftCashInflowsStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="(+) Ingresos Efectivo:" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftCashInflowsStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
                                 <Grid Margin="0,1,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="(-) Salidas / Retiros:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftCashOutflowsStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="(-) Salidas / Retiros:" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftCashOutflowsStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
 
                                 <!-- 6. Resumen Financiero -->
-                                <TextBlock Text="RESUMEN FINANCIERO" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
+                                <TextBlock Text="RESUMEN FINANCIERO" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Subtotal Bruto:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftGrossSubtotalStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="Subtotal Bruto:" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftGrossSubtotalStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
+                                    <TextBlock Grid.Column="0" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap">
                                         <Run Text="Convenios / Descuentos ("/>
                                         <Run Text="{Binding ShiftDiscountTicketsCount, Mode=OneWay}"/>
                                         <Run Text="):"/>
                                     </TextBlock>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftDiscountsStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftDiscountsStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Subtotal con Descuento:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftDiscountedSubtotalStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="Subtotal con Descuento:" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftDiscountedSubtotalStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Base Gravable (TG):" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftTaxBaseStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="Base Gravable (TG):" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftTaxBaseStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="IVA (19%):" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftIva19Str}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="IVA (19%):" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftIva19Str}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,2,0,4"/>
@@ -948,13 +952,13 @@
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="TOTAL CIERRE:" FontSize="12" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftTotalRevenueStr}" FontSize="13" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="TOTAL CIERRE:" FontSize="{Binding MonospaceTitleFontSize, FallbackValue=12}" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftTotalRevenueStr}" FontSize="{Binding MonospaceTitleFontSize, FallbackValue=12}" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
 
                                 <!-- 7. Medios de Pago -->
-                                <TextBlock Text="MEDIOS DE PAGO" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
+                                <TextBlock Text="MEDIOS DE PAGO" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
                                 <ItemsControl ItemsSource="{Binding ShiftPaymentMethods}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -963,12 +967,12 @@
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
+                                                <TextBlock Grid.Column="0" FontSize="{Binding DataContext.MonospaceFontSize, RelativeSource={RelativeSource AncestorType=ItemsControl}, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000">
                                                     <Run Text="• "/>
                                                     <Run Text="{Binding Name, Mode=OneWay}"/>
                                                     <Run Text=":"/>
                                                 </TextBlock>
-                                                <TextBlock Grid.Column="1" Text="{Binding TotalCollectedStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding TotalCollectedStr}" FontSize="{Binding DataContext.MonospaceFontSize, RelativeSource={RelativeSource AncestorType=ItemsControl}, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                             </Grid>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -977,87 +981,87 @@
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
 
                                 <!-- 8. Vehículos y Ocupación -->
-                                <TextBlock Text="VEHÍCULOS Y OCUPACIÓN" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
+                                <TextBlock Text="VEHÍCULOS Y OCUPACIÓN" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Vehículos Salidos:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftVehiclesExitedCount}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="Vehículos Salidos:" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftVehiclesExitedCount}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
                                 <Grid Margin="0,1,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Vehículos en Patio:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftVehiclesInYardCount}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="Vehículos en Patio:" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftVehiclesInYardCount}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
 
                                 <!-- 9. Arqueo y Cuadre de Caja -->
-                                <TextBlock Text="ARQUEO Y CUADRE DE CAJA" FontSize="10.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
+                                <TextBlock Text="ARQUEO Y CUADRE DE CAJA" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" Margin="0,0,0,4"/>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Base Inicial:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftBaseAmountStr}" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="Base Inicial:" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftBaseAmountStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Total Esperado:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftExpectedCashStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="Total Esperado:" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftExpectedCashStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Total Contado:" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftActualCashStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="Total Contado:" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftActualCashStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
                                 <Grid Margin="0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Diferencia:" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftDifferenceStr}" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="Diferencia:" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftDifferenceStr}" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
                                 <Grid Margin="0,1,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Estado Arqueo:" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding ShiftArqueoStatusText}" FontSize="10.5" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="0" Text="Estado Arqueo:" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding ShiftArqueoStatusText}" FontSize="{Binding MonospaceFontSize, FallbackValue=10}" FontWeight="Black" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
 
                                 <!-- 10. Observaciones -->
                                 <StackPanel Visibility="{Binding HasShiftNotes, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6">
-                                    <TextBlock Text="OBSERVACIONES:" FontSize="10" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Text="{Binding ShiftNotes}" FontSize="9.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap" Margin="0,2,0,6"/>
+                                    <TextBlock Text="OBSERVACIONES:" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Text="{Binding ShiftNotes}" FontSize="{Binding MonospaceFontSize, FallbackValue=9}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap" Margin="0,2,0,6"/>
                                     <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,6"/>
                                 </StackPanel>
 
                                 <!-- 11. Firmas y Pie -->
                                 <StackPanel HorizontalAlignment="Center" Margin="0,14,0,8">
-                                    <TextBlock Text="___________________________" FontSize="10" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
-                                    <TextBlock Text="Firma Responsable de Caja" FontSize="9.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2,0,1"/>
-                                    <TextBlock Text="C.C. _____________________" FontSize="9" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="___________________________" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
+                                    <TextBlock Text="Firma Responsable de Caja" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,2,0,1"/>
+                                    <TextBlock Text="C.C. _____________________" FontSize="{Binding MonospaceFontSize, FallbackValue=9}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
                                 </StackPanel>
 
-                                <TextBlock Text="ParkingFlow POS" FontSize="9.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4,0,1"/>
-                                <TextBlock Text="Software de Gestión y Control" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+                                <TextBlock Text="ParkingFlow POS" FontSize="{Binding MonospaceFontSize, FallbackValue=9.5}" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4,0,1"/>
+                                <TextBlock Text="Software de Gestión y Control" FontSize="{Binding MonospaceFontSize, FallbackValue=8.5}" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,0,0,8"/>
 
                                 <!-- Margen inferior extra (~1mm) para evitar corte del cabezal térmico -->
                                 <Rectangle Height="4" Fill="Transparent" HorizontalAlignment="Stretch"/>

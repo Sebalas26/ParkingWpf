@@ -457,26 +457,26 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
         if (Is58Mm)
         {
-            PrintableContentWidth = 180;
+            PrintableContentWidth = 154;
             DialogWindowWidth = 350;
-            PaperContainerWidth = 208;
-            BarcodeWidth = 160;
-            QrCodeWidth = 85;
-            MonospaceFontSize = 8.5;
-            MonospaceTitleFontSize = 11.0;
-            PlateFontSize = 13.0;
-            TicketHeaderFontSize = 7.5;
-            TicketNumberFontSize = 8.5;
-            LogoMaxHeight = 36;
-            LogoMaxWidth = 110;
+            PaperContainerWidth = 194;
+            BarcodeWidth = 140;
+            QrCodeWidth = 80;
+            MonospaceFontSize = 8.0;
+            MonospaceTitleFontSize = 10.5;
+            PlateFontSize = 12.5;
+            TicketHeaderFontSize = 7.0;
+            TicketNumberFontSize = 8.0;
+            LogoMaxHeight = 32;
+            LogoMaxWidth = 95;
         }
         else
         {
-            PrintableContentWidth = 270;
+            PrintableContentWidth = 260;
             DialogWindowWidth = 460;
             PaperContainerWidth = 298;
-            BarcodeWidth = 220;
-            QrCodeWidth = 100;
+            BarcodeWidth = 210;
+            QrCodeWidth = 95;
             MonospaceFontSize = 10.0;
             MonospaceTitleFontSize = 13.0;
             PlateFontSize = 15.0;
@@ -1105,27 +1105,31 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
         if (Is58Mm)
         {
-            PrintableContentWidth = 180;
+            PrintableContentWidth = 154;
             DialogWindowWidth = 350;
-            PaperContainerWidth = 208;
-            BarcodeWidth = 160;
-            QrCodeWidth = 85;
-            MonospaceFontSize = 8.5;
-            MonospaceTitleFontSize = 11.0;
-            PlateFontSize = 13.0;
-            LogoMaxHeight = 36;
-            LogoMaxWidth = 110;
+            PaperContainerWidth = 194;
+            BarcodeWidth = 140;
+            QrCodeWidth = 80;
+            MonospaceFontSize = 8.0;
+            MonospaceTitleFontSize = 10.5;
+            PlateFontSize = 12.5;
+            TicketHeaderFontSize = 7.0;
+            TicketNumberFontSize = 8.0;
+            LogoMaxHeight = 32;
+            LogoMaxWidth = 95;
         }
         else
         {
-            PrintableContentWidth = 270;
+            PrintableContentWidth = 260;
             DialogWindowWidth = 460;
             PaperContainerWidth = 298;
-            BarcodeWidth = 220;
-            QrCodeWidth = 100;
+            BarcodeWidth = 210;
+            QrCodeWidth = 95;
             MonospaceFontSize = 10.0;
             MonospaceTitleFontSize = 13.0;
             PlateFontSize = 15.0;
+            TicketHeaderFontSize = 10.0;
+            TicketNumberFontSize = 12.0;
             LogoMaxHeight = 44;
             LogoMaxWidth = 130;
         }

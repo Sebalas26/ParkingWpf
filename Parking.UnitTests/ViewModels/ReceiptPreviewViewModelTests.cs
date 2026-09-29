@@ -289,8 +289,8 @@ public class ReceiptPreviewViewModelTests
     }
 
     [Theory]
-    [InlineData(58, 7.5, 8.5, 180)]
-    [InlineData(80, 10.0, 12.0, 270)]
+    [InlineData(58, 7.0, 8.0, 154)]
+    [InlineData(80, 10.0, 12.0, 260)]
     public void LoadTicket_SetsTicketFontSizes_BasedOnPaperWidth(int paperWidth, double expectedHeaderSize, double expectedNumberSize, double expectedPrintableWidth)
     {
         // Arrange

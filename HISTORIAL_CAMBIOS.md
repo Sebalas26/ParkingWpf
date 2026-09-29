@@ -1,6 +1,39 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
-## 📅 Entrada: [2026-09-29 10:12:00] - [LOGIN-VERSION / THERMAL-PRINTING / CALIBRATION / WPF] Corrección Definitiva de Versión en Login y Shell + Calibración Física de Ancho Térmico 58mm/80mm + Red de Seguridad ScaleTransform + Espaciador 1mm Inferior Anti-Corte
+## 📅 Entrada: [2026-09-29 11:35:00] - [THERMAL-PRINTING / 58MM-48MM / CIERRE-CAJA / CALIBRATION / WPF] Calibración Definitiva de Márgenes Físicos Térmicos (58(48)x210mm) en Entrada, Salida y Cierre de Caja + Rejilla Adaptativa
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"Mira tenemos este problema, preciso es para la de 58mm es del proveedor donde estamos intalando pero el wpf aun sale cortado y tambien la pwa un poco en el costado derecho entonces sucede que ya vimos y claro es que la imrpresora o el driver tiene un margen que pues nosotros no teniamos en cuenta entonces debemos adaptarnos para que salga bien el tickete de entrada y salida desde el wpf preferencialmente si me explico se necesita eso completo, bien realziado si me explico no vbayas a dañar el diseño por que ya se ve bien es ajustar las amrgenes para que se adapten bien completamente si me explico analiza + agrega al plan tambien este ajuste mira la impresión de cierre de caja o cierre de turno como lo tengas esta cortada necesitamos que cumpla e igual loq ue tienens las otras si me explico esta si no la hemos trabajado pero dbería quedar viendose bien igualmente si me explico ?"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico de Causa Raíz de Truncamiento Físico en Impresoras 58mm**:
+     - _Especificación del Driver y Hardware_: El rollo comercial es de 58mm, pero el cabezal térmico activo físico es de 48mm (181 DIP a 96 DPI). El driver oficial (`58(48) x 210 mm`) introduce márgenes mecánicos GDI internos de ~3mm a cada lado. Al renderizar a 180 DIP (47.6mm) + márgenes de driver, el contenido sobrepasa los 181 DIP del cabezal, provocando mutilación en el borde derecho en tickets de entrada/salida.
+     - _Truncamiento Crítico en Cierre de Caja (Shift Closure)_: En la plantilla de cierre de caja (Plantilla D), las tablas de desglose por medios de pago, categorías y balance utilizaban `<ColumnDefinition Width="75"/>` fijo y tipografía fija de 10.5pt, forzando un ancho total de fila superior a 215 DIP (57mm), provocando corte de caracteres a la izquierda ("JERO", "ICIO") y corte total de cifras monetarias a la derecha.
+  2. **Calibración de Métricas Térmicas en `ReceiptPreviewViewModel.cs`**:
+     - `PrintableContentWidth`: Calibrado a `154 DIP` (40.7 mm) para modo 58mm (dejando ~3.6mm de margen de seguridad a cada lado del cabezal de 48mm, 100% inmune a desalineaciones del driver) y `260 DIP` (68.8 mm) para modo 80mm.
+     - `PaperContainerWidth`: `194 DIP` para 58mm y `300 DIP` para 80mm.
+     - `BarcodeWidth`: `140 DIP` en 58mm y `210 DIP` en 80mm.
+     - `QrCodeWidth`: `80 DIP` en 58mm y `95 DIP` en 80mm.
+     - `LogoMaxWidth` / `LogoMaxHeight`: `95x32 DIP` en 58mm y `130x44 DIP` en 80mm.
+     - Tipografía térmica proporcional en `InitializePaperMetrics`:
+       - 58mm: Base `8.0pt`, Títulos `10.5pt`, Placa `12.5pt`, Header `7.0pt`, Consecutivo `8.0pt`.
+       - 80mm: Base `10.0pt`, Títulos `13.0pt`, Placa `15.0pt`, Header `10.0pt`, Consecutivo `12.0pt`.
+     - Aplicado idénticamente a `LoadTicket` y `LoadShiftClosure`.
+  3. **Ajuste de Plantillas XAML en `ReceiptPreviewDialog.xaml`**:
+     - _Tiquete de Ingreso (Plantilla B)_: Todos los textos (`BranchName`, `BranchNit`, `BranchAddress`, `BranchPhone`, `BranchSchedule`, `FECHA`, `VEHÍCULO`, `FormattedRateText`, `AttendedBy`, QR y leyenda) vinculados dinámicamente a `MonospaceFontSize`, `MonospaceTitleFontSize`, `PlateFontSize` y dimensiones observables, con `TextWrapping="Wrap"` para prevenir desbordes.
+     - _Factura Electrónica FVM (Plantilla B/C)_: Columnas fijas convertidas a `Auto`, tipografías vinculadas dinámicamente y `TextWrapping="Wrap"` en datos de cliente y conceptos.
+     - _Cierre de Caja (Plantilla D - Shift Closure)_: Reemplazo de anchos fijos `<ColumnDefinition Width="75"/>` por `Auto`, vinculación de encabezados de sección y celdas a `MonospaceFontSize` y `MonospaceTitleFontSize`, con `TextWrapping="Wrap"` en conceptos largos (ej: "INGRESOS TOTALES DEL TURNO").
+  4. **Pruebas Unitarias Automatizadas (`ReceiptPreviewViewModelTests.cs`)**:
+     - Prueba `LoadTicket_SetsTicketFontSizes_BasedOnPaperWidth`: Actualizados casos Theory a `[InlineData(58, 7.0, 8.0, 154)]` y `[InlineData(80, 10.0, 12.0, 260)]`.
+  5. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **100% Superado (359 pruebas superadas, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking.UnitTests/ViewModels/ReceiptPreviewViewModelTests.cs`
 
 - **`💬 Prompt Original del Usuario`**:
 
