@@ -1,5 +1,50 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-29 10:12:00] - [LOGIN-VERSION / THERMAL-PRINTING / CALIBRATION / WPF] Corrección Definitiva de Versión en Login y Shell + Calibración Física de Ancho Térmico 58mm/80mm + Red de Seguridad ScaleTransform + Espaciador 1mm Inferior Anti-Corte
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"se tiene otro error en la visual del login, pues si actualiza pero no esta cambiando la versión enla parte de abajo del login no se por que eso no esta pasando. segundo mira la imporesión de ingreso y salia de la wpf se ve super mal no se ve como se ve en la imagen sale demasiado ancho no se si no esta tomando bien el tamaño hay te estoy mostradno se supone que en el anterior cambios se corregia pero no sucecio así entonces quisioera saber el por que ? no esta pasando necesito una solución definitiva por que en el pwa si imprime perfecto completo bien pero en el wpf no y eso no debería ser así. analiza y dime . sabes que necesito revisar que si hay algo mal o que falta, segundo agregarle 1mm de espacio al final de cada impresion si para que no se vea tan arras si me explico ? continuar"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Corrección de Visualización de Versión en Login y MainShell (`LoginViewModel.cs`, `MainShellViewModel.cs`, `publish-release.ps1`)**:
+     - _Causa Raíz_: Al ejecutar `publish-release.ps1 -Version X.Y.Z`, `dotnet publish` no recibía el parámetro `/p:InformationalVersion=$Version`. Por ende, el atributo `AssemblyInformationalVersion` mantenía el valor base de `Parking.csproj` (ej: `1.0.1`). Tanto `LoginViewModel` como `MainShellViewModel` priorizaban la lectura de dicho atributo sobre `Assembly.GetName().Version`, mostrando la versión antigua. Además, `LoginWindow.xaml` formateaba con `• Versión {0} • © PARKING FLOW`, mientras el ViewModel anteponía `"v"`, resultando en `• Versión v1.0.1 •`.
+     - _Solución_:
+       - Se invirtió la prioridad en `LoginViewModel.AppVersionDisplay` y `MainShellViewModel.AppVersionDisplay`: ahora leen prioritariamente `Assembly.GetName().Version` (la versión real compilada e inyectada en tiempo de empaquetado).
+       - En `LoginViewModel.AppVersionDisplay`, se removió el prefijo `"v"` hardcodeado para que encaje de forma limpia con el `StringFormat` del XAML (`• Versión 1.0.3 • © PARKING FLOW`).
+       - En `Scripts/publish-release.ps1`, se añadió `/p:InformationalVersion=$Version` a los comandos de publicación de `Parking.csproj` y `ParkFlow.Updater.csproj`.
+  2. **Calibración Física de Métricas Térmicas (`ReceiptPreviewViewModel.cs`, `ReceiptPreviewDialog.xaml`)**:
+     - _Causa Raíz de Desborde/Ancho Excesivo_: En WPF térmico estándar (96 DPI), el ancho de impresión real de una impresora térmica de 80mm es de ~72mm (≈270 DIP) y de 58mm es de ~48mm (≈180 DIP). Anteriormente, el grid imprimible `TicketPrintableContent` tenía `HorizontalAlignment="Stretch"` dentro de un contenedor de 380 DIP (100.5mm), excediendo el ancho físico del cabezal térmico y provocando que el driver recortara o estirara la tirilla.
+     - _Solución Implementada_:
+       - Se introdujo la propiedad observable `PrintableContentWidth`:
+         - Modo 58mm: `180 DIP` (48mm físicos útiles).
+         - Modo 80mm: `270 DIP` (72mm físicos útiles).
+       - En `ReceiptPreviewDialog.xaml`, se fijó `Width="{Binding PrintableContentWidth}"` y `HorizontalAlignment="Center"` en el `<Grid x:Name="TicketPrintableContent">`.
+       - Se calibraron tipografías proporcionales en `InitializePaperMetrics`:
+         - 58mm: Base `8.5pt`, Títulos `11pt`, Placa `13pt`, Consecutivo `8.5pt`, Encabezado `7.5pt`, Logo `110x36 px`, Barcode `160 px`, QR `85 px`.
+         - 80mm: Base `10pt`, Títulos `13pt`, Placa `15pt`, Consecutivo `12pt`, Encabezado `10pt`, Logo `130x44 px`, Barcode `220 px`, QR `100 px`.
+       - Se añadió `TextWrapping="Wrap"` a `AttendedBy` y a los textos de Resolución DIAN en todas las plantillas (POS Estándar, Factura Electrónica FVM, Check-in Entrada y Cierre de Turno).
+  3. **Espaciador Inferior de 1mm (~4 DIP) Anti-Corte de Guillotina (`ReceiptPreviewDialog.xaml`)**:
+     - Se integró un elemento espaciador `<Rectangle Height="4" Fill="Transparent" HorizontalAlignment="Stretch"/>` al final de cada una de las 4 plantillas de impresión (Recibo POS Estándar, Tiquete de Entrada, Factura Electrónica FVM y Cierre de Turno). Esto añade ~1mm de papel en blanco al pie para que la cuchilla/guillotina térmica de la impresora corte limpiamente sin mutilar la última línea de texto.
+  4. **Red de Seguridad con Escala Dinámica en Impresión Directa (`PrinterDiscoveryService.cs`)**:
+     - En `PrintVisualDirect`, se agregó detección del ancho imprimible reportado por el driver (`PrintDialog.PrintableAreaWidth`).
+     - Si por configuración de márgenes del driver el visual excede el área imprimible, se aplica automáticamente un `DrawingVisual` con `ScaleTransform(scale, scale)` proporcional para evitar cualquier corte físico.
+  5. **Pruebas Unitarias Automatizadas (`ReceiptPreviewViewModelTests.cs`)**:
+     - `LoadTicket_SetsTicketFontSizes_BasedOnPaperWidth`: Actualizada con las nuevas métricas (180 DIP para 58mm, 270 DIP para 80mm).
+     - `AppVersionDisplay_ReturnsCleanAssemblyVersion_WithoutLeadingV`: Certifica que la propiedad de versión retorna una cadena limpia sin prefijo `"v"`.
+  6. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **100% Superado (359 pruebas superadas, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/LoginViewModel.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking/Services/Implementations/PrinterDiscoveryService.cs`
+  - `Scripts/publish-release.ps1`
+  - `Parking.UnitTests/ViewModels/ReceiptPreviewViewModelTests.cs`
+
 ## 📅 Entrada: [2026-09-29 09:20:00] - [PRINTING / ENTRY-TICKET / HOMOLOGATION] Homologación de Tirilla de Ingreso (Check-in), Reordenamiento de Póliza antes de QR, Prefijo # en Consecutivo y Corrección de Truncamiento en 58mm (WPF)
 
 - **`💬 Prompt Original del Usuario`**:

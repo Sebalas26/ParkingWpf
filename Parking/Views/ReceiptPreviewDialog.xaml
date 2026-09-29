@@ -74,7 +74,7 @@
                         Margin="0,0,0,12"
                         MaxHeight="480">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <Grid x:Name="TicketPrintableContent" HorizontalAlignment="Stretch" Margin="0,0">
+                        <Grid x:Name="TicketPrintableContent" Width="{Binding PrintableContentWidth}" HorizontalAlignment="Center" Margin="0,0">
 
                             <!-- ============================================================= -->
                             <!-- A. PLANTILLA RECIBO DE PAGO POS ESTÁNDAR                      -->
@@ -305,7 +305,7 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Atendido por: " FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding AttendedBy}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding AttendedBy}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,2,0,6"/>
@@ -342,6 +342,9 @@
                                                FontFamily="{StaticResource FontFamilyMonospace}"
                                                Foreground="#000000" TextAlignment="Center" TextWrapping="Wrap" Margin="0,1,0,2"/>
                                 </StackPanel>
+
+                                <!-- Margen inferior extra (~1mm) para evitar corte del cabezal térmico -->
+                                <Rectangle Height="4" Fill="Transparent" HorizontalAlignment="Stretch"/>
 
                             </StackPanel>
 
@@ -426,6 +429,8 @@
                                            FontFamily="{StaticResource FontFamilyMonospace}"
                                            Foreground="#000000"
                                            HorizontalAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
                                            Margin="0,2,0,4"/>
 
                                 <TextBlock Text="Conserve este tiquete para retirar su vehículo." FontSize="9" TextWrapping="Wrap" TextAlignment="Center" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,6"/>
@@ -476,6 +481,10 @@
                                            Foreground="#000000"
                                            HorizontalAlignment="Center"
                                            Margin="0,0,0,6"/>
+
+                                <!-- Margen inferior extra (~1mm) para evitar corte del cabezal térmico -->
+                                <Rectangle Height="4" Fill="Transparent" HorizontalAlignment="Stretch"/>
+
                             </StackPanel>
 
                             <!-- ============================================================= -->
@@ -711,7 +720,7 @@
                                         <ColumnDefinition Width="*"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Text="Atendido por: " FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
-                                    <TextBlock Grid.Column="1" Text="{Binding AttendedBy}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding AttendedBy}" FontSize="11" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" TextWrapping="Wrap"/>
                                 </Grid>
 
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,2,0,6"/>
@@ -745,8 +754,8 @@
                                            Margin="0,2,0,8"/>
 
                                 <!-- 8. Resolución DIAN y Pólizas -->
-                                <TextBlock Text="{Binding DianResolutionText}" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="{Binding DianRangeText}" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
+                                <TextBlock Text="{Binding DianResolutionText}" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Margin="0,1"/>
+                                <TextBlock Text="{Binding DianRangeText}" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Margin="0,1"/>
                                 
                                 <StackPanel Visibility="{Binding HasTicketPolicyOrAdditionalInfo, Converter={StaticResource BoolToVis}}" Margin="0,4,0,4">
                                     <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,2,0,4"/>
@@ -761,6 +770,9 @@
                                                FontFamily="{StaticResource FontFamilyMonospace}"
                                                Foreground="#000000" TextAlignment="Center" TextWrapping="Wrap" Margin="0,1,0,2"/>
                                 </StackPanel>
+
+                                <!-- Margen inferior extra (~1mm) para evitar corte del cabezal térmico -->
+                                <Rectangle Height="4" Fill="Transparent" HorizontalAlignment="Stretch"/>
 
                             </StackPanel>
 
@@ -1046,6 +1058,9 @@
 
                                 <TextBlock Text="ParkingFlow POS" FontSize="9.5" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,4,0,1"/>
                                 <TextBlock Text="Software de Gestión y Control" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,0,0,8"/>
+
+                                <!-- Margen inferior extra (~1mm) para evitar corte del cabezal térmico -->
+                                <Rectangle Height="4" Fill="Transparent" HorizontalAlignment="Stretch"/>
 
                             </StackPanel>
 

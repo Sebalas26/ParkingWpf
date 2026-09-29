@@ -289,9 +289,9 @@ public class ReceiptPreviewViewModelTests
     }
 
     [Theory]
-    [InlineData(58, 8.5, 9.5)]
-    [InlineData(80, 11.0, 13.0)]
-    public void LoadTicket_SetsTicketFontSizes_BasedOnPaperWidth(int paperWidth, double expectedHeaderSize, double expectedNumberSize)
+    [InlineData(58, 7.5, 8.5, 180)]
+    [InlineData(80, 10.0, 12.0, 270)]
+    public void LoadTicket_SetsTicketFontSizes_BasedOnPaperWidth(int paperWidth, double expectedHeaderSize, double expectedNumberSize, double expectedPrintableWidth)
     {
         // Arrange
         var branch = new BranchModel { Id = 1, Name = "Sede Test", PaperWidth = paperWidth };
@@ -306,6 +306,7 @@ public class ReceiptPreviewViewModelTests
         // Assert
         vm.TicketHeaderFontSize.Should().Be(expectedHeaderSize);
         vm.TicketNumberFontSize.Should().Be(expectedNumberSize);
+        vm.PrintableContentWidth.Should().Be(expectedPrintableWidth);
     }
 
     [Fact]
@@ -340,6 +341,22 @@ public class ReceiptPreviewViewModelTests
         vm.TicketAdditionalInfo.Should().BeNull();
         vm.HasTicketPolicy.Should().BeFalse();
         vm.HasTicketAdditionalInfo.Should().BeFalse();
+    }
+
+    [Fact]
+    public void AppVersionDisplay_ReturnsCleanAssemblyVersion_WithoutLeadingV()
+    {
+        // Arrange & Act
+        var vm = new LoginViewModel(
+            new Mock<IAuthService>().Object,
+            new Mock<ISessionService>().Object,
+            new Mock<IApiClientService>().Object,
+            new Mock<ISyncEngineService>().Object,
+            new Mock<IPermissionService>().Object);
+
+        // Assert: la versión debe ser numérica limpia (ej: "1.0.3"), sin prefijo "v"
+        vm.AppVersionDisplay.Should().NotStartWith("v");
+        vm.AppVersionDisplay.Should().MatchRegex(@"^\d+\.\d+\.\d+");
     }
 }
 

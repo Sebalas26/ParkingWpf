@@ -154,8 +154,34 @@ public class PrinterDiscoveryService : IPrinterDiscoveryService
             var printDialog = new PrintDialog();
             printDialog.PrintQueue = targetQueue;
 
+            // Red de seguridad: si el visual excede el área imprimible del driver,
+            // aplicar escala proporcional automática para que nada se corte jamás.
+            Visual printTarget = visual;
+            if (visual is System.Windows.FrameworkElement fe && fe.ActualWidth > 0)
+            {
+                var printableWidth = printDialog.PrintableAreaWidth;
+                if (printableWidth > 0 && fe.ActualWidth > printableWidth)
+                {
+                    var scale = printableWidth / fe.ActualWidth;
+                    var drawingVisual = new System.Windows.Media.DrawingVisual();
+                    using (var dc = drawingVisual.RenderOpen())
+                    {
+                        dc.PushTransform(new ScaleTransform(scale, scale));
+                        var brush = new System.Windows.Media.VisualBrush(fe)
+                        {
+                            Stretch = System.Windows.Media.Stretch.None,
+                            AlignmentX = System.Windows.Media.AlignmentX.Left,
+                            AlignmentY = System.Windows.Media.AlignmentY.Top
+                        };
+                        dc.DrawRectangle(brush, null, new System.Windows.Rect(0, 0, fe.ActualWidth, fe.ActualHeight));
+                        dc.Pop();
+                    }
+                    printTarget = drawingVisual;
+                }
+            }
+
             // Enviar a imprimir directamente a la cola sin invocar ShowDialog()
-            printDialog.PrintVisual(visual, jobTitle);
+            printDialog.PrintVisual(printTarget, jobTitle);
 
             return (true, targetQueue.Name, null);
         }

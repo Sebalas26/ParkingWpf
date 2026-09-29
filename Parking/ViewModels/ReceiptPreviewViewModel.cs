@@ -338,7 +338,10 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private double _dialogWindowWidth = 490;
 
     [ObservableProperty]
-    private double _paperContainerWidth = 380;
+    private double _paperContainerWidth = 298;
+
+    [ObservableProperty]
+    private double _printableContentWidth = 270;
 
     [ObservableProperty]
     private double _barcodeWidth = 260;
@@ -454,30 +457,32 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
         if (Is58Mm)
         {
-            DialogWindowWidth = 390;
-            PaperContainerWidth = 280;
-            BarcodeWidth = 200;
+            PrintableContentWidth = 180;
+            DialogWindowWidth = 350;
+            PaperContainerWidth = 208;
+            BarcodeWidth = 160;
             QrCodeWidth = 85;
-            MonospaceFontSize = 9.5;
-            MonospaceTitleFontSize = 13;
-            PlateFontSize = 14;
-            TicketHeaderFontSize = 8.5;
-            TicketNumberFontSize = 9.5;
-            LogoMaxHeight = 38;
-            LogoMaxWidth = 100;
+            MonospaceFontSize = 8.5;
+            MonospaceTitleFontSize = 11.0;
+            PlateFontSize = 13.0;
+            TicketHeaderFontSize = 7.5;
+            TicketNumberFontSize = 8.5;
+            LogoMaxHeight = 36;
+            LogoMaxWidth = 110;
         }
         else
         {
-            DialogWindowWidth = 490;
-            PaperContainerWidth = 380;
-            BarcodeWidth = 260;
-            QrCodeWidth = 110;
-            MonospaceFontSize = 11;
-            MonospaceTitleFontSize = 15;
-            PlateFontSize = 16;
-            TicketHeaderFontSize = 11;
-            TicketNumberFontSize = 13;
-            LogoMaxHeight = 48;
+            PrintableContentWidth = 270;
+            DialogWindowWidth = 460;
+            PaperContainerWidth = 298;
+            BarcodeWidth = 220;
+            QrCodeWidth = 100;
+            MonospaceFontSize = 10.0;
+            MonospaceTitleFontSize = 13.0;
+            PlateFontSize = 15.0;
+            TicketHeaderFontSize = 10.0;
+            TicketNumberFontSize = 12.0;
+            LogoMaxHeight = 44;
             LogoMaxWidth = 130;
         }
 
@@ -1100,26 +1105,28 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
         if (Is58Mm)
         {
-            DialogWindowWidth = 390;
-            PaperContainerWidth = 280;
-            BarcodeWidth = 200;
+            PrintableContentWidth = 180;
+            DialogWindowWidth = 350;
+            PaperContainerWidth = 208;
+            BarcodeWidth = 160;
             QrCodeWidth = 85;
-            MonospaceFontSize = 9.5;
-            MonospaceTitleFontSize = 13;
-            PlateFontSize = 14;
-            LogoMaxHeight = 38;
-            LogoMaxWidth = 100;
+            MonospaceFontSize = 8.5;
+            MonospaceTitleFontSize = 11.0;
+            PlateFontSize = 13.0;
+            LogoMaxHeight = 36;
+            LogoMaxWidth = 110;
         }
         else
         {
-            DialogWindowWidth = 490;
-            PaperContainerWidth = 380;
-            BarcodeWidth = 260;
-            QrCodeWidth = 110;
-            MonospaceFontSize = 11;
-            MonospaceTitleFontSize = 15;
-            PlateFontSize = 16;
-            LogoMaxHeight = 48;
+            PrintableContentWidth = 270;
+            DialogWindowWidth = 460;
+            PaperContainerWidth = 298;
+            BarcodeWidth = 220;
+            QrCodeWidth = 100;
+            MonospaceFontSize = 10.0;
+            MonospaceTitleFontSize = 13.0;
+            PlateFontSize = 15.0;
+            LogoMaxHeight = 44;
             LogoMaxWidth = 130;
         }
 

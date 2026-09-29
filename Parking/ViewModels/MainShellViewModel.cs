@@ -23,14 +23,20 @@ public partial class MainShellViewModel : ViewModelBase
         get
         {
             var asm = Assembly.GetExecutingAssembly();
+            // Prioridad: AssemblyVersion real del binario (inyectado por /p:Version en publish-release.ps1)
+            var ver = asm.GetName().Version;
+            if (ver != null && (ver.Major > 0 || ver.Minor > 0 || ver.Build > 0))
+            {
+                return $"v{ver.Major}.{ver.Minor}.{ver.Build}";
+            }
+            // Fallback: InformationalVersion (limpia sufijo +hash de git)
             var infoVer = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
             if (!string.IsNullOrWhiteSpace(infoVer))
             {
                 var plusIdx = infoVer.IndexOf('+');
                 return "v" + (plusIdx > 0 ? infoVer[..plusIdx] : infoVer);
             }
-            var ver = asm.GetName().Version;
-            return ver != null ? $"v{ver.Major}.{ver.Minor}.{ver.Build}" : "v1.0.0";
+            return "v1.0.0";
         }
     }
 
