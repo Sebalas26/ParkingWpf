@@ -125,6 +125,12 @@ public class ApiBranchSyncDto
     [JsonPropertyName("printAdditionalInfoOnEntry")]
     public bool PrintAdditionalInfoOnEntry { get; set; } = false;
 
+    [JsonPropertyName("ticketSchedule")]
+    public string? TicketSchedule { get; set; }
+
+    [JsonPropertyName("printScheduleOnEntry")]
+    public bool PrintScheduleOnEntry { get; set; } = false;
+
     [JsonPropertyName("createdAtUtc")]
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
@@ -559,6 +565,15 @@ public class ApiBillingResolutionSyncDto
 
     [JsonPropertyName("printAdditionalInfoOnExit")]
     public bool PrintAdditionalInfoOnExit { get; set; }
+
+    [JsonPropertyName("ticketSchedule")]
+    public string? TicketSchedule { get; set; }
+
+    [JsonPropertyName("printScheduleOnEntry")]
+    public bool PrintScheduleOnEntry { get; set; }
+
+    [JsonPropertyName("printScheduleOnExit")]
+    public bool PrintScheduleOnExit { get; set; }
 }
 
 public class ApiWorkShiftSyncDto

@@ -266,6 +266,9 @@ public class DbConnectionManager : IDbConnectionManager
                     ""TicketAdditionalInfo"" TEXT NULL,
                     ""PrintAdditionalInfoOnEntry"" INTEGER NOT NULL DEFAULT 0,
                     ""PrintAdditionalInfoOnExit"" INTEGER NOT NULL DEFAULT 0,
+                    ""TicketSchedule"" TEXT NULL,
+                    ""PrintScheduleOnEntry"" INTEGER NOT NULL DEFAULT 0,
+                    ""PrintScheduleOnExit"" INTEGER NOT NULL DEFAULT 0,
                     ""CreatedAtUtc"" TEXT NOT NULL
                 );
 

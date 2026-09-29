@@ -29,4 +29,7 @@ public class BillingResolution
     public string? TicketAdditionalInfo { get; set; }
     public bool PrintAdditionalInfoOnEntry { get; set; }
     public bool PrintAdditionalInfoOnExit { get; set; }
+    public string? TicketSchedule { get; set; }
+    public bool PrintScheduleOnEntry { get; set; }
+    public bool PrintScheduleOnExit { get; set; }
 }

@@ -706,6 +706,8 @@ public class SyncEngineService : ISyncEngineService
                         existingBranch.PrintPolicyOnEntry = br.PrintPolicyOnEntry;
                         existingBranch.TicketAdditionalInfo = br.TicketAdditionalInfo;
                         existingBranch.PrintAdditionalInfoOnEntry = br.PrintAdditionalInfoOnEntry;
+                        existingBranch.TicketSchedule = br.TicketSchedule;
+                        existingBranch.PrintScheduleOnEntry = br.PrintScheduleOnEntry;
                         existingBranch.IsActive = br.IsActive;
                     }
                     else
@@ -746,6 +748,8 @@ public class SyncEngineService : ISyncEngineService
                             PrintPolicyOnEntry = br.PrintPolicyOnEntry,
                             TicketAdditionalInfo = br.TicketAdditionalInfo,
                             PrintAdditionalInfoOnEntry = br.PrintAdditionalInfoOnEntry,
+                            TicketSchedule = br.TicketSchedule,
+                            PrintScheduleOnEntry = br.PrintScheduleOnEntry,
                             IsActive = br.IsActive,
                             CreatedAtUtc = br.CreatedAtUtc
                         });
@@ -783,6 +787,8 @@ public class SyncEngineService : ISyncEngineService
                             b.PrintPolicyOnEntry = br.PrintPolicyOnEntry;
                             b.TicketAdditionalInfo = br.TicketAdditionalInfo;
                             b.PrintAdditionalInfoOnEntry = br.PrintAdditionalInfoOnEntry;
+                            b.TicketSchedule = br.TicketSchedule;
+                            b.PrintScheduleOnEntry = br.PrintScheduleOnEntry;
                             if (br.CompanyId.HasValue && br.CompanyId.Value > 0)
                             {
                                 b.CompanyId = br.CompanyId.Value;
@@ -1485,6 +1491,9 @@ public class SyncEngineService : ISyncEngineService
                         existing.TicketAdditionalInfo = res.TicketAdditionalInfo;
                         existing.PrintAdditionalInfoOnEntry = res.PrintAdditionalInfoOnEntry;
                         existing.PrintAdditionalInfoOnExit = res.PrintAdditionalInfoOnExit;
+                        existing.TicketSchedule = res.TicketSchedule;
+                        existing.PrintScheduleOnEntry = res.PrintScheduleOnEntry;
+                        existing.PrintScheduleOnExit = res.PrintScheduleOnExit;
                     }
                     else
                     {
@@ -1511,6 +1520,9 @@ public class SyncEngineService : ISyncEngineService
                             TicketAdditionalInfo = res.TicketAdditionalInfo,
                             PrintAdditionalInfoOnEntry = res.PrintAdditionalInfoOnEntry,
                             PrintAdditionalInfoOnExit = res.PrintAdditionalInfoOnExit,
+                            TicketSchedule = res.TicketSchedule,
+                            PrintScheduleOnEntry = res.PrintScheduleOnEntry,
+                            PrintScheduleOnExit = res.PrintScheduleOnExit,
                             CreatedAtUtc = DateTime.UtcNow
                         });
                     }

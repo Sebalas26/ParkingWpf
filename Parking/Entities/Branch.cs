@@ -42,6 +42,8 @@ public class Branch
     public bool PrintPolicyOnEntry { get; set; } = false;
     public string? TicketAdditionalInfo { get; set; }
     public bool PrintAdditionalInfoOnEntry { get; set; } = false;
+    public string? TicketSchedule { get; set; }
+    public bool PrintScheduleOnEntry { get; set; } = false;
 
     public virtual ICollection<BranchOperatingHour> OperatingHours { get; set; } = new List<BranchOperatingHour>();
 }

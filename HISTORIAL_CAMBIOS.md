@@ -3,21 +3,22 @@
 ## 📅 Entrada: [2026-09-29 09:20:00] - [PRINTING / ENTRY-TICKET / HOMOLOGATION] Homologación de Tirilla de Ingreso (Check-in), Reordenamiento de Póliza antes de QR, Prefijo # en Consecutivo y Corrección de Truncamiento en 58mm (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"revisa el plan y dime si si esta bien y va a funcionar y no va afectar nada ni se va a reventar el wpf ni nada por que este cambio va para producción. no debemos tocar funcionalidades crticas ni nada. por eso entonces rearma el plan para que todo quede full como deberia quedar."_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Homologación de Estructura de Tiquete de Ingreso (Check-in) con PWA (`ReceiptPreviewDialog.xaml`)**:
-     - *Reordenamiento de Bloques*: Se reubicó el bloque de Póliza de Seguro e Información Adicional (`StackPanel Visibility="{Binding HasTicketPolicyOrAdditionalInfo...}"`) para que aparezca inmediatamente después del mensaje de advertencia *"Conserve este tiquete para retirar su vehículo"* y **antes** del bloque de Código QR de Consulta en Línea, homologando 1:1 el orden visual con la PWA.
-     - *Prevención de Desborde de Texto*: Se añadió `TextWrapping="Wrap"` y alineación centrada al texto de custodia de vehículo con fuente reducida a 9pt para evitar saltos o cortes antiestéticos en rollos estrechos.
+     - _Reordenamiento de Bloques_: Se reubicó el bloque de Póliza de Seguro e Información Adicional (`StackPanel Visibility="{Binding HasTicketPolicyOrAdditionalInfo...}"`) para que aparezca inmediatamente después del mensaje de advertencia _"Conserve este tiquete para retirar su vehículo"_ y **antes** del bloque de Código QR de Consulta en Línea, homologando 1:1 el orden visual con la PWA.
+     - _Prevención de Desborde de Texto_: Se añadió `TextWrapping="Wrap"` y alineación centrada al texto de custodia de vehículo con fuente reducida a 9pt para evitar saltos o cortes antiestéticos en rollos estrechos.
   2. **Resolución de Truncamiento de Consecutivo en Papel Térmico de 58mm (`ReceiptPreviewViewModel.cs`, `ReceiptPreviewDialog.xaml`)**:
-     - *Propiedades de Tipografía Dinámica*: Se crearon las propiedades observables `TicketHeaderFontSize` y `TicketNumberFontSize`.
-     - *Métricas Dinámicas según Ancho de Papel*: En `InitializePaperMetrics()` se calibraron los tamaños exactos:
+     - _Propiedades de Tipografía Dinámica_: Se crearon las propiedades observables `TicketHeaderFontSize` y `TicketNumberFontSize`.
+     - _Métricas Dinámicas según Ancho de Papel_: En `InitializePaperMetrics()` se calibraron los tamaños exactos:
        - Para 58mm: Título en `8.5pt`, Consecutivo en `9.5pt` (garantiza visualización completa de consecutivo largo como `PKF-C1-20260924-011` sin solapamiento ni recorte lateral en los 280px del contenedor).
        - Para 80mm: Título en `11.0pt`, Consecutivo en `13.0pt`.
-     - *Prefijo `#` en Consecutivo*: En `LoadTicket` para tiquete de ingreso, se formateó `InvoiceNumberText` anteponiendo `#` (`#PKF-...`), homologando la representación visual de la PWA.
+     - _Prefijo `#` en Consecutivo_: En `LoadTicket` para tiquete de ingreso, se formateó `InvoiceNumberText` anteponiendo `#` (`#PKF-...`), homologando la representación visual de la PWA.
   3. **Corrección de Bug en Políticas de Impresión de Entrada (`ReceiptPreviewViewModel.cs`)**:
-     - *Diagnóstico*: En `LoadTicket`, las condiciones `else if (!string.IsNullOrWhiteSpace(branchPolicy))` y `else if (!string.IsNullOrWhiteSpace(entryRes?.TicketPolicy))` forzaban la impresión de la póliza o información adicional en el tiquete de ingreso incluso cuando los checkboxes `PrintPolicyOnEntry` o `PrintAdditionalInfoOnEntry` estaban desmarcados (`false`).
-     - *Solución*: Se removieron los bloques `else if` de fallback sin flag. Ahora la póliza y el texto adicional en ingreso se imprimen **única y estrictamente** si `PrintPolicyOnEntry == true` o `PrintAdditionalInfoOnEntry == true`.
+     - _Diagnóstico_: En `LoadTicket`, las condiciones `else if (!string.IsNullOrWhiteSpace(branchPolicy))` y `else if (!string.IsNullOrWhiteSpace(entryRes?.TicketPolicy))` forzaban la impresión de la póliza o información adicional en el tiquete de ingreso incluso cuando los checkboxes `PrintPolicyOnEntry` o `PrintAdditionalInfoOnEntry` estaban desmarcados (`false`).
+     - _Solución_: Se removieron los bloques `else if` de fallback sin flag. Ahora la póliza y el texto adicional en ingreso se imprimen **única y estrictamente** si `PrintPolicyOnEntry == true` o `PrintAdditionalInfoOnEntry == true`.
   4. **Pruebas Unitarias Automatizadas (`ReceiptPreviewViewModelTests.cs`)**:
      - Se crearon 3 nuevas pruebas unitarias:
        - `LoadTicket_EntryTicket_SetsInvoiceNumberText_WithHashPrefix`: Certifica que el consecutivo de ingreso recibe el prefijo `#`.
@@ -31,27 +32,72 @@
   - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
   - `Parking/Views/ReceiptPreviewDialog.xaml`
   - `Parking.UnitTests/ViewModels/ReceiptPreviewViewModelTests.cs`
+
+## 📅 Entrada: [2026-09-29 09:15:00] - [SETTINGS / PRINTING / SCHEDULE / PWA / WPF / API] Parametrización de Horario de Atención en Impresión y Visualización debajo del Teléfono en Tiquetes de Entrada y Salida
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"Quisiera que en la parametrizacion de la sede en la impresion agregaras un campo de los horarios, esto igual a como dejaste para poliza y valor adicional. Esto necesito que lo ubiques en los tiquetes de entrada y salida pero debajo del tel"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Modelo de Datos y API Backend (`ParkingApi`)**:
+     - Entidad `Branch`: Se agregaron las columnas `TicketSchedule` (`varchar(500)`) y `PrintScheduleOnEntry` (`bool`), mapeadas en `EntityConfigurations.cs`.
+     - Entidad `BillingResolution`: Se agregaron `TicketSchedule` (`varchar(500)`), `PrintScheduleOnEntry` (`bool`), y `PrintScheduleOnExit` (`bool`), mapeadas en `EntityConfigurations.cs`.
+     - DTOs y Mappings: Actualizados `BranchDto`, `CreateBranchDto`, `UpdateBranchDto`, `BillingResolutionDto`, `SaveBillingResolutionDto`, así como `BranchService.cs`, `BillingResolutionService.cs` y `BillingResolutionRepository.cs`.
+     - Migración EF Core: `20260929135305_AddTicketScheduleToBranchAndResolution` generada y aplicada con éxito a la base de datos MySQL central.
+     - Pruebas Backend: `670/670` pruebas unitarias pasando con 0 errores (`dotnet test ParkingApi.slnx`).
+  2. **Aplicación Web Progresiva (`ParkingFlowPWa`)**:
+     - Modelos e Interfaces (`settings.models.ts`): Propiedades `ticketSchedule`, `printScheduleOnEntry` y `printScheduleOnExit` integradas en DTOs de `Branch` y `BillingResolution`.
+     - Interfaz de Configuración de Impresión (`parqueaderos-tab.component.ts`):
+       - En Apartado 1 (Tiquete de Entrada): Agregado campo de entrada "Horario de Atención (Entrada)" y checkbox interactivo "Imprimir horario en tiquete de entrada", con ícono oficial `lucideClock`.
+       - En Apartado 2 (Tiquetes de Salida por Resolución): Agregado campo "Horario de Atención (Salida)" y checkbox interactivo "Imprimir horario en tiquete de salida" en cada tarjeta de resolución activa.
+       - Carga reactiva en `handleOpenConfig` y guardado atómico en `handleSavePrintingConfig`.
+     - Formato de Tiquete Térmico (`thermal-printer.service.ts` & `receipt-preview-modal.component.ts`):
+       - Generación de `branchSchedule` anteponiendo prefijo `"Horario: "` cuando aplica.
+       - Ubicación estricta: renderizado directamente debajo del teléfono de la sede (`branchPhone`) tanto en el modal de vista previa visual como en la generación de comandos ESC/POS para impresión física directa.
+     - Versión PWA: Actualizada a `0.1.40` y compilación verificada con `npm run build` (**0 Errores, 0 Advertencias**).
+  3. **Cliente de Escritorio (`ParkingWpf`)**:
+     - Entidades y DTOs Locales: Agregadas `TicketSchedule` y flags de impresión en `Branch.cs`, `BillingResolution.cs`, `BranchModel.cs` y DTOs de sincronización `ApiBranchSyncDto` y `ApiBillingResolutionSyncDto` en `BootstrapSyncResponse.cs`.
+     - Motor de Sincronización (`SyncEngineService.cs`): Mapeo bidireccional y actualización de sucursal y resoluciones en SQLite local.
+     - Presentación e Impresión XAML (`ReceiptPreviewViewModel.cs` & `ReceiptPreviewDialog.xaml`):
+       - En `ReceiptPreviewViewModel.cs`: Propiedades `BranchSchedule` y `HasBranchSchedule`, resolviendo jerárquicamente el horario según el tipo de tiquete (entrada o salida) y los flags `PrintScheduleOnEntry` / `PrintScheduleOnExit`.
+       - En `ReceiptPreviewDialog.xaml`: Insertado `TextBlock` para `BranchSchedule` directamente debajo de `BranchPhone` en los 3 formatos: Tiquete POS Estándar de Salida, Tiquete de Ingreso (Entrada) y Factura de Venta Electrónica DIAN.
+     - Pruebas Automatizadas: `354/354` pruebas unitarias superadas con 0 fallos (`dotnet test ParkingWpf.slnx`).
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Entities/Branch.cs`
+  - `Parking/Entities/BillingResolution.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Models/Api/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Data/DbConnectionManager.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
   - `HISTORIAL_CAMBIOS.md`
 
 - **`✅ Verificación y Compilación`**:
   - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
-  - `dotnet test ParkingWpf.slnx`: **358 Pruebas Superadas (100% Éxito, 0 Fallos)**.
+    <<<<<<< HEAD
+  - # `dotnet test ParkingWpf.slnx`: **358 Pruebas Superadas (100% Éxito, 0 Fallos)**.
+  - `dotnet test ParkingWpf.slnx`: **354 Pruebas Superadas (100% Éxito, 0 Fallos)**.
+    > > > > > > > 778f478aaf0354dcd07d88cd11a6e8a4accb3989
 
 ---
 
 ## 📅 Entrada: [2026-09-28 15:20:00] - [CHECKOUT / RESOLUTION / DATA-DRIVEN / BUGFIX] Carga y Preselección Automática de Resolución por Defecto en Checkout sin Datos Quemados (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Miremos en el WPF... resulta y pasa que cuando yo voy a liquidar algo, por defecto el método de pago me trae efectivo, pero ese método tiene configurado... o la app específicamente ese o cualquier otro que tenga configurado una resolución, y no la está cargando, ¿sí? Entonces yo creo que debería el método de pago estar... o si lo carga por defecto, validar si tiene una resolución para que la cargue por defecto, ¿si me explico? Porque es que no lo está haciendo, me toca seleccionarlo. En el PWA funciona diferente, primero se selecciona y después la carga, pero en este pues como viene por defecto, debería validar si tiene una regla por defecto de alguna resolución, y eso no lo está haciendo... como así que efectivo puede tener cualquier nombre por que vas a quemar efectivo ese solo era de ejemplo eso depende del nombre del medio de pago configurado nada de eso puede estar qumado. revisa eso logico el backend o la sqllite devuelve la data y la pinta del orden que llega pero ya tiene la data entonces no deberia dejar quemado textos si me explico."_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Diagnóstico y Eliminación de Borrado Forzado (`CheckOutViewModel.cs`)**:
-     - *Diagnóstico*: En `OnSelectedTicketChanged`, al abrir el diálogo de liquidación de salida, existía la instrucción `SelectedResolution = null;`. Dado que `_selectedPaymentMethodEntity` ya tenía guardado el primer método desde la inicialización, la asignación `SelectedPaymentMethodEntity = AvailablePaymentMethods.FirstOrDefault();` resultaba en un no-op que no disparaba `OnSelectedPaymentMethodEntityChanged`. Como consecuencia, `ApplyPaymentMethodResolutionFilter` jamás se ejecutaba al abrir el modal, y el ComboBox de *Resolución / Doc \** permanecía completamente vacío (`null`), obligando al usuario a seleccionarla manualmente o alternar el método.
-     - *Solución*:
+     - _Diagnóstico_: En `OnSelectedTicketChanged`, al abrir el diálogo de liquidación de salida, existía la instrucción `SelectedResolution = null;`. Dado que `_selectedPaymentMethodEntity` ya tenía guardado el primer método desde la inicialización, la asignación `SelectedPaymentMethodEntity = AvailablePaymentMethods.FirstOrDefault();` resultaba en un no-op que no disparaba `OnSelectedPaymentMethodEntityChanged`. Como consecuencia, `ApplyPaymentMethodResolutionFilter` jamás se ejecutaba al abrir el modal, y el ComboBox de \*Resolución / Doc \*\* permanecía completamente vacío (`null`), obligando al usuario a seleccionarla manualmente o alternar el método.
+     - _Solución_:
        - Se eliminó el borrado `SelectedResolution = null;`.
        - Se invoca explícitamente `ApplyPaymentMethodResolutionFilter(defaultMethod)` al seleccionar un tiquete.
   2. **Arquitectura 100% Basada en Datos (Cero Nombres Quemados - Regla de Oro 4 y 8)**:
-     - El método de pago inicial es estrictamente el primer registro activo devuelto por SQLite / API para la sede (`AvailablePaymentMethods.FirstOrDefault()`), sin asumir nombres como *"Efectivo"*.
+     - El método de pago inicial es estrictamente el primer registro activo devuelto por SQLite / API para la sede (`AvailablePaymentMethods.FirstOrDefault()`), sin asumir nombres como _"Efectivo"_.
      - Se evalúan las propiedades relacionales del método:
        - Si tiene `DefaultResolutionId` configurado en base de datos: se busca y autoselecciona exactamente esa resolución en `AvailableResolutions`. Si es electrónica, activa `EmitElectronicInvoice = true`; si es estándar (POS), mantiene `EmitElectronicInvoice = false`.
        - Si tiene `RequiresResolution == true` (exige facturación electrónica): se filtra a resoluciones electrónicas y se selecciona su `DefaultResolutionId` o la primera electrónica.
@@ -79,23 +125,24 @@
 ## 📅 Entrada: [2026-09-28 14:45:00] - [PRINTING / POLICIES / CHECKOUT / FISCAL] Soporte de Póliza y Campo Adicional de la Sede en Impresión y Automatización de Facturación Electrónica DIAN en Checkout (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"En el WPF falta que lo que se configura en la sede para poliza y campo adicional no se esta mostrando bien en la impresión si me explico, segundo se debe validar bien por que ese boton e emitir factura Dian no va no se pro que esta hay, por que eso esta afectado por que el sistema ya sabe si algun metodo de pago fue configurado por factura electronica el sistema ya lo va a tomar entonces no hay necsidad de eso si me explico. analisa y configuralo."_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Propiedades de Póliza e Información Adicional en Entidad y Modelo de Sede (`Branch.cs`, `BranchModel.cs`, `BootstrapSyncResponse.cs`, `SyncEngineService.cs`)**:
-     - *Diagnóstico*: En la base de datos central y en la PWA se incorporaron los campos `TicketPolicy`, `PrintPolicyOnEntry`, `TicketAdditionalInfo` y `PrintAdditionalInfoOnEntry` a nivel de Sede (`Branch`). Sin embargo, en el cliente WPF ni la entidad EF Core `Branch`, ni el modelo de sesión en memoria `BranchModel`, ni el DTO de bootstrap `ApiBranchSyncDto` tenían estas 4 propiedades. Por ende, la información configurada en la sede nunca se recibía en la sincronización local SQLite ni se encontraba accesible para la tirilla de impresión.
-     - *Solución*:
+     - _Diagnóstico_: En la base de datos central y en la PWA se incorporaron los campos `TicketPolicy`, `PrintPolicyOnEntry`, `TicketAdditionalInfo` y `PrintAdditionalInfoOnEntry` a nivel de Sede (`Branch`). Sin embargo, en el cliente WPF ni la entidad EF Core `Branch`, ni el modelo de sesión en memoria `BranchModel`, ni el DTO de bootstrap `ApiBranchSyncDto` tenían estas 4 propiedades. Por ende, la información configurada en la sede nunca se recibía en la sincronización local SQLite ni se encontraba accesible para la tirilla de impresión.
+     - _Solución_:
        - Se agregaron las 4 propiedades tipadas a `Branch` (SQLite/EF Core), a `BranchModel` (sesión en memoria) y a `ApiBranchSyncDto` (payload de sincronización API).
        - En `SyncEngineService.cs` se actualizó el mapeo bidireccional y de bootstrap (`existingBranch`, `new Branch`, `_sessionService.UpdateCurrentBranch`, `userBranch`).
   2. **Resolución Jerárquica de Póliza y Texto Adicional en Tirillas de Entrada y Salida (`ReceiptPreviewViewModel.cs`)**:
-     - *Diagnóstico*: En `LoadTicket()`, la resolución de pólizas e información legal se limitaba prioritariamente a las resoluciones de facturación. Si la sede tenía su propia póliza o cláusula legal configurada, no se tomaba como fuente primordial.
-     - *Solución*: Se implementó la resolución jerárquica con prioridad a la sede activa (`currentBranch` / `_sessionService.CurrentBranch` / consulta a `db.Branches`):
+     - _Diagnóstico_: En `LoadTicket()`, la resolución de pólizas e información legal se limitaba prioritariamente a las resoluciones de facturación. Si la sede tenía su propia póliza o cláusula legal configurada, no se tomaba como fuente primordial.
+     - _Solución_: Se implementó la resolución jerárquica con prioridad a la sede activa (`currentBranch` / `_sessionService.CurrentBranch` / consulta a `db.Branches`):
        - Tiquete de entrada: si la sede tiene `PrintPolicyOnEntry == true` y texto en `TicketPolicy`, se imprime de forma prioritaria sobre la resolución. Misma prioridad para `TicketAdditionalInfo` con `PrintAdditionalInfoOnEntry`.
        - Tiquete de salida: si la resolución no define póliza o texto adicional, o si la sede los tiene definidos, se imprimen fielmente.
   3. **Supresión del Checkbox Manual de Factura DIAN en Checkout (`CheckOutDialog.xaml`, `CheckOutViewModel.cs`)**:
-     - *Diagnóstico*: En el diálogo de cobro de salida de vehículos (`CheckOutDialog.xaml`), existía un control interactivo `CheckBox` con `IsChecked="{Binding EmitElectronicInvoice}"`. La regla de negocio estipula que el sistema determina 100% de forma automática si la transacción es DIAN según el medio de pago o la resolución seleccionada; permitir manipular este toggle manualmente generaba inconsistencias fiscales y confusión en el operador.
-     - *Solución*:
-       - Se removió el `CheckBox` interactivo del XAML y se sustituyó por una cabecera informativa elegante con ícono de documento fiscal DIAN y mensaje claro: *"FACTURACIÓN ELECTRÓNICA DIAN ACTIVA (Determinada automáticamente según el medio de pago)"*.
+     - _Diagnóstico_: En el diálogo de cobro de salida de vehículos (`CheckOutDialog.xaml`), existía un control interactivo `CheckBox` con `IsChecked="{Binding EmitElectronicInvoice}"`. La regla de negocio estipula que el sistema determina 100% de forma automática si la transacción es DIAN según el medio de pago o la resolución seleccionada; permitir manipular este toggle manualmente generaba inconsistencias fiscales y confusión en el operador.
+     - _Solución_:
+       - Se removió el `CheckBox` interactivo del XAML y se sustituyó por una cabecera informativa elegante con ícono de documento fiscal DIAN y mensaje claro: _"FACTURACIÓN ELECTRÓNICA DIAN ACTIVA (Determinada automáticamente según el medio de pago)"_.
        - En `CheckOutViewModel.cs`, la propiedad `IsElectronicInvoicingSectionVisible` ahora expone limpiamente `EmitElectronicInvoice`, manteniendo vinculada la validación de cliente sin toggle manual.
   4. **Verificación y Pruebas Unitarias**:
      - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
@@ -120,12 +167,13 @@
 ## 📅 Entrada: [2026-09-28 14:15:00] - [CONFIG / VERSIONING] Configuración Explícita de Versión del Ensamblado en Parking.csproj (Soporte Anti-Bloqueo de Actualización en Desarrollo Local)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Tengo un duda como le subo la version al WPF por que si ya tengotodos los cambios pero existe una versión arriba me pide actualziar no deberia por que siempre que compilo es en la version 1.0.0 eso donde se configura ? ... sii y así yo lo pueda modificar si me explico."_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Configuración Explícita de Versión en `Parking.csproj`**:
-     - *Diagnóstico*: En los proyectos .NET SDK, si no se definen propiedades explícitas de versión en el `.csproj`, el compilador asigna por defecto `1.0.0.0`. En tiempo de ejecución, `AppUpdateService` lee `Assembly.GetExecutingAssembly().GetName().Version` (`1.0.0`) y consulta al endpoint `/api/v1/app-update/check?currentVersion=1.0.0`. Al existir en la nube una versión superior registrada (`1.0.1`), el sistema exigía actualizar y bloqueaba la operación de desarrollo.
-     - *Solución*: Se incorporaron en [`Parking/Parking.csproj`](file:///c:/Users/miguelagutierrezg/Documents/Parking/Parking/Parking.csproj) las etiquetas declarativas `<Version>1.0.1</Version>`, `<AssemblyVersion>1.0.1</AssemblyVersion>`, `<FileVersion>1.0.1</FileVersion>` e `<InformationalVersion>1.0.1</InformationalVersion>`, permitiendo al desarrollador modificar manualmente la versión base cada vez que se incremente un release sin depender exclusivamente del parámetro de empaquetado.
+     - _Diagnóstico_: En los proyectos .NET SDK, si no se definen propiedades explícitas de versión en el `.csproj`, el compilador asigna por defecto `1.0.0.0`. En tiempo de ejecución, `AppUpdateService` lee `Assembly.GetExecutingAssembly().GetName().Version` (`1.0.0`) y consulta al endpoint `/api/v1/app-update/check?currentVersion=1.0.0`. Al existir en la nube una versión superior registrada (`1.0.1`), el sistema exigía actualizar y bloqueaba la operación de desarrollo.
+     - _Solución_: Se incorporaron en [`Parking/Parking.csproj`](file:///c:/Users/miguelagutierrezg/Documents/Parking/Parking/Parking.csproj) las etiquetas declarativas `<Version>1.0.1</Version>`, `<AssemblyVersion>1.0.1</AssemblyVersion>`, `<FileVersion>1.0.1</FileVersion>` e `<InformationalVersion>1.0.1</InformationalVersion>`, permitiendo al desarrollador modificar manualmente la versión base cada vez que se incremente un release sin depender exclusivamente del parámetro de empaquetado.
   2. **Verificación y Pruebas**:
      - Inspección del binario compilado `Parking.dll`: `FileVersion: 1.0.1`, `ProductVersion: 1.0.1`.
      - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
@@ -144,12 +192,13 @@
 ## 📅 Entrada: [2026-09-28 14:00:00] - [PRINTING / POLICIES] Inclusión Obligatoria de Póliza y Cláusulas en Tiquete de Entrada y Salida (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Póliza y Texto Adicional en Tiquete de Entrada (PWA y WPF): Se configuraron pólizas y textos adicionales en la sede/resoluciones, pero solo salían en el tiquete de salida, NO en el de entrada. Debe garantizarse que se muestren en ambos tiquetes tanto en PWA como en WPF."_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Resolución Defensiva de Pólizas e Información Adicional en Tiquete de Entrada (`ReceiptPreviewViewModel.cs`)**:
-     - *Diagnóstico*: En `LoadTicket()`, la consulta de resolución para tiquete de entrada (`!IsExitReceipt`) filtraba únicamente resoluciones donde `r.PrintPolicyOnEntry == true || r.PrintAdditionalInfoOnEntry == true`. Si el registro de la resolución activa en base de datos local SQLite no tenía encendida esa bandera específica pero sí contenía el texto legal en `TicketPolicy` / `TicketAdditionalInfo`, `entryRes` quedaba en null o las propiedades se asignaban como `null`.
-     - *Solución*:
+     - _Diagnóstico_: En `LoadTicket()`, la consulta de resolución para tiquete de entrada (`!IsExitReceipt`) filtraba únicamente resoluciones donde `r.PrintPolicyOnEntry == true || r.PrintAdditionalInfoOnEntry == true`. Si el registro de la resolución activa en base de datos local SQLite no tenía encendida esa bandera específica pero sí contenía el texto legal en `TicketPolicy` / `TicketAdditionalInfo`, `entryRes` quedaba en null o las propiedades se asignaban como `null`.
+     - _Solución_:
        - Se implementó fallback secuencial en LINQ: primero busca resoluciones con banderas activas de entrada; si no encuentra, busca resoluciones activas de la sede con texto configurado en `TicketPolicy` o `TicketAdditionalInfo`.
        - Se flexibilizó la asignación: si existe texto en `TicketPolicy`, se asigna directamente al comprobante de entrada independientemente de discrepancias en la bandera booleana.
        - Misma lógica aplicada a la salida para consistencia total en comprobantes de 58mm y 80mm.
@@ -170,29 +219,30 @@
 ## 📅 Entrada: [2026-09-28 13:00:00] - [BUGFIX / PRINTING / DEPLOYMENT] Detección Automática de Impresoras Térmicas Directas (Cero Cuadros de Diálogo) y Compilación de Instalador Setup Windows con Inno Setup 6
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"tengo este fallo no genera el instalador, segundo se tiene el fallo en el wpf que cuando se le de imprimir no esta mandado a imprimir el deberia validar que impresora esta conectada y mandar a imprimir directamente si me epxlico ? eos no esta pasando ."_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Generación del Instalador Oficial de Windows con Inno Setup 6**:
-     - *Causa raíz*: El entorno local carecía de `ISCC.exe` (`Inno Setup 6`). El script `Scripts/publish-release.ps1` omitía la generación del ejecutable instalador desplegando el aviso de herramienta no encontrada.
-     - *Resolución*: Se instaló Inno Setup 6 (`JRSoftware.InnoSetup` v6.7.3) mediante `winget`.
-     - *Validación*: Se ejecutó `publish-release.ps1 -Version 1.0.1`, generando exitosamente `Releases/v1.0.1/ParkFlow_Setup_v1.0.1.exe` (46.96 MB), comprimido con LZMA2/max, configurado con ícono institucional `parkpoint.ico`, accesos directos de escritorio/inicio y soporte multi-usuario con permisos locales.
+     - _Causa raíz_: El entorno local carecía de `ISCC.exe` (`Inno Setup 6`). El script `Scripts/publish-release.ps1` omitía la generación del ejecutable instalador desplegando el aviso de herramienta no encontrada.
+     - _Resolución_: Se instaló Inno Setup 6 (`JRSoftware.InnoSetup` v6.7.3) mediante `winget`.
+     - _Validación_: Se ejecutó `publish-release.ps1 -Version 1.0.1`, generando exitosamente `Releases/v1.0.1/ParkFlow_Setup_v1.0.1.exe` (46.96 MB), comprimido con LZMA2/max, configurado con ícono institucional `parkpoint.ico`, accesos directos de escritorio/inicio y soporte multi-usuario con permisos locales.
   2. **Detección Dinámica de Impresoras y Flujo de Impresión Directa en WPF (Cero PrintDialog)**:
-     - *Causa raíz*:
+     - _Causa raíz_:
        a) `ReceiptPreviewDialog.xaml` tenía doble suscripción en el botón "Imprimir Tiquete": ejecutaba `Command="{Binding PrintTicketCommand}"` (que llamaba a un servicio mock de logging) y a la vez `Click="PrintButton_Click"` (que ejecutaba code-behind con `printDialog.ShowDialog()`), abriendo el cuadro de diálogo de Windows del sistema operativo.
        b) En `ReceiptPreviewDialog_PreviewKeyDown`, al presionar Enter, se llamaba `PrintTicketCommand`, luego `ShowDialog()` y se cerraba de inmediato la ventana (`Close()`), provocando que la impresión nunca llegara físicamente a la cola o se cancelara abruptamente.
-     - *Nueva Arquitectura de Impresión*:
+     - _Nueva Arquitectura de Impresión_:
        a) Se diseñó e implementó `IPrinterDiscoveryService` y `PrinterDiscoveryService` en `Parking/Services/`:
-          - `GetInstalledPrinters()`: Inspecciona colas locales y de red registradas en `LocalPrintServer`.
-          - `ResolveConnectedPrinter()`: Identifica de forma inteligente la impresora conectada y en línea, priorizando impresoras térmicas POS (`pos`, `thermal`, `receipt`, `ticket`, `epson`, `bixolon`, `star`, `tm-`, `xp-`, `zj-`, `58`, `80`) o recurriendo a la impresora predeterminada activa del sistema operativo si no está fuera de línea.
-          - `PrintVisualDirect(Visual, jobTitle)`: Envía el árbol visual (`TicketPrintableContent`) directamente a la cola de impresión seleccionada mediante `printQueue.CreatePrintJob()` y `AddJob()`, respetando el formato de 58mm u 80mm configurado en la sede, sin abrir diálogos de selección.
-       b) `ReceiptPreviewViewModel`: Expone `DetectedPrinterName`, `HasConnectedPrinter`, `PrintStatusMessage` y el delegado asíncrono `DirectPrintHandler`.
-       c) `ReceiptPreviewDialog.xaml`:
-          - Se eliminó el manejador `Click="PrintButton_Click"`.
-          - Se actualizó el footer inferior para mostrar el nombre de la impresora detectada en tiempo real (ej. `Impresora: POS-80`) y el mensaje de confirmación/error.
-       d) `ReceiptPreviewDialog.xaml.cs`:
-          - En `Loaded`: Conecta `DirectPrintHandler` con `_printerDiscovery.PrintVisualDirect(TicketPrintableContent, ...)`.
-          - En `PreviewKeyDown` (Enter): Ejecuta `PrintTicketCommand` e imprime directamente, esperando una breve pausa para confirmar visualmente antes de cerrar.
+       - `GetInstalledPrinters()`: Inspecciona colas locales y de red registradas en `LocalPrintServer`.
+       - `ResolveConnectedPrinter()`: Identifica de forma inteligente la impresora conectada y en línea, priorizando impresoras térmicas POS (`pos`, `thermal`, `receipt`, `ticket`, `epson`, `bixolon`, `star`, `tm-`, `xp-`, `zj-`, `58`, `80`) o recurriendo a la impresora predeterminada activa del sistema operativo si no está fuera de línea.
+       - `PrintVisualDirect(Visual, jobTitle)`: Envía el árbol visual (`TicketPrintableContent`) directamente a la cola de impresión seleccionada mediante `printQueue.CreatePrintJob()` y `AddJob()`, respetando el formato de 58mm u 80mm configurado en la sede, sin abrir diálogos de selección.
+         b) `ReceiptPreviewViewModel`: Expone `DetectedPrinterName`, `HasConnectedPrinter`, `PrintStatusMessage` y el delegado asíncrono `DirectPrintHandler`.
+         c) `ReceiptPreviewDialog.xaml`:
+       - Se eliminó el manejador `Click="PrintButton_Click"`.
+       - Se actualizó el footer inferior para mostrar el nombre de la impresora detectada en tiempo real (ej. `Impresora: POS-80`) y el mensaje de confirmación/error.
+         d) `ReceiptPreviewDialog.xaml.cs`:
+       - En `Loaded`: Conecta `DirectPrintHandler` con `_printerDiscovery.PrintVisualDirect(TicketPrintableContent, ...)`.
+       - En `PreviewKeyDown` (Enter): Ejecuta `PrintTicketCommand` e imprime directamente, esperando una breve pausa para confirmar visualmente antes de cerrar.
   3. **Pruebas y Verificación**:
      - Se crearon pruebas unitarias en `Parking.UnitTests/Services/PrinterDiscoveryServiceTests.cs`.
      - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
@@ -216,6 +266,7 @@
 ---
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"Peor si quisiera que esa fila tuviera un campo de estaod de sincronizacion para que a nivel de front se sepa si se sincrono el cliente"_
 
 - **`🤖 Resumen Técnico para la IA`**:
@@ -223,13 +274,13 @@
      - Se integraron `[NotMapped] public bool IsSynchronized { get; set; } = true;` y `[NotMapped] public string? SyncError { get; set; }` sin alterar el esquema relacional de SQLite.
   2. **Conciliación en Carga de Clientes (`CustomersViewModel.cs`)**:
      - En `LoadCustomersAsync`: Se consultan los registros pendientes de `db.PendingSyncItems` (`OperationType == "CreateCustomer" && !IsProcessed`).
-     - Para cada cliente listado en pantalla: si su `CustomerId` está en la cola pendiente, se establece `IsSynchronized = false` y `SyncError` con el detalle registrado en `item.LastError` (ej. *"HTTP 403: Bloqueado por firewall corporativo FortiGuard..."*). Si no tiene pendientes, se establece `IsSynchronized = true`.
+     - Para cada cliente listado en pantalla: si su `CustomerId` está en la cola pendiente, se establece `IsSynchronized = false` y `SyncError` con el detalle registrado en `item.LastError` (ej. _"HTTP 403: Bloqueado por firewall corporativo FortiGuard..."_). Si no tiene pendientes, se establece `IsSynchronized = true`.
   3. **Comando de Reintento Individual (`RetrySyncCustomerAsync`)**:
      - Se implementó `RetrySyncCustomerCommand` con parámetro de cliente para reintentar la llamada directa a `_apiClient.CreateCustomerAsync`. Si el API responde exitosamente, se elimina el ítem de `PendingSyncItems`, se refresca la vista y se notifica éxito al operador.
   4. **Diseño Visual en DataGrid (`CustomersView.xaml`)**:
      - Se añadió la columna **`ESTADO`** con dos insignias elegantes:
-       - 🟢 **Sincronizado**: Fondo translúcido verde (`#1510B981`), borde suave, icono `{StaticResource IconCheck}` y texto *"Sincronizado"*.
-       - 🟠 **Sin Sincronizar**: Fondo translúcido naranja (`#18F59E0B`), borde suave, icono `{StaticResource IconWarning}`, texto *"Sin Sincronizar"* y ToolTip informativo con la causa técnica del error (`SyncError`).
+       - 🟢 **Sincronizado**: Fondo translúcido verde (`#1510B981`), borde suave, icono `{StaticResource IconCheck}` y texto _"Sincronizado"_.
+       - 🟠 **Sin Sincronizar**: Fondo translúcido naranja (`#18F59E0B`), borde suave, icono `{StaticResource IconWarning}`, texto _"Sin Sincronizar"_ y ToolTip informativo con la causa técnica del error (`SyncError`).
      - En la columna **`ACCIONES`**: Para las filas con `IsSynchronized == false`, se despliega el botón **"Reintentar"** con icono `{StaticResource IconRefresh}` para forzar el reenvío a la nube.
   5. **Pruebas y Verificación**:
      - `dotnet build`: **0 Errores, 0 Advertencias**.
@@ -249,19 +300,20 @@
 ## 📅 Entrada: [2026-09-28 12:15:00] - [FEATURE / UI / DANE / DIAGNOSTICS] ComboBox Alfabético de Municipios DANE en Gestión de Clientes y Detección de Bloqueos de Firewall (FortiGuard)
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"pero todos quedan . Si la conexión falla o el envío queda en cola, notifica: 'El cliente se guardó en este equipo y se sincronizará automáticamente con la nube'. porque? porque falla donde veo el error y como hago para el reintento, adicional veo que no me estan cargando lo municipios que ya me muestra en municipio dane en la pantalla de detalle de corbo y liquidacion en el apartado de clientes /nuevo cliente, alli me debberia d cargar ese listado alfaabetiamente"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Integración de ComboBox de Municipios DANE en Formulario de Clientes (`CustomersView.xaml` & `CustomersViewModel.cs`)**:
-     - *Diagnóstico*: En la pantalla principal de clientes (`CustomersView.xaml`), el campo de municipio era un `TextBox` numérico libre. Esto obligaba al usuario a recordar códigos DANE y facilitaba la entrada de datos erróneos (ej. `1100001`, `1000111`), mientras que en la pantalla de cobro (`CheckOutDialog.xaml`) ya existía un `ComboBox` ordenado alfabéticamente.
-     - *Solución*:
+     - _Diagnóstico_: En la pantalla principal de clientes (`CustomersView.xaml`), el campo de municipio era un `TextBox` numérico libre. Esto obligaba al usuario a recordar códigos DANE y facilitaba la entrada de datos erróneos (ej. `1100001`, `1000111`), mientras que en la pantalla de cobro (`CheckOutDialog.xaml`) ya existía un `ComboBox` ordenado alfabéticamente.
+     - _Solución_:
        - En `CustomersViewModel.cs`: Se expuso `AvailableMunicipalities` (`ObservableCollection<DaneMunicipality>`) y `SelectedDaneMunicipality`. Se implementó `LoadMunicipalitiesAsync()` consultando `db.DaneMunicipalities.OrderBy(m => m.MunicipalityName).ToListAsync()` y despachándolo de forma segura al Dispatcher de UI.
        - En `CustomersView.xaml`: Se reemplazó el `TextBox` por un `ComboBox` con estilo oficial `ModernComboBox`, enlazado a `AvailableMunicipalities`, `SelectedDaneMunicipality` y `DisplayMemberPath="MunicipalityName"`.
-       - *Cumplimiento de la Regla de Oro 8 (Cero Datos Pre-llenados)*: Al abrir la creación de cliente (`OpenCreateCustomer`), los campos se inicializan estrictamente limpios (`SelectedDaneMunicipality = null; FormCityCode = string.Empty; FormStateCode = string.Empty;`), activando la validación visual requerida si el usuario omite su selección antes de guardar.
-       - *En Edición*: Si el cliente ya tiene un `CityCode`, se localiza y preselecciona automáticamente el municipio correspondiente en el desplegable.
+       - _Cumplimiento de la Regla de Oro 8 (Cero Datos Pre-llenados)_: Al abrir la creación de cliente (`OpenCreateCustomer`), los campos se inicializan estrictamente limpios (`SelectedDaneMunicipality = null; FormCityCode = string.Empty; FormStateCode = string.Empty;`), activando la validación visual requerida si el usuario omite su selección antes de guardar.
+       - _En Edición_: Si el cliente ya tiene un `CityCode`, se localiza y preselecciona automáticamente el municipio correspondiente en el desplegable.
   2. **Diagnóstico y Captura de Bloqueos de Firewall en Sincronización (`ParkingApiClient.cs`)**:
-     - *Causa Raíz Identificada*: Al auditar la comunicación HTTP contra `https://api.parking-flow.com`, se comprobó que el firewall corporativo de la red (**FortiGuard / Fortinet**) bloquea las peticiones salientes con código `HTTP 403 Forbidden` por catalogar el dominio como *"Unrated"*.
-     - *Mejora de Diagnóstico*: Anteriormente, cualquier código HTTP distinto a 200 o 400 retornaba `null`, asignando en SQLite el mensaje genérico *"No se recibió confirmación del servidor central."*. Ahora, `ParkingApiClient.CreateCustomerAsync` detecta respuestas no exitosas y, ante intercepciones de FortiGuard o errores de servidor, lanza una `InvalidOperationException` detallada (`HTTP_403_FIREWALL: Bloqueado por firewall corporativo FortiGuard...`), permitiendo que el detalle real se registre en `item.LastError` de la cola y en `Logs/ErrorLog_YYYYMMDD.txt`.
+     - _Causa Raíz Identificada_: Al auditar la comunicación HTTP contra `https://api.parking-flow.com`, se comprobó que el firewall corporativo de la red (**FortiGuard / Fortinet**) bloquea las peticiones salientes con código `HTTP 403 Forbidden` por catalogar el dominio como _"Unrated"_.
+     - _Mejora de Diagnóstico_: Anteriormente, cualquier código HTTP distinto a 200 o 400 retornaba `null`, asignando en SQLite el mensaje genérico _"No se recibió confirmación del servidor central."_. Ahora, `ParkingApiClient.CreateCustomerAsync` detecta respuestas no exitosas y, ante intercepciones de FortiGuard o errores de servidor, lanza una `InvalidOperationException` detallada (`HTTP_403_FIREWALL: Bloqueado por firewall corporativo FortiGuard...`), permitiendo que el detalle real se registre en `item.LastError` de la cola y en `Logs/ErrorLog_YYYYMMDD.txt`.
   3. **Pruebas y Verificación**:
      - `dotnet build`: **0 Errores, 0 Advertencias**.
      - `dotnet test ParkingWpf.slnx`: **348 de 348 pruebas superadas (100% éxito, 0 fallos, 0 omitidas)**.
@@ -280,18 +332,19 @@
 ## 📅 Entrada: [2026-09-28 11:30:00] - [BUGFIX / SYNC / CUSTOMERS / UI] Mapeo de Identificación DIAN en Edición de Clientes, Persistencia Incondicional de Errores de Sincronización y Logging Robusto
 
 - **`💬 Prompt Original del Usuario`**:
+
   > _"valida si tiene huecos tecnicos y dar con la solucion definitiva este plan que me creaste"_
 
 - **`🤖 Resumen Técnico para la IA`**:
   1. **Mapeo de Tipos de Documento en Formulario de Edición (`CustomersViewModel.cs`)**:
-     - *Causa Raíz*: Cuando un cliente se descarga desde el API remoto hacia SQLite, el backend almacena los IDs internos 1..5 (`1: CC, 2: CE, 3: NIT, 4: Pasaporte, 5: Otro/Doc Extranjero`). Sin embargo, el ComboBox del formulario de clientes en WPF espera los códigos DIAN (`13, 22, 31, 41, 42`). Al abrir un cliente previamente descargado de la nube para edición, `FormIdentificationTypeId` se asignaba directamente en `1..5`, dejando el desplegable deseleccionado o en blanco.
-     - *Solución*: Se implementó un mapeo por expresión switch: `1 => 13, 2 => 22, 3 => 31, 4 => 41, 5 => 42, _ => customer.IdentificationTypeId`, permitiendo que el selector coincida perfectamente sin alterar el valor de catálogo.
+     - _Causa Raíz_: Cuando un cliente se descarga desde el API remoto hacia SQLite, el backend almacena los IDs internos 1..5 (`1: CC, 2: CE, 3: NIT, 4: Pasaporte, 5: Otro/Doc Extranjero`). Sin embargo, el ComboBox del formulario de clientes en WPF espera los códigos DIAN (`13, 22, 31, 41, 42`). Al abrir un cliente previamente descargado de la nube para edición, `FormIdentificationTypeId` se asignaba directamente en `1..5`, dejando el desplegable deseleccionado o en blanco.
+     - _Solución_: Se implementó un mapeo por expresión switch: `1 => 13, 2 => 22, 3 => 31, 4 => 41, 5 => 42, _ => customer.IdentificationTypeId`, permitiendo que el selector coincida perfectamente sin alterar el valor de catálogo.
   2. **Eliminación de `catch { }` Silencioso y Feedback Preciso (`CustomersViewModel.cs`)**:
-     - *Causa Raíz*: Al invocar `_apiClient.CreateCustomerAsync` tras guardar en base local, un bloque `catch { }` vacío suprimía cualquier excepción (errores HTTP 400 por rechazos del API o fallos de red), mostrando siempre al usuario un falso diálogo de éxito: *"ha sido registrado exitosamente"*, ocultando que el cliente no se había subido a la nube.
-     - *Solución*: Se reemplazó por captura con logging a `App.LogException(ex, "CustomersViewModel.SaveCustomerAsync.ImmediateSync")`. Se condicionó el feedback: si `pending.IsProcessed == true`, notifica registro y sincronización exitosa en la nube; si quedó pendiente (sin red o diferido), notifica con advertencia amigable: *"El cliente se guardó en este equipo y se sincronizará automáticamente con la nube."*
+     - _Causa Raíz_: Al invocar `_apiClient.CreateCustomerAsync` tras guardar en base local, un bloque `catch { }` vacío suprimía cualquier excepción (errores HTTP 400 por rechazos del API o fallos de red), mostrando siempre al usuario un falso diálogo de éxito: _"ha sido registrado exitosamente"_, ocultando que el cliente no se había subido a la nube.
+     - _Solución_: Se reemplazó por captura con logging a `App.LogException(ex, "CustomersViewModel.SaveCustomerAsync.ImmediateSync")`. Se condicionó el feedback: si `pending.IsProcessed == true`, notifica registro y sincronización exitosa en la nube; si quedó pendiente (sin red o diferido), notifica con advertencia amigable: _"El cliente se guardó en este equipo y se sincronizará automáticamente con la nube."_
   3. **Persistencia Incondicional de Reintentos y Diagnóstico (`SyncEngineService.cs`)**:
-     - *Causa Raíz*: En `ProcessPendingCustomersAsync`, `await db.SaveChangesAsync()` se encontraba dentro de `if (processed.Count > 0)`. Si un lote de clientes fallaba contra el API (`processed.Count == 0`), los incrementos de `item.RetryCount++` y el detalle de `item.LastError` no se persistían en SQLite, impidiendo que el contador de reintentos alcanzara el límite de 3 para desatascar la cola en fallos irrecuperables.
-     - *Solución*: Se movió `await db.SaveChangesAsync()` fuera del condicional para garantizar que cualquier actualización a `RetryCount` y `LastError` quede grabada en SQLite en cada intento.
+     - _Causa Raíz_: En `ProcessPendingCustomersAsync`, `await db.SaveChangesAsync()` se encontraba dentro de `if (processed.Count > 0)`. Si un lote de clientes fallaba contra el API (`processed.Count == 0`), los incrementos de `item.RetryCount++` y el detalle de `item.LastError` no se persistían en SQLite, impidiendo que el contador de reintentos alcanzara el límite de 3 para desatascar la cola en fallos irrecuperables.
+     - _Solución_: Se movió `await db.SaveChangesAsync()` fuera del condicional para garantizar que cualquier actualización a `RetryCount` y `LastError` quede grabada en SQLite en cada intento.
   4. **Pruebas y Verificación**:
      - `dotnet build`: **0 Errores, 0 Advertencias**.
      - `dotnet test ParkingWpf.slnx`: **348 de 348 pruebas superadas (100% éxito, 0 fallos, 0 omitidas)**.

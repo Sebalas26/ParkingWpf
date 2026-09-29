@@ -132,6 +132,12 @@ public class BranchModel
     [JsonPropertyName("printAdditionalInfoOnEntry")]
     public bool PrintAdditionalInfoOnEntry { get; set; }
 
+    [JsonPropertyName("ticketSchedule")]
+    public string? TicketSchedule { get; set; }
+
+    [JsonPropertyName("printScheduleOnEntry")]
+    public bool PrintScheduleOnEntry { get; set; }
+
     [JsonPropertyName("isActive")]
     public bool IsActive { get; set; } = true;
 }
