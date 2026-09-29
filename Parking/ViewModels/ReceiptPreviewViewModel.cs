@@ -350,6 +350,12 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private double _plateFontSize = 16;
 
     [ObservableProperty]
+    private double _ticketHeaderFontSize = 11;
+
+    [ObservableProperty]
+    private double _ticketNumberFontSize = 13;
+
+    [ObservableProperty]
     private string _publicConsultationUrl = "https://www.parking-flow.com/consulta";
 
     [ObservableProperty]
@@ -447,6 +453,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             MonospaceFontSize = 9.5;
             MonospaceTitleFontSize = 13;
             PlateFontSize = 14;
+            TicketHeaderFontSize = 8.5;
+            TicketNumberFontSize = 9.5;
             LogoMaxHeight = 38;
             LogoMaxWidth = 100;
         }
@@ -459,6 +467,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             MonospaceFontSize = 11;
             MonospaceTitleFontSize = 15;
             PlateFontSize = 16;
+            TicketHeaderFontSize = 11;
+            TicketNumberFontSize = 13;
             LogoMaxHeight = 48;
             LogoMaxWidth = 130;
         }
@@ -886,7 +896,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             HasAmountPaid = false;
             ChangeGivenStr = string.Empty;
             HasChange = false;
-            InvoiceNumberText = ticket.TicketNumber;
+            InvoiceNumberText = string.IsNullOrWhiteSpace(ticket.TicketNumber) ? string.Empty : (ticket.TicketNumber.StartsWith("#") ? ticket.TicketNumber : $"#{ticket.TicketNumber}");
             InvoiceDateStr = (ticket.EntryTime != default ? ticket.EntryTime : DateTime.Now).ToString("dd/MM/yy");
             InvoiceTimeStr = (ticket.EntryTime != default ? ticket.EntryTime : DateTime.Now).ToString("hh:mm tt", CultureInfo.InvariantCulture);
             BarcodeImage = Services.Implementations.BarcodeGeneratorService.GenerateCode128(ticket.PlateNumber);
@@ -960,14 +970,6 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 {
                     resolvedPolicy = entryRes.TicketPolicy.Trim();
                 }
-                else if (!string.IsNullOrWhiteSpace(branchPolicy))
-                {
-                    resolvedPolicy = branchPolicy.Trim();
-                }
-                else if (!string.IsNullOrWhiteSpace(entryRes?.TicketPolicy))
-                {
-                    resolvedPolicy = entryRes.TicketPolicy.Trim();
-                }
 
                 // 2. Información Adicional en Tiquete de Entrada: Prioridad a la Sede, luego Resolución
                 string? resolvedAdditionalInfo = null;
@@ -976,14 +978,6 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                     resolvedAdditionalInfo = branchAdditionalInfo.Trim();
                 }
                 else if (entryRes?.PrintAdditionalInfoOnEntry == true && !string.IsNullOrWhiteSpace(entryRes.TicketAdditionalInfo))
-                {
-                    resolvedAdditionalInfo = entryRes.TicketAdditionalInfo.Trim();
-                }
-                else if (!string.IsNullOrWhiteSpace(branchAdditionalInfo))
-                {
-                    resolvedAdditionalInfo = branchAdditionalInfo.Trim();
-                }
-                else if (!string.IsNullOrWhiteSpace(entryRes?.TicketAdditionalInfo))
                 {
                     resolvedAdditionalInfo = entryRes.TicketAdditionalInfo.Trim();
                 }

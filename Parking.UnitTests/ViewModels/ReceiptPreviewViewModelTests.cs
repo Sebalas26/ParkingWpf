@@ -267,4 +267,79 @@ public class ReceiptPreviewViewModelTests
         // Assert
         result.Should().Be(expectedPrefix);
     }
+
+    [Fact]
+    public void LoadTicket_EntryTicket_SetsInvoiceNumberText_WithHashPrefix()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket
+        {
+            TicketNumber = "PKF-C1-20260924-011",
+            PlateNumber = "XYZ789",
+            VehicleType = VehicleType.Car,
+            Status = TicketStatus.Active
+        };
+
+        // Act
+        vm.LoadTicket(ticket);
+
+        // Assert
+        vm.InvoiceNumberText.Should().Be("#PKF-C1-20260924-011");
+    }
+
+    [Theory]
+    [InlineData(58, 8.5, 9.5)]
+    [InlineData(80, 11.0, 13.0)]
+    public void LoadTicket_SetsTicketFontSizes_BasedOnPaperWidth(int paperWidth, double expectedHeaderSize, double expectedNumberSize)
+    {
+        // Arrange
+        var branch = new BranchModel { Id = 1, Name = "Sede Test", PaperWidth = paperWidth };
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(branch);
+
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket { TicketNumber = "PKF-001", PlateNumber = "XYZ789", VehicleType = VehicleType.Car };
+
+        // Act
+        vm.LoadTicket(ticket);
+
+        // Assert
+        vm.TicketHeaderFontSize.Should().Be(expectedHeaderSize);
+        vm.TicketNumberFontSize.Should().Be(expectedNumberSize);
+    }
+
+    [Fact]
+    public void LoadTicket_EntryTicket_DoesNotShowPolicy_WhenPrintPolicyOnEntryIsFalse()
+    {
+        // Arrange
+        var branch = new BranchModel
+        {
+            Id = 1,
+            Name = "Sede Test",
+            TicketPolicy = "POLIZA DE SEGURIDAD 123",
+            PrintPolicyOnEntry = false,
+            TicketAdditionalInfo = "INFO ADICIONAL 456",
+            PrintAdditionalInfoOnEntry = false
+        };
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(branch);
+
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket
+        {
+            TicketNumber = "PKF-001",
+            PlateNumber = "ABC123",
+            VehicleType = VehicleType.Car,
+            Status = TicketStatus.Active
+        };
+
+        // Act
+        vm.LoadTicket(ticket);
+
+        // Assert
+        vm.TicketPolicy.Should().BeNull();
+        vm.TicketAdditionalInfo.Should().BeNull();
+        vm.HasTicketPolicy.Should().BeFalse();
+        vm.HasTicketAdditionalInfo.Should().BeFalse();
+    }
 }
+

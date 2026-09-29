@@ -1,5 +1,44 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-29 09:20:00] - [PRINTING / ENTRY-TICKET / HOMOLOGATION] Homologación de Tirilla de Ingreso (Check-in), Reordenamiento de Póliza antes de QR, Prefijo # en Consecutivo y Corrección de Truncamiento en 58mm (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"revisa el plan y dime si si esta bien y va a funcionar y no va afectar nada ni se va a reventar el wpf ni nada por que este cambio va para producción. no debemos tocar funcionalidades crticas ni nada. por eso entonces rearma el plan para que todo quede full como deberia quedar."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Homologación de Estructura de Tiquete de Ingreso (Check-in) con PWA (`ReceiptPreviewDialog.xaml`)**:
+     - *Reordenamiento de Bloques*: Se reubicó el bloque de Póliza de Seguro e Información Adicional (`StackPanel Visibility="{Binding HasTicketPolicyOrAdditionalInfo...}"`) para que aparezca inmediatamente después del mensaje de advertencia *"Conserve este tiquete para retirar su vehículo"* y **antes** del bloque de Código QR de Consulta en Línea, homologando 1:1 el orden visual con la PWA.
+     - *Prevención de Desborde de Texto*: Se añadió `TextWrapping="Wrap"` y alineación centrada al texto de custodia de vehículo con fuente reducida a 9pt para evitar saltos o cortes antiestéticos en rollos estrechos.
+  2. **Resolución de Truncamiento de Consecutivo en Papel Térmico de 58mm (`ReceiptPreviewViewModel.cs`, `ReceiptPreviewDialog.xaml`)**:
+     - *Propiedades de Tipografía Dinámica*: Se crearon las propiedades observables `TicketHeaderFontSize` y `TicketNumberFontSize`.
+     - *Métricas Dinámicas según Ancho de Papel*: En `InitializePaperMetrics()` se calibraron los tamaños exactos:
+       - Para 58mm: Título en `8.5pt`, Consecutivo en `9.5pt` (garantiza visualización completa de consecutivo largo como `PKF-C1-20260924-011` sin solapamiento ni recorte lateral en los 280px del contenedor).
+       - Para 80mm: Título en `11.0pt`, Consecutivo en `13.0pt`.
+     - *Prefijo `#` en Consecutivo*: En `LoadTicket` para tiquete de ingreso, se formateó `InvoiceNumberText` anteponiendo `#` (`#PKF-...`), homologando la representación visual de la PWA.
+  3. **Corrección de Bug en Políticas de Impresión de Entrada (`ReceiptPreviewViewModel.cs`)**:
+     - *Diagnóstico*: En `LoadTicket`, las condiciones `else if (!string.IsNullOrWhiteSpace(branchPolicy))` y `else if (!string.IsNullOrWhiteSpace(entryRes?.TicketPolicy))` forzaban la impresión de la póliza o información adicional en el tiquete de ingreso incluso cuando los checkboxes `PrintPolicyOnEntry` o `PrintAdditionalInfoOnEntry` estaban desmarcados (`false`).
+     - *Solución*: Se removieron los bloques `else if` de fallback sin flag. Ahora la póliza y el texto adicional en ingreso se imprimen **única y estrictamente** si `PrintPolicyOnEntry == true` o `PrintAdditionalInfoOnEntry == true`.
+  4. **Pruebas Unitarias Automatizadas (`ReceiptPreviewViewModelTests.cs`)**:
+     - Se crearon 3 nuevas pruebas unitarias:
+       - `LoadTicket_EntryTicket_SetsInvoiceNumberText_WithHashPrefix`: Certifica que el consecutivo de ingreso recibe el prefijo `#`.
+       - `LoadTicket_SetsTicketFontSizes_BasedOnPaperWidth`: Certifica que para 58mm y 80mm los tamaños de fuente se ajustan a las métricas dinámicas configuradas.
+       - `LoadTicket_EntryTicket_DoesNotShowPolicy_WhenPrintPolicyOnEntryIsFalse`: Certifica que con `PrintPolicyOnEntry = false` no se imprime póliza ni texto adicional en ingreso.
+  5. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **100% Superado (358 pruebas superadas, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking.UnitTests/ViewModels/ReceiptPreviewViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **358 Pruebas Superadas (100% Éxito, 0 Fallos)**.
+
+---
+
 ## 📅 Entrada: [2026-09-28 15:20:00] - [CHECKOUT / RESOLUTION / DATA-DRIVEN / BUGFIX] Carga y Preselección Automática de Resolución por Defecto en Checkout sin Datos Quemados (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
