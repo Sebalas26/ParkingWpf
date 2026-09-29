@@ -789,7 +789,9 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             LostTicketFeeText = HasLostTicketSurcharge ? $"{ticket.LostTicketFee:C0}" : string.Empty;
 
             // 4. Valor que pagó y % IVA
-            var totalPaid = ticket.NetAmount > 0 ? ticket.NetAmount : (ticket.AmountPaid > 0 ? ticket.AmountPaid : (ticket.TotalAmount > 0 ? ticket.TotalAmount : ticket.GrossAmount));
+            var totalPaid = ticket.DiscountAmount > 0
+                ? ticket.NetAmount
+                : (ticket.NetAmount > 0 ? ticket.NetAmount : (ticket.AmountPaid > 0 ? ticket.AmountPaid : (ticket.TotalAmount > 0 ? ticket.TotalAmount : ticket.GrossAmount)));
             FormattedTotalPaid = $"{totalPaid:C0}";
             IvaPercentageText = "19%";
 
@@ -808,13 +810,33 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                     using var db = _connectionManager.CreateDbContext();
                     var discountEntity = db.TicketDiscounts
                         .Include(d => d.Agreement)
-                        .FirstOrDefault(d => d.TicketId == ticket.TicketId);
-                    if (discountEntity?.Agreement != null && !string.IsNullOrWhiteSpace(discountEntity.Agreement.Name))
+                        .Where(d => d.TicketId == ticket.TicketId)
+                        .OrderByDescending(d => d.ValidatedAtUtc)
+                        .FirstOrDefault();
+
+                    if (discountEntity != null)
                     {
-                        agreementName = discountEntity.Agreement.Name;
+                        if (discountEntity.Agreement != null && !string.IsNullOrWhiteSpace(discountEntity.Agreement.Name))
+                        {
+                            agreementName = discountEntity.Agreement.Name;
+                        }
+                        else if (discountEntity.AgreementId != Guid.Empty)
+                        {
+                            var ag = db.CommercialAgreements.FirstOrDefault(a => a.AgreementId == discountEntity.AgreementId);
+                            if (ag != null && !string.IsNullOrWhiteSpace(ag.Name))
+                            {
+                                agreementName = ag.Name;
+                            }
+                        }
                     }
                 }
                 catch { }
+
+                // Fallback defensivo: si no se encontró en BD pero el tiquete tiene comprobante de convenio
+                if (string.IsNullOrWhiteSpace(agreementName) && !string.IsNullOrWhiteSpace(ticket.InvoiceNumber) && ticket.InvoiceNumber.StartsWith("CONV-", StringComparison.OrdinalIgnoreCase))
+                {
+                    agreementName = ticket.InvoiceNumber.Substring(5).Trim();
+                }
 
                 HasAgreement = true;
                 HasDiscount = true;
@@ -826,7 +848,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
             var paid = ticket.AmountPaid > 0 ? ticket.AmountPaid : totalPaid;
             AmountPaidStr = $"{paid:N0}";
-            HasAmountPaid = paid > 0;
+            HasAmountPaid = paid > 0 || (ticket.DiscountAmount > 0 && totalPaid == 0m);
 
             var change = ticket.ChangeGiven > 0 ? ticket.ChangeGiven : (paid > totalPaid ? paid - totalPaid : 0m);
             ChangeGivenStr = $"{change:N0}";

@@ -1261,6 +1261,211 @@ public class CheckOutViewModelTests : IDisposable
         vm.ShowResolutionWarning.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task ToggleSelectAgreement_WhenDiscountReachesZero_AdaptsAmountTenderedAndChangeToZero()
+    {
+        // Arrange
+        _mockPricingCalculator.Setup(p => p.GetRate(VehicleType.Car, It.IsAny<DayOfWeek?>()))
+            .Returns(new VehicleRate { VehicleType = VehicleType.Car, HourRate = 1150m, MinuteRate = 20m });
+        _mockPricingCalculator.Setup(p => p.CalculateFee(VehicleType.Car, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 0, false))
+            .Returns(1150m);
+
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            TicketNumber = "PKF-ZERO",
+            PlateNumber = "XYZ123",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-30)
+        };
+
+        vm.SelectedTicket = ticket;
+        await Task.Delay(50);
+        vm.AmountTendered.Should().Be(1150m);
+        vm.CalculatedFee.Should().Be(1150m);
+
+        var agreementPuppis = new CommercialAgreement
+        {
+            AgreementId = Guid.NewGuid(),
+            Name = "PUPPIS",
+            DiscountFixedAmount = 1150m,
+            IsActive = true
+        };
+
+        // Act
+        await vm.ToggleSelectAgreementCommand.ExecuteAsync(agreementPuppis);
+
+        // Assert: Al dar 100% de descuento (Neto = 0), Monto recibido y Cambio deben ser 0
+        vm.CalculatedFee.Should().Be(0m);
+        vm.DiscountAmount.Should().Be(1150m);
+        vm.AmountTendered.Should().Be(0m);
+        vm.ChangeDue.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task ToggleSelectAgreement_WhenPartialDiscount_AdaptsAmountTenderedToNetFeeAndZeroChange()
+    {
+        // Arrange
+        _mockPricingCalculator.Setup(p => p.GetRate(VehicleType.Car, It.IsAny<DayOfWeek?>()))
+            .Returns(new VehicleRate { VehicleType = VehicleType.Car, HourRate = 1150m, MinuteRate = 20m });
+        _mockPricingCalculator.Setup(p => p.CalculateFee(VehicleType.Car, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 0, false))
+            .Returns(1150m);
+
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            TicketNumber = "PKF-PARTIAL",
+            PlateNumber = "XYZ123",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-30)
+        };
+
+        vm.SelectedTicket = ticket;
+        await Task.Delay(50);
+
+        var agreement = new CommercialAgreement
+        {
+            AgreementId = Guid.NewGuid(),
+            Name = "DESCUENTO_1000",
+            DiscountFixedAmount = 1000m,
+            IsActive = true
+        };
+
+        // Act
+        await vm.ToggleSelectAgreementCommand.ExecuteAsync(agreement);
+
+        // Assert: Si cobro era 1150 y descuenta 1000, neto es 150 y monto recibido debe adaptarse a 150 con cambio 0
+        vm.CalculatedFee.Should().Be(150m);
+        vm.DiscountAmount.Should().Be(1000m);
+        vm.AmountTendered.Should().Be(150m);
+        vm.ChangeDue.Should().Be(0m);
+
+        // Si luego el usuario digita un billete mayor de $5.000, el cambio se calcula automáticamente
+        vm.AmountTendered = 5000m;
+        vm.ChangeDue.Should().Be(4850m);
+
+        // Act 2: Desmarcar el convenio restaura el monto recibido al cobro bruto sin saldo residual
+        await vm.ToggleSelectAgreementCommand.ExecuteAsync(agreement);
+        vm.CalculatedFee.Should().Be(1150m);
+        vm.DiscountAmount.Should().Be(0m);
+        vm.AmountTendered.Should().Be(1150m);
+        vm.ChangeDue.Should().Be(0m);
+    }
+
+    [Fact]
+    public async Task ProcessPaymentAsync_PreservesSelectedAgreementWithoutOverwriting()
+    {
+        // Arrange
+        var storeArchiesId = Guid.NewGuid();
+        var storePuppisId = Guid.NewGuid();
+
+        var storeArchies = new Store { StoreId = storeArchiesId, Name = "Archies Store" };
+        var storePuppis = new Store { StoreId = storePuppisId, Name = "Puppis Store" };
+
+        var agreementArchies = new CommercialAgreement
+        {
+            AgreementId = Guid.NewGuid(),
+            StoreId = storeArchiesId,
+            Name = "ARCHIES",
+            DiscountFixedAmount = 500m,
+            IsActive = true
+        };
+
+        var agreementPuppis = new CommercialAgreement
+        {
+            AgreementId = Guid.NewGuid(),
+            StoreId = storePuppisId,
+            Name = "PUPPIS",
+            DiscountFixedAmount = 1150m,
+            IsActive = true
+        };
+
+        _mockStoreService.Setup(s => s.GetActiveStoresAsync())
+            .ReturnsAsync(new List<Store> { storeArchies, storePuppis });
+        _mockAgreementService.Setup(a => a.GetAgreementsByStoreAsync(storeArchiesId))
+            .ReturnsAsync(new List<CommercialAgreement> { agreementArchies });
+        _mockAgreementService.Setup(a => a.GetAgreementsByStoreAsync(storePuppisId))
+            .ReturnsAsync(new List<CommercialAgreement> { agreementPuppis });
+
+        _mockPricingCalculator.Setup(p => p.GetRate(VehicleType.Car, It.IsAny<DayOfWeek?>()))
+            .Returns(new VehicleRate { VehicleType = VehicleType.Car, HourRate = 1150m });
+        _mockPricingCalculator.Setup(p => p.CalculateFee(VehicleType.Car, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 0, false))
+            .Returns(1150m);
+
+        var resolution = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Resolución POS" };
+        _mockBillingResolutionService.Setup(b => b.GetActiveResolutionsByBranchAsync(It.IsAny<int?>()))
+            .ReturnsAsync(new List<BillingResolution> { resolution });
+
+        _mockTicketService.Setup(s => s.ProcessExitAsync(
+                It.IsAny<Guid>(),
+                It.IsAny<PaymentMethod>(),
+                It.IsAny<decimal>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<string?>(),
+                It.IsAny<decimal?>(),
+                It.IsAny<decimal>(),
+                It.IsAny<int?>(),
+                It.IsAny<string?>(),
+                It.IsAny<DateTime>(),
+                It.IsAny<Guid?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<bool>(),
+                It.IsAny<decimal>(),
+                It.IsAny<bool>(),
+                It.IsAny<Guid?>()))
+            .ReturnsAsync(new ParkingTicket { TicketId = Guid.NewGuid(), NetAmount = 0m, DiscountAmount = 1150m });
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            TicketNumber = "PKF-PUPPIS-TEST",
+            PlateNumber = "ABC123",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-30)
+        };
+
+        vm.SelectedTicket = ticket;
+        await Task.Delay(50);
+
+        // Act: El usuario selecciona PUPPIS
+        await vm.ToggleSelectAgreementCommand.ExecuteAsync(agreementPuppis);
+
+        // Simular medio de pago y resolución
+        vm.SelectedPaymentMethodEntity = new PaymentMethodEntity { Id = 1, Name = "Efectivo", RequiresCashTender = true };
+        vm.SelectedResolution = resolution;
+
+        // Procesar pago
+        await vm.ProcessPaymentCommand.ExecuteAsync(null);
+
+        // Assert: El convenio enviado a ProcessExitAsync debe ser estrictamente PUPPIS y NO ARCHIES
+        _mockTicketService.Verify(s => s.ProcessExitAsync(
+            It.IsAny<Guid>(),
+            It.IsAny<PaymentMethod>(),
+            It.IsAny<decimal>(),
+            It.IsAny<Guid?>(),
+            agreementPuppis.AgreementId,
+            It.IsAny<string?>(),
+            It.IsAny<decimal?>(),
+            It.IsAny<decimal>(),
+            It.IsAny<int?>(),
+            It.IsAny<string?>(),
+            It.IsAny<DateTime>(),
+            It.IsAny<Guid?>(),
+            It.IsAny<string?>(),
+            It.IsAny<string?>(),
+            It.IsAny<bool>(),
+            It.IsAny<decimal>(),
+            It.IsAny<bool>(),
+            It.IsAny<Guid?>()), Times.Once);
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

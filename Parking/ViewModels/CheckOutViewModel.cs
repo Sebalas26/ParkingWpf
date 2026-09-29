@@ -1108,10 +1108,14 @@ public partial class CheckOutViewModel : ViewModelBase
     async partial void OnSelectedStoreChanged(Store? value)
     {
         AvailableAgreements.Clear();
-        SelectedAgreement = null;
-        DiscountRuleDescription = null;
+        var currentAgreement = SelectedAgreement;
 
-        if (value != null)
+        if (value == null)
+        {
+            SelectedAgreement = null;
+            DiscountRuleDescription = null;
+        }
+        else
         {
             var agreements = await _agreementService.GetAgreementsByStoreAsync(value.StoreId);
             foreach (var a in agreements)
@@ -1119,9 +1123,18 @@ public partial class CheckOutViewModel : ViewModelBase
                 AvailableAgreements.Add(a);
             }
 
-            if (AvailableAgreements.Count > 0)
+            // Preservar el convenio seleccionado si ya pertenece a este comercio o fue seleccionado por el usuario
+            if (currentAgreement != null && (currentAgreement.StoreId == value.StoreId || currentAgreement.StoreId == Guid.Empty))
+            {
+                SelectedAgreement = AvailableAgreements.FirstOrDefault(a => a.AgreementId == currentAgreement.AgreementId) ?? currentAgreement;
+            }
+            else if (AvailableAgreements.Count > 0)
             {
                 SelectedAgreement = AvailableAgreements[0];
+            }
+            else
+            {
+                SelectedAgreement = null;
             }
         }
 
@@ -1160,6 +1173,8 @@ public partial class CheckOutViewModel : ViewModelBase
             DiscountAmount = 0m;
             CloseAgreementTooltip();
             RecalculateLiveFee();
+            AmountTendered = CalculatedFee;
+            CalculateChange();
             return;
         }
 
@@ -1179,6 +1194,8 @@ public partial class CheckOutViewModel : ViewModelBase
                 DiscountAmount = 0m;
                 CloseAgreementTooltip();
                 RecalculateLiveFee();
+                AmountTendered = CalculatedFee;
+                CalculateChange();
 
                 await _dialogService.ShowAlertAsync(
                     "Convenio No Aplicable",
@@ -1193,7 +1210,14 @@ public partial class CheckOutViewModel : ViewModelBase
         CustomerPurchaseAmount = 0m; // Formulario limpio: NO pre-llenar con agreement.MinPurchaseAmount
         CustomerPurchaseAmountText = string.Empty;
 
+        if (agreement.StoreId != Guid.Empty && (SelectedStore == null || SelectedStore.StoreId != agreement.StoreId))
+        {
+            SelectedStore = AvailableStores.FirstOrDefault(s => s.StoreId == agreement.StoreId);
+        }
+
         RecalculateLiveFee();
+        AmountTendered = CalculatedFee;
+        CalculateChange();
     }
 
     [RelayCommand]
@@ -1275,6 +1299,10 @@ public partial class CheckOutViewModel : ViewModelBase
             }
         }
         RecalculateLiveFee();
+        if (CalculatedFee == 0m || AmountTendered == 0m)
+        {
+            AmountTendered = CalculatedFee;
+        }
     }
 
     partial void OnHasAgreementDiscountChanged(bool value)
@@ -2015,10 +2043,17 @@ public partial class CheckOutViewModel : ViewModelBase
             DiscountAmount = 0m;
         }
 
+        var previousCalculatedFee = CalculatedFee;
         CalculatedFee = Math.Max(0m, GrossFee - DiscountAmount);
 
         var requiresCash = SelectedPaymentMethodEntity?.RequiresCashTender ?? (SelectedPaymentMethod == PaymentMethod.Cash);
-        if (AmountTendered < CalculatedFee && !requiresCash)
+
+        // Si el valor neto a pagar es $0.00 (descuento del 100%), el efectivo a recibir es 0 y el cambio es 0
+        if (CalculatedFee == 0m)
+        {
+            AmountTendered = 0m;
+        }
+        else if (!requiresCash || AmountTendered == previousCalculatedFee || AmountTendered == GrossFee || AmountTendered < CalculatedFee)
         {
             AmountTendered = CalculatedFee;
         }
@@ -2422,14 +2457,14 @@ public partial class CheckOutViewModel : ViewModelBase
                 }
             }
 
-            if (SelectedStore == null && SelectedAgreement.StoreId != Guid.Empty)
-            {
-                SelectedStore = AvailableStores.FirstOrDefault(s => s.StoreId == SelectedAgreement.StoreId);
-            }
+            var agreementToApply = HasAgreementDiscount ? SelectedAgreement : null;
+            var storeToApply = (agreementToApply != null && agreementToApply.StoreId != Guid.Empty)
+                ? (AvailableStores.FirstOrDefault(s => s.StoreId == agreementToApply.StoreId) ?? SelectedStore)
+                : SelectedStore;
 
-            if (string.IsNullOrWhiteSpace(InvoiceNumber))
+            if (agreementToApply != null && string.IsNullOrWhiteSpace(InvoiceNumber))
             {
-                InvoiceNumber = $"CONV-{SelectedAgreement.Name?.Trim().ToUpperInvariant() ?? "SEDE"}";
+                InvoiceNumber = $"CONV-{agreementToApply.Name?.Trim().ToUpperInvariant() ?? "SEDE"}";
             }
         }
 
@@ -2531,12 +2566,17 @@ public partial class CheckOutViewModel : ViewModelBase
 
             if (SelectedTicket == null) return;
 
+            var agreementToApply = HasAgreementDiscount ? SelectedAgreement : null;
+            var storeToApply = (agreementToApply != null && agreementToApply.StoreId != Guid.Empty)
+                ? (AvailableStores.FirstOrDefault(s => s.StoreId == agreementToApply.StoreId) ?? SelectedStore)
+                : SelectedStore;
+
             var completedTicket = await _ticketService.ProcessExitAsync(
                 SelectedTicket.TicketId,
                 methodEnum,
                 paidAmount,
-                HasAgreementDiscount ? SelectedStore?.StoreId : null,
-                HasAgreementDiscount ? SelectedAgreement?.AgreementId : null,
+                HasAgreementDiscount ? storeToApply?.StoreId : null,
+                HasAgreementDiscount ? agreementToApply?.AgreementId : null,
                 HasAgreementDiscount ? InvoiceNumber : null,
                 HasAgreementDiscount ? CustomerPurchaseAmount : null,
                 discount,

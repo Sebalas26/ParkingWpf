@@ -1,5 +1,40 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-29 14:50:00] - [CHECKOUT-AGREEMENT-FIX / DYNAMIC-CASH-TENDER / ZERO-CHANGE / WPF] Preservación Estricta de Convenio Seleccionado sin Sobreescritura + Adaptación Dinámica de Efectivo Recibido y Cambio a $0
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"Bueno se tiene un error, de logica mira que estan seleccionando un convenio y no selecciono ese selecciono el primer convenio creado osea no esta validando bien el convenio aplicado al que yo estoy seleccionando si me explico algo sucede hay en la impresión. revisa esa logica el debería coge el convenio que se seleccione e imprimir ese no el primeor creado, por que en bd si esta bien queda con el convenio que es, debe ser algo loco. la otra imagen es que mira se aplica un descuento que da neto a pagar 0 enotnces el sistema deberia adaptarse al valor a la drecha en el input de monto recibido en efectivo pues ya no va a recibir nada apra que el calculo del cambio quede en 0 si me explico. ejemplo si el valor a pagar fue 1.150 y le aplico un convenio x que me da desucento de 1.000 pesos entonces deberia quedar en el input de monto a recibir efectivo pues los 150 si me explico como fucnionaria ? analzia y me dices."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Preservación Inmutable del Convenio Comercial Seleccionado**:
+     - _Causa Raíz_: En `CheckOutViewModel.cs:2425`, `ProcessPaymentAsync` ejecutaba `SelectedStore = AvailableStores.FirstOrDefault(s => s.StoreId == SelectedAgreement.StoreId)`. Al mutar `SelectedStore`, la arquitectura MVVM disparaba inmediatamente el evento generado `OnSelectedStoreChanged` (línea 1108), el cual ejecutaba ciegamente `SelectedAgreement = AvailableAgreements[0]`. Esto sobreescribía la selección del usuario (ej: `PUPPIS`) con el primer convenio de la lista (ej: `ARCHIES`) antes de llamar a `ProcessExitAsync` e imprimir el comprobante.
+     - _Solución Implementada_:
+       - En `OnSelectedStoreChanged`, se agregó lógica de preservación: si `SelectedAgreement` ya está asignado y pertenece a ese comercio (o fue elegido por el usuario desde la galería de la sede), se conserva intacto (`AvailableAgreements.FirstOrDefault(...) ?? currentAgreement`) en vez de forzar `AvailableAgreements[0]`.
+       - En `ToggleSelectAgreementAsync`, al hacer clic en el botón de un convenio, si este convenio tiene comercio asociado, se sincroniza `SelectedStore = AvailableStores.FirstOrDefault(...)` de forma segura.
+       - En `ProcessPaymentAsync`, se captura inmutablemente `var agreementToApply = HasAgreementDiscount ? SelectedAgreement : null;` y `var storeToApply = (agreementToApply != null && agreementToApply.StoreId != Guid.Empty) ? (AvailableStores.FirstOrDefault(s => s.StoreId == agreementToApply.StoreId) ?? SelectedStore) : SelectedStore;`, garantizando que `ProcessExitAsync` reciba estrictamente `agreementToApply?.AgreementId` y genere el comprobante `InvoiceNumber = $"CONV-{agreementToApply.Name}"`.
+  2. **Adaptación Dinámica del Monto en Efectivo Recibido (`AmountTendered`) y Cambio (`ChangeDue`)**:
+     - _Causa Raíz_: En `RecalculateLiveFee()`, `CalculatedFee = Math.Max(0m, GrossFee - DiscountAmount)` se recalculaba correctamente, pero `AmountTendered` solo se actualizaba si `AmountTendered < CalculatedFee && !requiresCash`. Al reducirse el total neto a $0.00 (descuento del 100%) o a $150 (descuento parcial de $1.000 sobre $1.150), `AmountTendered` retenía el valor bruto previo ($1.150), produciendo un cálculo de cambio engañoso (`ChangeDue = 1.150 - 0 = 1.150`).
+     - _Solución Implementada_:
+       - En `RecalculateLiveFee()`: si `CalculatedFee == 0m`, se asigna de inmediato `AmountTendered = 0m`. Si `CalculatedFee > 0m` y el operador no ha ingresado un billete mayor manual (`AmountTendered == previousCalculatedFee || AmountTendered == GrossFee`), se sincroniza `AmountTendered = CalculatedFee`.
+       - En `ToggleSelectAgreementAsync`: tanto al seleccionar como al desmarcar un convenio, se sincroniza inmediatamente `AmountTendered = CalculatedFee;` y se invoca `CalculateChange()`.
+       - En `OnCustomerPurchaseAmountTextChanged`: al modificarse el valor de compra que dispara el descuento de un convenio, se adapta `AmountTendered = CalculatedFee` si el neto llegó a 0.
+       - Si el conductor entrega un billete mayor (ej: $5.000), el cajero puede escribirlo o presionar `$5K` y el cambio se calcula en tiempo real con precisión matemática ($5.000 - $150 = $4.850).
+  3. **Corrección de Liquidación de Total Pagado en la Tirilla (`ReceiptPreviewViewModel.cs`)**:
+     - En `LoadTicket`, se corrigió `totalPaid`: si `ticket.DiscountAmount > 0`, se toma directamente `ticket.NetAmount` (incluso cuando es $0). Se eliminó el fallback erróneo que mostraba el valor bruto cuando el neto era $0.
+     - Se reforzó la consulta de `TicketDiscounts` ordenando por `ValidatedAtUtc` descendente y añadiendo búsqueda directa en `db.CommercialAgreements` por `AgreementId` como contingencia defensiva ante navegaciones desasociadas.
+  4. **Pruebas Unitarias Automatizadas**:
+     - `ToggleSelectAgreement_WhenDiscountReachesZero_AdaptsAmountTenderedAndChangeToZero`: Valida que al aplicar 100% de descuento, `CalculatedFee`, `AmountTendered` y `ChangeDue` queden en 0.
+     - `ToggleSelectAgreement_WhenPartialDiscount_AdaptsAmountTenderedToNetFeeAndZeroChange`: Valida descuento parcial ($1.000 sobre $1.150), adaptación de efectivo a $150, cálculo de cambio con billete de $5.000 ($4.850) y restauración al desmarcar convenio.
+     - `ProcessPaymentAsync_PreservesSelectedAgreementWithoutOverwriting`: Valida que `ProcessExitAsync` reciba exactamente el GUID de `PUPPIS` y no de `ARCHIES`.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **364 pruebas superadas, 0 fallos (100%)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+
 ## 📅 Entrada: [2026-09-29 12:30:00] - [THERMAL-PRINTING / 58MM-PAD4MM / PREVIEW-FIX / TOGGLE-FORMAT / WPF] Margen de Seguridad Interno 4mm (15 DIP), Desacoplamiento de ScrollViewer, Selector Interactivo 58mm/80mm y Tiquete #: en Entrada
 
 - **`💬 Prompt Original del Usuario`**:
