@@ -1,5 +1,38 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-29 15:25:00] - [BUGFIX / SHIFT-RECEIPT / FINANCIAL-TOTALS / DESERIALIZATION / WPF] Corrección de Deserialización Nullable de Medios de Pago, Preservación de Totales Centrales y Fallback Inteligente en Tirilla de Cierre de Caja
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Validame cuuando me imprime el tiquete de caja en el wpf , no me esta mostrando los valores correctos, pero si entro al pwa y reimprimo esa caja, ahi si me muestra correctamente, te muestro un ejemplo"_
+  > _"valida si tiene huecos tecnicos para dar con la solucion definitiva"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Causa Raíz de Tirilla en $0 en WPF vs PWA**:
+     - **Hueco 1 (Incompatibilidad DTO Nullable)**: En `ParkingApi`, `ShiftPaymentMethodBreakdownDto.PaymentMethodId` es de tipo `int?` (nullable). En `ParkingWpf`, `ShiftPaymentMethodItem.PaymentMethodId` estaba tipado como `int` (no nullable). Al recibir pagos en efectivo estándar sin método específico, el backend devuelve `null`. El deserializador `System.Text.Json` fallaba con una excepción interna que era silenciada por el bloque `catch { return null; }` en `ParkingApiClient.GetShiftSummaryAsync`, haciendo que WPF creyera que no había respuesta del servidor (`remoteSummary = null`).
+     - **Hueco 2 (Sobrescritura Destructiva de Totales)**: En `EfShiftService.GetShiftSummaryByIdAsync`, si `remoteSummary` existía pero la base local SQLite tenía 0 tiquetes o valores vacíos, el bloque `if (breakdown.Count > 0)` asignaba los ceros locales sobre `remoteSummary.TotalCashCollected`, destruyendo los $46.330 calculados por el servidor central.
+     - **Hueco 3 (Persistencia de Ceros en WorkShift Local)**: En `CloseSpecificShiftAsync`, se actualizaba el registro `WorkShift` de SQLite usando los ceros devueltos por `GetShiftSummaryByIdAsync`, corrompiendo la copia local de la base de datos antes de enviarla a impresión.
+     - **Hueco 4 (Operador de Coalescencia Ineficaz en Tirilla)**: En `ReceiptPreviewViewModel.LoadShiftCloseTicket`, expresiones como `summary?.TotalCashCollected ?? shift.TotalCashCollected` tomaban el `0m` del resumen (pues `0m` no es null) descartando el valor real mayor a cero si venía en `shift`.
+  2. **Solución Implementada**:
+     - **`ShiftApiModels.cs`**: Se corrigió `public int? PaymentMethodId { get; set; }` en `ShiftPaymentMethodItem`, garantizando deserialización limpia de `remoteSummary`.
+     - **`EfShiftService.cs`**:
+       - En `GetShiftSummaryByIdAsync`: se implementó comparación de totales (`localTotal > remoteTotal`). Solo se sobrescribe con el cálculo local si este supera al remoto (transacciones offline). De lo contrario, se preservan intactos los totales consolidados de la nube y su desglose (`PaymentMethodsBreakdown`). Se recalculan `ExpectedCash` y `CashDifference` con base en los valores definitivos.
+       - En `CloseSpecificShiftAsync`: se implementó rescate defensivo (`effectiveCashCollected`, etc.) de modo que si `summary` tenía 0 pero `closedShift` devuelto por el API tenía los montos reales, la BD local SQLite se actualice con los datos correctos del servidor.
+     - **`ReceiptPreviewViewModel.cs`**:
+       - Se introdujo el método auxiliar estático `PickBestValue(decimal? summaryVal, decimal shiftVal)` que evalúa cuál fuente contiene el monto real mayor a cero.
+       - Se aplicó `PickBestValue` a `TotalCashCollected`, `TotalCardCollected`, `TotalTransferCollected`, `TotalDiscounts`, `TotalCashWithdrawals`, `BaseAmount`, `ActualCashCounted` y `ExpectedCash`.
+       - Se condicionó la población de tarjetas de métodos de pago (`summary.PaymentMethodsBreakdown.Any(pm => pm.TotalCollected > 0 || pm.TransactionCount > 0)`) para que no muestre tarjetas en $0 si existen valores globales recuperados.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Models/ApiModels/ShiftApiModels.cs`
+  - `Parking/Services/Implementations/EfShiftService.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build -p:EnableWindowsTargeting=true`: **0 Advertencias, 0 Errores**.
+  - `dotnet test ParkingApi.slnx`: **670/670 Pruebas Superadas (100%)**.
+
+---
+
 ## 📅 Entrada: [2026-09-29 14:50:00] - [CHECKOUT-AGREEMENT-FIX / DYNAMIC-CASH-TENDER / ZERO-CHANGE / WPF] Preservación Estricta de Convenio Seleccionado sin Sobreescritura + Adaptación Dinámica de Efectivo Recibido y Cambio a $0
 
 - **`💬 Prompt Original del Usuario`**:

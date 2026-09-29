@@ -57,7 +57,7 @@ public class ShiftSummaryModel
 
 public class ShiftPaymentMethodItem
 {
-    public int PaymentMethodId { get; set; }
+    public int? PaymentMethodId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string DisplayName => Name.ToUpperInvariant();
     public string IconKey { get; set; } = "IconCash";

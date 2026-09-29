@@ -665,16 +665,43 @@ public class EfShiftService : IShiftService
 
         if (remoteSummary != null)
         {
-            remoteSummary.PaymentMethodsBreakdown = breakdown;
-            remoteSummary.TotalDiscountTickets = discountTickets;
-            if (breakdown.Count > 0)
+            var localTotal = cash + card + transfer;
+            var remoteTotal = remoteSummary.TotalCashCollected + remoteSummary.TotalCardCollected + remoteSummary.TotalTransferCollected;
+
+            // Si el cálculo local tiene recaudos superiores (por ejemplo, transacciones offline pendientes de sincronizar),
+            // se prioriza el valor local; de lo contrario se respetan los valores consolidados del servidor central.
+            if (breakdown.Count > 0 && localTotal > remoteTotal)
             {
+                remoteSummary.PaymentMethodsBreakdown = breakdown;
                 remoteSummary.TotalCashCollected = cash;
                 remoteSummary.TotalCardCollected = card;
                 remoteSummary.TotalTransferCollected = transfer;
-                remoteSummary.ExpectedCash = remoteSummary.BaseAmount + cash - (remoteSummary.TotalCashWithdrawals > 0 ? remoteSummary.TotalCashWithdrawals : withdrawals);
-                remoteSummary.CashDifference = remoteSummary.ActualCashCounted - remoteSummary.ExpectedCash;
+                remoteSummary.TotalDiscounts = discounts;
+                remoteSummary.TotalDiscountTickets = discountTickets;
             }
+            else if (remoteSummary.PaymentMethodsBreakdown == null || remoteSummary.PaymentMethodsBreakdown.Count == 0)
+            {
+                remoteSummary.PaymentMethodsBreakdown = breakdown;
+            }
+
+            if (remoteSummary.TotalDiscountTickets == 0 && discountTickets > 0)
+            {
+                remoteSummary.TotalDiscountTickets = discountTickets;
+            }
+
+            if (remoteSummary.TotalDiscounts == 0 && discounts > 0)
+            {
+                remoteSummary.TotalDiscounts = discounts;
+            }
+
+            remoteSummary.TotalCashWithdrawals = remoteSummary.TotalCashWithdrawals > 0 
+                ? remoteSummary.TotalCashWithdrawals 
+                : withdrawals;
+
+            // Recalcular el dinero esperado y la diferencia de arqueo con base en los totales consolidados
+            remoteSummary.ExpectedCash = remoteSummary.BaseAmount + remoteSummary.TotalCashCollected - remoteSummary.TotalCashWithdrawals;
+            remoteSummary.CashDifference = remoteSummary.ActualCashCounted - remoteSummary.ExpectedCash;
+
             return remoteSummary;
         }
 
@@ -746,16 +773,26 @@ public class EfShiftService : IShiftService
             {
                 local.EndTimeUtc = endTime;
                 local.ClosedAtUtc = endTime;
-                local.TotalCashCollected = summary.TotalCashCollected;
-                local.TotalCardCollected = summary.TotalCardCollected;
-                local.TotalTransferCollected = summary.TotalTransferCollected;
-                local.TotalDiscounts = summary.TotalDiscounts;
-                local.TotalCashWithdrawals = summary.TotalCashWithdrawals;
-                local.ExpectedCash = summary.ExpectedCash;
+
+                var effectiveCashCollected = summary.TotalCashCollected > 0 ? summary.TotalCashCollected : (closedShift?.TotalCashCollected ?? 0m);
+                var effectiveCardCollected = summary.TotalCardCollected > 0 ? summary.TotalCardCollected : (closedShift?.TotalCardCollected ?? 0m);
+                var effectiveTransferCollected = summary.TotalTransferCollected > 0 ? summary.TotalTransferCollected : (closedShift?.TotalTransferCollected ?? 0m);
+                var effectiveDiscounts = summary.TotalDiscounts > 0 ? summary.TotalDiscounts : (closedShift?.TotalDiscounts ?? 0m);
+                var effectiveWithdrawals = summary.TotalCashWithdrawals > 0 ? summary.TotalCashWithdrawals : (closedShift?.TotalCashWithdrawals ?? 0m);
+                var effectiveExpectedCash = summary.ExpectedCash > 0 ? summary.ExpectedCash : (closedShift?.ExpectedCash ?? (local.BaseAmount + effectiveCashCollected - effectiveWithdrawals));
+                var effectiveTicketsProcessed = summary.TotalTicketsProcessed > 0 ? summary.TotalTicketsProcessed : (closedShift?.TotalTicketsProcessed ?? local.TotalTicketsProcessed);
+                var effectiveVehiclesEntered = summary.TotalVehiclesEntered > 0 ? summary.TotalVehiclesEntered : (closedShift?.TotalVehiclesEntered ?? local.TotalVehiclesEntered);
+
+                local.TotalCashCollected = effectiveCashCollected;
+                local.TotalCardCollected = effectiveCardCollected;
+                local.TotalTransferCollected = effectiveTransferCollected;
+                local.TotalDiscounts = effectiveDiscounts;
+                local.TotalCashWithdrawals = effectiveWithdrawals;
+                local.ExpectedCash = effectiveExpectedCash;
                 local.ActualCashCounted = actualCashCounted;
-                local.CashDifference = actualCashCounted - summary.ExpectedCash;
-                local.TotalTicketsProcessed = summary.TotalTicketsProcessed;
-                local.TotalVehiclesEntered = summary.TotalVehiclesEntered;
+                local.CashDifference = actualCashCounted - effectiveExpectedCash;
+                local.TotalTicketsProcessed = effectiveTicketsProcessed;
+                local.TotalVehiclesEntered = effectiveVehiclesEntered;
                 local.Status = 1;
                 local.Notes = notes ?? local.Notes;
                 local.HandoverToUserId = handoverToUserId;

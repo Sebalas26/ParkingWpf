@@ -1230,13 +1230,13 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
         var ci = new CultureInfo("es-CO");
 
-        var cash = summary?.TotalCashCollected ?? shift.TotalCashCollected;
-        var card = summary?.TotalCardCollected ?? shift.TotalCardCollected;
-        var transfer = summary?.TotalTransferCollected ?? shift.TotalTransferCollected;
+        var cash = PickBestValue(summary?.TotalCashCollected, shift.TotalCashCollected);
+        var card = PickBestValue(summary?.TotalCardCollected, shift.TotalCardCollected);
+        var transfer = PickBestValue(summary?.TotalTransferCollected, shift.TotalTransferCollected);
         var totalRevenue = cash + card + transfer;
 
-        var discounts = summary?.TotalDiscounts ?? shift.TotalDiscounts;
-        var withdrawals = summary?.TotalCashWithdrawals ?? shift.TotalCashWithdrawals;
+        var discounts = PickBestValue(summary?.TotalDiscounts, shift.TotalDiscounts);
+        var withdrawals = PickBestValue(summary?.TotalCashWithdrawals, shift.TotalCashWithdrawals);
 
         decimal mensualidades = 0m;
         int mensualidadesCount = 0;
@@ -1290,7 +1290,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         ShiftDiscountTicketsCount = summary?.TotalDiscountTickets ?? 0;
 
         ShiftPaymentMethods.Clear();
-        if (summary?.PaymentMethodsBreakdown != null && summary.PaymentMethodsBreakdown.Any())
+        if (summary?.PaymentMethodsBreakdown != null && summary.PaymentMethodsBreakdown.Any(pm => pm.TotalCollected > 0 || pm.TransactionCount > 0))
         {
             foreach (var pm in summary.PaymentMethodsBreakdown)
             {
@@ -1307,9 +1307,11 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         ShiftVehiclesExitedCount = summary != null && summary.TotalTicketsProcessed > 0 ? summary.TotalTicketsProcessed : shift.TotalTicketsProcessed;
         ShiftVehiclesInYardCount = yardCount;
 
-        var baseAmount = summary?.BaseAmount ?? shift.BaseAmount;
-        var expectedCash = summary != null ? summary.ExpectedCash : (shift.ExpectedCash > 0 ? shift.ExpectedCash : (baseAmount + cash - withdrawals));
-        var actualCash = summary?.ActualCashCounted ?? shift.ActualCashCounted;
+        var baseAmount = PickBestValue(summary?.BaseAmount, shift.BaseAmount);
+        var expectedCash = (summary != null && summary.ExpectedCash > 0m) 
+            ? summary.ExpectedCash 
+            : (shift.ExpectedCash > 0m ? shift.ExpectedCash : (baseAmount + cash - withdrawals));
+        var actualCash = PickBestValue(summary?.ActualCashCounted, shift.ActualCashCounted);
         var diff = actualCash - expectedCash;
 
         ShiftBaseAmountStr = baseAmount.ToString("C0", ci);
@@ -1392,6 +1394,13 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             42 or 5 => "DIE:",
             _ => string.Equals(personType, "Company", StringComparison.OrdinalIgnoreCase) ? "NIT:" : "CC:"
         };
+    }
+
+    private static decimal PickBestValue(decimal? summaryVal, decimal shiftVal)
+    {
+        if (!summaryVal.HasValue) return shiftVal;
+        if (summaryVal.Value > 0m) return summaryVal.Value;
+        return shiftVal > 0m ? shiftVal : summaryVal.Value;
     }
 
     [RelayCommand]
