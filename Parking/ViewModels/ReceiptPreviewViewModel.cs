@@ -227,6 +227,12 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private bool _hasTicketPolicyOrAdditionalInfo;
 
     [ObservableProperty]
+    private string? _branchSchedule;
+
+    [ObservableProperty]
+    private bool _hasBranchSchedule;
+
+    [ObservableProperty]
     private string _subtotalStr = string.Empty;
 
     [ObservableProperty]
@@ -431,6 +437,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         IsShiftCloseReceipt = false;
         Shift = null;
         ShiftSummary = null;
+        BranchSchedule = null;
+        HasBranchSchedule = false;
 
         var currentBranch = _sessionService.CurrentBranch;
         var width = currentBranch?.PaperWidth > 0 ? currentBranch.PaperWidth : 80;
@@ -917,8 +925,10 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             bool branchPrintPolicyOnEntry = currentBranch?.PrintPolicyOnEntry ?? _sessionService.CurrentBranch?.PrintPolicyOnEntry ?? false;
             string? branchAdditionalInfo = currentBranch?.TicketAdditionalInfo ?? _sessionService.CurrentBranch?.TicketAdditionalInfo;
             bool branchPrintAdditionalInfoOnEntry = currentBranch?.PrintAdditionalInfoOnEntry ?? _sessionService.CurrentBranch?.PrintAdditionalInfoOnEntry ?? false;
+            string? branchSchedule = currentBranch?.TicketSchedule ?? _sessionService.CurrentBranch?.TicketSchedule;
+            bool branchPrintScheduleOnEntry = currentBranch?.PrintScheduleOnEntry ?? _sessionService.CurrentBranch?.PrintScheduleOnEntry ?? false;
 
-            if (string.IsNullOrWhiteSpace(branchPolicy) && string.IsNullOrWhiteSpace(branchAdditionalInfo) && branchId.HasValue)
+            if (string.IsNullOrWhiteSpace(branchPolicy) && string.IsNullOrWhiteSpace(branchAdditionalInfo) && string.IsNullOrWhiteSpace(branchSchedule) && branchId.HasValue)
             {
                 var dbBranch = db.Branches.FirstOrDefault(b => b.Id == branchId.Value);
                 if (dbBranch != null)
@@ -927,6 +937,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                     branchPrintPolicyOnEntry = dbBranch.PrintPolicyOnEntry;
                     branchAdditionalInfo = dbBranch.TicketAdditionalInfo;
                     branchPrintAdditionalInfoOnEntry = dbBranch.PrintAdditionalInfoOnEntry;
+                    branchSchedule = dbBranch.TicketSchedule;
+                    branchPrintScheduleOnEntry = dbBranch.PrintScheduleOnEntry;
                 }
             }
 
@@ -990,6 +1002,20 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
 
                 TicketPolicy = resolvedPolicy;
                 TicketAdditionalInfo = resolvedAdditionalInfo;
+
+                string? rawEntrySchedule = null;
+                if (branchPrintScheduleOnEntry && !string.IsNullOrWhiteSpace(branchSchedule))
+                {
+                    rawEntrySchedule = branchSchedule.Trim();
+                }
+                else if (entryRes?.PrintScheduleOnEntry == true && !string.IsNullOrWhiteSpace(entryRes.TicketSchedule))
+                {
+                    rawEntrySchedule = entryRes.TicketSchedule.Trim();
+                }
+
+                BranchSchedule = !string.IsNullOrWhiteSpace(rawEntrySchedule)
+                    ? (rawEntrySchedule.StartsWith("Horario", StringComparison.OrdinalIgnoreCase) ? rawEntrySchedule : $"Horario: {rawEntrySchedule}")
+                    : null;
             }
             else
             {
@@ -1019,13 +1045,30 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 TicketAdditionalInfo = (exitRes?.PrintAdditionalInfoOnExit == true || !string.IsNullOrWhiteSpace(exitRes?.TicketAdditionalInfo))
                     ? exitRes?.TicketAdditionalInfo?.Trim()
                     : (!string.IsNullOrWhiteSpace(branchAdditionalInfo) ? branchAdditionalInfo.Trim() : null);
+
+                string? rawExitSchedule = null;
+                if (exitRes?.PrintScheduleOnExit == true && !string.IsNullOrWhiteSpace(exitRes.TicketSchedule))
+                {
+                    rawExitSchedule = exitRes.TicketSchedule.Trim();
+                }
+                else if (branchPrintScheduleOnEntry && !string.IsNullOrWhiteSpace(branchSchedule))
+                {
+                    rawExitSchedule = branchSchedule.Trim();
+                }
+
+                BranchSchedule = !string.IsNullOrWhiteSpace(rawExitSchedule)
+                    ? (rawExitSchedule.StartsWith("Horario", StringComparison.OrdinalIgnoreCase) ? rawExitSchedule : $"Horario: {rawExitSchedule}")
+                    : null;
             }
         }
         catch
         {
             TicketPolicy = null;
             TicketAdditionalInfo = null;
+            BranchSchedule = null;
         }
+
+        HasBranchSchedule = !string.IsNullOrWhiteSpace(BranchSchedule);
 
         HasTicketPolicy = !string.IsNullOrWhiteSpace(TicketPolicy);
         HasTicketAdditionalInfo = !string.IsNullOrWhiteSpace(TicketAdditionalInfo);

@@ -94,7 +94,16 @@
                                 <TextBlock Text="{Binding BranchName}" FontSize="15" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
                                 <TextBlock Text="{Binding BranchNit}" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
                                 <TextBlock Text="{Binding BranchAddress}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="{Binding BranchPhone}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,6"/>
+                                <TextBlock Text="{Binding BranchPhone}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,4"/>
+                                <TextBlock Text="{Binding BranchSchedule}"
+                                           Visibility="{Binding HasBranchSchedule, Converter={StaticResource BoolToVis}}"
+                                           FontSize="9.5"
+                                           FontFamily="{StaticResource FontFamilyMonospace}"
+                                           Foreground="#000000"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Margin="0,1,0,6"/>
 
                                 <!-- Línea divisoria continua -->
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="6,0,6,8"/>
@@ -354,7 +363,16 @@
                                 <TextBlock Text="{Binding BranchName}" FontSize="15" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
                                 <TextBlock Text="{Binding BranchNit}" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
                                 <TextBlock Text="{Binding BranchAddress}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="{Binding BranchPhone}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,6"/>
+                                <TextBlock Text="{Binding BranchPhone}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,4"/>
+                                <TextBlock Text="{Binding BranchSchedule}"
+                                           Visibility="{Binding HasBranchSchedule, Converter={StaticResource BoolToVis}}"
+                                           FontSize="9.5"
+                                           FontFamily="{StaticResource FontFamilyMonospace}"
+                                           Foreground="#000000"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Margin="0,1,0,6"/>
 
                                 <!-- Línea divisoria continua -->
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="6,0,6,8"/>
@@ -478,7 +496,16 @@
                                 <TextBlock Text="{Binding BranchName}" FontSize="15" FontWeight="Bold" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center"/>
                                 <TextBlock Text="{Binding BranchNit}" FontSize="12" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
                                 <TextBlock Text="{Binding BranchAddress}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="{Binding BranchPhone}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,6"/>
+                                <TextBlock Text="{Binding BranchPhone}" FontSize="11" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" Margin="0,1,0,4"/>
+                                <TextBlock Text="{Binding BranchSchedule}"
+                                           Visibility="{Binding HasBranchSchedule, Converter={StaticResource BoolToVis}}"
+                                           FontSize="9.5"
+                                           FontFamily="{StaticResource FontFamilyMonospace}"
+                                           Foreground="#000000"
+                                           HorizontalAlignment="Center"
+                                           TextAlignment="Center"
+                                           TextWrapping="Wrap"
+                                           Margin="0,1,0,6"/>
 
                                 <!-- Línea divisoria continua -->
                                 <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="6,0,6,8"/>

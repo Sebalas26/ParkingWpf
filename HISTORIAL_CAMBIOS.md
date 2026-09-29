@@ -1,5 +1,52 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-29 09:15:00] - [SETTINGS / PRINTING / SCHEDULE / PWA / WPF / API] Parametrización de Horario de Atención en Impresión y Visualización debajo del Teléfono en Tiquetes de Entrada y Salida
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Quisiera que en la parametrizacion de la sede en la impresion agregaras un campo de los horarios, esto igual a como dejaste para poliza y valor adicional. Esto necesito que lo ubiques en los tiquetes de entrada y salida pero debajo del tel"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Modelo de Datos y API Backend (`ParkingApi`)**:
+     - Entidad `Branch`: Se agregaron las columnas `TicketSchedule` (`varchar(500)`) y `PrintScheduleOnEntry` (`bool`), mapeadas en `EntityConfigurations.cs`.
+     - Entidad `BillingResolution`: Se agregaron `TicketSchedule` (`varchar(500)`), `PrintScheduleOnEntry` (`bool`), y `PrintScheduleOnExit` (`bool`), mapeadas en `EntityConfigurations.cs`.
+     - DTOs y Mappings: Actualizados `BranchDto`, `CreateBranchDto`, `UpdateBranchDto`, `BillingResolutionDto`, `SaveBillingResolutionDto`, así como `BranchService.cs`, `BillingResolutionService.cs` y `BillingResolutionRepository.cs`.
+     - Migración EF Core: `20260929135305_AddTicketScheduleToBranchAndResolution` generada y aplicada con éxito a la base de datos MySQL central.
+     - Pruebas Backend: `670/670` pruebas unitarias pasando con 0 errores (`dotnet test ParkingApi.slnx`).
+  2. **Aplicación Web Progresiva (`ParkingFlowPWa`)**:
+     - Modelos e Interfaces (`settings.models.ts`): Propiedades `ticketSchedule`, `printScheduleOnEntry` y `printScheduleOnExit` integradas en DTOs de `Branch` y `BillingResolution`.
+     - Interfaz de Configuración de Impresión (`parqueaderos-tab.component.ts`):
+       - En Apartado 1 (Tiquete de Entrada): Agregado campo de entrada "Horario de Atención (Entrada)" y checkbox interactivo "Imprimir horario en tiquete de entrada", con ícono oficial `lucideClock`.
+       - En Apartado 2 (Tiquetes de Salida por Resolución): Agregado campo "Horario de Atención (Salida)" y checkbox interactivo "Imprimir horario en tiquete de salida" en cada tarjeta de resolución activa.
+       - Carga reactiva en `handleOpenConfig` y guardado atómico en `handleSavePrintingConfig`.
+     - Formato de Tiquete Térmico (`thermal-printer.service.ts` & `receipt-preview-modal.component.ts`):
+       - Generación de `branchSchedule` anteponiendo prefijo `"Horario: "` cuando aplica.
+       - Ubicación estricta: renderizado directamente debajo del teléfono de la sede (`branchPhone`) tanto en el modal de vista previa visual como en la generación de comandos ESC/POS para impresión física directa.
+     - Versión PWA: Actualizada a `0.1.40` y compilación verificada con `npm run build` (**0 Errores, 0 Advertencias**).
+  3. **Cliente de Escritorio (`ParkingWpf`)**:
+     - Entidades y DTOs Locales: Agregadas `TicketSchedule` y flags de impresión en `Branch.cs`, `BillingResolution.cs`, `BranchModel.cs` y DTOs de sincronización `ApiBranchSyncDto` y `ApiBillingResolutionSyncDto` en `BootstrapSyncResponse.cs`.
+     - Motor de Sincronización (`SyncEngineService.cs`): Mapeo bidireccional y actualización de sucursal y resoluciones en SQLite local.
+     - Presentación e Impresión XAML (`ReceiptPreviewViewModel.cs` & `ReceiptPreviewDialog.xaml`):
+       - En `ReceiptPreviewViewModel.cs`: Propiedades `BranchSchedule` y `HasBranchSchedule`, resolviendo jerárquicamente el horario según el tipo de tiquete (entrada o salida) y los flags `PrintScheduleOnEntry` / `PrintScheduleOnExit`.
+       - En `ReceiptPreviewDialog.xaml`: Insertado `TextBlock` para `BranchSchedule` directamente debajo de `BranchPhone` en los 3 formatos: Tiquete POS Estándar de Salida, Tiquete de Ingreso (Entrada) y Factura de Venta Electrónica DIAN.
+     - Pruebas Automatizadas: `354/354` pruebas unitarias superadas con 0 fallos (`dotnet test ParkingWpf.slnx`).
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Entities/Branch.cs`
+  - `Parking/Entities/BillingResolution.cs`
+  - `Parking/Models/BranchModel.cs`
+  - `Parking/Models/Api/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Data/DbConnectionManager.cs`
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **354 Pruebas Superadas (100% Éxito, 0 Fallos)**.
+
+---
+
 ## 📅 Entrada: [2026-09-28 15:20:00] - [CHECKOUT / RESOLUTION / DATA-DRIVEN / BUGFIX] Carga y Preselección Automática de Resolución por Defecto en Checkout sin Datos Quemados (WPF)
 
 - **`💬 Prompt Original del Usuario`**:
