@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -344,6 +345,9 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private double _printableContentWidth = 270;
 
     [ObservableProperty]
+    private Thickness _ticketPrintablePadding = new Thickness(15, 0, 10, 0);
+
+    [ObservableProperty]
     private double _barcodeWidth = 260;
 
     [ObservableProperty]
@@ -403,6 +407,89 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         RefreshDetectedPrinter();
     }
 
+    public int ResolvePaperWidth(int? fallbackBranchId = null)
+    {
+        // 1. Si la impresora conectada o detectada contiene "58", priorizar formato 58 mm
+        if (!string.IsNullOrWhiteSpace(DetectedPrinterName) &&
+            (DetectedPrinterName.Contains("58", StringComparison.OrdinalIgnoreCase) ||
+             DetectedPrinterName.Contains("POS-58", StringComparison.OrdinalIgnoreCase)))
+        {
+            return 58;
+        }
+
+        // 2. Si la sede activa tiene PaperWidth configurado
+        var currentBranch = _sessionService.CurrentBranch;
+        if (currentBranch?.PaperWidth > 0)
+        {
+            return currentBranch.PaperWidth;
+        }
+
+        // 3. Consultar base de datos si hay fallbackBranchId
+        if (fallbackBranchId.HasValue && fallbackBranchId.Value > 0)
+        {
+            try
+            {
+                using var db = _connectionManager.CreateDbContext();
+                var branchWidth = db.Branches.Where(b => b.Id == fallbackBranchId.Value).Select(b => b.PaperWidth).FirstOrDefault();
+                if (branchWidth > 0)
+                {
+                    return branchWidth;
+                }
+            }
+            catch { }
+        }
+
+        // 4. Default a 80 mm
+        return 80;
+    }
+
+    public void ApplyPaperMetrics(int width)
+    {
+        PaperWidth = width;
+        Is58Mm = width <= 58;
+        PaperWidthBadgeText = Is58Mm ? "Formato: 58 mm ⇄" : "Formato: 80 mm ⇄";
+
+        if (Is58Mm)
+        {
+            PrintableContentWidth = 168;
+            PaperContainerWidth = 200;
+            DialogWindowWidth = 430;
+            TicketPrintablePadding = new Thickness(15, 0, 10, 0);
+            BarcodeWidth = 135;
+            QrCodeWidth = 75;
+            MonospaceFontSize = 8.0;
+            MonospaceTitleFontSize = 10.0;
+            PlateFontSize = 12.0;
+            TicketHeaderFontSize = 7.5;
+            TicketNumberFontSize = 8.0;
+            LogoMaxHeight = 30;
+            LogoMaxWidth = 90;
+        }
+        else
+        {
+            PrintableContentWidth = 265;
+            PaperContainerWidth = 300;
+            DialogWindowWidth = 500;
+            TicketPrintablePadding = new Thickness(10, 0, 10, 0);
+            BarcodeWidth = 210;
+            QrCodeWidth = 95;
+            MonospaceFontSize = 10.0;
+            MonospaceTitleFontSize = 13.0;
+            PlateFontSize = 15.0;
+            TicketHeaderFontSize = 10.0;
+            TicketNumberFontSize = 12.0;
+            LogoMaxHeight = 44;
+            LogoMaxWidth = 130;
+        }
+    }
+
+    [RelayCommand]
+    private void TogglePaperWidth()
+    {
+        var targetWidth = Is58Mm ? 80 : 58;
+        ApplyPaperMetrics(targetWidth);
+    }
+
     public void RefreshDetectedPrinter()
     {
         try
@@ -423,7 +510,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                     PrintStatusMessage = "No se detectó impresora";
                 }
             }
-            else
+            else if (string.IsNullOrWhiteSpace(DetectedPrinterName) || DetectedPrinterName == "Detectando impresora...")
             {
                 DetectedPrinterName = "Impresora estándar";
                 HasConnectedPrinter = true;
@@ -450,41 +537,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         HasBranchSchedule = false;
 
         var currentBranch = _sessionService.CurrentBranch;
-        var width = currentBranch?.PaperWidth > 0 ? currentBranch.PaperWidth : 80;
-        PaperWidth = width;
-        Is58Mm = width <= 58;
-        PaperWidthBadgeText = $"Formato: {width} mm";
-
-        if (Is58Mm)
-        {
-            PrintableContentWidth = 154;
-            DialogWindowWidth = 350;
-            PaperContainerWidth = 194;
-            BarcodeWidth = 140;
-            QrCodeWidth = 80;
-            MonospaceFontSize = 8.0;
-            MonospaceTitleFontSize = 10.5;
-            PlateFontSize = 12.5;
-            TicketHeaderFontSize = 7.0;
-            TicketNumberFontSize = 8.0;
-            LogoMaxHeight = 32;
-            LogoMaxWidth = 95;
-        }
-        else
-        {
-            PrintableContentWidth = 260;
-            DialogWindowWidth = 460;
-            PaperContainerWidth = 298;
-            BarcodeWidth = 210;
-            QrCodeWidth = 95;
-            MonospaceFontSize = 10.0;
-            MonospaceTitleFontSize = 13.0;
-            PlateFontSize = 15.0;
-            TicketHeaderFontSize = 10.0;
-            TicketNumberFontSize = 12.0;
-            LogoMaxHeight = 44;
-            LogoMaxWidth = 130;
-        }
+        var initialWidth = ResolvePaperWidth(ticket.BranchId);
+        ApplyPaperMetrics(initialWidth);
 
         var rawLogo = currentBranch?.LogoBase64;
         if (string.IsNullOrWhiteSpace(rawLogo))
@@ -1098,41 +1152,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         IsStandardExitReceipt = false;
 
         var currentBranch = _sessionService.CurrentBranch;
-        var width = currentBranch?.PaperWidth > 0 ? currentBranch.PaperWidth : 80;
-        PaperWidth = width;
-        Is58Mm = width <= 58;
-        PaperWidthBadgeText = $"Formato: {width} mm";
-
-        if (Is58Mm)
-        {
-            PrintableContentWidth = 154;
-            DialogWindowWidth = 350;
-            PaperContainerWidth = 194;
-            BarcodeWidth = 140;
-            QrCodeWidth = 80;
-            MonospaceFontSize = 8.0;
-            MonospaceTitleFontSize = 10.5;
-            PlateFontSize = 12.5;
-            TicketHeaderFontSize = 7.0;
-            TicketNumberFontSize = 8.0;
-            LogoMaxHeight = 32;
-            LogoMaxWidth = 95;
-        }
-        else
-        {
-            PrintableContentWidth = 260;
-            DialogWindowWidth = 460;
-            PaperContainerWidth = 298;
-            BarcodeWidth = 210;
-            QrCodeWidth = 95;
-            MonospaceFontSize = 10.0;
-            MonospaceTitleFontSize = 13.0;
-            PlateFontSize = 15.0;
-            TicketHeaderFontSize = 10.0;
-            TicketNumberFontSize = 12.0;
-            LogoMaxHeight = 44;
-            LogoMaxWidth = 130;
-        }
+        var initialWidth = ResolvePaperWidth(shift.BranchId);
+        ApplyPaperMetrics(initialWidth);
 
         var rawLogo = currentBranch?.LogoBase64;
         if (string.IsNullOrWhiteSpace(rawLogo))

@@ -1,5 +1,37 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-29 12:30:00] - [THERMAL-PRINTING / 58MM-PAD4MM / PREVIEW-FIX / TOGGLE-FORMAT / WPF] Margen de Seguridad Interno 4mm (15 DIP), Desacoplamiento de ScrollViewer, Selector Interactivo 58mm/80mm y Tiquete #: en Entrada
+
+- **`💬 Prompt Original del Usuario`**:
+
+  > _"Mira que a la margen izquierda se esta comiendo una letra si me explico encesito que sea mes preciso y mejor ya vamos 3 cambios y nada, segundo cambiemos tiquete de ingreso mejor Tiquete #: si me explico así aprovechamos mas el espacio. mira el de salida la segunda imagen es que sigue siendo las margenes yo ya te pase la configuración de la impresora necesitamos que este debajo de eso 4mm de margen si me epxlico por que la margen nos sigue jodiendo si me explico ya vamos 3 cambios y nada que solucionamos ya tienes todo y veo en el ajuste que hiciste pero aun sigue afectando la margen sigue y sigue la margen. ahora otra cosa en el wpf ,mira como se ve en el previsualizador hay deberia verse completo bien no así con ese scroll tapando es que como se ve en el previsualizador es como imprime así esta pasando entonces necesitamos solucioanr eso urgente y que de una vez quede bien ya te paso y otra vez te paso al configuración y sabes que esta configurado, que vi en la 3 imagen no esta tomando bien la co..."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Margen de Seguridad Interno de 4mm (15 DIP) contra Zona Muerta del Cabezal**:
+     - _Causa Raíz_: Las impresoras térmicas POS de 58mm (`58(48) x 210 mm`) tienen un ancho de impresión físico de 48mm con un espacio mecánico ciego de ~3.5mm a 4mm desde el borde izquierdo del papel. Al renderizar a `X = 0`, la primera letra de cada línea (`T` en Tiquete, `F` en Fecha, `E` en Entrada, `S` en Salida, `C` en Cajero) quedaba fuera del área física activa del cabezal térmico.
+     - _Solución Implementada_: En `ReceiptPreviewDialog.xaml`, se encapsuló todo el contenido imprimible dentro de un `<Border Padding="{Binding TicketPrintablePadding}">` con `Thickness(15, 0, 10, 0)` en modo 58mm (~4.0mm margen izquierdo, ~2.6mm margen derecho) y `(10, 0, 10, 0)` en 80mm. Se calibró `PrintableContentWidth = 168 DIP` (ancho total con padding) dejando un área de texto útil de `143 DIP` (37.8mm), garantizando que el texto se dibuje estrictamente dentro de la ventana activa del cabezal.
+  2. **Desacoplamiento Estructural del `ScrollViewer` en el Previsualizador**:
+     - _Causa Raíz_: El `ScrollViewer` se encontraba anidado **dentro** del `Border` blanco de la tirilla del ticket. Al desplegarse la barra de desplazamiento vertical, se dibujaba sobre la hoja blanca, tapando las cifras de precios, importes y columnas derechas.
+     - _Solución_: Se extrajo el `ScrollViewer` hacia `Grid.Row="1"`, envolviendo por fuera el `Border` blanco del ticket con `Background="#FFFFFF"`. La barra de scroll se renderiza en el fondo oscuro de la ventana y la tirilla permanece 100% limpia y visible sin obstrucciones.
+  3. **Selector Interactivo de Formato (58mm ⇄ 80mm) y Encabezado con Grid de 2 Columnas**:
+     - En `ReceiptPreviewDialog.xaml`, se definieron dos columnas en `Grid.Row="0"` (`*` y `Auto`), garantizando que el botón de cerrar `[X]` nunca se superponga al badge de formato.
+     - El badge se transformó en un botón interactivo (`Cursor="Hand"`, `ToolTip`) enlazado al nuevo `TogglePaperWidthCommand` en `ReceiptPreviewViewModel.cs`, permitiendo al usuario alternar entre `Formato: 58 mm ⇄` y `Formato: 80 mm ⇄` directamente con un clic.
+     - `DialogWindowWidth` se amplió a `430 DIP` en 58mm y `500 DIP` en 80mm para una visualización holgada y profesional.
+  4. **Detección Automática de Impresora 58mm**:
+     - En `ReceiptPreviewViewModel.ResolvePaperWidth`, si el nombre de la impresora detectada contiene `"58"` o `"POS-58"`, o si la sede activa tiene `PaperWidth = 58`, se inicializa automáticamente en formato 58mm. Aplica unificadamente tanto para Entrada/Salida como para el Reporte de Cierre de Caja / Turno (`LoadShiftClosure`).
+  5. **Optimización de Consecutivo ("Tiquete #:")**:
+     - En la plantilla de Check-in (`IsEntryTicket`), se reemplazó el texto fijo `"TIQUETE DE INGRESO:"` por `"Tiquete #:"`, liberando 8 caracteres de ancho horizontal para evitar cualquier truncamiento en folios extensos.
+  6. **Pruebas Automatizadas y Compilación**:
+     - Se actualizaron las pruebas unitarias en `ReceiptPreviewViewModelTests.cs` con los nuevos anchos calibrados `(58, 7.5, 8.0, 168)` y `(80, 10.0, 12.0, 265)`.
+     - Se crearon pruebas unitarias para `TogglePaperWidthCommand` y para la auto-detección de impresoras con `"58"`.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **361 pruebas superadas, 0 fallos (100%)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `Parking/Views/ReceiptPreviewDialog.xaml`
+  - `Parking.UnitTests/ViewModels/ReceiptPreviewViewModelTests.cs`
+
 ## 📅 Entrada: [2026-09-29 11:35:00] - [THERMAL-PRINTING / 58MM-48MM / CIERRE-CAJA / CALIBRATION / WPF] Calibración Definitiva de Márgenes Físicos Térmicos (58(48)x210mm) en Entrada, Salida y Cierre de Caja + Rejilla Adaptativa
 
 - **`💬 Prompt Original del Usuario`**:

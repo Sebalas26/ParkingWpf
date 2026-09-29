@@ -289,8 +289,8 @@ public class ReceiptPreviewViewModelTests
     }
 
     [Theory]
-    [InlineData(58, 7.0, 8.0, 154)]
-    [InlineData(80, 10.0, 12.0, 260)]
+    [InlineData(58, 7.5, 8.0, 168)]
+    [InlineData(80, 10.0, 12.0, 265)]
     public void LoadTicket_SetsTicketFontSizes_BasedOnPaperWidth(int paperWidth, double expectedHeaderSize, double expectedNumberSize, double expectedPrintableWidth)
     {
         // Arrange
@@ -307,6 +307,57 @@ public class ReceiptPreviewViewModelTests
         vm.TicketHeaderFontSize.Should().Be(expectedHeaderSize);
         vm.TicketNumberFontSize.Should().Be(expectedNumberSize);
         vm.PrintableContentWidth.Should().Be(expectedPrintableWidth);
+    }
+
+    [Fact]
+    public void TogglePaperWidthCommand_SwitchesBetween58And80()
+    {
+        // Arrange
+        var branch = new BranchModel { Id = 1, Name = "Sede Test", PaperWidth = 58 };
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(branch);
+
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket { TicketNumber = "PKF-001", PlateNumber = "XYZ789", VehicleType = VehicleType.Car };
+        vm.LoadTicket(ticket);
+
+        vm.PaperWidth.Should().Be(58);
+        vm.Is58Mm.Should().BeTrue();
+
+        // Act 1: Toggle to 80
+        vm.TogglePaperWidthCommand.Execute(null);
+
+        // Assert 1
+        vm.PaperWidth.Should().Be(80);
+        vm.Is58Mm.Should().BeFalse();
+        vm.PrintableContentWidth.Should().Be(265);
+
+        // Act 2: Toggle back to 58
+        vm.TogglePaperWidthCommand.Execute(null);
+
+        // Assert 2
+        vm.PaperWidth.Should().Be(58);
+        vm.Is58Mm.Should().BeTrue();
+        vm.PrintableContentWidth.Should().Be(168);
+    }
+
+    [Fact]
+    public void LoadTicket_WhenPrinterNameContains58_Forces58MmEvenIfBranchConfiguredAs80()
+    {
+        // Arrange
+        var branch = new BranchModel { Id = 1, Name = "Sede Test", PaperWidth = 80 };
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(branch);
+
+        var vm = CreateViewModel();
+        vm.DetectedPrinterName = "POS-58 Series";
+        var ticket = new ParkingTicket { TicketNumber = "PKF-001", PlateNumber = "XYZ789", VehicleType = VehicleType.Car };
+
+        // Act
+        vm.LoadTicket(ticket);
+
+        // Assert
+        vm.PaperWidth.Should().Be(58);
+        vm.Is58Mm.Should().BeTrue();
+        vm.PrintableContentWidth.Should().Be(168);
     }
 
     [Fact]
