@@ -40,4 +40,6 @@ public interface IApiClientService
     Task<CustomerApiUpdateResult> UpdateCustomerAsync(Guid customerId, CreateCustomerApiRequest request);
     Task<bool> DeleteCustomerAsync(Guid customerId);
     Task<ParkingTicket?> ConvertTicketToInvoiceAsync(Guid ticketId, Guid customerId);
+    Task<ParkingTicket?> RetryInvoiceAsync(Guid ticketId);
+    Task<bool> ResendInvoiceEmailAsync(Guid ticketId, string? email = null);
 }

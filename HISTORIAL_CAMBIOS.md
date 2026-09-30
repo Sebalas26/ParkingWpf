@@ -1,5 +1,49 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-30 07:45:00] - [FEATURE / DIAN / SIIGO-CLOUD / INVOICING / WPF] Soporte Operativo de Facturación Electrónica DIAN en Salidas y Consulta Histórica (Reintentar Emisión y Reenviar Factura por Correo)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"PLAN MAESTRO DE IMPLEMENTACIÓN TÉCNICA: FACTURACIÓN ELECTRÓNICA DIAN (POS ELECTRÓNICO / FEV VIA SIIGO CLOUD API) Y MULTI-SEDE... no se ve claro desde que modulo se va hacer lo de reintentar la FV, o realizar la nota credito, y tambien creo que existe o deberia existir el modo de reenviarse la factura electronica por si depronto el cliente me quedo mal creado y no coloque el correo correcto lo edito y pues me permita reenviar la factura ya generada... analzia completamente si existe algun hueco tecnico... revisa esto y terminame de armar el plan completo para darle proceder."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Modelo de Datos y Entidad (`ParkingTicket.cs`)**:
+     - Se incorporaron las propiedades persistentes `ElectronicInvoiceId`, `ElectronicInvoiceUrl` y `ElectronicInvoiceError`.
+     - Se añadieron las propiedades calculadas observables:
+       - `CanRetryInvoice`: `IsElectronicInvoice && (DianStatus == DianStatus.Rejected || (string.IsNullOrWhiteSpace(InvoiceNumber) && string.IsNullOrWhiteSpace(CreditNoteNumber)))`.
+       - `CanResendEmail`: `IsElectronicInvoice && !string.IsNullOrWhiteSpace(InvoiceNumber) && string.IsNullOrWhiteSpace(CreditNoteNumber)`.
+  2. **Contratos y Servicios de Cliente API (`IApiClientService.cs`, `ParkingApiClient.cs`, `IParkingTicketService.cs`, `EfParkingTicketService.cs`)**:
+     - Se definieron e implementaron los métodos de integración:
+       - `RetryInvoiceAsync(Guid ticketId)`: Consume `POST api/v1/tickets/{id}/retry-invoice` y sincroniza el tiquete actualizado en la base SQLite local.
+       - `ResendInvoiceEmailAsync(Guid ticketId, string email)`: Consume `POST api/v1/tickets/{id}/resend-email` enviando el correo del cliente.
+  3. **Recursos Visuales XAML (`Parking/Styles/Icons.xaml`)**:
+     - Se verificó la disponibilidad de `IconRefresh` y se agregó la geometría canónica `IconMail` para el botón de reenvío de correo electrónico.
+  4. **Lógica de Presentación y ViewModel (`RecentEntriesViewModel.cs`)**:
+     - Se implementaron los comandos:
+       - `RetryInvoiceCommand`: Solicita confirmación al operador, invoca `_ticketService.RetryInvoiceAsync` y recarga las listas activas e históricas tras la confirmación de reencolado DIAN.
+       - `ResendInvoiceEmailCommand`: Resuelve el correo del cliente (o abre el selector de cliente si falta registrar el email), confirma la acción y lanza `_ticketService.ResendInvoiceEmailAsync` con feedback interactivo.
+  5. **Vistas XAML (`RecentEntriesView.xaml`)**:
+     - En la pestaña de Salidas del Turno (`CompletedEntries`) y en la pestaña de Histórico (`HistoricalEntries`), se incorporaron los botones de acción:
+       - Botón **"Reintentar FE"** (`DangerButton` con `IconRefresh`): visible condicionalmente según `CanRetryInvoice`.
+       - Botón **"Reenviar Correo"** (`SecondaryButton` con `IconMail`): visible condicionalmente según `CanResendEmail`.
+  6. **Verificación y Pruebas Unitarias**:
+     - `dotnet build`: **0 Errores, 0 Advertencias**.
+     - `dotnet test`: **364/364 Pruebas Superadas (100% Exitosas, 0 Fallos, 0 Omitidas)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Entities/ParkingTicket.cs`
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Contracts/IParkingTicketService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Styles/Icons.xaml`
+  - `Parking/ViewModels/RecentEntriesViewModel.cs`
+  - `Parking/Views/RecentEntriesView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build`: **0 Errores**.
+  - `dotnet test`: **364 Pruebas Superadas, 0 Fallos**.
+
 ## 📅 Entrada: [2026-09-29 15:25:00] - [BUGFIX / SHIFT-RECEIPT / FINANCIAL-TOTALS / DESERIALIZATION / WPF] Corrección de Deserialización Nullable de Medios de Pago, Preservación de Totales Centrales y Fallback Inteligente en Tirilla de Cierre de Caja
 
 - **`💬 Prompt Original del Usuario`**:

@@ -47,7 +47,13 @@ public class ParkingTicket
     public bool IsPosConvertedToInvoice { get; set; } = false;
     public DateTime? PosConvertedAtUtc { get; set; }
     public int? PosConvertedByUserId { get; set; }
+    public string? ElectronicInvoiceId { get; set; }
+    public string? ElectronicInvoiceUrl { get; set; }
+    public string? ElectronicInvoiceError { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    public bool CanRetryInvoice => IsElectronicInvoice && (DianStatus == DianStatus.Rejected || (string.IsNullOrWhiteSpace(InvoiceNumber) && string.IsNullOrWhiteSpace(CreditNoteNumber)));
+    public bool CanResendEmail => IsElectronicInvoice && !string.IsNullOrWhiteSpace(InvoiceNumber) && string.IsNullOrWhiteSpace(CreditNoteNumber);
 
     public virtual Customer? Customer { get; set; }
 

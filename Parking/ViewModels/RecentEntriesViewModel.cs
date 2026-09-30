@@ -340,4 +340,128 @@ public partial class RecentEntriesViewModel : ViewModelBase
         if (ticket == null) return;
         await _dialogService.ShowReceiptPreviewAsync(ticket);
     }
+
+    [RelayCommand]
+    private async Task RetryInvoiceAsync(ParkingTicket? ticket)
+    {
+        if (ticket == null) return;
+
+        var confirm = await _dialogService.ShowConfirmationAsync(
+            "Reintentar Facturación Electrónica",
+            $"¿Desea reintentar la emisión de factura electrónica para el comprobante #{ticket.TicketNumber} (Placa {ticket.PlateNumber})?",
+            DialogNotificationType.Question,
+            "Reintentar",
+            "Cancelar");
+
+        if (!confirm) return;
+
+        IsBusy = true;
+        BusyMessage = "Reintentando emisión DIAN...";
+
+        try
+        {
+            var updatedTicket = await _ticketService.RetryInvoiceAsync(ticket.TicketId);
+            if (updatedTicket != null)
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Emisión Encolada",
+                    "El comprobante ha sido reencolado para sincronización inmediata con la DIAN.",
+                    DialogNotificationType.Success);
+
+                await LoadEntriesAsync();
+                if (SelectedTab == 2)
+                {
+                    await LoadHistoricalEntriesAsync();
+                }
+            }
+            else
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Error de Emisión",
+                    "No fue posible reintentar la emisión. Verifique la conexión o el estado del documento.",
+                    DialogNotificationType.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Error al Reintentar",
+                $"Ocurrió un error al reintentar la factura: {ex.Message}",
+                DialogNotificationType.Error);
+        }
+        finally
+        {
+            IsBusy = false;
+            BusyMessage = null;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ResendInvoiceEmailAsync(ParkingTicket? ticket)
+    {
+        if (ticket == null) return;
+
+        var email = ticket.Customer?.Email;
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            var customer = await _dialogService.ShowCustomerSelectionDialogAsync(ticket.PlateNumber);
+            if (customer != null && !string.IsNullOrWhiteSpace(customer.Email))
+            {
+                email = customer.Email;
+                ticket.Customer = customer;
+                ticket.CustomerId = customer.CustomerId;
+            }
+            else
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Correo Requerido",
+                    "Debe seleccionar o registrar un cliente con correo electrónico válido para enviar la factura.",
+                    DialogNotificationType.Warning);
+                return;
+            }
+        }
+
+        var confirm = await _dialogService.ShowConfirmationAsync(
+            "Reenviar Factura por Correo",
+            $"¿Desea reenviar la factura electrónica al correo {email}?",
+            DialogNotificationType.Question,
+            "Enviar",
+            "Cancelar");
+
+        if (!confirm) return;
+
+        IsBusy = true;
+        BusyMessage = $"Enviando factura a {email}...";
+
+        try
+        {
+            var success = await _ticketService.ResendInvoiceEmailAsync(ticket.TicketId, email);
+            if (success)
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Correo Enviado",
+                    $"La factura electrónica ha sido enviada exitosamente a {email}.",
+                    DialogNotificationType.Success);
+            }
+            else
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Fallo de Envío",
+                    "No se pudo completar el envío del correo electrónico. Verifique la configuración de correo en Siigo.",
+                    DialogNotificationType.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Error al Enviar",
+                $"Ocurrió un error al enviar el correo: {ex.Message}",
+                DialogNotificationType.Error);
+        }
+        finally
+        {
+            IsBusy = false;
+            BusyMessage = null;
+        }
+    }
 }

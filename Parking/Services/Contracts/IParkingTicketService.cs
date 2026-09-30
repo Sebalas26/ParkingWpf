@@ -45,5 +45,7 @@ public interface IParkingTicketService
     Task HandleRemoteTicketCheckOutAsync(Guid? ticketId, string? plateNumber, int? branchId);
     Task HandleRemoteTicketCheckInAsync(Guid? ticketId, string? plateNumber, int? branchId);
     Task<ParkingTicket?> ConvertTicketToInvoiceAsync(Guid ticketId, Guid customerId);
+    Task<ParkingTicket?> RetryInvoiceAsync(Guid ticketId);
+    Task<bool> ResendInvoiceEmailAsync(Guid ticketId, string? email = null);
     Task<IReadOnlyList<ParkingTicket>> GetHistoricalTicketsAsync(DateTime fromUtc, DateTime toUtc, string? query = null);
 }

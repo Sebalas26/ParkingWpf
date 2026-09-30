@@ -976,4 +976,57 @@ public class ParkingApiClient : IApiClientService
             return null;
         }
     }
+
+    public async Task<ParkingTicket?> RetryInvoiceAsync(Guid ticketId)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        try
+        {
+            var url = $"{BaseUrl}/api/tickets/{ticketId}/retry-invoice";
+            var response = await _httpClient.PostAsJsonAsync(url, new { }, JsonOptions, cts.Token);
+            CheckUnauthorized(response);
+            if (response.IsSuccessStatusCode)
+            {
+                ReportConnectionState(true);
+                return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions, cts.Token);
+            }
+            return null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<bool> ResendInvoiceEmailAsync(Guid ticketId, string? email = null)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        try
+        {
+            var url = $"{BaseUrl}/api/tickets/{ticketId}/resend-email";
+            var payload = new { email };
+            var response = await _httpClient.PostAsJsonAsync(url, payload, JsonOptions, cts.Token);
+            CheckUnauthorized(response);
+            if (response.IsSuccessStatusCode)
+            {
+                ReportConnectionState(true);
+                return true;
+            }
+            return false;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }
