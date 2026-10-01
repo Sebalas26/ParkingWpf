@@ -2088,6 +2088,8 @@ public class SyncEngineService : ISyncEngineService
                 TicketId = ticket.TicketId,
                 BranchId = ticket.BranchId,
                 CompanyId = ticket.CompanyId,
+                OperatorName = ticket.OperatorName,
+                ExitOperatorName = ticket.ExitOperatorName,
                 PaymentMethod = ticket.PaymentMethod ?? PaymentMethod.Cash,
                 PaymentMethodId = ticket.PaymentMethodId,
                 AmountPaid = ticket.AmountPaid,

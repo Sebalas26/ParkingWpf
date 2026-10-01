@@ -256,7 +256,7 @@ public class ParkingApiClient : IApiClientService
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(8));
         try
         {
-            var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/tickets/check-out", request, cts.Token);
+            var response = await _httpClient.PostAsJsonAsync($"{BaseUrl}/api/tickets/check-out", request, JsonOptions, cts.Token);
             CheckUnauthorized(response);
             if (response.IsSuccessStatusCode)
             {

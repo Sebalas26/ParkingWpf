@@ -621,13 +621,26 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             : string.Empty;
 
         // 3. Atendido por (Usuario logueado en WPF que realizó el ingreso)
-        AttendedBy = !string.IsNullOrWhiteSpace(ticket.OperatorName)
-            ? ticket.OperatorName.ToUpperInvariant()
-            : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.FullName)
-                ? _sessionService.CurrentUser.FullName.ToUpperInvariant()
-                : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.Username)
-                    ? _sessionService.CurrentUser.Username.ToUpperInvariant()
-                    : "OPERADOR"));
+        if (IsExitReceipt)
+        {
+            AttendedBy = !string.IsNullOrWhiteSpace(ticket.ExitOperatorName)
+                ? ticket.ExitOperatorName.ToUpperInvariant()
+                : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.FullName)
+                    ? _sessionService.CurrentUser.FullName.ToUpperInvariant()
+                    : (!string.IsNullOrWhiteSpace(ticket.OperatorName)
+                        ? ticket.OperatorName.ToUpperInvariant()
+                        : "OPERADOR"));
+        }
+        else
+        {
+            AttendedBy = !string.IsNullOrWhiteSpace(ticket.OperatorName)
+                ? ticket.OperatorName.ToUpperInvariant()
+                : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.FullName)
+                    ? _sessionService.CurrentUser.FullName.ToUpperInvariant()
+                    : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.Username)
+                        ? _sessionService.CurrentUser.Username.ToUpperInvariant()
+                        : "OPERADOR"));
+        }
 
         // 4. Tarifas de la Sede configuradas desde el PWA
         VehicleRate? rate = null;
@@ -873,13 +886,26 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             Iva19Str = $"{iva:N0}";
             TotalStr = $"{totalPaid:N0}";
 
-            AttendedBy = !string.IsNullOrWhiteSpace(ticket.OperatorName)
-                ? ticket.OperatorName.ToUpperInvariant()
-                : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.FullName)
-                    ? _sessionService.CurrentUser.FullName.ToUpperInvariant()
-                    : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.Username)
-                        ? _sessionService.CurrentUser.Username.ToUpperInvariant()
-                        : "OPERADOR"));
+            if (IsExitReceipt)
+            {
+                AttendedBy = !string.IsNullOrWhiteSpace(ticket.ExitOperatorName)
+                    ? ticket.ExitOperatorName.ToUpperInvariant()
+                    : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.FullName)
+                        ? _sessionService.CurrentUser.FullName.ToUpperInvariant()
+                        : (!string.IsNullOrWhiteSpace(ticket.OperatorName)
+                            ? ticket.OperatorName.ToUpperInvariant()
+                            : "OPERADOR"));
+            }
+            else
+            {
+                AttendedBy = !string.IsNullOrWhiteSpace(ticket.OperatorName)
+                    ? ticket.OperatorName.ToUpperInvariant()
+                    : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.FullName)
+                        ? _sessionService.CurrentUser.FullName.ToUpperInvariant()
+                        : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.Username)
+                            ? _sessionService.CurrentUser.Username.ToUpperInvariant()
+                            : "OPERADOR"));
+            }
 
             // 5. Datos de Factura vs POS Estándar
             CustomerName = "CONSUMIDOR FINAL";

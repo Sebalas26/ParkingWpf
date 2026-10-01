@@ -269,6 +269,9 @@ public partial class CheckInViewModel : ViewModelBase
 
     public override async Task InitializeAsync()
     {
+        ClearInputs();
+        RecentEntriesSearchQuery = string.Empty;
+
         await _pricingCalculator.ReloadRatesAsync();
         AvailableRates = await _pricingCalculator.GetAllRatesAsync();
         HasConfiguredRates = AvailableRates.Count > 0;
@@ -487,7 +490,7 @@ public partial class CheckInViewModel : ViewModelBase
             var localBlock = await _ticketService.GetActiveBlockAsync(normalizedPlate);
             if (cts.IsCancellationRequested) return;
 
-            if (localBlock != null)
+            if (localBlock != null && localBlock.IsBlocked)
             {
                 IsPlateBlocked = true;
                 BlockedIncidentType = localBlock.IncidentType;
@@ -672,18 +675,39 @@ public partial class CheckInViewModel : ViewModelBase
         var activeBlock = await _ticketService.GetActiveBlockAsync(normalizedPlate);
         if (activeBlock != null || IsPlateBlocked)
         {
-            IsPlateBlocked = true;
-            BlockedIncidentType = activeBlock?.IncidentType ?? BlockedIncidentType ?? "Lista Negra";
-            BlockedDescription = activeBlock?.Description ?? BlockedDescription ?? "Vehículo con novedad administrativa.";
-            BlockedReason = $"VEHÍCULO BLOQUEADO: {BlockedIncidentType} - {BlockedDescription}";
+            if (activeBlock != null && !activeBlock.IsBlocked && !IsPlateBlocked)
+            {
+                var incidentDetail = !string.IsNullOrWhiteSpace(activeBlock.Description)
+                    ? $"{activeBlock.IncidentType}: {activeBlock.Description}"
+                    : (!string.IsNullOrWhiteSpace(activeBlock.IncidentType) ? activeBlock.IncidentType : "Novedad informativa");
 
-            await _dialogService.ShowAlertAsync(
-                "Vehículo restringido",
-                $"La placa '{normalizedPlate}' presenta un bloqueo activo en el sistema.\n\nContáctese con su administrador.",
-                DialogNotificationType.Error);
+                var proceed = await _dialogService.ShowConfirmationAsync(
+                    "Advertencia de Novedad Activa",
+                    $"El vehículo con placa '{normalizedPlate}' tiene una novedad activa registrada:\n\n\"{incidentDetail}\"\n\n¿Desea continuar con el ingreso del vehículo?",
+                    DialogNotificationType.Warning,
+                    "Continuar Ingreso",
+                    "Cancelar");
 
-            ClearInputs();
-            return;
+                if (!proceed)
+                {
+                    return;
+                }
+            }
+            else
+            {
+                IsPlateBlocked = true;
+                BlockedIncidentType = activeBlock?.IncidentType ?? BlockedIncidentType ?? "Lista Negra";
+                BlockedDescription = activeBlock?.Description ?? BlockedDescription ?? "Vehículo con novedad administrativa.";
+                BlockedReason = $"VEHÍCULO BLOQUEADO: {BlockedIncidentType} - {BlockedDescription}";
+
+                await _dialogService.ShowAlertAsync(
+                    "Vehículo restringido",
+                    $"La placa '{normalizedPlate}' presenta un bloqueo activo en el sistema.\n\nContáctese con su administrador.",
+                    DialogNotificationType.Error);
+
+                ClearInputs();
+                return;
+            }
         }
 
         if (await _ticketService.IsPlateCurrentlyParkedAsync(normalizedPlate))

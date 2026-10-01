@@ -135,7 +135,7 @@ public class EfParkingTicketService : IParkingTicketService
 
         // 1. Validar bloqueo activo por lista negra / novedad (consulta híbrida SQLite + API en tiempo real)
         var blockedIncident = await GetActiveBlockAsync(normalizedPlate);
-        if (blockedIncident != null)
+        if (blockedIncident != null && blockedIncident.IsBlocked)
         {
             throw new InvalidOperationException($"VEHÍCULO BLOQUEADO: La placa '{normalizedPlate}' tiene un bloqueo activo registrado por novedad: '{blockedIncident.IncidentType}' ({blockedIncident.Description}). No está permitido su ingreso.");
         }
@@ -636,7 +636,7 @@ public class EfParkingTicketService : IParkingTicketService
                         PlateNumber = rawUpper,
                         IncidentType = !string.IsNullOrWhiteSpace(apiCheck.IncidentType) ? apiCheck.IncidentType : "Novedad / Lista Negra",
                         Description = !string.IsNullOrWhiteSpace(apiCheck.Description) ? apiCheck.Description : (!string.IsNullOrWhiteSpace(apiCheck.Reason) ? apiCheck.Reason : "Vehículo con novedad activa en el sistema."),
-                        IsBlocked = true,
+                        IsBlocked = apiCheck.IsBlocked,
                         IsGlobal = false,
                         Status = "Activa",
                         ReportedBy = !string.IsNullOrWhiteSpace(apiCheck.ReportedBy) ? apiCheck.ReportedBy : "Sistema Central / PWA",

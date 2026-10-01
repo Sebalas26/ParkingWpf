@@ -503,6 +503,9 @@ public partial class CheckOutViewModel : ViewModelBase
 
     public override async Task InitializeAsync()
     {
+        SearchQuery = string.Empty;
+        SelectedTicket = null;
+
         HasElectronicInvoicingEnabled = _sessionService.CurrentUser?.HasElectronicInvoicingEnabled ?? false;
         ForceElectronicInvoiceOnCheckout = _sessionService.CurrentUser?.ForceElectronicInvoiceOnCheckout ?? false;
         CanToggleElectronicInvoice = !ForceElectronicInvoiceOnCheckout;

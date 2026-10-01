@@ -1,5 +1,32 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-09-30 22:15:00] - [FEATURE / NOVEDADES / INGRESO] Advertencia Modal de Novedad Informativa (No Bloqueante) en Registro de Ingreso WPF
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Al momento de ingresar un vehículo y que este registrado en novedades, me alerte sobre la novedad por la que se ingreso antes de generar la impresion de la factura o de ingresar el vehiculo... excepto si se marca bloquear ingreso ... proceder"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Servicio de Tiquetes (`EfParkingTicketService.cs`)**:
+     - En `RegisterEntryAsync`, se ajustó la validación para lanzar `InvalidOperationException` únicamente si `blockedIncident != null && blockedIncident.IsBlocked`.
+     - En `GetActiveBlockAsync`, al sincronizar en caliente novedades reportadas desde el API central, se asignó `IsBlocked = apiCheck.IsBlocked` en la entidad local `VehicleIncident` (en lugar de forzar siempre `true`), preservando el estado real del registro creado en PWA o central.
+  2. **ViewModel de Ingreso (`CheckInViewModel.cs`)**:
+     - En `OnPlateNumberChanged`: Solo activa la bandera visual y banner rojo de lista negra (`IsPlateBlocked = true`) si la novedad activa retornada tiene `localBlock.IsBlocked == true`.
+     - En `RegisterAndPrintAsync`: Al consultar `activeBlock = await _ticketService.GetActiveBlockAsync(normalizedPlate)`:
+       - Si la novedad es bloqueante (`IsBlocked == true` o `IsPlateBlocked == true`): Muestra la alerta de error ("Vehículo restringido"), limpia los campos y bloquea el ingreso.
+       - Si la novedad es informativa/no bloqueante (`IsBlocked == false`): Despliega un cuadro de confirmación (`_dialogService.ShowConfirmationAsync`) con título *"Advertencia de Novedad Activa"*, detallando el tipo de novedad y su descripción, con los botones *"Continuar Ingreso"* y *"Cancelar"*. Si el operador cancela, se aborta la operación limpiamente sin emitir tiquete; si acepta, continúa con la impresión y registro exitoso.
+  3. **Compilación**:
+     - `dotnet build ParkingWpf.slnx -p:EnableWindowsTargeting=true` -> **0 Errores, 0 Advertencias**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/ViewModels/CheckInViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx -p:EnableWindowsTargeting=true`: Compilación exitosa con **0 Errores y 0 Advertencias**.
+
+---
+
 ## 📅 Entrada: [2026-09-30 07:45:00] - [FEATURE / DIAN / SIIGO-CLOUD / INVOICING / WPF] Soporte Operativo de Facturación Electrónica DIAN en Salidas y Consulta Histórica (Reintentar Emisión y Reenviar Factura por Correo)
 
 - **`💬 Prompt Original del Usuario`**:
