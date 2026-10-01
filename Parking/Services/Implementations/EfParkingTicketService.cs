@@ -349,6 +349,11 @@ public class EfParkingTicketService : IParkingTicketService
         ticket.Status = TicketStatus.Completed;
         ticket.IsSynchronized = false;
 
+        string resolvedExitOp = !string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.FullName)
+            ? _sessionService.CurrentUser.FullName
+            : (!string.IsNullOrWhiteSpace(_sessionService.CurrentUser?.Username) ? _sessionService.CurrentUser.Username : "Operador General");
+        ticket.ExitOperatorName = resolvedExitOp;
+
         // Intentar registrar salida en el API si está en línea
         if (_syncEngine.IsOnline)
         {
@@ -377,7 +382,9 @@ public class EfParkingTicketService : IParkingTicketService
                     CustomerId = customerId,
                     IsLostTicket = isLostTicket,
                     LostTicketFee = lostTicketFee,
-                    ExitTimeUtc = exitTime
+                    ExitTimeUtc = exitTime,
+                    OperatorName = resolvedExitOp,
+                    ExitOperatorName = resolvedExitOp
                 });
 
                 if (apiResponse != null)

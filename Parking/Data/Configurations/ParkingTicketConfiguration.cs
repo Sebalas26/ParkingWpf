@@ -19,6 +19,7 @@ public class ParkingTicketConfiguration : IEntityTypeConfiguration<ParkingTicket
         builder.Property(t => t.BayNumber).HasMaxLength(30);
         builder.Property(t => t.Notes).HasMaxLength(255);
         builder.Property(t => t.OperatorName).IsRequired().HasMaxLength(100);
+        builder.Property(t => t.ExitOperatorName).HasMaxLength(100).IsRequired(false);
 
         builder.Property(t => t.HourlyRate).HasPrecision(18, 2);
         builder.Property(t => t.GrossAmount).HasPrecision(18, 2);

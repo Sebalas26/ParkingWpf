@@ -33,6 +33,7 @@ public class ParkingTicket
     public Guid? OperatorEntryId { get; set; }
     public Guid? OperatorExitId { get; set; }
     public string OperatorName { get; set; } = "Operador General";
+    public string? ExitOperatorName { get; set; }
     public bool IsSynchronized { get; set; } = true;
     public Guid? ResolutionId { get; set; }
     public string? ResolutionName { get; set; }

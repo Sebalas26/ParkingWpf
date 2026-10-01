@@ -139,6 +139,12 @@ public class CheckOutApiRequest
 
     [JsonPropertyName("exitTimeUtc")]
     public DateTime ExitTimeUtc { get; set; } = DateTime.UtcNow;
+
+    [JsonPropertyName("operatorName")]
+    public string? OperatorName { get; set; }
+
+    [JsonPropertyName("exitOperatorName")]
+    public string? ExitOperatorName { get; set; }
 }
 
 public class LoginApiRequest
