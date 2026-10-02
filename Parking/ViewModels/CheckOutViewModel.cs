@@ -2051,14 +2051,26 @@ public partial class CheckOutViewModel : ViewModelBase
 
         var requiresCash = SelectedPaymentMethodEntity?.RequiresCashTender ?? (SelectedPaymentMethod == PaymentMethod.Cash);
 
-        // Si el valor neto a pagar es $0.00 (descuento del 100%), el efectivo a recibir es 0 y el cambio es 0
+        // Si el valor neto a pagar es $0.00 (descuento del 100% o tiempo de gracia), el efectivo a recibir es 0 y el cambio es 0,
+        // y NUNCA se emite factura electrónica (prohibido por DIAN y regla de negocio)
         if (CalculatedFee == 0m)
         {
             AmountTendered = 0m;
+            EmitElectronicInvoice = false;
+            CanToggleElectronicInvoice = false;
         }
-        else if (!requiresCash || AmountTendered == previousCalculatedFee || AmountTendered == GrossFee || AmountTendered < CalculatedFee)
+        else
         {
-            AmountTendered = CalculatedFee;
+            CanToggleElectronicInvoice = !ForceElectronicInvoiceOnCheckout;
+            if (ForceElectronicInvoiceOnCheckout)
+            {
+                EmitElectronicInvoice = true;
+            }
+
+            if (!requiresCash || AmountTendered == previousCalculatedFee || AmountTendered == GrossFee || AmountTendered < CalculatedFee)
+            {
+                AmountTendered = CalculatedFee;
+            }
         }
     }
 

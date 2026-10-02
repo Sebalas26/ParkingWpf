@@ -1029,4 +1029,30 @@ public class ParkingApiClient : IApiClientService
             return false;
         }
     }
+
+    public async Task<ParkingTicket?> SyncTicketDianStatusAsync(Guid ticketId)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        try
+        {
+            var url = $"{BaseUrl}/api/tickets/{ticketId}/sync-dian-status";
+            var response = await _httpClient.PostAsJsonAsync(url, new { }, JsonOptions, cts.Token);
+            CheckUnauthorized(response);
+            if (response.IsSuccessStatusCode)
+            {
+                ReportConnectionState(true);
+                return await response.Content.ReadFromJsonAsync<ParkingTicket>(JsonOptions, cts.Token);
+            }
+            return null;
+        }
+        catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
+        {
+            ReportConnectionState(false);
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
 }
