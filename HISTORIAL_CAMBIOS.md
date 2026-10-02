@@ -1,5 +1,49 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-01 23:25:00] - [BUGFIX / SIIGO-CLOUD / INVOICING / DIAN / WPF] Deshabilitación de Factura Electrónica para Cobro $0, Botón Actualizar Estado DIAN y Sincronización Local SQLite
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"necesito que me digas por que tu tienes toda la documentación que tipos de documento es para la prueba, cual para vendedor, cual para producto y cual centro de servicio por que tu debes saber cuales debo usar por que el sistema no funciona probe con varios y nada no funciona. ojo con dañar lo que ya funciona... no modifiques ningun texto ni nada deja como esta si me explico. ojo con colocar cosas que no te he dicho si me explico. vuelvo y digo tu no lo vas a incorporar eso se debería hacer desde los select debería verse en los select esos id para yo seleccionarlos por que no salen el producto no sale ese identonces la infomación que se trae de sigo esta mal o que sucede o existe un top o que ? pasas.. dale proceder."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Regla de Negocio para Cobro $0 COP (`CheckOutViewModel.cs`)**:
+     - En `RecalculateAmounts`: Cuando `CalculatedFee == 0m`, se apaga automáticamente `EmitElectronicInvoice = false` y se bloquea el toggle `CanToggleElectronicInvoice = false`, impidiendo que el operador active accidentalmente facturación electrónica para salidas dentro del periodo de gracia o de cortesía.
+  2. **Modelo de Entidad y Visibilidad Condicional (`ParkingTicket.cs`)**:
+     - Se incorporaron las propiedades calculadas:
+       - `CanSyncDianStatus`: `IsElectronicInvoice && DianStatus == DianStatus.Pending && !string.IsNullOrWhiteSpace(ElectronicInvoiceId)`.
+       - `CanConvertToInvoice`: `!IsElectronicInvoice && Status == TicketStatus.Completed && NetAmount > 0`.
+  3. **Contratos y Servicios de Cliente API (`IApiClientService.cs`, `ParkingApiClient.cs`, `IParkingTicketService.cs`, `EfParkingTicketService.cs`)**:
+     - Se implementó `SyncTicketDianStatusAsync(Guid ticketId)`:
+       - En `ParkingApiClient.cs`: Consume `POST /api/tickets/{ticketId}/sync-dian-status`.
+       - En `EfParkingTicketService.cs`: Consulta el API y actualiza atómicamente en la base de datos local SQLite los campos fiscales `InvoiceNumber`, `Cufe`, `QrCodeData`, `DianStatus`, `ElectronicInvoiceUrl` y `ElectronicInvoiceError`.
+  4. **ViewModel y Comando de Sincronización DIAN (`RecentEntriesViewModel.cs`)**:
+     - Se añadió el comando `[RelayCommand] SyncDianStatusAsync(ParkingTicket? ticket)` con feedback contextual mediante `_dialogService.ShowAlertAsync`.
+  5. **Vistas e Interfaz XAML (`RecentEntriesView.xaml`)**:
+     - En la pestaña de Salidas Activas y en la de Histórico:
+       - El botón *"Facturar DIAN"* ahora enlaza su visibilidad a `CanConvertToInvoice`, ocultándose limpiamente para cualquier tiquete liquidado en $0 COP.
+       - Se incorporó el botón *"Actualizar DIAN"* (`SecondaryButton` con `{StaticResource IconRefresh}`) condicionado por `CanSyncDianStatus` para consultar el estado en la DIAN.
+       - Se preservaron al 100% los formatos y textos de recibos térmicos sin alterar plantillas visuales.
+  6. **Compilación y Pruebas Unitarias (Reglas de Oro 4 y 6)**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **364 Pasadas, 0 Fallidas (100% Superado)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Entities/ParkingTicket.cs`
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Contracts/IParkingTicketService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/ViewModels/RecentEntriesViewModel.cs`
+  - `Parking/Views/RecentEntriesView.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **364/364 pruebas superadas (100%)**.
+
+---
+
 ## 📅 Entrada: [2026-09-30 22:15:00] - [FEATURE / NOVEDADES / INGRESO] Advertencia Modal de Novedad Informativa (No Bloqueante) en Registro de Ingreso WPF
 
 - **`💬 Prompt Original del Usuario`**:

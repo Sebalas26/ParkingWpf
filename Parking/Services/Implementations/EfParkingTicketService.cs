@@ -918,6 +918,37 @@ public class EfParkingTicketService : IParkingTicketService
         return await _apiClient.ResendInvoiceEmailAsync(ticketId, email);
     }
 
+    public async Task<ParkingTicket?> SyncTicketDianStatusAsync(Guid ticketId)
+    {
+        using var db = _connectionManager.CreateDbContext();
+        var ticket = await db.ParkingTickets
+            .Include(t => t.Customer)
+            .FirstOrDefaultAsync(t => t.TicketId == ticketId);
+
+        if (ticket == null) return null;
+
+        if (_syncEngine.IsOnline)
+        {
+            var remoteTicket = await _apiClient.SyncTicketDianStatusAsync(ticketId);
+            if (remoteTicket != null)
+            {
+                ticket.InvoiceNumber = remoteTicket.InvoiceNumber;
+                ticket.Cufe = remoteTicket.Cufe;
+                ticket.QrCodeData = remoteTicket.QrCodeData;
+                ticket.DianStatus = remoteTicket.DianStatus;
+                ticket.ElectronicInvoiceId = remoteTicket.ElectronicInvoiceId;
+                ticket.ElectronicInvoiceUrl = remoteTicket.ElectronicInvoiceUrl;
+                ticket.ElectronicInvoiceError = remoteTicket.ElectronicInvoiceError;
+                ticket.IsSynchronized = true;
+
+                await db.SaveChangesAsync();
+                return ticket;
+            }
+        }
+
+        return ticket;
+    }
+
     public async Task<IReadOnlyList<ParkingTicket>> GetHistoricalTicketsAsync(DateTime fromUtc, DateTime toUtc, string? query = null)
     {
         using var db = _connectionManager.CreateDbContext();

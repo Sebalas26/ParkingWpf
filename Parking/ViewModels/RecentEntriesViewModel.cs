@@ -464,4 +464,67 @@ public partial class RecentEntriesViewModel : ViewModelBase
             BusyMessage = null;
         }
     }
+
+    [RelayCommand]
+    private async Task SyncDianStatusAsync(ParkingTicket? ticket)
+    {
+        if (ticket == null) return;
+
+        IsBusy = true;
+        BusyMessage = "Sincronizando estado con la DIAN...";
+
+        try
+        {
+            var updatedTicket = await _ticketService.SyncTicketDianStatusAsync(ticket.TicketId);
+            if (updatedTicket != null)
+            {
+                await LoadEntriesAsync();
+                if (SelectedTab == 2)
+                {
+                    await LoadHistoricalEntriesAsync();
+                }
+
+                if (updatedTicket.DianStatus == DianStatus.Issued)
+                {
+                    await _dialogService.ShowAlertAsync(
+                        "Estado DIAN Actualizado",
+                        $"La factura {updatedTicket.InvoiceNumber} fue validada exitosamente por la DIAN.",
+                        DialogNotificationType.Success);
+                }
+                else if (updatedTicket.DianStatus == DianStatus.Rejected)
+                {
+                    await _dialogService.ShowAlertAsync(
+                        "Factura Rechazada",
+                        $"La DIAN o Siigo rechazó la factura. Detalle: {updatedTicket.ElectronicInvoiceError ?? "Sin detalle"}",
+                        DialogNotificationType.Error);
+                }
+                else
+                {
+                    await _dialogService.ShowAlertAsync(
+                        "Estado DIAN",
+                        "El documento continúa en procesamiento por la DIAN.",
+                        DialogNotificationType.Information);
+                }
+            }
+            else
+            {
+                await _dialogService.ShowAlertAsync(
+                    "Error de Sincronización",
+                    "No se pudo consultar el estado del comprobante. Verifique la conexión con el servidor.",
+                    DialogNotificationType.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Error al Consultar DIAN",
+                $"Ocurrió un error al sincronizar el estado: {ex.Message}",
+                DialogNotificationType.Error);
+        }
+        finally
+        {
+            IsBusy = false;
+            BusyMessage = null;
+        }
+    }
 }

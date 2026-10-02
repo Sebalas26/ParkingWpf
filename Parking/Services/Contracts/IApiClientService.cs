@@ -42,4 +42,5 @@ public interface IApiClientService
     Task<ParkingTicket?> ConvertTicketToInvoiceAsync(Guid ticketId, Guid customerId);
     Task<ParkingTicket?> RetryInvoiceAsync(Guid ticketId);
     Task<bool> ResendInvoiceEmailAsync(Guid ticketId, string? email = null);
+    Task<ParkingTicket?> SyncTicketDianStatusAsync(Guid ticketId);
 }

@@ -55,6 +55,8 @@ public class ParkingTicket
 
     public bool CanRetryInvoice => IsElectronicInvoice && (DianStatus == DianStatus.Rejected || (string.IsNullOrWhiteSpace(InvoiceNumber) && string.IsNullOrWhiteSpace(CreditNoteNumber)));
     public bool CanResendEmail => IsElectronicInvoice && !string.IsNullOrWhiteSpace(InvoiceNumber) && string.IsNullOrWhiteSpace(CreditNoteNumber);
+    public bool CanSyncDianStatus => IsElectronicInvoice && DianStatus == DianStatus.Pending && !string.IsNullOrWhiteSpace(ElectronicInvoiceId);
+    public bool CanConvertToInvoice => !IsElectronicInvoice && Status == TicketStatus.Completed && NetAmount > 0;
 
     public virtual Customer? Customer { get; set; }
 
