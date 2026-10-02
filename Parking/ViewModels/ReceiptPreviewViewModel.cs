@@ -1316,7 +1316,7 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         ShiftDiscountTicketsCount = summary?.TotalDiscountTickets ?? 0;
 
         ShiftPaymentMethods.Clear();
-        if (summary?.PaymentMethodsBreakdown != null && summary.PaymentMethodsBreakdown.Any(pm => pm.TotalCollected > 0 || pm.TransactionCount > 0))
+        if (summary?.PaymentMethodsBreakdown != null && summary.PaymentMethodsBreakdown.Count > 0)
         {
             foreach (var pm in summary.PaymentMethodsBreakdown)
             {
@@ -1325,9 +1325,62 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         }
         else
         {
-            ShiftPaymentMethods.Add(new ShiftPaymentMethodItem { Name = "Efectivo", TotalCollected = cash });
-            ShiftPaymentMethods.Add(new ShiftPaymentMethodItem { Name = "Tarjetas", TotalCollected = card });
-            ShiftPaymentMethods.Add(new ShiftPaymentMethodItem { Name = "Transferencias / QR", TotalCollected = transfer });
+            try
+            {
+                using var db = _connectionManager.CreateDbContext();
+                var bId = currentBranch?.Id ?? shift.BranchId;
+                var branchPmIds = bId.HasValue
+                    ? db.BranchPaymentMethods
+                        .Where(bpm => bpm.BranchId == bId.Value && bpm.IsActive)
+                        .Select(bpm => bpm.PaymentMethodId)
+                        .ToList()
+                    : new List<int>();
+
+                var activePms = db.PaymentMethods
+                    .Where(pm => pm.State && (branchPmIds.Count == 0 || branchPmIds.Contains(pm.Id)))
+                    .ToList();
+
+                if (activePms.Count > 0)
+                {
+                    foreach (var pm in activePms)
+                    {
+                        var isCash = pm.RequiresCashTender || pm.Name.ToLowerInvariant().Contains("efectivo");
+                        var isCard = pm.Name.ToLowerInvariant().Contains("tarjeta") || pm.Name.ToLowerInvariant().Contains("card") || pm.Name.ToLowerInvariant().Contains("debito") || pm.Name.ToLowerInvariant().Contains("credito");
+                        var isTransfer = pm.Name.ToLowerInvariant().Contains("nequi") || pm.Name.ToLowerInvariant().Contains("transfer") || pm.Name.ToLowerInvariant().Contains("qr") || pm.Name.ToLowerInvariant().Contains("davi");
+
+                        decimal amt = 0m;
+                        if (isCash) amt = cash;
+                        else if (isCard) amt = card;
+                        else if (isTransfer) amt = transfer;
+
+                        ShiftPaymentMethods.Add(new ShiftPaymentMethodItem
+                        {
+                            PaymentMethodId = pm.Id,
+                            Name = pm.Name,
+                            TotalCollected = amt,
+                            RequiresCashTender = isCash
+                        });
+                    }
+                }
+                else
+                {
+                    if (cash > 0 || (card == 0 && transfer == 0))
+                        ShiftPaymentMethods.Add(new ShiftPaymentMethodItem { Name = "Efectivo", TotalCollected = cash, RequiresCashTender = true });
+                    if (card > 0)
+                        ShiftPaymentMethods.Add(new ShiftPaymentMethodItem { Name = "Tarjetas", TotalCollected = card });
+                    if (transfer > 0)
+                        ShiftPaymentMethods.Add(new ShiftPaymentMethodItem { Name = "Transferencias", TotalCollected = transfer });
+                }
+            }
+            catch
+            {
+                if (cash > 0 || (card == 0 && transfer == 0))
+                    ShiftPaymentMethods.Add(new ShiftPaymentMethodItem { Name = "Efectivo", TotalCollected = cash, RequiresCashTender = true });
+                if (card > 0)
+                    ShiftPaymentMethods.Add(new ShiftPaymentMethodItem { Name = "Tarjetas", TotalCollected = card });
+                if (transfer > 0)
+                    ShiftPaymentMethods.Add(new ShiftPaymentMethodItem { Name = "Transferencias", TotalCollected = transfer });
+            }
         }
 
         ShiftVehiclesExitedCount = summary != null && summary.TotalTicketsProcessed > 0 ? summary.TotalTicketsProcessed : shift.TotalTicketsProcessed;

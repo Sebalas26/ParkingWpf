@@ -1,5 +1,33 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-01 14:15:00] - [BUGFIX / SHIFT-CLOSURE / RECEIPT / PAYMENT-METHODS / WPF] Erradicación de Medios de Pago Quemados y Consulta Dinámica Local SQLite en Comprobante de Cierre de Caja (ReceiptPreviewViewModel)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Tenemos el siguiente error. Sucede que cuando se saca la etiqueta de cierre de caja, tanto como se imprime en WPF como en la PWA, él debe mapear lo que se recibió por los medios de pago, y no está mapeando bien los medios de pago. Se ve que está como quemado algún dato. Necesito que revises de punta a punta, de extremo a extremo, qué está mapeando ahí con los medios de pago, sí, porque hay un medio de pago que no está, sí, no está ese medio de pago. Debe ser de acuerdo a lo que esté asignado a la sede, debe mapearlo. Entonces necesitamos revisar, confirmar qué pasó, si hay algún texto quemado, que es lo más probable. Entonces necesitamos que lo valides, analices, basado en las reglas de los dos proyectos, tanto de, bueno los tres prácticamente porque tocaría los tres, que tienen, y me entregues el plan completo de acción, sí, cómo sería, qué sería y qué se debe tocar. ¿Listo?"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Causa Raíz Diagnosticada**:
+     - En `ReceiptPreviewViewModel.LoadShiftClosure`, la evaluación `if (summary?.PaymentMethodsBreakdown != null && summary.PaymentMethodsBreakdown.Any(pm => pm.TotalCollected > 0 || pm.TransactionCount > 0))` causaba que si el resumen no traía recaudos o si `summary` era nulo (reapertura o modo offline), se ejecutaba un bloque `else` quemado asignando 3 items fijos (`"Efectivo"`, `"Tarjetas"`, `"Transferencias / QR"`).
+     - Esto ocultaba cualquier medio de pago propio configurado para la sede en SQLite (`BranchPaymentMethods` y `PaymentMethods`).
+  2. **Implementación de Solución 100% Data-Driven en `ReceiptPreviewViewModel.cs`**:
+     - Se eliminaron las 3 instancias fijas de medios quemados.
+     - Si `summary.PaymentMethodsBreakdown` contiene elementos, se añaden todos directamente preservando el desglose auditado del servidor o cálculo local.
+     - Si `summary.PaymentMethodsBreakdown` es nulo o vacío, se consulta la base de datos local SQLite (`db.BranchPaymentMethods` filtrado por la sede activa `BranchId == bId && bpm.IsActive` enlazado con `db.PaymentMethods`).
+     - Se pueblan dinámicamente las tarjetas de medios de pago en `ShiftPaymentMethods` respetando la configuración real de la sede.
+  3. **Verificación y Pruebas Unitarias (Reglas de Oro 5 y 6)**:
+     - `dotnet test ParkingWpf.slnx`: **364 Pasadas, 0 Fallidas, 0 Omitidas (100% Superado)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **364/364 pruebas superadas (100%)**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+
+---
+
 ## 📅 Entrada: [2026-09-30 22:15:00] - [FEATURE / NOVEDADES / INGRESO] Advertencia Modal de Novedad Informativa (No Bloqueante) en Registro de Ingreso WPF
 
 - **`💬 Prompt Original del Usuario`**:
