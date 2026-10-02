@@ -858,6 +858,30 @@ public class ApiParkingTicketSyncDto
     [JsonPropertyName("posConvertedByUserId")]
     public int? PosConvertedByUserId { get; set; }
 
+    [JsonPropertyName("invoiceNumber")]
+    public string? InvoiceNumber { get; set; }
+
+    [JsonPropertyName("isElectronicInvoice")]
+    public bool IsElectronicInvoice { get; set; } = false;
+
+    [JsonPropertyName("resolutionId")]
+    public Guid? ResolutionId { get; set; }
+
+    [JsonPropertyName("resolutionName")]
+    public string? ResolutionName { get; set; }
+
+    [JsonPropertyName("electronicInvoiceId")]
+    public string? ElectronicInvoiceId { get; set; }
+
+    [JsonPropertyName("electronicInvoiceUrl")]
+    public string? ElectronicInvoiceUrl { get; set; }
+
+    [JsonPropertyName("electronicInvoiceError")]
+    public string? ElectronicInvoiceError { get; set; }
+
+    [JsonPropertyName("exitOperatorName")]
+    public string? ExitOperatorName { get; set; }
+
     [JsonPropertyName("createdAtUtc")]
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 

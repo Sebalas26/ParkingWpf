@@ -1,5 +1,80 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-02 16:45:00] - [FEATURE / SYNC / DIAN / FE / WPF] Sincronización Reactiva de Tiquetes Convertidos a Factura Electrónica (FE / FV) y Resoluciones Fiscales bajo Demanda
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Ahora ayudame ajustar porque en el wpf no se ve actualizado el estado de la resolucion ya que esa placa ya la converti a FE desde el pwa , pero si sigue en el wpf la accion para convertir a FE , cuando le oprima actualizar lista ya deberia de cargar los cambios de las guias sincronizadas a  sigo si llegan hacer factuea electronica o si la convierto de pos a FV"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Mapeo Completo de Campos Fiscales en `ApiParkingTicketSyncDto` (`BootstrapSyncResponse.cs`)**:
+     - Se incorporaron las propiedades `InvoiceNumber` (`invoiceNumber`), `IsElectronicInvoice` (`isElectronicInvoice`), `ResolutionId` (`resolutionId`), `ResolutionName` (`resolutionName`), `ElectronicInvoiceId`, `ElectronicInvoiceUrl`, `ElectronicInvoiceError` y `ExitOperatorName` a `ApiParkingTicketSyncDto`.
+     - Esto permite que la deserialización JSON de los arrays `ActiveTickets` y `RecentTickets` del bootstrap del servidor central reciba intactos los datos tributarios actualizados por Siigo o emitidos desde la PWA.
+  2. **Persistencia Fiscal en SQLite y Control de Concurrencia (`SyncEngineService.cs`)**:
+     - Al procesar tickets del bootstrap (`deduplicatedIncoming`), se sincronizan sobre la entidad local SQLite `ParkingTicket` los campos `InvoiceNumber`, `IsElectronicInvoice`, `ResolutionId`, `ResolutionName`, `ElectronicInvoiceId`, `ElectronicInvoiceUrl`, `ElectronicInvoiceError`, `ExitOperatorName`, `DianStatus`, `Cufe` y `QrCodeData` tanto para registros existentes (`existing`) como nuevos (`newTicket`).
+     - Se incorporó protección con semáforo asíncrono (`SemaphoreSlim _syncExecutionLock`) en `PerformFullSyncWithProgressAsync` con espera no bloqueante para evitar colisiones de escritura en SQLite (`database is locked`) ante sincronizaciones concurrentes.
+  3. **Sincronización Bajo Demanda y Reactiva en `RecentEntriesViewModel.cs`**:
+     - Se inyectó `ISyncEngineService` en `RecentEntriesViewModel` preservando compatibilidad en unit tests con fallback nulo.
+     - Se suscribió al evento reactivo `_syncEngine.DataSynchronized` para refrescar la lista local en memoria cuando el programador en segundo plano (`BackgroundSyncScheduler`) descargue cambios.
+     - En `LoadEntriesCommand` (asociado al botón **"Actualizar Lista"**), se implementó `LoadEntriesInternalAsync(syncRemote: true)`: si el cliente está online, ejecuta de inmediato `_syncEngine.PerformFullSyncAsync()` trayendo las novedades de la nube antes de consultar SQLite local. Si la conexión falla, opera con resiliencia defensiva sobre los datos locales.
+     - En búsquedas por teclado (`OnSearchQueryChanged`) y eventos locales (`TicketRegistered`, `TicketCompleted`, `RetryInvoice`, `SyncDianStatus`), se invoca `LoadEntriesInternalAsync(syncRemote: false)` para evitar saturación de red o latencia al escribir.
+  4. **Visualización de Resolución en UI (`RecentEntriesView.xaml`)**:
+     - Se añadió `ToolTip="{Binding ResolutionName, FallbackValue='Factura Electrónica'}"` y `ToolTip="{Binding ResolutionName, FallbackValue='Comprobante POS'}"` en los badges `FE` y `POS` en las pestañas de Salidas del Turno e Histórico.
+  5. **Pruebas y Verificación**:
+     - Se agregaron pruebas unitarias en `OfflineResilienceTests.cs` certificando que `PerformFullSyncAsync` actualiza un ticket local POS a FE con su número de factura, resolución y estado DIAN OK, desactivando `CanConvertToInvoice`.
+     - Se agregaron pruebas en `RecentEntriesViewModelTests.cs` validando la sincronización bajo demanda online y el comportamiento offline.
+     - Compilación: **0 Errores, 0 Advertencias**.
+     - Pruebas unitarias: **367/367 pruebas superadas (100% éxito)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Models/ApiModels/BootstrapSyncResponse.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/ViewModels/RecentEntriesViewModel.cs`
+  - `Parking/Views/RecentEntriesView.xaml`
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs`
+  - `Parking.UnitTests/ViewModels/RecentEntriesViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **367/367 pruebas superadas (100%)**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+---
+
+## 📅 Entrada: [2026-10-02 14:55:00] - [FEATURE / DIAN / FE / WPF] Homologación de Badges DIAN, Renombrado a Convertir a FE y Cola Resiliente Offline
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"En WPF: En vehiculos en patio y salidas, en las salidas / liquidados en el turno e historico de facturacion electronica: Poder ver si la liquidacion electronica se hizo satisfactoriamente, si esta en proceso o si fue rechazada (indicando el motivo). El boton de facturar dian debe pasar a llamarse convertir a FE. ejecuta los cambios sin preguntar."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Homologación Visual de Estados DIAN en XAML (`RecentEntriesView.xaml`)**:
+     - En la columna `TIQUETE / FACTURA` (Pestaña 2: Salidas del Turno) y `COMPROBANTE / FACTURA` (Pestaña 3: Histórico Facturación Electrónica), se incorporaron badges de estado oficiales con `DataTriggers` sobre la propiedad `DianStatus`:
+       - `DIAN OK` (`DianStatus.Issued`): Fondo verde `{DynamicResource BrushSuccessBg}`, texto `{DynamicResource BrushSuccessText}` e ícono `{StaticResource IconCheckCircle}` con ToolTip mostrando el CUFE.
+       - `EN COLA` (`DianStatus.Pending` o `None`): Fondo amarillo `{DynamicResource BrushWarningBg}`, texto `{DynamicResource BrushWarningText}` e ícono `{StaticResource IconClock}` con ToolTip `"En cola de procesamiento ante la DIAN"`.
+       - `RECHAZADA` (`DianStatus.Rejected`): Fondo rojo `{DynamicResource BrushDangerBg}`, texto `{DynamicResource BrushDangerText}` e ícono `{StaticResource IconAlert}` con ToolTip enlazado a `{Binding ElectronicInvoiceError}` indicando el motivo de rechazo.
+  2. **Renombrado Homologado de Acción de Facturación (`RecentEntriesView.xaml`)**:
+     - Se renombró el texto de los botones de acción de _"Facturar DIAN"_ a **"Convertir a FE"**, unificando la experiencia con la PWA.
+  3. **Cierre de Brecha de Sincronización Offline (`ISyncEngineService.cs`, `SyncEngineService.cs`, `EfParkingTicketService.cs`)**:
+     - Anteriormente, convertir a FE en modo offline actualizaba SQLite pero no encolaba un `PendingSyncItem`, dejando la factura atascada localmente.
+     - Se incorporó `EnqueueOfflineConvertToInvoiceAsync(ticketId, customerId)` a `ISyncEngineService` y `SyncEngineService`.
+     - En `SyncEngineService.ProcessPendingQueueAsync`, se implementó el despachador para `item.OperationType == "ConvertToInvoice"`, el cual invoca `_apiClient.ConvertTicketToInvoiceAsync` al recuperar la conexión y sincroniza los datos fiscales retornados con la base de datos local SQLite.
+     - En `EfParkingTicketService.ConvertTicketToInvoiceAsync`, se garantiza el encolamiento offline defensivo tanto en ausencia de red como ante fallos en la llamada API remota.
+  4. **Compilación y Pruebas Unitarias**:
+     - `dotnet build .\Parking\Parking.csproj /t:Compile`: **0 Errores, 0 Advertencias**.
+     - `dotnet test .\Parking.UnitTests\Parking.UnitTests.csproj`: **364 Pasadas, 0 Fallidas, 0 Omitidas (100% Superado)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Views/RecentEntriesView.xaml`
+  - `Parking/Services/Contracts/ISyncEngineService.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test`: **364/364 pruebas superadas (100%)**.
+  - `dotnet build /t:Compile`: **0 Errores, 0 Advertencias**.
+
+---
+
 ## 📅 Entrada: [2026-10-01 14:15:00] - [BUGFIX / SHIFT-CLOSURE / RECEIPT / PAYMENT-METHODS / WPF] Erradicación de Medios de Pago Quemados y Consulta Dinámica Local SQLite en Comprobante de Cierre de Caja (ReceiptPreviewViewModel)
 
 - **`💬 Prompt Original del Usuario`**:

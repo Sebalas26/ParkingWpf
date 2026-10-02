@@ -18,6 +18,7 @@ public partial class RecentEntriesViewModel : ViewModelBase
     private readonly IDialogService _dialogService;
     private readonly IShiftService _shiftService;
     private readonly ISessionService? _sessionService;
+    private readonly ISyncEngineService? _syncEngine;
 
     [ObservableProperty]
     private string _searchQuery = string.Empty;
@@ -60,23 +61,58 @@ public partial class RecentEntriesViewModel : ViewModelBase
         IParkingTicketService ticketService,
         IDialogService dialogService,
         IShiftService shiftService,
-        ISessionService? sessionService = null)
+        ISessionService? sessionService = null,
+        ISyncEngineService? syncEngine = null)
     {
         _ticketService = ticketService;
         _dialogService = dialogService;
         _shiftService = shiftService;
         _sessionService = sessionService;
+        _syncEngine = syncEngine;
+
+        if (_syncEngine != null)
+        {
+            _syncEngine.DataSynchronized += () =>
+            {
+                var dispatcher = System.Windows.Application.Current?.Dispatcher;
+                if (dispatcher != null && !dispatcher.CheckAccess())
+                {
+                    dispatcher.InvokeAsync(async () =>
+                    {
+                        if (!IsBusy)
+                        {
+                            await LoadEntriesInternalAsync(syncRemote: false);
+                            if (SelectedTab == 2)
+                            {
+                                await LoadHistoricalEntriesAsync();
+                            }
+                        }
+                    });
+                }
+                else
+                {
+                    if (!IsBusy)
+                    {
+                        _ = LoadEntriesInternalAsync(syncRemote: false);
+                        if (SelectedTab == 2)
+                        {
+                            _ = LoadHistoricalEntriesAsync();
+                        }
+                    }
+                }
+            };
+        }
 
         _ticketService.TicketRegistered += (s, e) =>
         {
             var dispatcher = System.Windows.Application.Current?.Dispatcher;
             if (dispatcher != null && !dispatcher.CheckAccess())
             {
-                dispatcher.InvokeAsync(async () => await LoadEntriesAsync());
+                dispatcher.InvokeAsync(async () => await LoadEntriesInternalAsync(syncRemote: false));
             }
             else
             {
-                _ = LoadEntriesAsync();
+                _ = LoadEntriesInternalAsync(syncRemote: false);
             }
         };
         _ticketService.TicketCompleted += (s, e) =>
@@ -86,7 +122,7 @@ public partial class RecentEntriesViewModel : ViewModelBase
             {
                 dispatcher.InvokeAsync(async () =>
                 {
-                    await LoadEntriesAsync();
+                    await LoadEntriesInternalAsync(syncRemote: false);
                     if (SelectedTab == 2)
                     {
                         await LoadHistoricalEntriesAsync();
@@ -95,7 +131,7 @@ public partial class RecentEntriesViewModel : ViewModelBase
             }
             else
             {
-                _ = LoadEntriesAsync();
+                _ = LoadEntriesInternalAsync(syncRemote: false);
                 if (SelectedTab == 2)
                 {
                     _ = LoadHistoricalEntriesAsync();
@@ -106,7 +142,7 @@ public partial class RecentEntriesViewModel : ViewModelBase
 
     public override async Task InitializeAsync()
     {
-        await LoadEntriesAsync();
+        await LoadEntriesInternalAsync(syncRemote: true);
     }
 
     partial void OnSearchQueryChanged(string value)
@@ -118,7 +154,7 @@ public partial class RecentEntriesViewModel : ViewModelBase
         }
         else
         {
-            _ = LoadEntriesAsync();
+            _ = LoadEntriesInternalAsync(syncRemote: false);
         }
     }
 
@@ -180,8 +216,21 @@ public partial class RecentEntriesViewModel : ViewModelBase
     [RelayCommand]
     public async Task LoadEntriesAsync()
     {
+        await LoadEntriesInternalAsync(syncRemote: true);
+    }
+
+    private async Task LoadEntriesInternalAsync(bool syncRemote)
+    {
         if (SelectedTab == 2)
         {
+            if (syncRemote && _syncEngine != null && _syncEngine.IsOnline)
+            {
+                try
+                {
+                    await _syncEngine.PerformFullSyncAsync();
+                }
+                catch { }
+            }
             await LoadHistoricalEntriesAsync();
             return;
         }
@@ -191,6 +240,19 @@ public partial class RecentEntriesViewModel : ViewModelBase
 
         try
         {
+            if (syncRemote && _syncEngine != null && _syncEngine.IsOnline)
+            {
+                BusyMessage = "Actualizando comprobantes y resoluciones con el servidor central...";
+                try
+                {
+                    await _syncEngine.PerformFullSyncAsync();
+                }
+                catch
+                {
+                    // Fallback resiliente a base de datos SQLite local ante desconexión WAN
+                }
+            }
+
             var activeTickets = await _ticketService.GetActiveTicketsAsync() ?? Array.Empty<ParkingTicket>();
 
             var shiftStart = _shiftService.CurrentShift?.StartTimeUtc ?? DateTime.UtcNow.Date;
@@ -294,7 +356,7 @@ public partial class RecentEntriesViewModel : ViewModelBase
                 ticket.Customer = updatedTicket.Customer;
                 ticket.CustomerId = updatedTicket.CustomerId;
 
-                await LoadEntriesAsync();
+                await LoadEntriesInternalAsync(syncRemote: false);
                 await LoadHistoricalEntriesAsync();
 
                 var invNumber = !string.IsNullOrWhiteSpace(updatedTicket.InvoiceNumber)
@@ -368,7 +430,7 @@ public partial class RecentEntriesViewModel : ViewModelBase
                     "El comprobante ha sido reencolado para sincronización inmediata con la DIAN.",
                     DialogNotificationType.Success);
 
-                await LoadEntriesAsync();
+                await LoadEntriesInternalAsync(syncRemote: false);
                 if (SelectedTab == 2)
                 {
                     await LoadHistoricalEntriesAsync();
@@ -478,7 +540,7 @@ public partial class RecentEntriesViewModel : ViewModelBase
             var updatedTicket = await _ticketService.SyncTicketDianStatusAsync(ticket.TicketId);
             if (updatedTicket != null)
             {
-                await LoadEntriesAsync();
+                await LoadEntriesInternalAsync(syncRemote: false);
                 if (SelectedTab == 2)
                 {
                     await LoadHistoricalEntriesAsync();

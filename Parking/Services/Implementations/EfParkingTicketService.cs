@@ -865,15 +865,22 @@ public class EfParkingTicketService : IParkingTicketService
                     ticket.ResolutionName = remoteTicket.ResolutionName;
                     ticket.IsSynchronized = true;
                 }
+                else
+                {
+                    ticket.IsSynchronized = false;
+                    await _syncEngine.EnqueueOfflineConvertToInvoiceAsync(ticketId, customerId);
+                }
             }
             catch
             {
                 ticket.IsSynchronized = false;
+                await _syncEngine.EnqueueOfflineConvertToInvoiceAsync(ticketId, customerId);
             }
         }
         else
         {
             ticket.IsSynchronized = false;
+            await _syncEngine.EnqueueOfflineConvertToInvoiceAsync(ticketId, customerId);
         }
 
         await db.SaveChangesAsync();

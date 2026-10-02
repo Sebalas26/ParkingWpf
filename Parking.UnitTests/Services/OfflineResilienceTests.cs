@@ -646,6 +646,81 @@ public class OfflineResilienceTests : IDisposable
     }
 
     [Fact]
+    public async Task PerformFullSyncAsync_WhenRecentTicketConvertedToFeOnServer_UpdatesLocalTicketFields()
+    {
+        // Arrange
+        var ticketId = Guid.NewGuid();
+        using (var dbInit = _connectionManager.CreateDbContext())
+        {
+            dbInit.ParkingTickets.Add(new ParkingTicket
+            {
+                TicketId = ticketId,
+                TicketNumber = "PKF-C4-20261002-031",
+                PlateNumber = "SDFSF33",
+                Status = TicketStatus.Completed,
+                IsElectronicInvoice = false,
+                InvoiceNumber = "POS-155",
+                NetAmount = 5000m,
+                EntryTimeUtc = DateTime.UtcNow.AddHours(-2),
+                ExitTimeUtc = DateTime.UtcNow.AddHours(-1),
+                IsSynchronized = true
+            });
+            await dbInit.SaveChangesAsync();
+        }
+
+        _mockSessionService.Setup(s => s.CurrentBranchId).Returns(1);
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = 1, Name = "Sede Principal" });
+
+        var bootstrap = new BootstrapSyncResponse
+        {
+            RecentTickets = new List<ApiParkingTicketSyncDto>
+            {
+                new()
+                {
+                    TicketId = ticketId,
+                    TicketNumber = "PKF-C4-20261002-031",
+                    PlateNumber = "SDFSF33",
+                    Status = 1, // Completed
+                    IsElectronicInvoice = true,
+                    InvoiceNumber = "FV-878-20",
+                    ResolutionName = "Facturación Electrónica DIAN",
+                    DianStatus = (int)DianStatus.Issued,
+                    Cufe = "abc-cufe-123",
+                    NetAmount = 5000m,
+                    EntryTimeUtc = DateTime.UtcNow.AddHours(-2),
+                    ExitTimeUtc = DateTime.UtcNow.AddHours(-1)
+                }
+            }
+        };
+
+        _mockApiClient.Setup(a => a.PingAsync(It.IsAny<int>())).ReturnsAsync(true);
+        _mockApiClient.Setup(a => a.GetBootstrapAsync(1)).ReturnsAsync(bootstrap);
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        // Act
+        var result = await syncEngine.PerformFullSyncAsync();
+
+        // Assert
+        result.Should().BeTrue();
+        using var db = _connectionManager.CreateDbContext();
+        var ticket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == ticketId);
+        ticket.Should().NotBeNull();
+        ticket!.IsElectronicInvoice.Should().BeTrue();
+        ticket.InvoiceNumber.Should().Be("FV-878-20");
+        ticket.ResolutionName.Should().Be("Facturación Electrónica DIAN");
+        ticket.DianStatus.Should().Be(DianStatus.Issued);
+        ticket.Cufe.Should().Be("abc-cufe-123");
+        ticket.CanConvertToInvoice.Should().BeFalse();
+        ticket.CanResendEmail.Should().BeTrue();
+    }
+
+    [Fact]
     public void BootstrapSyncResponse_GetGracePeriodMinutes_WhenNull_DefaultsToZero()
     {
         // Arrange

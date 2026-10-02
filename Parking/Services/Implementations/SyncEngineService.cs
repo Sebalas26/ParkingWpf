@@ -27,6 +27,7 @@ public class SyncEngineService : ISyncEngineService
     private CancellationTokenSource? _offlineProbeCts;
     private readonly object _offlineProbeLock = new();
     private readonly SemaphoreSlim _pendingQueueLock = new(1, 1);
+    private readonly SemaphoreSlim _syncExecutionLock = new(1, 1);
     private int _offlineAttemptCount = 0;
     private static bool _hasRunInitialMigration;
 
@@ -168,6 +169,14 @@ public class SyncEngineService : ISyncEngineService
     public async Task<SyncResultReport> PerformFullSyncWithProgressAsync(IProgress<SyncProgressReport> progress, CancellationToken ct = default)
     {
         var result = new SyncResultReport();
+        if (!await _syncExecutionLock.WaitAsync(TimeSpan.FromSeconds(2), ct))
+        {
+            result.Success = true;
+            result.IsOnline = _isOnline;
+            result.Message = "Sincronización en curso en segundo plano.";
+            return result;
+        }
+
         try
         {
             // 1. Paso 1: Comprobar Conectividad (10%)
@@ -1828,9 +1837,43 @@ public class SyncEngineService : ISyncEngineService
                     }
                     existing.CreditNoteNumber = ticket.CreditNoteNumber ?? existing.CreditNoteNumber;
                     existing.CreditNoteCufe = ticket.CreditNoteCufe ?? existing.CreditNoteCufe;
-                    existing.IsPosConvertedToInvoice = ticket.IsPosConvertedToInvoice;
+                    existing.IsPosConvertedToInvoice = ticket.IsPosConvertedToInvoice || existing.IsPosConvertedToInvoice;
                     existing.PosConvertedAtUtc = ticket.PosConvertedAtUtc ?? existing.PosConvertedAtUtc;
                     existing.PosConvertedByUserId = ticket.PosConvertedByUserId ?? existing.PosConvertedByUserId;
+
+                    // Sincronización de Factura Electrónica y Resolución DIAN / Siigo
+                    if (!string.IsNullOrWhiteSpace(ticket.InvoiceNumber))
+                    {
+                        existing.InvoiceNumber = ticket.InvoiceNumber;
+                    }
+                    if (ticket.IsElectronicInvoice)
+                    {
+                        existing.IsElectronicInvoice = true;
+                    }
+                    if (ticket.ResolutionId.HasValue)
+                    {
+                        existing.ResolutionId = ticket.ResolutionId;
+                    }
+                    if (!string.IsNullOrWhiteSpace(ticket.ResolutionName))
+                    {
+                        existing.ResolutionName = ticket.ResolutionName;
+                    }
+                    if (!string.IsNullOrWhiteSpace(ticket.ElectronicInvoiceId))
+                    {
+                        existing.ElectronicInvoiceId = ticket.ElectronicInvoiceId;
+                    }
+                    if (!string.IsNullOrWhiteSpace(ticket.ElectronicInvoiceUrl))
+                    {
+                        existing.ElectronicInvoiceUrl = ticket.ElectronicInvoiceUrl;
+                    }
+                    if (!string.IsNullOrWhiteSpace(ticket.ElectronicInvoiceError))
+                    {
+                        existing.ElectronicInvoiceError = ticket.ElectronicInvoiceError;
+                    }
+                    if (!string.IsNullOrWhiteSpace(ticket.ExitOperatorName))
+                    {
+                        existing.ExitOperatorName = ticket.ExitOperatorName;
+                    }
 
                     localByTicketId[existing.TicketId] = existing;
                     localByTicketNumber[normalizedTicketNumber] = existing;
@@ -1861,7 +1904,15 @@ public class SyncEngineService : ISyncEngineService
                         ExitNotes = ticket.ExitNotes,
                         Status = status,
                         OperatorName = !string.IsNullOrWhiteSpace(ticket.OperatorName) ? ticket.OperatorName : "Operador General",
+                        ExitOperatorName = ticket.ExitOperatorName,
                         IsSynchronized = true,
+                        InvoiceNumber = ticket.InvoiceNumber,
+                        IsElectronicInvoice = ticket.IsElectronicInvoice,
+                        ResolutionId = ticket.ResolutionId,
+                        ResolutionName = ticket.ResolutionName,
+                        ElectronicInvoiceId = ticket.ElectronicInvoiceId,
+                        ElectronicInvoiceUrl = ticket.ElectronicInvoiceUrl,
+                        ElectronicInvoiceError = ticket.ElectronicInvoiceError,
                         CustomerId = ticket.CustomerId,
                         Cufe = ticket.Cufe,
                         QrCodeData = ticket.QrCodeData,
@@ -1932,6 +1983,10 @@ public class SyncEngineService : ISyncEngineService
             result.Message = $"Error durante la sincronización: {detailedError}";
             NotifySyncStatusChanged(SyncStatusDescription);
             return result;
+        }
+        finally
+        {
+            _syncExecutionLock.Release();
         }
     }
 
@@ -2118,6 +2173,29 @@ public class SyncEngineService : ISyncEngineService
         NotifySyncStatusChanged(SyncStatusDescription);
     }
 
+    public async Task EnqueueOfflineConvertToInvoiceAsync(Guid ticketId, Guid customerId)
+    {
+        using var db = _dbManager.CreateDbContext();
+        var pending = new PendingSyncItem
+        {
+            PendingSyncItemId = Guid.NewGuid(),
+            OperationType = "ConvertToInvoice",
+            PayloadJson = JsonSerializer.Serialize(new
+            {
+                TicketId = ticketId,
+                CustomerId = customerId
+            }),
+            CreatedAtUtc = DateTime.UtcNow,
+            IsProcessed = false
+        };
+
+        db.PendingSyncItems.Add(pending);
+        await db.SaveChangesAsync();
+
+        await RefreshPendingCountAsync();
+        NotifySyncStatusChanged(SyncStatusDescription);
+    }
+
     public async Task ProcessPendingQueueAsync()
     {
         if (!_isOnline) return;
@@ -2232,6 +2310,35 @@ public class SyncEngineService : ISyncEngineService
                                     localTicket.IsElectronicInvoice = result.IsElectronicInvoice;
                                 }
                             }
+                        }
+                    }
+                    else if (item.OperationType == "ConvertToInvoice")
+                    {
+                        using var doc = JsonDocument.Parse(item.PayloadJson);
+                        var tId = doc.RootElement.GetProperty("TicketId").GetGuid();
+                        var cId = doc.RootElement.GetProperty("CustomerId").GetGuid();
+                        var result = await _apiClient.ConvertTicketToInvoiceAsync(tId, cId);
+                        if (result != null)
+                        {
+                            item.IsProcessed = true;
+                            var localTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == tId);
+                            if (localTicket != null)
+                            {
+                                if (!string.IsNullOrWhiteSpace(result.InvoiceNumber)) localTicket.InvoiceNumber = result.InvoiceNumber;
+                                if (!string.IsNullOrWhiteSpace(result.Cufe)) localTicket.Cufe = result.Cufe;
+                                if (!string.IsNullOrWhiteSpace(result.QrCodeData)) localTicket.QrCodeData = result.QrCodeData;
+                                if (result.DianStatus != DianStatus.None) localTicket.DianStatus = result.DianStatus;
+                                if (result.ResolutionId.HasValue) localTicket.ResolutionId = result.ResolutionId;
+                                if (!string.IsNullOrWhiteSpace(result.ResolutionName)) localTicket.ResolutionName = result.ResolutionName;
+                                localTicket.IsElectronicInvoice = true;
+                                localTicket.IsSynchronized = true;
+                                await db.SaveChangesAsync();
+                            }
+                        }
+                        else if (_isOnline)
+                        {
+                            item.RetryCount++;
+                            item.LastError = "No se recibió confirmación del servidor central al convertir a FE.";
                         }
                     }
                     else if (item.OperationType == "CloseShift")

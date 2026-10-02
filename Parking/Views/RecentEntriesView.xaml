@@ -363,20 +363,104 @@
                         </DataGridTemplateColumn>
 
                         <!-- Tiquete / Factura -->
-                        <DataGridTemplateColumn Header="TIQUETE / FACTURA" MinWidth="175" Width="1.6*">
+                        <DataGridTemplateColumn Header="TIQUETE / FACTURA" MinWidth="185" Width="1.6*">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding InvoiceNumber}"
-                                                   FontFamily="{StaticResource FontFamilyMonospace}"
-                                                   FontWeight="Bold"
-                                                   FontSize="12.5"
-                                                   Foreground="{DynamicResource BrushPrimary}"
-                                                   Visibility="{Binding InvoiceNumber, Converter={StaticResource NullToVis}}"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                                            <!-- Indicador FE / POS -->
+                                            <Border Background="{DynamicResource BrushPrimaryLight}" CornerRadius="4" Padding="5,1" Margin="0,0,6,0"
+                                                    Visibility="{Binding IsElectronicInvoice, Converter={StaticResource BoolToVis}}"
+                                                    ToolTip="{Binding ResolutionName, FallbackValue='Factura Electrónica'}">
+                                                <TextBlock Text="FE" FontWeight="Black" FontSize="9.5" Foreground="{DynamicResource BrushPrimary}"/>
+                                            </Border>
+                                            <Border Background="#F1F5F9" CornerRadius="4" Padding="5,1" Margin="0,0,6,0"
+                                                    Visibility="{Binding IsElectronicInvoice, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                                                    ToolTip="{Binding ResolutionName, FallbackValue='Comprobante POS'}">
+                                                <TextBlock Text="POS" FontWeight="Black" FontSize="9.5" Foreground="{DynamicResource BrushTextSecondary}"/>
+                                            </Border>
+
+                                            <!-- Número de Factura si existe -->
+                                            <TextBlock Text="{Binding InvoiceNumber}"
+                                                       FontFamily="{StaticResource FontFamilyMonospace}"
+                                                       FontWeight="Bold"
+                                                       FontSize="12.5"
+                                                       Foreground="{DynamicResource BrushPrimary}"
+                                                       Visibility="{Binding InvoiceNumber, Converter={StaticResource NullToVis}}"/>
+                                        </StackPanel>
+
+                                        <!-- Número de Tiquete -->
                                         <TextBlock Text="{Binding TicketNumber}"
                                                    FontFamily="{StaticResource FontFamilyMonospace}"
-                                                   FontSize="11.5"
+                                                   FontSize="11"
                                                    Foreground="{DynamicResource BrushTextSecondary}"/>
+
+                                        <!-- Badges de Estado DIAN (Cuando es Factura Electrónica) -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0"
+                                                    Visibility="{Binding IsElectronicInvoice, Converter={StaticResource BoolToVis}}">
+                                            <!-- DIAN OK (Issued) -->
+                                            <Border CornerRadius="4" Padding="6,2"
+                                                    Background="{DynamicResource BrushSuccessBg}"
+                                                    ToolTip="{Binding Cufe, StringFormat='CUFE: {0}'}">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DianStatus}" Value="Issued">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Path Data="{StaticResource IconCheckCircle}" Fill="{DynamicResource BrushSuccessText}" Width="10" Height="10" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="DIAN OK" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource BrushSuccessText}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- EN COLA (Pending / None) -->
+                                            <Border CornerRadius="4" Padding="6,2"
+                                                    Background="{DynamicResource BrushWarningBg}"
+                                                    ToolTip="En cola de procesamiento ante la DIAN">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DianStatus}" Value="Pending">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding DianStatus}" Value="None">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Path Data="{StaticResource IconClock}" Fill="{DynamicResource BrushWarningText}" Width="10" Height="10" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="EN COLA" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource BrushWarningText}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- RECHAZADA (Rejected) -->
+                                            <Border CornerRadius="4" Padding="6,2"
+                                                    Background="{DynamicResource BrushDangerBg}"
+                                                    ToolTip="{Binding ElectronicInvoiceError, FallbackValue='Rechazada por la DIAN'}">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DianStatus}" Value="Rejected">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Path Data="{StaticResource IconAlert}" Fill="{DynamicResource BrushDangerText}" Width="10" Height="10" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="RECHAZADA" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource BrushDangerText}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -431,7 +515,7 @@
                                                 Margin="0,0,6,0">
                                             <StackPanel Orientation="Horizontal">
                                                 <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="Facturar DIAN" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Convertir a FE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
 
@@ -557,11 +641,13 @@
                                     <StackPanel VerticalAlignment="Center">
                                         <StackPanel Orientation="Horizontal">
                                             <Border Background="{DynamicResource BrushPrimaryLight}" CornerRadius="4" Padding="6,1" Margin="0,0,6,0"
-                                                    Visibility="{Binding IsElectronicInvoice, Converter={StaticResource BoolToVis}}">
+                                                    Visibility="{Binding IsElectronicInvoice, Converter={StaticResource BoolToVis}}"
+                                                    ToolTip="{Binding ResolutionName, FallbackValue='Factura Electrónica'}">
                                                 <TextBlock Text="FE" FontWeight="Black" FontSize="10" Foreground="{DynamicResource BrushPrimary}"/>
                                             </Border>
                                             <Border Background="#F1F5F9" CornerRadius="4" Padding="6,1" Margin="0,0,6,0"
-                                                    Visibility="{Binding IsElectronicInvoice, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
+                                                    Visibility="{Binding IsElectronicInvoice, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                                                    ToolTip="{Binding ResolutionName, FallbackValue='Comprobante POS'}">
                                                 <TextBlock Text="POS" FontWeight="Black" FontSize="10" Foreground="{DynamicResource BrushTextSecondary}"/>
                                             </Border>
                                             <TextBlock Text="{Binding InvoiceNumber}"
@@ -576,6 +662,73 @@
                                                    FontSize="11"
                                                    Foreground="{DynamicResource BrushTextSecondary}"
                                                    Margin="0,2,0,0"/>
+
+                                        <!-- Badges de Estado DIAN (Cuando es Factura Electrónica) -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0"
+                                                    Visibility="{Binding IsElectronicInvoice, Converter={StaticResource BoolToVis}}">
+                                            <!-- DIAN OK (Issued) -->
+                                            <Border CornerRadius="4" Padding="6,2"
+                                                    Background="{DynamicResource BrushSuccessBg}"
+                                                    ToolTip="{Binding Cufe, StringFormat='CUFE: {0}'}">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DianStatus}" Value="Issued">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Path Data="{StaticResource IconCheckCircle}" Fill="{DynamicResource BrushSuccessText}" Width="10" Height="10" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="DIAN OK" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource BrushSuccessText}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- EN COLA (Pending / None) -->
+                                            <Border CornerRadius="4" Padding="6,2"
+                                                    Background="{DynamicResource BrushWarningBg}"
+                                                    ToolTip="En cola de procesamiento ante la DIAN">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DianStatus}" Value="Pending">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding DianStatus}" Value="None">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Path Data="{StaticResource IconClock}" Fill="{DynamicResource BrushWarningText}" Width="10" Height="10" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="EN COLA" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource BrushWarningText}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+
+                                            <!-- RECHAZADA (Rejected) -->
+                                            <Border CornerRadius="4" Padding="6,2"
+                                                    Background="{DynamicResource BrushDangerBg}"
+                                                    ToolTip="{Binding ElectronicInvoiceError, FallbackValue='Rechazada por la DIAN'}">
+                                                <Border.Style>
+                                                    <Style TargetType="Border">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding DianStatus}" Value="Rejected">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Border.Style>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Path Data="{StaticResource IconAlert}" Fill="{DynamicResource BrushDangerText}" Width="10" Height="10" Stretch="Uniform" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="RECHAZADA" FontSize="9.5" FontWeight="Bold" Foreground="{DynamicResource BrushDangerText}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -629,7 +782,7 @@
                                                 Margin="0,0,6,0">
                                             <StackPanel Orientation="Horizontal">
                                                 <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                                <TextBlock Text="Facturar DIAN" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
+                                                <TextBlock Text="Convertir a FE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
                                             </StackPanel>
                                         </Button>
 

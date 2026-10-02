@@ -50,6 +50,7 @@ public interface ISyncEngineService
     Task<bool> HasLocalBranchDataAsync(int branchId);
     Task EnqueueOfflineCheckInAsync(ParkingTicket ticket);
     Task EnqueueOfflineCheckOutAsync(ParkingTicket ticket);
+    Task EnqueueOfflineConvertToInvoiceAsync(Guid ticketId, Guid customerId);
     Task ProcessPendingQueueAsync();
     Task ClearLocalTicketsMemoryAsync();
     void SetOnlineStatus(bool isOnline);

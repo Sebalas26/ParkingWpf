@@ -214,4 +214,56 @@ public class RecentEntriesViewModelTests
         ticket.InvoiceNumber.Should().Be("FE-101");
         _mockTicketService.Verify(s => s.GetCompletedTicketsByShiftAsync(It.IsAny<DateTime>(), It.IsAny<int?>()), Times.Once);
     }
+
+    [Fact]
+    public async Task LoadEntriesAsync_WhenOnline_PerformsSyncBeforeLoading()
+    {
+        // Arrange
+        var mockSyncEngine = new Mock<ISyncEngineService>();
+        mockSyncEngine.Setup(s => s.IsOnline).Returns(true);
+        mockSyncEngine.Setup(s => s.PerformFullSyncAsync()).ReturnsAsync(true);
+
+        _mockTicketService.Setup(s => s.GetActiveTicketsAsync()).ReturnsAsync(new List<ParkingTicket>());
+        _mockTicketService.Setup(s => s.GetCompletedTicketsByShiftAsync(It.IsAny<DateTime>(), It.IsAny<int?>())).ReturnsAsync(new List<ParkingTicket>());
+
+        var vm = new RecentEntriesViewModel(
+            _mockTicketService.Object,
+            _mockDialogService.Object,
+            _mockShiftService.Object,
+            sessionService: null,
+            syncEngine: mockSyncEngine.Object);
+
+        // Act
+        await vm.LoadEntriesCommand.ExecuteAsync(null);
+
+        // Assert
+        mockSyncEngine.Verify(s => s.PerformFullSyncAsync(), Times.Once);
+        _mockTicketService.Verify(s => s.GetActiveTicketsAsync(), Times.Once);
+        _mockTicketService.Verify(s => s.GetCompletedTicketsByShiftAsync(It.IsAny<DateTime>(), It.IsAny<int?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task LoadEntriesAsync_WhenOffline_DoesNotPerformRemoteSync()
+    {
+        // Arrange
+        var mockSyncEngine = new Mock<ISyncEngineService>();
+        mockSyncEngine.Setup(s => s.IsOnline).Returns(false);
+
+        _mockTicketService.Setup(s => s.GetActiveTicketsAsync()).ReturnsAsync(new List<ParkingTicket>());
+        _mockTicketService.Setup(s => s.GetCompletedTicketsByShiftAsync(It.IsAny<DateTime>(), It.IsAny<int?>())).ReturnsAsync(new List<ParkingTicket>());
+
+        var vm = new RecentEntriesViewModel(
+            _mockTicketService.Object,
+            _mockDialogService.Object,
+            _mockShiftService.Object,
+            sessionService: null,
+            syncEngine: mockSyncEngine.Object);
+
+        // Act
+        await vm.LoadEntriesCommand.ExecuteAsync(null);
+
+        // Assert
+        mockSyncEngine.Verify(s => s.PerformFullSyncAsync(), Times.Never);
+        _mockTicketService.Verify(s => s.GetActiveTicketsAsync(), Times.Once);
+    }
 }
