@@ -1,5 +1,36 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-02 21:00:00] - [FEATURE / SYNC / REALTIME / DIAN / WPF] Integración Reactiva en 0 ms con Notificaciones SignalR TicketDianApproved / TicketDianRejected
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"pero el wpf tambien requeriria recibir el evento para cambiar de en cola a dian ok, o ya lo tiene? cremae el plan para entonces ajustar lo que esta fallando. analiza si hay huecos tecnicos y poder dar con la solucion definitiva. si, ejecutalo"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Arquitectura en WPF**:
+     - Se auditó el flujo de SignalR y sincronización en el cliente WPF:
+       - `SignalRClientService.cs` escucha `OnConfigUpdateRequired` y dispara el evento `ConfigUpdateRequired`.
+       - `MainShellViewModel.cs` está suscrito a `_signalRClient.ConfigUpdateRequired` y evalúa si la notificación coincide con la sede activa (`notification.BranchId == currentBranchId`).
+       - Al recibir cualquier notificación de la sede activa (incluyendo los nuevos eventos `TicketDianApproved` y `TicketDianRejected`), ejecuta de forma inmediata:
+         `await _syncEngine.PerformFullSyncAsync();`
+         `await RefreshOccupancyAsync();`
+       - `_syncEngine.PerformFullSyncAsync()` descarga los tiquetes recientes con su nuevo estado DIAN (`DianStatus: Issued`), `InvoiceNumber`, `Cufe` y resolución electrónica, persistiendo en la base de datos local SQLite y disparando el evento reactivo `_syncEngine.DataSynchronized`.
+       - `RecentEntriesViewModel.cs`, al estar suscrito a `DataSynchronized`, invoca `LoadEntriesInternalAsync(syncRemote: false)` a través del Dispatcher de UI, actualizando la grilla visualmente en **0 ms** sin esperar el ciclo de 20 segundos de `BackgroundSyncScheduler`.
+  2. **Pruebas y Verificación**:
+     - `dotnet test ParkingWpf.slnx`: **367 Pasadas, 0 Fallidas (100% Superado)**.
+     - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+
+- **`📦 Componentes Verificados`**:
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/ViewModels/RecentEntriesViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet test ParkingWpf.slnx`: **367/367 pruebas superadas (100%)**.
+  - `dotnet build ParkingWpf.slnx`: **0 Errores**.
+
+---
+
+
 ## 📅 Entrada: [2026-10-02 16:45:00] - [FEATURE / SYNC / DIAN / FE / WPF] Sincronización Reactiva de Tiquetes Convertidos a Factura Electrónica (FE / FV) y Resoluciones Fiscales bajo Demanda
 
 - **`💬 Prompt Original del Usuario`**:
