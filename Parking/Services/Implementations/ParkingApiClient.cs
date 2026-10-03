@@ -787,6 +787,38 @@ public class ParkingApiClient : IApiClientService
             {
                 ReportConnectionState(true);
                 var errorBody = await response.Content.ReadAsStringAsync();
+
+                if (errorBody.Contains("Ya existe un cliente registrado", StringComparison.OrdinalIgnoreCase) ||
+                    errorBody.Contains("Cliente registrado en base de datos local", StringComparison.OrdinalIgnoreCase))
+                {
+                    try
+                    {
+                        var existingList = await GetCustomersAsync(request.DocumentNumber, request.CompanyId);
+                        var match = existingList?.FirstOrDefault(c => c.DocumentNumber == request.DocumentNumber);
+                        if (match != null) return match;
+                    }
+                    catch { }
+
+                    return new CustomerApiResponse
+                    {
+                        CustomerId = request.CustomerId ?? Guid.NewGuid(),
+                        CompanyId = request.CompanyId,
+                        IdentificationTypeId = request.IdentificationTypeId,
+                        DocumentNumber = request.DocumentNumber,
+                        CheckDigit = request.CheckDigit,
+                        PersonType = request.PersonType,
+                        FullName = request.FullName,
+                        TradeName = request.TradeName,
+                        Email = request.Email,
+                        Phone = request.Phone,
+                        Address = request.Address,
+                        CityCode = request.CityCode,
+                        StateCode = request.StateCode,
+                        FiscalResponsibilities = request.FiscalResponsibilities,
+                        IsActive = true
+                    };
+                }
+
                 throw new InvalidOperationException($"400_BAD_REQUEST: {errorBody}");
             }
 
