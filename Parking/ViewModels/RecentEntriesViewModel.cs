@@ -22,6 +22,10 @@ public partial class RecentEntriesViewModel : ViewModelBase
     private readonly IShiftService _shiftService;
     private readonly ISessionService? _sessionService;
     private readonly ISyncEngineService? _syncEngine;
+    private readonly IBillingResolutionService? _billingResolutionService;
+
+    [ObservableProperty]
+    private bool _canConvertTicketsToInvoice;
 
     [ObservableProperty]
     private string _searchQuery = string.Empty;
@@ -65,13 +69,23 @@ public partial class RecentEntriesViewModel : ViewModelBase
         IDialogService dialogService,
         IShiftService shiftService,
         ISessionService? sessionService = null,
-        ISyncEngineService? syncEngine = null)
+        ISyncEngineService? syncEngine = null,
+        IBillingResolutionService? billingResolutionService = null)
     {
         _ticketService = ticketService;
         _dialogService = dialogService;
         _shiftService = shiftService;
         _sessionService = sessionService;
         _syncEngine = syncEngine;
+        _billingResolutionService = billingResolutionService;
+
+        if (_sessionService != null)
+        {
+            _sessionService.ActiveBranchChanged += branch =>
+            {
+                _ = UpdateCanConvertTicketsToInvoiceAsync();
+            };
+        }
 
         if (_syncEngine != null)
         {
@@ -234,6 +248,7 @@ public partial class RecentEntriesViewModel : ViewModelBase
                 }
                 catch { }
             }
+            await UpdateCanConvertTicketsToInvoiceAsync();
             await LoadHistoricalEntriesAsync();
             return;
         }
@@ -255,6 +270,8 @@ public partial class RecentEntriesViewModel : ViewModelBase
                     // Fallback resiliente a base de datos SQLite local ante desconexión WAN
                 }
             }
+
+            await UpdateCanConvertTicketsToInvoiceAsync();
 
             var activeTickets = await _ticketService.GetActiveTicketsAsync() ?? Array.Empty<ParkingTicket>();
 
@@ -304,6 +321,26 @@ public partial class RecentEntriesViewModel : ViewModelBase
         }
     }
 
+    public async Task UpdateCanConvertTicketsToInvoiceAsync()
+    {
+        if (_billingResolutionService == null)
+        {
+            CanConvertTicketsToInvoice = false;
+            return;
+        }
+
+        try
+        {
+            var branchId = _sessionService?.CurrentBranchId ?? _shiftService.CurrentShift?.BranchId;
+            var resolutions = await _billingResolutionService.GetActiveResolutionsByBranchAsync(branchId);
+            CanConvertTicketsToInvoice = resolutions != null && resolutions.Any(r => r.IsActive && r.IsElectronicResolution);
+        }
+        catch
+        {
+            CanConvertTicketsToInvoice = false;
+        }
+    }
+
     [RelayCommand]
     public async Task LoadHistoricalEntriesAsync()
     {
@@ -336,6 +373,15 @@ public partial class RecentEntriesViewModel : ViewModelBase
     private async Task ConvertTicketToInvoiceAsync(ParkingTicket? ticket)
     {
         if (ticket == null) return;
+
+        if (!CanConvertTicketsToInvoice)
+        {
+            await _dialogService.ShowAlertAsync(
+                "Facturación Electrónica no disponible",
+                "La sede actual no cuenta con una resolución de Facturación Electrónica DIAN activa configurada.",
+                DialogNotificationType.Warning);
+            return;
+        }
 
         if (ticket.IsElectronicInvoice && !string.IsNullOrWhiteSpace(ticket.InvoiceNumber))
         {

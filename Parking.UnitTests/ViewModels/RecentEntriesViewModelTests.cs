@@ -207,6 +207,7 @@ public class RecentEntriesViewModelTests
             .ReturnsAsync(new List<ParkingTicket> { updated });
 
         var vm = new RecentEntriesViewModel(_mockTicketService.Object, _mockDialogService.Object, _mockShiftService.Object);
+        vm.CanConvertTicketsToInvoice = true;
         await vm.ConvertTicketToInvoiceCommand.ExecuteAsync(ticket);
 
         _mockTicketService.Verify(s => s.ConvertTicketToInvoiceAsync(ticket.TicketId, customer.CustomerId), Times.Once);
@@ -363,4 +364,80 @@ public class RecentEntriesViewModelTests
         _mockDialogService.Verify(d => d.ShowAlertAsync("Fallo de Envío",
             "Solo se puede reenviar el correo de facturas previamente emitidas.", DialogNotificationType.Error), Times.Once);
     }
+
+    [Fact]
+    public async Task UpdateCanConvertTicketsToInvoiceAsync_WhenElectronicResolutionExists_SetsCanConvertTrue()
+    {
+        var mockResolutionService = new Mock<IBillingResolutionService>();
+        mockResolutionService.Setup(r => r.GetActiveResolutionsByBranchAsync(It.IsAny<int?>()))
+            .ReturnsAsync(new List<BillingResolution>
+            {
+                new BillingResolution { IsActive = true, IsElectronicResolution = true }
+            });
+
+        var vm = new RecentEntriesViewModel(
+            _mockTicketService.Object,
+            _mockDialogService.Object,
+            _mockShiftService.Object,
+            billingResolutionService: mockResolutionService.Object);
+
+        await vm.UpdateCanConvertTicketsToInvoiceAsync();
+
+        vm.CanConvertTicketsToInvoice.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task UpdateCanConvertTicketsToInvoiceAsync_WhenNoElectronicResolutionExists_SetsCanConvertFalse()
+    {
+        var mockResolutionService = new Mock<IBillingResolutionService>();
+        mockResolutionService.Setup(r => r.GetActiveResolutionsByBranchAsync(It.IsAny<int?>()))
+            .ReturnsAsync(new List<BillingResolution>
+            {
+                new BillingResolution { IsActive = true, IsElectronicResolution = false }
+            });
+
+        var vm = new RecentEntriesViewModel(
+            _mockTicketService.Object,
+            _mockDialogService.Object,
+            _mockShiftService.Object,
+            billingResolutionService: mockResolutionService.Object);
+
+        await vm.UpdateCanConvertTicketsToInvoiceAsync();
+
+        vm.CanConvertTicketsToInvoice.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task ConvertTicketToInvoiceCommand_WhenCanConvertIsFalse_ShowsWarningAndDoesNotCallCustomerDialog()
+    {
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "XYZ789",
+            IsElectronicInvoice = false
+        };
+
+        var mockResolutionService = new Mock<IBillingResolutionService>();
+        mockResolutionService.Setup(r => r.GetActiveResolutionsByBranchAsync(It.IsAny<int?>()))
+            .ReturnsAsync(new List<BillingResolution>());
+
+        var vm = new RecentEntriesViewModel(
+            _mockTicketService.Object,
+            _mockDialogService.Object,
+            _mockShiftService.Object,
+            billingResolutionService: mockResolutionService.Object);
+
+        await vm.UpdateCanConvertTicketsToInvoiceAsync();
+
+        await vm.ConvertTicketToInvoiceCommand.ExecuteAsync(ticket);
+
+        _mockDialogService.Verify(d => d.ShowAlertAsync(
+            "Facturación Electrónica no disponible",
+            It.IsAny<string>(),
+            DialogNotificationType.Warning), Times.Once);
+
+        _mockDialogService.Verify(d => d.ShowCustomerSelectionDialogAsync(It.IsAny<string>()), Times.Never);
+        _mockTicketService.Verify(s => s.ConvertTicketToInvoiceAsync(It.IsAny<Guid>(), It.IsAny<Guid>()), Times.Never);
+    }
 }
+

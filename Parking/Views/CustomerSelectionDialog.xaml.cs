@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Microsoft.EntityFrameworkCore;
 using Parking.Data.Factories;
 using Parking.Entities;
@@ -55,11 +56,39 @@ public partial class CustomerSelectionDialog : Window
 
         Loaded += async (s, e) =>
         {
-            await LoadCustomersAsync();
-            if (!string.IsNullOrWhiteSpace(_defaultPlate))
+            if (Owner != null)
             {
-                SearchBox.Text = _defaultPlate;
+                if (Owner.WindowState == WindowState.Maximized)
+                {
+                    this.WindowState = WindowState.Maximized;
+                }
+                else
+                {
+                    this.WindowState = WindowState.Normal;
+                    this.Left = Owner.Left;
+                    this.Top = Owner.Top;
+                    this.Width = Owner.ActualWidth;
+                    this.Height = Owner.ActualHeight;
+                }
             }
+            else if (Application.Current?.MainWindow != null && Application.Current.MainWindow.IsVisible)
+            {
+                var main = Application.Current.MainWindow;
+                if (main.WindowState == WindowState.Maximized)
+                {
+                    this.WindowState = WindowState.Maximized;
+                }
+                else
+                {
+                    this.WindowState = WindowState.Normal;
+                    this.Left = main.Left;
+                    this.Top = main.Top;
+                    this.Width = main.ActualWidth;
+                    this.Height = main.ActualHeight;
+                }
+            }
+
+            await LoadCustomersAsync();
         };
     }
 
@@ -339,5 +368,29 @@ public partial class CustomerSelectionDialog : Window
     {
         DialogResult = false;
         Close();
+    }
+
+    private void Backdrop_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource == sender)
+        {
+            DialogResult = false;
+            Close();
+        }
+    }
+
+    private void ModalContent_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        e.Handled = true;
+    }
+
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        base.OnPreviewKeyDown(e);
+        if (e.Key == Key.Escape)
+        {
+            DialogResult = false;
+            Close();
+        }
     }
 }

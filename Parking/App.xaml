@@ -48,6 +48,7 @@
             <conv:EqualityToBooleanConverter x:Key="EqualityConv"/>
             <conv:Base64ToImageConverter x:Key="Base64ToImageConv"/>
             <conv:IconKeyToGeometryConverter x:Key="IconKeyConv"/>
+            <conv:BooleanAndToVisibilityConverter x:Key="BoolAndToVis"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

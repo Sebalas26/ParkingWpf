@@ -1,5 +1,54 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-03 14:35:00] - [FEATURE / FIX / INVOICING / RESOLUTION-CHECK / DIALOG-UI] Validación Dinámica de Resoluciones Electrónicas DIAN y Optimización del Diálogo de Selección de Clientes
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Adiconale a esa condicion que si alguna de las resoluciones que tenga creada sobre la empresa y parametrizada a la sede se enucentra con el check de resolucion electronica (facturacion electronica dian) ahi si me muestre el boton de convertir a FE en la pwa y wpf. recreame el plan"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - **Visibilidad del Botón "Convertir a FE"**: En `RecentEntriesView.xaml`, el botón solo evaluaba `CanConvertToInvoice` a nivel de fila (`!ticket.IsElectronicInvoice && ticket.NetAmount > 0`), sin verificar si la sede operativa activa contaba con una resolución de Facturación Electrónica DIAN parametrizada y activa (`IsElectronicResolution == true`).
+     - **Ventana Modal de Clientes (Backdrop recortado y estático)**: En `CustomerSelectionDialog.xaml`, el elemento `<Window>` tenía dimensiones rígidas `Width="740" MaxHeight="800"` con fondo translúcido `#B3000000`, provocando que el oscurecimiento de fondo se mostrara como un cuadro estático recortado de 740x800px en lugar de cubrir toda la ventana principal (`Owner`).
+     - **Pre-llenado de Placa en Buscador de Clientes**: En `CustomerSelectionDialog.xaml.cs`, el evento `Loaded` asignaba `SearchBox.Text = _defaultPlate;`, forzando al usuario a borrar manualmente la placa del vehículo antes de poder buscar al cliente por su cédula o NIT.
+  2. **Solución Implementada**:
+     - **Evaluación Dinámica de Resoluciones Electrónicas**:
+       - Creado `BooleanAndToVisibilityConverter.cs` en `Parking.Core.Converters` e integrado globalmente como recurso `BoolAndToVis` en `App.xaml`.
+       - En `RecentEntriesViewModel.cs`:
+         - Inyectado `IBillingResolutionService? _billingResolutionService`.
+         - Creada propiedad observable `CanConvertTicketsToInvoice`.
+         - Creado método `UpdateCanConvertTicketsToInvoiceAsync()`, invocado en `LoadEntriesInternalAsync` tras la sincronización de datos con el servidor y al cambiar la sede activa en `_sessionService.ActiveBranchChanged`.
+         - Añadida guarda en `ConvertTicketToInvoiceCommand` mostrando alerta preventiva si se intenta convertir en una sede sin resolución electrónica activa.
+       - En `RecentEntriesView.xaml`:
+         - Actualizada la visibilidad del botón "Convertir a FE" tanto en la pestaña Salidas del Turno como en Histórico de Facturación usando `MultiBinding` con `BoolAndToVis`, combinando `CanConvertToInvoice` (del tiquete) y `DataContext.CanConvertTicketsToInvoice` (del ViewModel).
+     - **Corrección de UX y Backdrop en `CustomerSelectionDialog`**:
+       - Eliminadas las restricciones `Width` y `MaxHeight` del `<Window>` y reubicadas en el `<Border>` interior de la tarjeta modal (`Width="740" MaxHeight="800"`).
+       - En el code-behind `CustomerSelectionDialog.xaml.cs`:
+         - En `Loaded`, la ventana adapta sus dimensiones (`Width`, `Height`, `Left`, `Top`, o `WindowState.Maximized`) exactamente a su ventana contenedora `Owner` / `MainWindow`.
+         - Eliminada la asignación `SearchBox.Text = _defaultPlate;` de `Loaded`, dejando el buscador limpio mientras se preserva `_defaultPlate` internamente para asignarlo automáticamente a vehículos nuevos.
+         - Agregado evento de clic en el backdrop exterior (`Backdrop_MouseDown`) y tecla `Escape` (`OnPreviewKeyDown`) para cancelar y cerrar el modal intuitivamente sin alterar el contenido.
+     - **Pruebas Unitarias**:
+       - Creadas 3 nuevas pruebas unitarias en `RecentEntriesViewModelTests.cs` evaluando la activación de `CanConvertTicketsToInvoice` ante resoluciones electrónicas existentes, su desactivación ante su ausencia y el bloqueo preventivo del comando.
+       - Actualizado test existente para inicializar `CanConvertTicketsToInvoice = true`.
+  3. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **374 pruebas superadas (100% de éxito, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Core/Converters/BooleanAndToVisibilityConverter.cs` (Nuevo)
+  - `Parking/App.xaml`
+  - `Parking/ViewModels/RecentEntriesViewModel.cs`
+  - `Parking/Views/RecentEntriesView.xaml`
+  - `Parking/Views/CustomerSelectionDialog.xaml`
+  - `Parking/Views/CustomerSelectionDialog.xaml.cs`
+  - `Parking.UnitTests/ViewModels/RecentEntriesViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **374/374 pruebas superadas (100%)**.
+
+---
+
 ## 📅 Entrada: [2026-10-02 23:55:00] - [FEATURE / FIX / INVOICING / EMAIL] Optimización Integral del Reenvío de Factura Electrónica por Correo y Paridad de Validación
 
 - **`💬 Prompt Original del Usuario`**:

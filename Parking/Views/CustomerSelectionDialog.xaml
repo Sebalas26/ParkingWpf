@@ -13,13 +13,15 @@
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Display"
-        TextOptions.TextRenderingMode="ClearType"
-        Width="740" MaxHeight="800">
+        TextOptions.TextRenderingMode="ClearType">
 
-    <Grid Background="Transparent">
+    <Grid Background="Transparent" MouseDown="Backdrop_MouseDown">
         <Border HorizontalAlignment="Center"
                 VerticalAlignment="Center"
+                Width="740"
+                MaxHeight="800"
                 Margin="20"
+                MouseDown="ModalContent_MouseDown"
                 Background="{DynamicResource BrushSurfaceBackground}"
                 BorderBrush="{DynamicResource BrushBorderMedium}"
                 BorderThickness="1"

@@ -508,13 +508,18 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <!-- Facturar DIAN (Visible solo si aún no es Factura Electrónica y tiene valor a cobrar) -->
+                                        <!-- Facturar DIAN (Visible solo si aún no es Factura Electrónica, tiene valor y la sede cuenta con resolución electrónica DIAN) -->
                                         <Button Command="{Binding DataContext.ConvertTicketToInvoiceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
-                                                Visibility="{Binding CanConvertToInvoice, Converter={StaticResource BoolToVis}}"
                                                 Style="{StaticResource SuccessButton}"
                                                 Padding="8,5"
                                                 Margin="0,0,6,0">
+                                            <Button.Visibility>
+                                                <MultiBinding Converter="{StaticResource BoolAndToVis}">
+                                                    <Binding Path="CanConvertToInvoice"/>
+                                                    <Binding Path="DataContext.CanConvertTicketsToInvoice" RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                </MultiBinding>
+                                            </Button.Visibility>
                                             <StackPanel Orientation="Horizontal">
                                                 <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,5,0" VerticalAlignment="Center"/>
                                                 <TextBlock Text="Convertir a FE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
@@ -776,13 +781,18 @@
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <!-- Facturar DIAN (Visible solo si aún no es Factura Electrónica y tiene valor a cobrar) -->
+                                        <!-- Facturar DIAN (Visible solo si aún no es Factura Electrónica, tiene valor y la sede cuenta con resolución electrónica DIAN) -->
                                         <Button Command="{Binding DataContext.ConvertTicketToInvoiceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
-                                                Visibility="{Binding CanConvertToInvoice, Converter={StaticResource BoolToVis}}"
                                                 Style="{StaticResource SuccessButton}"
                                                 Padding="10,5"
                                                 Margin="0,0,6,0">
+                                            <Button.Visibility>
+                                                <MultiBinding Converter="{StaticResource BoolAndToVis}">
+                                                    <Binding Path="CanConvertToInvoice"/>
+                                                    <Binding Path="DataContext.CanConvertTicketsToInvoice" RelativeSource="{RelativeSource AncestorType=UserControl}"/>
+                                                </MultiBinding>
+                                            </Button.Visibility>
                                             <StackPanel Orientation="Horizontal">
                                                 <Path Data="{StaticResource IconReceipt}" Fill="{DynamicResource BrushTextWhite}" Width="12" Height="12" Stretch="Uniform" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                                 <TextBlock Text="Convertir a FE" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextWhite}" VerticalAlignment="Center"/>
