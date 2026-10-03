@@ -34,12 +34,11 @@ public partial class CustomersViewModel : ViewModelBase
 
     public List<IdentificationTypeItem> IdentificationTypes { get; } = new()
     {
-        new IdentificationTypeItem { Id = 13, Name = "Cédula de Ciudadanía (CC)" },
-        new IdentificationTypeItem { Id = 31, Name = "NIT - Identificación Tributaria" },
-        new IdentificationTypeItem { Id = 22, Name = "Cédula de Extranjería (CE)" },
-        new IdentificationTypeItem { Id = 12, Name = "Tarjeta de Identidad (TI)" },
-        new IdentificationTypeItem { Id = 41, Name = "Pasaporte" },
-        new IdentificationTypeItem { Id = 42, Name = "Documento Extranjero" }
+        new IdentificationTypeItem { Id = 1, Name = "Cédula de Ciudadanía (CC)" },
+        new IdentificationTypeItem { Id = 3, Name = "NIT - Identificación Tributaria" },
+        new IdentificationTypeItem { Id = 2, Name = "Cédula de Extranjería (CE)" },
+        new IdentificationTypeItem { Id = 4, Name = "Pasaporte" },
+        new IdentificationTypeItem { Id = 5, Name = "Documento Extranjero" }
     };
 
     [ObservableProperty]
@@ -63,7 +62,7 @@ public partial class CustomersViewModel : ViewModelBase
     private Guid? _formCustomerId;
 
     [ObservableProperty]
-    private int _formIdentificationTypeId = 13;
+    private int _formIdentificationTypeId = 1;
 
     [ObservableProperty]
     private string _formDocumentNumber = string.Empty;
@@ -113,10 +112,12 @@ public partial class CustomersViewModel : ViewModelBase
     [ObservableProperty]
     private string? _formGeneralError;
 
-    public bool IsNitSelected => FormIdentificationTypeId == 31;
+    public bool IsNitSelected => FormIdentificationTypeId == 3 || FormIdentificationTypeId == 31;
 
     public bool CanManage => _permissionService.HasPermission("invoicing.customers.manage");
-    public bool CanDelete => _permissionService.HasPermission("invoicing.customers.delete") || _permissionService.HasPermission("invoicing.customers.manage");
+    public bool CanCreate => _permissionService.HasPermission("invoicing.customers.create") || CanManage;
+    public bool CanEdit => _permissionService.HasPermission("invoicing.customers.edit") || CanManage;
+    public bool CanDelete => _permissionService.HasPermission("invoicing.customers.delete") || CanManage;
 
     public ObservableCollection<DaneMunicipality> AvailableMunicipalities { get; } = new();
 
@@ -154,7 +155,7 @@ public partial class CustomersViewModel : ViewModelBase
     partial void OnFormIdentificationTypeIdChanged(int value)
     {
         OnPropertyChanged(nameof(IsNitSelected));
-        if (value == 31)
+        if (value == 3 || value == 31)
         {
             FormPersonType = "Company";
             if (!string.IsNullOrWhiteSpace(FormDocumentNumber))
@@ -292,24 +293,62 @@ public partial class CustomersViewModel : ViewModelBase
                 var remote = await _apiClient.GetCustomersAsync(query, companyId);
                 if (remote != null && remote.Count > 0)
                 {
-                    list = remote.Select(r => new Customer
+                    bool anyInsertedOrUpdated = false;
+                    foreach (var r in remote)
                     {
-                        CustomerId = r.CustomerId,
-                        CompanyId = r.CompanyId,
-                        IdentificationTypeId = r.IdentificationTypeId,
-                        DocumentNumber = r.DocumentNumber,
-                        CheckDigit = r.CheckDigit,
-                        PersonType = r.PersonType,
-                        FullName = r.FullName,
-                        TradeName = r.TradeName,
-                        Email = r.Email,
-                        Phone = r.Phone,
-                        Address = r.Address,
-                        CityCode = r.CityCode,
-                        StateCode = r.StateCode,
-                        FiscalResponsibilities = r.FiscalResponsibilities,
-                        IsActive = r.IsActive
-                    }).ToList();
+                        var existing = await db.Customers.FirstOrDefaultAsync(c =>
+                            c.CustomerId == r.CustomerId ||
+                            (c.CompanyId == r.CompanyId && c.DocumentNumber == r.DocumentNumber));
+
+                        if (existing != null)
+                        {
+                            existing.IdentificationTypeId = r.IdentificationTypeId;
+                            existing.CheckDigit = r.CheckDigit;
+                            existing.PersonType = r.PersonType;
+                            existing.FullName = r.FullName;
+                            existing.TradeName = r.TradeName;
+                            existing.Email = r.Email;
+                            existing.Phone = r.Phone;
+                            existing.Address = r.Address;
+                            existing.CityCode = r.CityCode;
+                            existing.StateCode = r.StateCode;
+                            existing.FiscalResponsibilities = r.FiscalResponsibilities;
+                            if (r.SiigoCustomerId.HasValue) existing.SiigoCustomerId = r.SiigoCustomerId;
+                            existing.IsActive = r.IsActive;
+                            anyInsertedOrUpdated = true;
+                        }
+                        else
+                        {
+                            var newCust = new Customer
+                            {
+                                CustomerId = r.CustomerId != Guid.Empty ? r.CustomerId : Guid.NewGuid(),
+                                CompanyId = r.CompanyId ?? companyId,
+                                IdentificationTypeId = r.IdentificationTypeId,
+                                DocumentNumber = r.DocumentNumber,
+                                CheckDigit = r.CheckDigit,
+                                PersonType = r.PersonType,
+                                FullName = r.FullName,
+                                TradeName = r.TradeName,
+                                Email = r.Email,
+                                Phone = r.Phone,
+                                Address = r.Address,
+                                CityCode = r.CityCode,
+                                StateCode = r.StateCode,
+                                FiscalResponsibilities = r.FiscalResponsibilities,
+                                SiigoCustomerId = r.SiigoCustomerId,
+                                IsActive = r.IsActive,
+                                CreatedAtUtc = DateTime.UtcNow
+                            };
+                            db.Customers.Add(newCust);
+                            anyInsertedOrUpdated = true;
+                        }
+                    }
+
+                    if (anyInsertedOrUpdated)
+                    {
+                        await db.SaveChangesAsync();
+                        list = await q.OrderBy(c => c.FullName).Take(100).ToListAsync();
+                    }
                 }
             }
 
@@ -403,7 +442,7 @@ public partial class CustomersViewModel : ViewModelBase
     [RelayCommand]
     private void OpenCreateCustomer()
     {
-        if (!CanManage)
+        if (!CanCreate)
         {
             _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para registrar nuevos clientes.", DialogNotificationType.Warning);
             return;
@@ -411,7 +450,7 @@ public partial class CustomersViewModel : ViewModelBase
 
         IsEditing = false;
         FormCustomerId = null;
-        FormIdentificationTypeId = 13;
+        FormIdentificationTypeId = 1;
         FormDocumentNumber = string.Empty;
         FormCheckDigit = null;
         FormPersonType = "Person";
@@ -443,7 +482,7 @@ public partial class CustomersViewModel : ViewModelBase
     private void OpenEditCustomer(Customer? customer)
     {
         if (customer == null) return;
-        if (!CanManage)
+        if (!CanEdit)
         {
             _ = _dialogService.ShowAlertAsync("Acceso Denegado", "No tienes permisos para modificar clientes.", DialogNotificationType.Warning);
             return;
@@ -453,16 +492,16 @@ public partial class CustomersViewModel : ViewModelBase
         FormCustomerId = customer.CustomerId;
         FormIdentificationTypeId = customer.IdentificationTypeId switch
         {
-            1 => 13,
-            2 => 22,
-            3 => 31,
-            4 => 41,
-            5 => 42,
+            13 => 1,
+            22 => 2,
+            31 => 3,
+            41 => 4,
+            42 => 5,
             _ => customer.IdentificationTypeId
         };
         FormDocumentNumber = customer.DocumentNumber;
         FormCheckDigit = customer.CheckDigit;
-        FormPersonType = customer.PersonType ?? (customer.IdentificationTypeId == 31 ? "Company" : "Person");
+        FormPersonType = customer.PersonType ?? (FormIdentificationTypeId == 3 ? "Company" : "Person");
         FormFullName = customer.FullName;
         FormTradeName = customer.TradeName;
         FormEmail = customer.Email;

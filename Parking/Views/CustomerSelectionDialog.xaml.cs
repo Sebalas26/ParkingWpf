@@ -31,12 +31,11 @@ public partial class CustomerSelectionDialog : Window
 
     private readonly List<IdTypeOption> _idTypes = new()
     {
-        new IdTypeOption { Id = 13, Name = "Cédula de Ciudadanía (CC)" },
-        new IdTypeOption { Id = 31, Name = "NIT - Número Identificación Tributaria" },
-        new IdTypeOption { Id = 22, Name = "Cédula de Extranjería (CE)" },
-        new IdTypeOption { Id = 12, Name = "Tarjeta de Identidad (TI)" },
-        new IdTypeOption { Id = 41, Name = "Pasaporte" },
-        new IdTypeOption { Id = 42, Name = "Documento de Identificación Extranjero" }
+        new IdTypeOption { Id = 1, Name = "Cédula de Ciudadanía (CC)" },
+        new IdTypeOption { Id = 3, Name = "NIT - Número Identificación Tributaria" },
+        new IdTypeOption { Id = 2, Name = "Cédula de Extranjería (CE)" },
+        new IdTypeOption { Id = 4, Name = "Pasaporte" },
+        new IdTypeOption { Id = 5, Name = "Documento de Identificación Extranjero" }
     };
 
     public CustomerSelectionDialog(
@@ -119,24 +118,62 @@ public partial class CustomerSelectionDialog : Window
                 var remote = await _apiClient.GetCustomersAsync(query, companyId);
                 if (remote != null && remote.Count > 0)
                 {
-                    localList = remote.Select(r => new Customer
+                    bool anyInsertedOrUpdated = false;
+                    foreach (var r in remote)
                     {
-                        CustomerId = r.CustomerId,
-                        CompanyId = r.CompanyId,
-                        IdentificationTypeId = r.IdentificationTypeId,
-                        DocumentNumber = r.DocumentNumber,
-                        CheckDigit = r.CheckDigit,
-                        PersonType = r.PersonType,
-                        FullName = r.FullName,
-                        TradeName = r.TradeName,
-                        Email = r.Email,
-                        Phone = r.Phone,
-                        Address = r.Address,
-                        CityCode = r.CityCode,
-                        StateCode = r.StateCode,
-                        FiscalResponsibilities = r.FiscalResponsibilities,
-                        IsActive = r.IsActive
-                    }).ToList();
+                        var existing = await db.Customers.FirstOrDefaultAsync(c =>
+                            c.CustomerId == r.CustomerId ||
+                            (c.CompanyId == r.CompanyId && c.DocumentNumber == r.DocumentNumber));
+
+                        if (existing != null)
+                        {
+                            existing.IdentificationTypeId = r.IdentificationTypeId;
+                            existing.CheckDigit = r.CheckDigit;
+                            existing.PersonType = r.PersonType;
+                            existing.FullName = r.FullName;
+                            existing.TradeName = r.TradeName;
+                            existing.Email = r.Email;
+                            existing.Phone = r.Phone;
+                            existing.Address = r.Address;
+                            existing.CityCode = r.CityCode;
+                            existing.StateCode = r.StateCode;
+                            existing.FiscalResponsibilities = r.FiscalResponsibilities;
+                            if (r.SiigoCustomerId.HasValue) existing.SiigoCustomerId = r.SiigoCustomerId;
+                            existing.IsActive = r.IsActive;
+                            anyInsertedOrUpdated = true;
+                        }
+                        else
+                        {
+                            var newCust = new Customer
+                            {
+                                CustomerId = r.CustomerId != Guid.Empty ? r.CustomerId : Guid.NewGuid(),
+                                CompanyId = r.CompanyId ?? companyId,
+                                IdentificationTypeId = r.IdentificationTypeId,
+                                DocumentNumber = r.DocumentNumber,
+                                CheckDigit = r.CheckDigit,
+                                PersonType = r.PersonType,
+                                FullName = r.FullName,
+                                TradeName = r.TradeName,
+                                Email = r.Email,
+                                Phone = r.Phone,
+                                Address = r.Address,
+                                CityCode = r.CityCode,
+                                StateCode = r.StateCode,
+                                FiscalResponsibilities = r.FiscalResponsibilities,
+                                SiigoCustomerId = r.SiigoCustomerId,
+                                IsActive = r.IsActive,
+                                CreatedAtUtc = DateTime.UtcNow
+                            };
+                            db.Customers.Add(newCust);
+                            anyInsertedOrUpdated = true;
+                        }
+                    }
+
+                    if (anyInsertedOrUpdated)
+                    {
+                        await db.SaveChangesAsync();
+                        localList = await q.OrderBy(c => c.FullName).Take(25).ToListAsync();
+                    }
                 }
             }
 
@@ -178,7 +215,7 @@ public partial class CustomerSelectionDialog : Window
 
     private void UpdateNitCheckDigit()
     {
-        if (IdTypeComboBox.SelectedValue is int id && id == 31)
+        if (IdTypeComboBox.SelectedValue is int id && (id == 3 || id == 31))
         {
             CheckDigitBox.IsEnabled = true;
             CheckDigitBox.Text = CalculateNitCheckDigit(DocumentNumberBox.Text);
@@ -252,7 +289,16 @@ public partial class CustomerSelectionDialog : Window
             return;
         }
 
-        var idType = IdTypeComboBox.SelectedValue is int val ? val : 13;
+        var rawIdType = IdTypeComboBox.SelectedValue is int val ? val : 1;
+        var idType = rawIdType switch
+        {
+            13 => 1,
+            22 => 2,
+            31 => 3,
+            41 => 4,
+            42 => 5,
+            _ => rawIdType
+        };
         var companyId = _sessionService.CurrentBranch?.CompanyId ?? _sessionService.CurrentUser?.CompanyId ?? 1;
 
         try
@@ -271,8 +317,8 @@ public partial class CustomerSelectionDialog : Window
                 CompanyId = companyId,
                 IdentificationTypeId = idType,
                 DocumentNumber = doc,
-                CheckDigit = idType == 31 ? CheckDigitBox.Text?.Trim() : null,
-                PersonType = idType == 31 ? "Company" : "Person",
+                CheckDigit = (idType == 3 || idType == 31) ? CheckDigitBox.Text?.Trim() : null,
+                PersonType = (idType == 3 || idType == 31) ? "Company" : "Person",
                 FullName = name,
                 Email = email,
                 Phone = string.IsNullOrWhiteSpace(PhoneBox.Text) ? null : PhoneBox.Text.Trim(),

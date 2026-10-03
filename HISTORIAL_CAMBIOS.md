@@ -1,5 +1,42 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-03 15:25:00] - [SYNC / CUSTOMERS / RBAC / SQLITE] Homologación de Tipos de Documento Canónicos (1..5), Permisos Granulares y Upsert Local contra Clientes Fantasma
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"analiza si hay huecos tecnicos y crea plan de nuevo"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - **Incompatibilidad de IDs de Tipo de Documento**: `CustomersViewModel`, `CustomerSelectionDialog` y `CheckOutViewModel` usaban IDs nativos de Siigo (13=CC, 31=NIT, 22=CE, 41=Pasaporte, 42=Extranjero) en lugar de los IDs canónicos del sistema central y base de datos (1=CC, 2=CE, 3=NIT, 4=Pasaporte, 5=Extranjero). Al enviar `13` o `31` a la API, el backend lanzaba `ArgumentException: El tipo de identificación no es válido. Debe ser un valor entre 1 y 5`, provocando que las creaciones de clientes se quedaran atascadas indefinidamente en la cola `PendingSyncItems`.
+     - **Clientes Fantasma (Ghost Customers)**: Cuando un cliente no existía en SQLite pero se encontraba en la API mediante búsqueda remota, `CustomersViewModel` y `CustomerSelectionDialog` mostraban los datos en pantalla pero **no los guardaban en SQLite local**. Si el usuario intentaba facturar de inmediato, la ausencia del registro en SQLite generaba violaciones de llave foránea o fallos de selección en `CheckOutViewModel`.
+     - **Permisos RBAC No Granulares**: El formulario de clientes dependía únicamente de la acción genérica `invoicing.customers.manage`, sin evaluar `invoicing.customers.create`, `invoicing.customers.edit` ni `invoicing.customers.delete`.
+  2. **Solución Implementada**:
+     - **Homologación Canónica de Tipos de Identificación**:
+       - En `CustomersViewModel`: `IdentificationTypes` actualizado con IDs 1, 2, 3, 4, 5. `FormIdentificationTypeId` inicializado en 1. `IsNitSelected` actualizado para validar `FormIdentificationTypeId == 3 || FormIdentificationTypeId == 31`.
+       - En `OpenEditCustomer`: Normalización switch bidireccional (`13 => 1, 22 => 2, 31 => 3, 41 => 4, 42 => 5, _ => id`) para tolerar registros preexistentes en la base local.
+       - En `CheckOutViewModel`: `IdentificationTypeOptions` actualizado a IDs canónicos 1..4. `OnSelectedIdentificationTypeOptionChanged` y validación de NIT soportan 3 y 31.
+       - En `CustomerSelectionDialog`: `_idTypes` actualizado a 1..5 y mapeo defensivo en guardado.
+     - **Persistencia Local Automática (Upsert) de Búsquedas Remotas**:
+       - Tanto en `CustomersViewModel.LoadCustomersAsync` como en `CustomerSelectionDialog.LoadCustomersAsync`, los clientes remotos devueltos por la API se buscan por `CustomerId` o `(CompanyId, DocumentNumber)` en `db.Customers`. Si existen se actualizan y si no existen se insertan y guardan con `db.SaveChangesAsync()`, recargando la lista local de SQLite para que cualquier flujo dependiente cuente con la entidad persistida.
+     - **Permisos Granulares**:
+       - `CanCreate => HasPermission("invoicing.customers.create") || CanManage;`
+       - `CanEdit => HasPermission("invoicing.customers.edit") || CanManage;`
+       - `CanDelete => HasPermission("invoicing.customers.delete") || CanManage;`
+     - **Pruebas Unitarias**:
+       - Actualizados `CustomersViewModelTests` y `CheckOutViewModelTests` para reflejar los IDs canónicos 1 (CC) y 3 (NIT).
+  3. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx -p:EnableWindowsTargeting=true`: **Compilación exitosa (0 Errores, 0 Advertencias)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CustomersViewModel.cs`
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+  - `Parking/Views/CustomerSelectionDialog.xaml.cs`
+  - `Parking.UnitTests/ViewModels/CustomersViewModelTests.cs`
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+---
+
 ## 📅 Entrada: [2026-10-03 14:35:00] - [FEATURE / FIX / INVOICING / RESOLUTION-CHECK / DIALOG-UI] Validación Dinámica de Resoluciones Electrónicas DIAN y Optimización del Diálogo de Selección de Clientes
 
 - **`💬 Prompt Original del Usuario`**:

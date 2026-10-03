@@ -105,7 +105,7 @@ public class CustomersViewModelTests
         vm.IsFormOpen.Should().BeTrue();
         vm.IsEditing.Should().BeTrue();
         vm.FormCustomerId.Should().Be(customer.CustomerId);
-        vm.FormIdentificationTypeId.Should().Be(31);
+        vm.FormIdentificationTypeId.Should().Be(3);
         vm.FormDocumentNumber.Should().Be("901234567");
         vm.FormCheckDigit.Should().Be("1");
         vm.FormPersonType.Should().Be("Company");
@@ -173,21 +173,21 @@ public class CustomersViewModelTests
             _mockDialogService.Object,
             _mockPermissionService.Object);
 
-        // Inicial por defecto es CC (13)
-        vm.FormIdentificationTypeId.Should().Be(13);
+        // Inicial por defecto es CC (1)
+        vm.FormIdentificationTypeId.Should().Be(1);
         vm.IsNitSelected.Should().BeFalse();
         vm.FormCheckDigit.Should().BeNull();
 
-        // Cambiar a NIT (31) con número de documento
+        // Cambiar a NIT (3) con número de documento
         vm.FormDocumentNumber = "900336004";
-        vm.FormIdentificationTypeId = 31;
+        vm.FormIdentificationTypeId = 3;
 
         vm.IsNitSelected.Should().BeTrue();
         vm.FormPersonType.Should().Be("Company");
         vm.FormCheckDigit.Should().Be("7"); // Dígito DIAN calculado para 900336004
 
-        // Cambiar de nuevo a CC (13)
-        vm.FormIdentificationTypeId = 13;
+        // Cambiar de nuevo a CC (1)
+        vm.FormIdentificationTypeId = 1;
 
         vm.IsNitSelected.Should().BeFalse();
         vm.FormPersonType.Should().Be("Person");

@@ -1115,8 +1115,8 @@ public class CheckOutViewModelTests : IDisposable
     {
         // Arrange
         var vm = CreateViewModel();
-        var ccOption = vm.IdentificationTypeOptions.First(o => o.Id == 13);
-        var nitOption = vm.IdentificationTypeOptions.First(o => o.Id == 31);
+        var ccOption = vm.IdentificationTypeOptions.First(o => o.Id == 1);
+        var nitOption = vm.IdentificationTypeOptions.First(o => o.Id == 3);
 
         // Act & Assert 1: NIT
         vm.SelectedIdentificationTypeOption = nitOption;
