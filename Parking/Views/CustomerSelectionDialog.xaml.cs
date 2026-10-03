@@ -307,6 +307,63 @@ public partial class CustomerSelectionDialog : Window
             var existing = await db.Customers.FirstOrDefaultAsync(c => c.CompanyId == companyId && c.DocumentNumber == doc);
             if (existing != null)
             {
+                existing.IdentificationTypeId = idType;
+                existing.CheckDigit = (idType == 3 || idType == 31) ? CheckDigitBox.Text?.Trim() : null;
+                existing.PersonType = (idType == 3 || idType == 31) ? "Company" : "Person";
+                existing.FullName = name;
+                existing.Email = email;
+                existing.Phone = string.IsNullOrWhiteSpace(PhoneBox.Text) ? null : PhoneBox.Text.Trim();
+                existing.Address = address;
+                existing.CityCode = city;
+                existing.FiscalResponsibilities = "R-99-PN";
+                existing.IsActive = true;
+
+                if (!string.IsNullOrWhiteSpace(_defaultPlate))
+                {
+                    var cleanPlate = _defaultPlate.Trim().ToUpperInvariant();
+                    var hasPlate = await db.CustomerVehicles
+                        .AnyAsync(v => v.CustomerId == existing.CustomerId && v.PlateNumber == cleanPlate);
+
+                    if (!hasPlate)
+                    {
+                        db.CustomerVehicles.Add(new CustomerVehicle
+                        {
+                            CustomerId = existing.CustomerId,
+                            PlateNumber = cleanPlate,
+                            CreatedAtUtc = DateTime.UtcNow
+                        });
+                    }
+                }
+
+                var pendingUpdate = new PendingSyncItem
+                {
+                    PendingSyncItemId = Guid.NewGuid(),
+                    OperationType = "UpdateCustomer",
+                    PayloadJson = JsonSerializer.Serialize(new CreateCustomerApiRequest
+                    {
+                        CustomerId = existing.CustomerId,
+                        CompanyId = existing.CompanyId,
+                        IdentificationTypeId = existing.IdentificationTypeId,
+                        DocumentNumber = existing.DocumentNumber,
+                        CheckDigit = existing.CheckDigit,
+                        PersonType = existing.PersonType,
+                        FullName = existing.FullName,
+                        TradeName = existing.TradeName,
+                        Email = existing.Email,
+                        Phone = existing.Phone,
+                        Address = existing.Address,
+                        CityCode = existing.CityCode,
+                        FiscalResponsibilities = existing.FiscalResponsibilities,
+                        InitialPlateNumber = _defaultPlate?.Trim().ToUpperInvariant()
+                    }),
+                    CreatedAtUtc = DateTime.UtcNow,
+                    RetryCount = 0,
+                    IsProcessed = false
+                };
+
+                db.PendingSyncItems.Add(pendingUpdate);
+                await db.SaveChangesAsync();
+
                 SetSelectedCustomer(existing);
                 return;
             }

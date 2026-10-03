@@ -623,12 +623,11 @@ public partial class CustomersViewModel : ViewModelBase
                     existing.CityCode = effectiveCityCode;
                     existing.StateCode = effectiveStateCode;
 
-                    await db.SaveChangesAsync();
-
-                    CustomerApiUpdateResult? apiResult = null;
-                    try
+                    var pendingUpdate = new PendingSyncItem
                     {
-                        apiResult = await _apiClient.UpdateCustomerAsync(existing.CustomerId, new CreateCustomerApiRequest
+                        PendingSyncItemId = Guid.NewGuid(),
+                        OperationType = "UpdateCustomer",
+                        PayloadJson = JsonSerializer.Serialize(new CreateCustomerApiRequest
                         {
                             CustomerId = existing.CustomerId,
                             CompanyId = existing.CompanyId,
@@ -644,36 +643,19 @@ public partial class CustomersViewModel : ViewModelBase
                             CityCode = existing.CityCode,
                             StateCode = existing.StateCode,
                             FiscalResponsibilities = existing.FiscalResponsibilities
-                        });
+                        }),
+                        CreatedAtUtc = DateTime.UtcNow,
+                        RetryCount = 0,
+                        IsProcessed = false
+                    };
 
-                        if (apiResult?.Customer?.SiigoCustomerId.HasValue == true)
-                        {
-                            existing.SiigoCustomerId = apiResult.Customer.SiigoCustomerId.Value;
-                            await db.SaveChangesAsync();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        apiResult = new CustomerApiUpdateResult
-                        {
-                            Success = false,
-                            ErrorMessage = ex.Message
-                        };
-                    }
+                    db.PendingSyncItems.Add(pendingUpdate);
+                    await db.SaveChangesAsync();
 
                     IsFormOpen = false;
                     await LoadCustomersAsync();
 
-                    if (apiResult != null && !apiResult.Success && !string.IsNullOrWhiteSpace(apiResult.ErrorMessage))
-                    {
-                        await _dialogService.ShowAlertAsync("Aviso de Sincronización Siigo",
-                            $"Los datos del cliente se guardaron localmente, pero el servidor o Siigo reportó una inconsistencia:\n{apiResult.ErrorMessage}",
-                            DialogNotificationType.Warning);
-                    }
-                    else
-                    {
-                        await _dialogService.ShowAlertAsync("Cliente Actualizado", $"Los datos de '{existing.FullName}' fueron actualizados correctamente.", DialogNotificationType.Success);
-                    }
+                    await _dialogService.ShowAlertAsync("Cliente Actualizado", $"Los datos de '{existing.FullName}' fueron actualizados correctamente.", DialogNotificationType.Success);
                 }
             }
             else

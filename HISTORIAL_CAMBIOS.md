@@ -1,5 +1,40 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-03 17:00:00] - [OFFLINE-FIRST / CUSTOMERS / SYNC / DIALOG] Edición Offline-First de Clientes en Catálogo y CustomerSelectionDialog con Soporte en SyncEngineService
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"valida porque no permite editar los datos del cliente desde el wpf / esta es la imagen correcta, analiza si eso es lo mismo que detectaste en el plan / ssi ejecutalo"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - **Llamada Sincrónica Bloqueante en Catálogo**: Al editar un cliente en `CustomersViewModel`, el código ejecutaba `await _apiClient.UpdateCustomerAsync(...)` de forma síncrona en el hilo de UI. Si el servidor central reportaba inconsistencia de credenciales al sincronizar con el proveedor externo (Siigo API 401 Unauthorized), la aplicación lanzaba un modal de advertencia amarillo bloqueante (`Aviso de Sincronización Siigo`), causando la percepción de que la edición no se completaba y violando la arquitectura Offline-First.
+     - **Descarte de Edición en Modal de Facturación (`CustomerSelectionDialog`)**: Al ingresar un documento existente en el formulario rápido de `CustomerSelectionDialog`, la condición `existing != null` descartaba inmediatamente los datos nuevos ingresados (correo, teléfono, dirección) y retornaba el cliente antiguo sin persistir cambios locales ni encolar sincronización.
+     - **Carencia de `UpdateCustomer` en el Motor de Sincronización (`SyncEngineService`)**: El servicio de sincronización en segundo plano solo contemplaba `CreateCustomer`, por lo que cualquier actualización encolada era ignorada.
+  2. **Solución Implementada**:
+     - **`CustomerSelectionDialog.xaml.cs`**:
+       - En `SaveNewCustomer_Click`, al detectar que el cliente ya existe en SQLite (`existing != null`), se actualizan en memoria sus datos fiscales (`IdentificationTypeId`, `CheckDigit`, `PersonType`, `FullName`, `Email`, `Phone`, `Address`, `CityCode`, `FiscalResponsibilities`), se asocia la placa si no estaba vinculada, y se encola un `PendingSyncItem` con `OperationType = "UpdateCustomer"`.
+       - Se guardan los cambios atómicamente con `await db.SaveChangesAsync()` y se selecciona al cliente actualizado.
+     - **`CustomersViewModel.cs`**:
+       - Se eliminó la llamada sincrónica `_apiClient.UpdateCustomerAsync(...)` y el modal de advertencia de Siigo.
+       - La edición persiste de inmediato en SQLite y encola un `PendingSyncItem` con `OperationType = "UpdateCustomer"`.
+       - Muestra inmediatamente la alerta de éxito no bloqueante `Cliente Actualizado`.
+     - **`SyncEngineService.cs`**:
+       - Se añadió el bloque para procesar `item.OperationType == "UpdateCustomer"`.
+       - Consume `_apiClient.UpdateCustomerAsync(req.CustomerId.Value, req)`.
+       - Si la actualización es exitosa o si el servidor reporta que el cliente fue actualizado localmente pero Siigo tuvo inconsistencia/error externo, se marca `item.IsProcessed = true` y se persiste `SiigoCustomerId` si vino en la respuesta.
+       - En caso de caída de conectividad de red, se incrementa `RetryCount` y se preserva el ítem para reintento.
+  3. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **374/374 Pruebas Unitarias Superadas (100% éxito, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Views/CustomerSelectionDialog.xaml.cs`
+  - `Parking/ViewModels/CustomersViewModel.cs`
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+---
+
 ## 📅 Entrada: [2026-10-03 15:25:00] - [SYNC / CUSTOMERS / RBAC / SQLITE] Homologación de Tipos de Documento Canónicos (1..5), Permisos Granulares y Upsert Local contra Clientes Fantasma
 
 - **`💬 Prompt Original del Usuario`**:

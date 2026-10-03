@@ -2242,6 +2242,34 @@ public class SyncEngineService : ISyncEngineService
                             }
                         }
                     }
+                    else if (item.OperationType == "UpdateCustomer")
+                    {
+                        var req = JsonSerializer.Deserialize<CreateCustomerApiRequest>(item.PayloadJson, ParkingApiClient.JsonOptions);
+                        if (req != null && req.CustomerId.HasValue)
+                        {
+                            var result = await _apiClient.UpdateCustomerAsync(req.CustomerId.Value, req);
+                            if (result.Success ||
+                                result.ErrorMessage?.Contains("Siigo", StringComparison.OrdinalIgnoreCase) == true ||
+                                result.ErrorMessage?.Contains("actualizado en base de datos local", StringComparison.OrdinalIgnoreCase) == true)
+                            {
+                                item.IsProcessed = true;
+                                if (result.Customer?.SiigoCustomerId.HasValue == true)
+                                {
+                                    var localCust = await db.Customers.FirstOrDefaultAsync(c => c.CustomerId == req.CustomerId);
+                                    if (localCust != null)
+                                    {
+                                        localCust.SiigoCustomerId = result.Customer.SiigoCustomerId.Value;
+                                        await db.SaveChangesAsync();
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                item.RetryCount++;
+                                item.LastError = result.ErrorMessage ?? "No se recibió confirmación del servidor central.";
+                            }
+                        }
+                    }
                     else if (item.OperationType == "CheckIn")
                     {
                         var req = JsonSerializer.Deserialize<CheckInApiRequest>(item.PayloadJson, ParkingApiClient.JsonOptions);
