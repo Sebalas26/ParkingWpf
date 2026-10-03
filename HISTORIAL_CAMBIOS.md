@@ -8431,3 +8431,18 @@ La impresi�n del cierre de caja es cuando cierren, no tener el bot�n mientra
   **? Verificaci�n y Compilaci�n:**
 - dotnet build: 0 Errores.
 - dotnet test: 100% Pruebas Superadas (338/338).
+### Corrección UI en Modal de Selección de Cliente
+
+**💬 Prompt Original del Usuario**
+> ajustame esto se ve montado el diseño en el wpf
+
+**🤖 Resumen Técnico para la IA**
+Se solucionó el problema de solapamiento en CustomerSelectionDialog.xaml donde el botón de [Seleccionar] invadía el nombre del cliente. La causa era la envoltura dentro de un StackPanel y ScrollViewer que forzaba un ancho desrestringido. Se reemplazó por un Grid con scroll interno en el ListBox, se aplicó HorizontalContentAlignment=
+Stretch globalmente en el ItemContainerStyle, y se ancló el botón explícitamente a la derecha de la tarjeta.
+
+**📦 Componentes Modificados**
+- Parking/Views/CustomerSelectionDialog.xaml`n
+**✅ Verificación y Compilación**
+- Compilación: 0 Errores.
+- Pruebas Unitarias: 374/374 Superadas.
+
