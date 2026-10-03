@@ -1003,7 +1003,7 @@ public class ParkingApiClient : IApiClientService
         }
     }
 
-    public async Task<bool> ResendInvoiceEmailAsync(Guid ticketId, string? email = null)
+    public async Task<string?> ResendInvoiceEmailAsync(Guid ticketId, string? email = null)
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
         try
@@ -1015,18 +1015,32 @@ public class ParkingApiClient : IApiClientService
             if (response.IsSuccessStatusCode)
             {
                 ReportConnectionState(true);
-                return true;
+                return null; // Éxito
             }
-            return false;
+
+            // Leer error del backend/Siigo
+            ReportConnectionState(true);
+            try
+            {
+                var body = await response.Content.ReadAsStringAsync(cts.Token);
+                using var doc = JsonDocument.Parse(body);
+                if (doc.RootElement.TryGetProperty("message", out var msgProp))
+                    return msgProp.GetString() ?? "Error desconocido del servidor.";
+                if (doc.RootElement.TryGetProperty("details", out var detProp))
+                    return detProp.GetString() ?? "Error desconocido del servidor.";
+            }
+            catch { }
+
+            return $"Error del servidor (HTTP {(int)response.StatusCode}).";
         }
         catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
         {
             ReportConnectionState(false);
-            return false;
+            return "No se pudo conectar con el servidor. Verifique su conexión a internet.";
         }
-        catch
+        catch (Exception ex)
         {
-            return false;
+            return $"Error inesperado: {ex.Message}";
         }
     }
 

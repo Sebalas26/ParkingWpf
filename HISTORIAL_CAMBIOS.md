@@ -1,5 +1,42 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-02 23:55:00] - [FEATURE / FIX / INVOICING / EMAIL] Optimización Integral del Reenvío de Factura Electrónica por Correo y Paridad de Validación
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"revisa si el reenvio de correo desde el wpf quedo o hace falta por ajustarlo, me ayudaste a modificar el de la pwa pero no vi nada del wpf. analiza si hay tecnicos y podamos dar con la solucion definitiva recrea el plan. proceder"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Brechas Técnicas Detectadas de Extremo a Extremo**:
+     - **Brecha 1 (.Include Customer faltante)**: En `EfParkingTicketService`, las consultas `GetActiveTicketsAsync`, `GetCompletedTicketsAsync` y `GetCompletedTicketsByShiftAsync` no incluían `.Include(t => t.Customer)`. Al pulsar "Reenviar Correo" en las pestañas Patio y Salidas, `ticket.Customer?.Email` era siempre `null`, forzando innecesariamente la apertura del selector de clientes aunque el tiquete tuviese cliente guardado en base de datos.
+     - **Brecha 2 (Validación Regex de Correo)**: `RecentEntriesViewModel` solo validaba `IsNullOrWhiteSpace(email)`. Si el correo tenía error de sintaxis, se enviaba al servidor y fallaba en Siigo Cloud. Se implementó la misma expresión regular que la PWA (`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`) para advertir de inmediato al operador antes de intentar el envío.
+     - **Brecha 3 (Falso error en modo Offline)**: `EfParkingTicketService.ResendInvoiceEmailAsync` retornaba `false` silencioso cuando `!_syncEngine.IsOnline`, provocando un mensaje confuso indicando falla en Siigo en lugar de advertir la falta de conexión con el servidor.
+     - **Brecha 4 (Pérdida de mensajes de error de la API)**: `ParkingApiClient.ResendInvoiceEmailAsync` retornaba `bool` descartando el payload `{ message, details }` retornado por `TicketsController` y Siigo Cloud. Se actualizó el contrato a `Task<string?>` (`null` = éxito, `string` = mensaje descriptivo del servidor).
+     - **Brecha 5 (Alertas genéricas en ViewModel)**: `RecentEntriesViewModel` mostraba un mensaje estático cuando fallaba el envío. Ahora muestra el mensaje real devuelto por la API / Siigo o la advertencia de red.
+  2. **Implementación y Modificaciones**:
+     - `IApiClientService.cs` y `IParkingTicketService.cs`: Firma actualizada a `Task<string?> ResendInvoiceEmailAsync(Guid ticketId, string? email = null)`.
+     - `ParkingApiClient.cs`: Deserialización robusta de `{ message }` / `{ details }` desde el body de respuesta HTTP y captura defensiva de excepciones de red (`HttpRequestException`, `TaskCanceledException`, `IOException`).
+     - `EfParkingTicketService.cs`: Agregado `.Include(t => t.Customer)` a `GetActiveTicketsAsync`, `GetCompletedTicketsAsync` y `GetCompletedTicketsByShiftAsync`. Validación explícita de `_syncEngine.IsOnline` con mensaje descriptivo.
+     - `RecentEntriesViewModel.cs`: Validación con `EmailRegex`, confirmación visual y despliegue del error específico retornado por el servicio.
+     - `RecentEntriesViewModelTests.cs`: 4 pruebas unitarias cubriendo envío exitoso, apertura de diálogo cuando no hay cliente, advertencia con formato de correo inválido y captura de mensaje de error retornado por el servicio.
+  3. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingApi.slnx`: **694/694 superadas (0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Contracts/IApiClientService.cs`
+  - `Parking/Services/Contracts/IParkingTicketService.cs`
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/ViewModels/RecentEntriesViewModel.cs`
+  - `Parking.UnitTests/ViewModels/RecentEntriesViewModelTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingApi.slnx`: **694 pruebas superadas (100%)**.
+
+---
+
 ## 📅 Entrada: [2026-10-02 21:55:00] - [UI / FIX / DATAGRID] Corrección de Solapamiento Visual en Tablas de Salidas e Histórico y Protección ClipToBounds
 
 - **`💬 Prompt Original del Usuario`**:

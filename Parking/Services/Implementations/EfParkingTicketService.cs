@@ -448,6 +448,7 @@ public class EfParkingTicketService : IParkingTicketService
         var currentBranchId = _sessionService.CurrentBranch?.Id;
 
         return await db.ParkingTickets
+            .Include(t => t.Customer)
             .Where(t => t.Status == TicketStatus.Active &&
                         (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value))
             .OrderByDescending(t => t.EntryTimeUtc)
@@ -460,6 +461,7 @@ public class EfParkingTicketService : IParkingTicketService
         var currentBranchId = _sessionService.CurrentBranch?.Id;
 
         return await db.ParkingTickets
+            .Include(t => t.Customer)
             .Where(t => t.Status == TicketStatus.Completed &&
                         (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value))
             .OrderByDescending(t => t.ExitTimeUtc)
@@ -472,6 +474,7 @@ public class EfParkingTicketService : IParkingTicketService
         var currentBranchId = _sessionService.CurrentBranch?.Id;
 
         var query = db.ParkingTickets
+            .Include(t => t.Customer)
             .Where(t => t.Status == TicketStatus.Completed &&
                         (!currentBranchId.HasValue || t.BranchId == null || t.BranchId == currentBranchId.Value) &&
                         t.ExitTimeUtc >= shiftStartTimeUtc);
@@ -919,9 +922,10 @@ public class EfParkingTicketService : IParkingTicketService
         return ticket;
     }
 
-    public async Task<bool> ResendInvoiceEmailAsync(Guid ticketId, string? email = null)
+    public async Task<string?> ResendInvoiceEmailAsync(Guid ticketId, string? email = null)
     {
-        if (!_syncEngine.IsOnline) return false;
+        if (!_syncEngine.IsOnline)
+            return "No hay conexión con el servidor. Verifique su conexión a internet para reenviar el correo.";
         return await _apiClient.ResendInvoiceEmailAsync(ticketId, email);
     }
 

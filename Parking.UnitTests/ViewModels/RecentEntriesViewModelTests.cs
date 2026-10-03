@@ -266,4 +266,101 @@ public class RecentEntriesViewModelTests
         mockSyncEngine.Verify(s => s.PerformFullSyncAsync(), Times.Never);
         _mockTicketService.Verify(s => s.GetActiveTicketsAsync(), Times.Once);
     }
+
+    [Fact]
+    public async Task ResendInvoiceEmailCommand_WithValidEmail_SendsSuccessfully()
+    {
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "ABC123",
+            IsElectronicInvoice = true,
+            InvoiceNumber = "FE-001",
+            Customer = new Customer { CustomerId = Guid.NewGuid(), Email = "cliente@correo.com", FullName = "Test" }
+        };
+
+        _mockDialogService.Setup(d => d.ShowConfirmationAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DialogNotificationType>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(true);
+        _mockTicketService.Setup(s => s.ResendInvoiceEmailAsync(ticket.TicketId, "cliente@correo.com"))
+            .ReturnsAsync((string?)null);
+
+        var vm = new RecentEntriesViewModel(_mockTicketService.Object, _mockDialogService.Object, _mockShiftService.Object);
+        await vm.ResendInvoiceEmailCommand.ExecuteAsync(ticket);
+
+        _mockTicketService.Verify(s => s.ResendInvoiceEmailAsync(ticket.TicketId, "cliente@correo.com"), Times.Once);
+        _mockDialogService.Verify(d => d.ShowAlertAsync("Correo Enviado", It.IsAny<string>(), DialogNotificationType.Success), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResendInvoiceEmailCommand_WithoutCustomer_OpensSelectionDialog()
+    {
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "ABC123",
+            IsElectronicInvoice = true,
+            InvoiceNumber = "FE-001",
+            Customer = null
+        };
+
+        var newCustomer = new Customer { CustomerId = Guid.NewGuid(), Email = "nuevo@correo.com", FullName = "Nuevo" };
+
+        _mockDialogService.Setup(d => d.ShowCustomerSelectionDialogAsync("ABC123")).ReturnsAsync(newCustomer);
+        _mockDialogService.Setup(d => d.ShowConfirmationAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DialogNotificationType>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(true);
+        _mockTicketService.Setup(s => s.ResendInvoiceEmailAsync(ticket.TicketId, "nuevo@correo.com"))
+            .ReturnsAsync((string?)null);
+
+        var vm = new RecentEntriesViewModel(_mockTicketService.Object, _mockDialogService.Object, _mockShiftService.Object);
+        await vm.ResendInvoiceEmailCommand.ExecuteAsync(ticket);
+
+        _mockDialogService.Verify(d => d.ShowCustomerSelectionDialogAsync("ABC123"), Times.Once);
+        _mockTicketService.Verify(s => s.ResendInvoiceEmailAsync(ticket.TicketId, "nuevo@correo.com"), Times.Once);
+    }
+
+    [Fact]
+    public async Task ResendInvoiceEmailCommand_WithInvalidEmailFormat_ShowsWarning()
+    {
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "ABC123",
+            IsElectronicInvoice = true,
+            InvoiceNumber = "FE-001",
+            Customer = new Customer { CustomerId = Guid.NewGuid(), Email = "correo-invalido", FullName = "Test" }
+        };
+
+        var vm = new RecentEntriesViewModel(_mockTicketService.Object, _mockDialogService.Object, _mockShiftService.Object);
+        await vm.ResendInvoiceEmailCommand.ExecuteAsync(ticket);
+
+        _mockDialogService.Verify(d => d.ShowAlertAsync("Correo Inválido", It.IsAny<string>(), DialogNotificationType.Warning), Times.Once);
+        _mockTicketService.Verify(s => s.ResendInvoiceEmailAsync(It.IsAny<Guid>(), It.IsAny<string?>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ResendInvoiceEmailCommand_WhenServiceReturnsError_ShowsErrorMessage()
+    {
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            PlateNumber = "ABC123",
+            IsElectronicInvoice = true,
+            InvoiceNumber = "FE-001",
+            Customer = new Customer { CustomerId = Guid.NewGuid(), Email = "cliente@correo.com", FullName = "Test" }
+        };
+
+        _mockDialogService.Setup(d => d.ShowConfirmationAsync(
+            It.IsAny<string>(), It.IsAny<string>(), It.IsAny<DialogNotificationType>(), It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync(true);
+        _mockTicketService.Setup(s => s.ResendInvoiceEmailAsync(ticket.TicketId, "cliente@correo.com"))
+            .ReturnsAsync("Solo se puede reenviar el correo de facturas previamente emitidas.");
+
+        var vm = new RecentEntriesViewModel(_mockTicketService.Object, _mockDialogService.Object, _mockShiftService.Object);
+        await vm.ResendInvoiceEmailCommand.ExecuteAsync(ticket);
+
+        _mockDialogService.Verify(d => d.ShowAlertAsync("Fallo de Envío",
+            "Solo se puede reenviar el correo de facturas previamente emitidas.", DialogNotificationType.Error), Times.Once);
+    }
 }

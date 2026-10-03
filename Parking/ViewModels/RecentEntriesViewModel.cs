@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -14,6 +15,8 @@ namespace Parking.ViewModels;
 [RequirePermission("monitoring.view_occupancy", "Entradas del Turno / Patio")]
 public partial class RecentEntriesViewModel : ViewModelBase
 {
+    private static readonly Regex EmailRegex = new(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     private readonly IParkingTicketService _ticketService;
     private readonly IDialogService _dialogService;
     private readonly IShiftService _shiftService;
@@ -483,9 +486,19 @@ public partial class RecentEntriesViewModel : ViewModelBase
             }
         }
 
+        // Validación de formato regex (paridad con PWA)
+        if (!EmailRegex.IsMatch(email.Trim()))
+        {
+            await _dialogService.ShowAlertAsync(
+                "Correo Inválido",
+                $"El correo \"{email}\" no tiene un formato válido. Actualice los datos del cliente con un correo correcto (ej: cliente@correo.com).",
+                DialogNotificationType.Warning);
+            return;
+        }
+
         var confirm = await _dialogService.ShowConfirmationAsync(
             "Reenviar Factura por Correo",
-            $"¿Desea reenviar la factura electrónica al correo {email}?",
+            $"¿Desea reenviar la factura electrónica al correo {email.Trim()}?",
             DialogNotificationType.Question,
             "Enviar",
             "Cancelar");
@@ -493,23 +506,23 @@ public partial class RecentEntriesViewModel : ViewModelBase
         if (!confirm) return;
 
         IsBusy = true;
-        BusyMessage = $"Enviando factura a {email}...";
+        BusyMessage = $"Enviando factura a {email.Trim()}...";
 
         try
         {
-            var success = await _ticketService.ResendInvoiceEmailAsync(ticket.TicketId, email);
-            if (success)
+            var error = await _ticketService.ResendInvoiceEmailAsync(ticket.TicketId, email.Trim());
+            if (error == null)
             {
                 await _dialogService.ShowAlertAsync(
                     "Correo Enviado",
-                    $"La factura electrónica ha sido enviada exitosamente a {email}.",
+                    $"La factura electrónica ha sido enviada exitosamente a {email.Trim()}.",
                     DialogNotificationType.Success);
             }
             else
             {
                 await _dialogService.ShowAlertAsync(
                     "Fallo de Envío",
-                    "No se pudo completar el envío del correo electrónico. Verifique la configuración de correo en Siigo.",
+                    error,
                     DialogNotificationType.Error);
             }
         }
