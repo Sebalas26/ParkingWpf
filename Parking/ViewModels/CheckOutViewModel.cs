@@ -2604,7 +2604,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 IsLostTicket,
                 IsLostTicket ? LostTicketFee : 0m,
                 EmitElectronicInvoice,
-                (EmitElectronicInvoice && IsCustomCustomer) ? SelectedCustomer?.CustomerId : null);
+                IsCustomCustomer ? SelectedCustomer?.CustomerId : null);
 
             if (completedTicket != null)
             {
