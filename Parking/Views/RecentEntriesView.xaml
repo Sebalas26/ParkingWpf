@@ -205,6 +205,7 @@
                           ItemsSource="{Binding ActiveEntries}"
                           Visibility="{Binding IsActiveTab, Converter={StaticResource BoolToVis}}"
                           Style="{StaticResource ModernDataGrid}"
+                          RowHeight="52"
                           IsReadOnly="True"
                           CanUserResizeColumns="True"
                           HorizontalScrollBarVisibility="Auto">
@@ -321,6 +322,7 @@
                           ItemsSource="{Binding CompletedEntries}"
                           Visibility="{Binding IsCompletedTab, Converter={StaticResource BoolToVis}}"
                           Style="{StaticResource ModernDataGrid}"
+                          RowHeight="72"
                           IsReadOnly="True"
                           CanUserResizeColumns="True"
                           HorizontalScrollBarVisibility="Auto">
@@ -596,6 +598,7 @@
                           ItemsSource="{Binding HistoricalEntries}"
                           Visibility="{Binding IsHistoricalTab, Converter={StaticResource BoolToVis}}"
                           Style="{StaticResource ModernDataGrid}"
+                          RowHeight="72"
                           IsReadOnly="True"
                           CanUserResizeColumns="True"
                           HorizontalScrollBarVisibility="Auto">

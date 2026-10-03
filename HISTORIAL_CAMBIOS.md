@@ -1,5 +1,36 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-02 21:55:00] - [UI / FIX / DATAGRID] Corrección de Solapamiento Visual en Tablas de Salidas e Histórico y Protección ClipToBounds
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"adicional estoy viendo que en el wpf, se esta viendo en vehiculos en patio y salidas , la columna comprobante / factura , se ven montados los datos , haciendo confundir al usuario porque no sabe que datos le pertencen a esa fila o a otra. creame el plan. analiza si tiene huecos tecnicos y evitar errores. proceder"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - El estilo `ModernDataGrid` en `Controls.xaml` establecía un `RowHeight="46"` fijo.
+     - La celda `COMPROBANTE / FACTURA` apila verticalmente 3 bloques: Indicador FE/POS + Factura, Número de Tiquete y Badges de Estado DIAN (`DIAN OK`, `EN COLA`, `RECHAZADA`), ocupando entre 56px y 62px.
+     - Al no contar con suficiente altura ni recorte en celda/fila, los badges y textos se desbordaban sobre las filas contiguas, montándose sobre otros registros y borrando la división visual.
+  2. **Solución Implementada**:
+     - En `RecentEntriesView.xaml`:
+       - Pestaña 1 (Vehículos en Patio): se configuró `RowHeight="52"` para espaciado limpio.
+       - Pestaña 2 (Salidas / Liquidadas en Turno): se configuró `RowHeight="72"`, proporcionando el margen superior e inferior adecuado para las 3 líneas.
+       - Pestaña 3 (Histórico Facturación Electrónica): se configuró `RowHeight="72"`.
+     - En `Controls.xaml`:
+       - Se añadió `<Setter Property="ClipToBounds" Value="True"/>` en `DataGridRow`.
+       - Se añadió `<Setter Property="ClipToBounds" Value="True"/>` en `DataGridCell` y en el `Border` del `ControlTemplate`, imposibilitando físicamente que cualquier elemento gráfico desborde los límites de su fila.
+  3. **Verificación**:
+     - `dotnet build ParkingWpf.slnx /p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Views/RecentEntriesView.xaml`
+  - `Parking/Styles/Controls.xaml`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+
+---
+
 ## 📅 Entrada: [2026-10-02 21:00:00] - [FEATURE / SYNC / REALTIME / DIAN / WPF] Integración Reactiva en 0 ms con Notificaciones SignalR TicketDianApproved / TicketDianRejected
 
 - **`💬 Prompt Original del Usuario`**:
