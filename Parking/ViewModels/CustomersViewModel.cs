@@ -581,9 +581,22 @@ public partial class CustomersViewModel : ViewModelBase
             isValid = false;
         }
 
+        var phone = FormPhone?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(phone))
+        {
+            if (phone.Length < 7 || phone.Length > 10 || !phone.All(char.IsDigit))
+            {
+                FormGeneralError = "El teléfono debe contener entre 7 y 10 dígitos numéricos.";
+                isValid = false;
+            }
+        }
+
         if (!isValid)
         {
-            FormGeneralError = "Por favor complete los campos obligatorios marcados en rojo.";
+            if (string.IsNullOrWhiteSpace(FormGeneralError))
+            {
+                FormGeneralError = "Por favor complete los campos obligatorios marcados en rojo.";
+            }
         }
 
         return isValid;

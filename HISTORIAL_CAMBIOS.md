@@ -8544,3 +8544,13 @@ Stretch globalmente en el ItemContainerStyle, y se ancló el botón explícitame
 - Compilación: 0 Errores.
 - Pruebas Unitarias: 374/374 Superadas.
 
+
+### Prevención de Ingreso de Teléfonos con más de 10 dígitos
+- **💬 Prompt Original del Usuario**: Estoy notando que ya me permite crear el cliente desde el wpf y pwa, sin embargo hay uno en cola pero lo reintentare y me sale , proque es (analiza si hay huecos tecnicos y crea el plan de nuevo).
+- **🤖 Resumen Técnico para la IA**: Se añadió el atributo `MaxLength="10"` a los TextBoxes de teléfono en `CustomersView.xaml` y `CustomerSelectionDialog.xaml`. Además, se agregó una regla de validación en `CustomersViewModel.cs` para requerir que, si se provee un teléfono, tenga entre 7 y 10 dígitos exclusivamente numéricos. Esto previene que se ingresen en local clientes con números telefónicos que generarán errores `length_max` en la API de Siigo.
+- **📦 Componentes Modificados**: 
+  - `Parking/ViewModels/CustomersViewModel.cs`
+  - `Parking/Views/CustomersView.xaml`
+  - `Parking/Views/CustomerSelectionDialog.xaml`
+- **✅ Verificación y Compilación**: Compilación exitosa en WPF (0 Errores).
+

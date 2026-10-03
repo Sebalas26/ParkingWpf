@@ -503,6 +503,7 @@
                                 <TextBlock Text="Teléfono Móvil / Fijo" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,5"/>
                                 <TextBox Text="{Binding FormPhone, UpdateSourceTrigger=PropertyChanged}"
                                          Style="{StaticResource ModernTextBox}"
+                                         MaxLength="10"
                                          Height="38"/>
                             </StackPanel>
                         </Grid>

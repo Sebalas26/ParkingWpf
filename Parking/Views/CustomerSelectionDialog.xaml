@@ -320,6 +320,7 @@
                             <StackPanel Grid.Column="0" Margin="0,0,8,0">
                                 <TextBlock Text="Teléfono" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource BrushTextSecondary}" Margin="0,0,0,3"/>
                                 <TextBox x:Name="PhoneBox"
+                                         MaxLength="10"
                                          Height="34"
                                          Padding="8,6"
                                          BorderBrush="{DynamicResource BrushBorderSubtle}"
