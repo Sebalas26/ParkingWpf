@@ -274,10 +274,10 @@ public partial class CheckOutViewModel : ViewModelBase
     public ObservableCollection<DaneMunicipality> AvailableMunicipalities { get; } = new();
     public List<IdentificationTypeOption> IdentificationTypeOptions { get; } = new()
     {
-        new() { Id = 13, Name = "Cédula de Ciudadanía (CC)" },
-        new() { Id = 31, Name = "NIT (Empresas / Jurídicas)" },
-        new() { Id = 22, Name = "Cédula de Extranjería (CE)" },
-        new() { Id = 41, Name = "Pasaporte (PP)" }
+        new() { Id = 1, Name = "Cédula de Ciudadanía (CC)" },
+        new() { Id = 3, Name = "NIT (Empresas / Jurídicas)" },
+        new() { Id = 2, Name = "Cédula de Extranjería (CE)" },
+        new() { Id = 4, Name = "Pasaporte (PP)" }
     };
 
     [ObservableProperty]
@@ -1555,7 +1555,7 @@ public partial class CheckOutViewModel : ViewModelBase
         if (IsQuickRegisterCustomerOpen)
         {
             SelectedIdentificationTypeOption = IdentificationTypeOptions.FirstOrDefault();
-            IsNitDocumentType = SelectedIdentificationTypeOption?.Id == 31;
+            IsNitDocumentType = SelectedIdentificationTypeOption?.Id == 3 || SelectedIdentificationTypeOption?.Id == 31;
             NewCustomerPersonType = "Person";
             NewCustomerDocumentNumber = string.Empty;
             NewCustomerCheckDigit = null;
@@ -1613,7 +1613,7 @@ public partial class CheckOutViewModel : ViewModelBase
             isValid = false;
         }
 
-        var isNit = SelectedIdentificationTypeOption?.Id == 31;
+        var isNit = SelectedIdentificationTypeOption?.Id == 3 || SelectedIdentificationTypeOption?.Id == 31;
         var dv = NewCustomerCheckDigit?.Trim();
         if (isNit)
         {
@@ -1700,7 +1700,7 @@ public partial class CheckOutViewModel : ViewModelBase
 
     partial void OnSelectedIdentificationTypeOptionChanged(IdentificationTypeOption? value)
     {
-        IsNitDocumentType = value?.Id == 31;
+        IsNitDocumentType = value?.Id == 3 || value?.Id == 31;
         if (IsNitDocumentType)
         {
             NewCustomerPersonType = "Company";
@@ -1875,7 +1875,16 @@ public partial class CheckOutViewModel : ViewModelBase
                 return;
             }
 
-            var idType = SelectedIdentificationTypeOption?.Id ?? 13;
+            var rawIdType = SelectedIdentificationTypeOption?.Id ?? 1;
+            var idType = rawIdType switch
+            {
+                13 => 1,
+                22 => 2,
+                31 => 3,
+                41 => 4,
+                42 => 5,
+                _ => rawIdType
+            };
             var selectedMuni = SelectedDaneMunicipality ?? AvailableMunicipalities.FirstOrDefault(m => m.Code == NewCustomerCityCode.Trim());
             var effectiveCityCode = !string.IsNullOrWhiteSpace(NewCustomerCityCode) 
                 ? NewCustomerCityCode.Trim() 
@@ -1889,7 +1898,7 @@ public partial class CheckOutViewModel : ViewModelBase
                 IdentificationTypeId = idType,
                 DocumentNumber = docClean,
                 CheckDigit = NewCustomerCheckDigit?.Trim(),
-                PersonType = idType == 31 ? "Company" : NewCustomerPersonType,
+                PersonType = (idType == 3 || idType == 31) ? "Company" : NewCustomerPersonType,
                 FullName = NewCustomerFullName.Trim(),
                 Email = NewCustomerEmail.Trim(),
                 Phone = string.IsNullOrWhiteSpace(NewCustomerPhone) ? null : NewCustomerPhone.Trim(),
