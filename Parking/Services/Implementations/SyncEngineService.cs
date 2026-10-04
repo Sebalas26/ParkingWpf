@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Parking.Core.Enums;
+using Parking.Data;
 using Parking.Data.Factories;
 using Parking.Entities;
 using Parking.Models.ApiModels;
@@ -1749,7 +1750,44 @@ public class SyncEngineService : ISyncEngineService
                 .Select(g => g.First())
                 .ToList();
 
+            var incomingIdByNumber = deduplicatedIncoming.ToDictionary(t => t.TicketNumber.Trim(), t => t.TicketId, StringComparer.OrdinalIgnoreCase);
+            var incomingActivePlateById = deduplicatedIncoming
+                .Where(t => t.GetTicketStatus() == TicketStatus.Active && !string.IsNullOrWhiteSpace(t.PlateNumber))
+                .ToDictionary(t => t.PlateNumber.Trim(), t => t.TicketId, StringComparer.OrdinalIgnoreCase);
+
             var localTickets = await db.ParkingTickets.ToListAsync(ct);
+
+            // Fase 1: Pre-limpieza atómica en SQLite de cualquier registro local que colisione
+            // en TicketNumber con un tiquete entrante pero diferente TicketId, o colisione en placa activa.
+            var conflictingLocals = localTickets.Where(lt =>
+            {
+                if (!string.IsNullOrWhiteSpace(lt.TicketNumber) &&
+                    incomingIdByNumber.TryGetValue(lt.TicketNumber.Trim(), out var expectedId) &&
+                    lt.TicketId != expectedId)
+                {
+                    return true;
+                }
+
+                if (lt.Status == TicketStatus.Active && !string.IsNullOrWhiteSpace(lt.PlateNumber) &&
+                    incomingActivePlateById.TryGetValue(lt.PlateNumber.Trim(), out var activeIncomingId) &&
+                    lt.TicketId != activeIncomingId)
+                {
+                    return true;
+                }
+
+                return false;
+            }).ToList();
+
+            if (conflictingLocals.Count > 0)
+            {
+                db.ParkingTickets.RemoveRange(conflictingLocals);
+                await db.SaveChangesAsync(ct);
+                foreach (var removed in conflictingLocals)
+                {
+                    localTickets.Remove(removed);
+                }
+            }
+
             var localByTicketId = localTickets.ToDictionary(t => t.TicketId);
             var localByTicketNumber = new Dictionary<string, ParkingTicket>(StringComparer.OrdinalIgnoreCase);
             var localActiveByPlate = new Dictionary<string, ParkingTicket>(StringComparer.OrdinalIgnoreCase);
@@ -1792,7 +1830,6 @@ public class SyncEngineService : ISyncEngineService
                 {
                     var oldestEntry = existing.EntryTimeUtc < ticket.EntryTimeUtc ? existing.EntryTimeUtc : ticket.EntryTimeUtc;
                     db.ParkingTickets.Remove(existing);
-                    await db.SaveChangesAsync(ct);
 
                     if (localByTicketId.ContainsKey(existing.TicketId))
                         localByTicketId.Remove(existing.TicketId);
@@ -1803,6 +1840,18 @@ public class SyncEngineService : ISyncEngineService
 
                     existing = null;
                     ticket.EntryTimeUtc = oldestEntry;
+                }
+
+                // Asegurar que si existing existe por ID pero otro registro en localByTicketNumber tenía normalizedTicketNumber,
+                // ese otro registro sea removido para evitar violación de UNIQUE constraint en ChangeTracker
+                if (localByTicketNumber.TryGetValue(normalizedTicketNumber, out var otherWithNum) && otherWithNum.TicketId != ticket.TicketId)
+                {
+                    db.ParkingTickets.Remove(otherWithNum);
+                    localByTicketNumber.Remove(normalizedTicketNumber);
+                    if (localByTicketId.ContainsKey(otherWithNum.TicketId))
+                        localByTicketId.Remove(otherWithNum.TicketId);
+                    if (!string.IsNullOrWhiteSpace(otherWithNum.PlateNumber) && localActiveByPlate.ContainsKey(otherWithNum.PlateNumber.Trim()))
+                        localActiveByPlate.Remove(otherWithNum.PlateNumber.Trim());
                 }
 
                 if (existing != null)
@@ -1937,7 +1986,17 @@ public class SyncEngineService : ISyncEngineService
             }
             result.SyncedTicketsCount = ticketsCount;
 
-            await db.SaveChangesAsync(ct);
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("UNIQUE constraint failed: ParkingTickets.TicketNumber", StringComparison.OrdinalIgnoreCase) == true
+                                            || ex.Message.Contains("UNIQUE constraint failed: ParkingTickets.TicketNumber", StringComparison.OrdinalIgnoreCase))
+            {
+                db.ChangeTracker.Clear();
+                await ReconcileAndSaveTicketsCleanlyAsync(db, deduplicatedIncoming, currentBranchId, ct);
+            }
+
             _lastSyncTime = DateTime.Now;
             _isOnline = true;
             result.Success = true;
@@ -1988,6 +2047,92 @@ public class SyncEngineService : ISyncEngineService
         {
             _syncExecutionLock.Release();
         }
+    }
+
+    private async Task ReconcileAndSaveTicketsCleanlyAsync(
+        ParkFlowDbContext db,
+        List<ApiParkingTicketSyncDto> deduplicatedIncoming,
+        int? currentBranchId,
+        CancellationToken ct)
+    {
+        var incomingNumbers = deduplicatedIncoming
+            .Where(t => !string.IsNullOrWhiteSpace(t.TicketNumber))
+            .Select(t => t.TicketNumber.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var incomingIds = deduplicatedIncoming.Select(t => t.TicketId).ToHashSet();
+
+        // Obtener todos los tiquetes locales que colisionan por ID o por número
+        var existingCollisions = await db.ParkingTickets
+            .Where(t => incomingIds.Contains(t.TicketId) || incomingNumbers.Contains(t.TicketNumber))
+            .ToListAsync(ct);
+
+        if (existingCollisions.Count > 0)
+        {
+            db.ParkingTickets.RemoveRange(existingCollisions);
+            await db.SaveChangesAsync(ct);
+        }
+
+        // Insertar los tiquetes canónicos entrantes
+        foreach (var ticket in deduplicatedIncoming)
+        {
+            var vehicleType = ticket.GetVehicleType();
+            var status = ticket.GetTicketStatus();
+            var paymentMethod = ticket.GetPaymentMethod();
+            var targetBranchId = ticket.BranchId ?? currentBranchId;
+            var normalizedTicketNumber = ticket.TicketNumber.Trim();
+
+            var newTicket = new ParkingTicket
+            {
+                TicketId = ticket.TicketId,
+                BranchId = targetBranchId,
+                CompanyId = ticket.CompanyId,
+                TicketNumber = normalizedTicketNumber,
+                PlateNumber = ticket.PlateNumber,
+                VehicleType = vehicleType,
+                CustomerPhone = ticket.CustomerPhone,
+                BayNumber = ticket.BayNumber,
+                Notes = ticket.Notes,
+                EntryTimeUtc = ticket.EntryTimeUtc,
+                ExitTimeUtc = ticket.ExitTimeUtc,
+                TotalDurationMinutes = ticket.TotalDurationMinutes,
+                HourlyRate = ticket.HourlyRate,
+                GrossAmount = ticket.GrossAmount,
+                DiscountAmount = ticket.DiscountAmount,
+                NetAmount = ticket.NetAmount,
+                AmountPaid = ticket.AmountPaid,
+                ChangeGiven = ticket.ChangeGiven,
+                PaymentMethod = paymentMethod,
+                PaymentMethodId = ticket.PaymentMethodId,
+                ExitNotes = ticket.ExitNotes,
+                Status = status,
+                OperatorName = !string.IsNullOrWhiteSpace(ticket.OperatorName) ? ticket.OperatorName : "Operador General",
+                ExitOperatorName = ticket.ExitOperatorName,
+                IsSynchronized = true,
+                InvoiceNumber = ticket.InvoiceNumber,
+                IsElectronicInvoice = ticket.IsElectronicInvoice,
+                ResolutionId = ticket.ResolutionId,
+                ResolutionName = ticket.ResolutionName,
+                ElectronicInvoiceId = ticket.ElectronicInvoiceId,
+                ElectronicInvoiceUrl = ticket.ElectronicInvoiceUrl,
+                ElectronicInvoiceError = ticket.ElectronicInvoiceError,
+                CustomerId = ticket.CustomerId,
+                Cufe = ticket.Cufe,
+                QrCodeData = ticket.QrCodeData,
+                DianStatus = ticket.GetDianStatus(),
+                CreditNoteNumber = ticket.CreditNoteNumber,
+                CreditNoteCufe = ticket.CreditNoteCufe,
+                IsPosConvertedToInvoice = ticket.IsPosConvertedToInvoice,
+                PosConvertedAtUtc = ticket.PosConvertedAtUtc,
+                PosConvertedByUserId = ticket.PosConvertedByUserId,
+                CreatedAtUtc = ticket.CreatedAtUtc
+            };
+
+            db.ParkingTickets.Add(newTicket);
+        }
+
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task<bool> ForceCleanResyncAsync()
@@ -2275,35 +2420,68 @@ public class SyncEngineService : ISyncEngineService
                         var req = JsonSerializer.Deserialize<CheckInApiRequest>(item.PayloadJson, ParkingApiClient.JsonOptions);
                         if (req != null)
                         {
-                            var result = await _apiClient.CheckInAsync(req);
-                            if (result != null)
+                            try
                             {
-                                item.IsProcessed = true;
-
-                                // Conciliar el TicketId local de SQLite con el canónico de la API
-                                if (req.TicketId.HasValue && req.TicketId.Value != Guid.Empty && req.TicketId.Value != result.TicketId)
+                                var result = await _apiClient.CheckInAsync(req);
+                                if (result != null)
                                 {
-                                    var localOldTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == req.TicketId.Value);
-                                    if (localOldTicket != null)
+                                    item.IsProcessed = true;
+
+                                    // Conciliar el TicketId local de SQLite con el canónico de la API
+                                    if (req.TicketId.HasValue && req.TicketId.Value != Guid.Empty && req.TicketId.Value != result.TicketId)
                                     {
-                                        db.ParkingTickets.Remove(localOldTicket);
-                                        await db.SaveChangesAsync();
+                                        var localOldTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == req.TicketId.Value);
+                                        if (localOldTicket != null)
+                                        {
+                                            db.ParkingTickets.Remove(localOldTicket);
+                                            await db.SaveChangesAsync();
 
-                                        localOldTicket.TicketId = result.TicketId;
-                                        localOldTicket.TicketNumber = result.TicketNumber;
-                                        localOldTicket.EntryTimeUtc = result.EntryTimeUtc;
-                                        localOldTicket.IsSynchronized = true;
+                                            // Si existe otro registro local con ese TicketNumber, removerlo para no violar UNIQUE constraint
+                                            var conflicting = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketNumber == result.TicketNumber && t.TicketId != result.TicketId);
+                                            if (conflicting != null)
+                                            {
+                                                db.ParkingTickets.Remove(conflicting);
+                                                await db.SaveChangesAsync();
+                                            }
 
-                                        db.ParkingTickets.Add(localOldTicket);
-                                        await db.SaveChangesAsync();
+                                            localOldTicket.TicketId = result.TicketId;
+                                            localOldTicket.TicketNumber = result.TicketNumber;
+                                            localOldTicket.EntryTimeUtc = result.EntryTimeUtc;
+                                            localOldTicket.IsSynchronized = true;
+
+                                            db.ParkingTickets.Add(localOldTicket);
+                                            await db.SaveChangesAsync();
+                                        }
+                                    }
+                                    else if (req.TicketId.HasValue)
+                                    {
+                                        var localTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == req.TicketId.Value);
+                                        if (localTicket != null)
+                                        {
+                                            localTicket.EntryTimeUtc = result.EntryTimeUtc;
+                                            localTicket.IsSynchronized = true;
+                                            await db.SaveChangesAsync();
+                                        }
                                     }
                                 }
-                                else if (req.TicketId.HasValue)
+                            }
+                            catch (InvalidOperationException ex) when (
+                                ex.Message.Contains("ya se encuentra registrado", StringComparison.OrdinalIgnoreCase) ||
+                                ex.Message.Contains("adentro", StringComparison.OrdinalIgnoreCase) ||
+                                ex.Message.Contains("activo", StringComparison.OrdinalIgnoreCase) ||
+                                ex.Message.Contains("already", StringComparison.OrdinalIgnoreCase) ||
+                                ex.Message.Contains("conflicto", StringComparison.OrdinalIgnoreCase) ||
+                                ex.Message.Contains("400", StringComparison.OrdinalIgnoreCase))
+                            {
+                                // El vehículo ya fue registrado en la nube (desde PWA u otra garita).
+                                // Liberar el ítem de la cola inmediatamente para no reintentar en bucle infinito.
+                                item.IsProcessed = true;
+
+                                if (req.TicketId.HasValue)
                                 {
                                     var localTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == req.TicketId.Value);
                                     if (localTicket != null)
                                     {
-                                        localTicket.EntryTimeUtc = result.EntryTimeUtc;
                                         localTicket.IsSynchronized = true;
                                         await db.SaveChangesAsync();
                                     }

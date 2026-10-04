@@ -61,6 +61,7 @@ public partial class MainShellViewModel : ViewModelBase
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanOperateTerminal))]
     [NotifyPropertyChangedFor(nameof(IsSuperAdmin))]
+    [NotifyPropertyChangedFor(nameof(CanResetDatabase))]
     [NotifyPropertyChangedFor(nameof(CompanyDisplayName))]
     [NotifyPropertyChangedFor(nameof(CompanyLogoBase64))]
     [NotifyPropertyChangedFor(nameof(CompanyNit))]
@@ -69,6 +70,8 @@ public partial class MainShellViewModel : ViewModelBase
     private UserSessionModel? _currentUser;
 
     public bool IsSuperAdmin => CurrentUser?.IsSuperAdmin == true;
+
+    public bool CanResetDatabase => IsSuperAdmin;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CompanyDisplayName))]
@@ -1032,11 +1035,11 @@ public partial class MainShellViewModel : ViewModelBase
     [RelayCommand]
     private async Task ResetLocalDatabaseAsync()
     {
-        if (!IsSuperAdmin)
+        if (!CanResetDatabase)
         {
             await _dialogService.ShowAlertAsync(
-                "Acceso Denegado",
-                "Esta función de restablecimiento de base de datos local está reservada exclusivamente para el Super Administrador del sistema.",
+                "Acceso Restringido",
+                "Para restablecer la base de datos local se requiere acceso exclusivo de Super Administrador.",
                 DialogNotificationType.Warning);
             return;
         }

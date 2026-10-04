@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -848,6 +849,225 @@ public class OfflineResilienceTests : IDisposable
             customers[0].Email.Should().Be("central@empresa.com");
             customers[0].Vehicles.Should().HaveCount(1);
             customers[0].Vehicles.First().PlateNumber.Should().Be("XYZ123");
+        }
+    }
+
+    [Fact]
+    public async Task SyncEngineService_PerformFullSync_WhenDuplicateTicketNumberExistsInLocalDb_ReconcilesWithoutUniqueConstraintViolation()
+    {
+        // Arrange
+        var localConflictingTicketId = Guid.NewGuid();
+        var incomingCanonicalTicketId = Guid.NewGuid();
+        var branchId = 1;
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            // Tiquete local preexistente con TicketNumber "T-092"
+            db.ParkingTickets.Add(new ParkingTicket
+            {
+                TicketId = localConflictingTicketId,
+                BranchId = branchId,
+                TicketNumber = "T-092",
+                PlateNumber = "OLD111",
+                VehicleType = VehicleType.Car,
+                OperatorName = "Operador Local",
+                EntryTimeUtc = DateTime.UtcNow.AddHours(-2),
+                Status = TicketStatus.Active,
+                IsSynchronized = false
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var bootstrap = new BootstrapSyncResponse
+        {
+            Branches = new List<ApiBranchSyncDto>
+            {
+                new() { Id = branchId, Name = "Sede Norte", TotalCapacity = 50 }
+            },
+            ActiveTickets = new List<ApiParkingTicketSyncDto>
+            {
+                new()
+                {
+                    TicketId = incomingCanonicalTicketId,
+                    BranchId = branchId,
+                    TicketNumber = "T-092", // Mismo número pero ID canónico de la nube
+                    PlateNumber = "NEW222",
+                    VehicleType = "Car",
+                    Status = "Active",
+                    OperatorName = "Operador Nube",
+                    EntryTimeUtc = DateTime.UtcNow.AddMinutes(-30)
+                }
+            }
+        };
+
+        _mockApiClient.Setup(a => a.PingAsync(It.IsAny<int>())).ReturnsAsync(true);
+        _mockApiClient.Setup(a => a.GetBootstrapAsync(It.IsAny<int?>())).ReturnsAsync(bootstrap);
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = branchId, Name = "Sede Norte" });
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        // Act
+        var report = await syncEngine.PerformFullSyncWithProgressAsync(new Progress<SyncProgressReport>());
+
+        // Assert
+        report.Success.Should().BeTrue();
+        report.SyncedTicketsCount.Should().Be(1);
+
+        using (var dbAssert = _connectionManager.CreateDbContext())
+        {
+            var tickets = await dbAssert.ParkingTickets.ToListAsync();
+            tickets.Should().HaveCount(1);
+            tickets[0].TicketId.Should().Be(incomingCanonicalTicketId);
+            tickets[0].TicketNumber.Should().Be("T-092");
+            tickets[0].PlateNumber.Should().Be("NEW222");
+        }
+    }
+
+    [Fact]
+    public async Task SyncEngineService_ProcessPendingQueue_WhenCheckInVehicleAlreadyInCloud_ReconcilesAndMarksProcessed()
+    {
+        // Arrange
+        var ticketId = Guid.NewGuid();
+        var branchId = 1;
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            // Tiquete local no sincronizado
+            db.ParkingTickets.Add(new ParkingTicket
+            {
+                TicketId = ticketId,
+                BranchId = branchId,
+                TicketNumber = "OFFLINE-001",
+                PlateNumber = "ABC999",
+                VehicleType = VehicleType.Car,
+                OperatorName = "Cajero",
+                EntryTimeUtc = DateTime.UtcNow.AddMinutes(-10),
+                Status = TicketStatus.Active,
+                IsSynchronized = false
+            });
+
+            // Ítem en cola para CheckIn
+            db.PendingSyncItems.Add(new PendingSyncItem
+            {
+                PendingSyncItemId = Guid.NewGuid(),
+                OperationType = "CheckIn",
+                PayloadJson = JsonSerializer.Serialize(new CheckInApiRequest
+                {
+                    TicketId = ticketId,
+                    PlateNumber = "ABC999",
+                    BranchId = branchId,
+                    CompanyId = 1
+                }, ParkingApiClient.JsonOptions),
+                IsProcessed = false,
+                RetryCount = 0,
+                CreatedAtUtc = DateTime.UtcNow
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        _mockApiClient.Setup(a => a.PingAsync(It.IsAny<int>())).ReturnsAsync(true);
+        // Simular que el API retorna que el vehículo ya se encuentra registrado adentro
+        _mockApiClient.Setup(a => a.CheckInAsync(It.IsAny<CheckInApiRequest>()))
+            .ThrowsAsync(new InvalidOperationException("El vehículo con placa ABC999 ya se encuentra registrado adentro con el tiquete T-005."));
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        syncEngine.SetOnlineStatus(true);
+
+        // Act
+        await syncEngine.ProcessPendingQueueAsync();
+
+        // Assert
+        using (var dbAssert = _connectionManager.CreateDbContext())
+        {
+            var pending = await dbAssert.PendingSyncItems.ToListAsync();
+            pending.Should().BeEmpty(); // El ítem procesado debe haber sido removido de la cola
+
+            var ticket = await dbAssert.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == ticketId);
+            ticket.Should().NotBeNull();
+            ticket!.IsSynchronized.Should().BeTrue();
+        }
+    }
+
+    [Fact]
+    public async Task SyncEngineService_ResetLocalDatabaseFromCloud_DispatchesAndRebuildsCleanly()
+    {
+        // Arrange
+        var branchId = 1;
+        var canonicalTicketId = Guid.NewGuid();
+
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            // Tiquetes huérfanos que serán purgados
+            db.ParkingTickets.Add(new ParkingTicket
+            {
+                TicketId = Guid.NewGuid(),
+                BranchId = branchId,
+                TicketNumber = "STALE-001",
+                PlateNumber = "OLD999",
+                OperatorName = "Operador",
+                Status = TicketStatus.Completed
+            });
+            await db.SaveChangesAsync();
+        }
+
+        var bootstrap = new BootstrapSyncResponse
+        {
+            Branches = new List<ApiBranchSyncDto>
+            {
+                new() { Id = branchId, Name = "Sede Centro", TotalCapacity = 100 }
+            },
+            ActiveTickets = new List<ApiParkingTicketSyncDto>
+            {
+                new()
+                {
+                    TicketId = canonicalTicketId,
+                    BranchId = branchId,
+                    TicketNumber = "CANONICAL-001",
+                    PlateNumber = "CLEAN123",
+                    VehicleType = "Car",
+                    Status = "Active",
+                    OperatorName = "Supervisor",
+                    EntryTimeUtc = DateTime.UtcNow
+                }
+            }
+        };
+
+        _mockApiClient.Setup(a => a.PingAsync(It.IsAny<int>())).ReturnsAsync(true);
+        _mockApiClient.Setup(a => a.GetBootstrapAsync(It.IsAny<int?>())).ReturnsAsync(bootstrap);
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(new BranchModel { Id = branchId, Name = "Sede Centro" });
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+
+        // Act
+        var report = await syncEngine.ResetLocalDatabaseFromCloudAsync();
+
+        // Assert
+        report.Success.Should().BeTrue();
+
+        using (var dbAssert = _connectionManager.CreateDbContext())
+        {
+            var tickets = await dbAssert.ParkingTickets.ToListAsync();
+            tickets.Should().HaveCount(1);
+            tickets[0].TicketId.Should().Be(canonicalTicketId);
+            tickets[0].TicketNumber.Should().Be("CANONICAL-001");
+            tickets[0].PlateNumber.Should().Be("CLEAN123");
         }
     }
 

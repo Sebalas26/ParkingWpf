@@ -1,6 +1,105 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
-<<<<<<< HEAD
+## 📅 Entrada: [2026-10-03 21:25:00] - [SECURITY / UI / RBAC] Restricción Exclusiva de "Restablecer BD" a Super Administrador (Oculto para Operadores)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"mira si se fue el reiniciar BD, ese permiso cual es ? por que no lo veo en la modal de permisos ... como lo desactivo para que no les aparezca. por que se supone que es por permisos .. y le esta pareciendo al usuario. es algo que no debería aparecer si me explico, mira como esta esto. si me explico necesito que me digas ... sii dale con la opción A por favor."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - En `MainShellViewModel.cs`, la propiedad `CanResetDatabase` contenía la condición `|| _syncEngine?.PendingItemsCount == 0;`.
+     - Esto ocasionaba que en cuanto la terminal de escritorio terminaba su sincronización rutinaria y no tenía transacciones locales pendientes (`PendingItemsCount == 0`), la condición retornaba `true` para cualquier usuario, haciendo visible el botón `Restablecer BD` en el Top Header Bar a operadores y cajeros regulares.
+     - Dicha acción técnica de reseteo no existe en los 31 permisos de la modal POS de la PWA (CheckIn, CheckOut, Monitoreo, Turnos, Mensualidades, Clientes), por lo que no podía ser administrada desde allí.
+  2. **Solución Implementada**:
+     - En `MainShellViewModel.cs`: Se simplificó y aseguró la propiedad `CanResetDatabase` para que responda estrictamente a `IsSuperAdmin`:
+       ```csharp
+       public bool CanResetDatabase => IsSuperAdmin;
+       ```
+     - Se actualizó el diálogo preventivo de `ResetLocalDatabaseAsync` reflejando que dicha función es de acceso exclusivo de Super Administrador.
+     - El botón queda completamente invisible (`Collapsed`) e inejecutable para cualquier usuario que no sea Super Administrador.
+  3. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **377/377 Pruebas Unitarias Superadas (100% de éxito, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **377/377 pruebas superadas (100%)**.
+
+---
+
+## 📅 Entrada: [2026-10-03 20:45:00] - [SYNC / RESILIENCE / SQLITE / TICKETS] Resolución Definitiva de Conflicto UNIQUE Constraint en ParkingTickets.TicketNumber, Auto-Reparación en Sincronización y Conciliación de Cola
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"esto fue lo que pedi revisa el plan que se tiene necesito que lo valides ... bueno si loa gregas con permisos si todo bien y segundo ya con esto lanzo verisón y automaticamente cuando actualicen ya queda funcional si ?"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - **Violación de Restricción UNIQUE en SQLite (`ParkingTickets.TicketNumber`)**: Durante `PerformFullSyncWithProgressAsync` (Paso 8), si un tiquete coincidía por `TicketId`, el código actualizaba `existing.TicketNumber = normalizedTicketNumber`. Si en SQLite ya existía otro tiquete (huérfano, antiguo u offline) con ese mismo número pero diferente `TicketId`, el ChangeTracker de EF Core quedaba con dos entidades con la misma clave única. Además, debido a que EF Core ejecuta internamente `INSERT`/`UPDATE` antes de `DELETE`, eliminar registros en la misma transacción no liberaba los índices únicos a tiempo en SQLite, arrojando `SQLite Error 19: UNIQUE constraint failed: ParkingTickets.TicketNumber`, abortando la transacción y dejando la terminal en "Modo Offline Activo" con 0 tiquetes guardados y la pantalla de salida vacía.
+     - **Atasco en Cola de Pendientes (`CheckIn`)**: Cuando un tiquete encolado era enviado al API pero el vehículo ya había ingresado centralmente (o en otra terminal), el servidor respondía `400 BadRequest` con mensaje de negocio. `SyncEngineService` capturaba la excepción de forma genérica incrementando `RetryCount` sin marcar `item.IsProcessed = true`, atrapando el registro en reintentos infinitos.
+     - **Bloqueo por Rol Quemado en Restablecimiento de BD**: `ResetLocalDatabaseAsync` en `MainShellViewModel` contenía `if (!IsSuperAdmin)`, impidiendo a usuarios autorizados o en contingencia técnica restablecer la base local cuando no existían ítems pendientes.
+  2. **Solución Implementada**:
+     - **`SyncEngineService.cs`**:
+       - **Fase 1 (Pre-Limpieza Atómica)**: Antes de procesar el lote de tiquetes entrantes (`deduplicatedIncoming`), se identifican en SQLite todos los tiquetes locales que colisionan en `TicketNumber` con diferente `TicketId` o que colisionan en placa activa. Se eliminan físicamente con `db.ParkingTickets.RemoveRange(...)` y se persiste con `await db.SaveChangesAsync(ct)`, liberando los índices únicos en SQLite.
+       - **Fase 2 (Deduplicación en Memoria)**: Si durante la iteración se detecta otra entidad en `localByTicketNumber` con diferente `TicketId`, se remueve del ChangeTracker y de los diccionarios.
+       - **Fase 3 (Auto-Reparación Resiliente)**: Se envolvió `await db.SaveChangesAsync(ct)` en un bloque defensivo que captura `DbUpdateException` por conflicto UNIQUE en `TicketNumber`. En caso de activarse, ejecuta `ReconcileAndSaveTicketsCleanlyAsync`, limpiando el ChangeTracker, purgando por ID/Número en SQLite y reinsertando directamente las entidades limpias.
+       - **Conciliación en `ProcessPendingQueueAsync` (CheckIn)**: Ante respuestas 400 que indican que el vehículo ya se encuentra registrado o adentro, se marca `item.IsProcessed = true` y `localTicket.IsSynchronized = true`, liberando la cola. Si el CheckIn es exitoso y el número de tiquete cambió, se purga cualquier colisión previa antes de reinsertar `localOldTicket`.
+     - **`EfParkingTicketService.cs`**:
+       - En `HandleRemoteTicketCheckInAsync`, se valida y purga cualquier colisión previa de `TicketNumber` antes de persistir el tiquete recibido por SignalR.
+     - **`MainShellViewModel.cs` & `MainShellWindow.xaml`**:
+       - Implementada la propiedad `CanResetDatabase` basada en RBAC (`system.database.reset`, `settings.sync` o `PendingItemsCount == 0`).
+       - Actualizada la visibilidad y tooltip en la barra superior.
+     - **`OfflineResilienceTests.cs`**:
+       - Añadidas 3 pruebas unitarias exhaustivas con base de datos SQLite real:
+         1. `SyncEngineService_PerformFullSync_WhenDuplicateTicketNumberExistsInLocalDb_ReconcilesWithoutUniqueConstraintViolation`
+         2. `SyncEngineService_ProcessPendingQueue_WhenCheckInVehicleAlreadyInCloud_ReconcilesAndMarksProcessed`
+         3. `SyncEngineService_ResetLocalDatabaseFromCloud_DispatchesAndRebuildsCleanly`
+  3. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **377/377 Pruebas Unitarias Superadas (100% de éxito, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/SyncEngineService.cs`
+  - `Parking/Services/Implementations/EfParkingTicketService.cs`
+  - `Parking/ViewModels/MainShellViewModel.cs`
+  - `Parking/Views/MainShellWindow.xaml`
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **377/377 pruebas superadas (100%)**.
+
+---
+
+## 📅 Entrada: [2026-10-03 17:10:00] - [SYNC / CUSTOMERS / SIIGO / RESILIENCIA] Conciliación Inmediata de Clientes en Cola de Sincronización ante Errores 400 y 409 de Siigo/Servidor Central
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"analiza si hay hueecos tecnicos y crea de nuevoel plan"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - En el cliente de escritorio WPF, la sincronización en segundo plano de clientes (`PendingSyncItems`) enviaba `POST /api/customers` a través de `ParkingApiClient.CreateCustomerAsync`.
+     - Si el servidor central guardaba el cliente pero fallaba la comunicación con Siigo Cloud (retornando HTTP 400 con `"Cliente registrado en base de datos local..."`), `ParkingApiClient` interpretaba el código 400 como fallo fatal (`400_BAD_REQUEST`), dejando el item permanentemente en cola y reintentándolo en bucle donde luego recibía `"Ya existe un cliente registrado..."`.
+  2. **Solución Implementada**:
+     - En `ParkingApiClient.cs` (`CreateCustomerAsync`):
+       - Se amplió la captura de `400 BadRequest`: si el cuerpo de la respuesta contiene `"Ya existe un cliente registrado"` o `"Cliente registrado en base de datos local"`, se activa de inmediato la rutina de conciliación (buscando el cliente por número de documento en la nube vía `GetCustomersAsync` o reconstruyendo la respuesta exitosa con los datos enviados).
+       - Esto permite que el item encolado en `PendingSyncItems` se marque como completado exitosamente en el primer ciclo de sincronización, liberando la cola de despacho y evitando bloqueos u operaciones duplicadas.
+  3. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx -p:EnableWindowsTargeting=true`: **Compilación exitosa (0 Errores, 0 Advertencias)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/ParkingApiClient.cs`
+  - `HISTORIAL_CAMBIOS.md`
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
+
+---
+
 ## 📅 Entrada: [2026-10-03 17:00:00] - [OFFLINE-FIRST / CUSTOMERS / SYNC / DIALOG] Edición Offline-First de Clientes en Catálogo y CustomerSelectionDialog con Soporte en SyncEngineService
 
 - **`💬 Prompt Original del Usuario`**:
@@ -33,32 +132,6 @@
   - `Parking/ViewModels/CustomersViewModel.cs`
   - `Parking/Services/Implementations/SyncEngineService.cs`
   - `HISTORIAL_CAMBIOS.md`
-
-=======
-## 📅 Entrada: [2026-10-03 17:10:00] - [SYNC / CUSTOMERS / SIIGO / RESILIENCIA] Conciliación Inmediata de Clientes en Cola de Sincronización ante Errores 400 y 409 de Siigo/Servidor Central
-
-- **`💬 Prompt Original del Usuario`**:
-  > _"analiza si hay hueecos tecnicos y crea de nuevoel plan"_
-
-- **`🤖 Resumen Técnico para la IA`**:
-  1. **Diagnóstico y Causa Raíz**:
-     - En el cliente de escritorio WPF, la sincronización en segundo plano de clientes (`PendingSyncItems`) enviaba `POST /api/customers` a través de `ParkingApiClient.CreateCustomerAsync`.
-     - Si el servidor central guardaba el cliente pero fallaba la comunicación con Siigo Cloud (retornando HTTP 400 con `"Cliente registrado en base de datos local..."`), `ParkingApiClient` interpretaba el código 400 como fallo fatal (`400_BAD_REQUEST`), dejando el item permanentemente en cola y reintentándolo en bucle donde luego recibía `"Ya existe un cliente registrado..."`.
-  2. **Solución Implementada**:
-     - En `ParkingApiClient.cs` (`CreateCustomerAsync`):
-       - Se amplió la captura de `400 BadRequest`: si el cuerpo de la respuesta contiene `"Ya existe un cliente registrado"` o `"Cliente registrado en base de datos local"`, se activa de inmediato la rutina de conciliación (buscando el cliente por número de documento en la nube vía `GetCustomersAsync` o reconstruyendo la respuesta exitosa con los datos enviados).
-       - Esto permite que el item encolado en `PendingSyncItems` se marque como completado exitosamente en el primer ciclo de sincronización, liberando la cola de despacho y evitando bloqueos u operaciones duplicadas.
-  3. **Verificación y Compilación**:
-     - `dotnet build ParkingWpf.slnx -p:EnableWindowsTargeting=true`: **Compilación exitosa (0 Errores, 0 Advertencias)**.
-
-- **`📦 Componentes Modificados`**:
-  - `Parking/Services/Implementations/ParkingApiClient.cs`
-  - `HISTORIAL_CAMBIOS.md`
-
-- **`✅ Verificación y Compilación`**:
-  - `dotnet build ParkingWpf.slnx -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
-
->>>>>>> b6a697755a0fd86993a3b65424ded3ddf33e2556
 ---
 
 ## 📅 Entrada: [2026-10-03 15:25:00] - [SYNC / CUSTOMERS / RBAC / SQLITE] Homologación de Tipos de Documento Canónicos (1..5), Permisos Granulares y Upsert Local contra Clientes Fantasma

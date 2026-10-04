@@ -779,6 +779,13 @@ public class EfParkingTicketService : IParkingTicketService
 
                         if (existing == null)
                         {
+                            var numConflict = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketNumber == entity.TicketNumber && t.TicketId != entity.TicketId);
+                            if (numConflict != null)
+                            {
+                                db.ParkingTickets.Remove(numConflict);
+                                await db.SaveChangesAsync();
+                            }
+
                             db.ParkingTickets.Add(entity);
                             await db.SaveChangesAsync();
                             existing = entity;
@@ -788,6 +795,13 @@ public class EfParkingTicketService : IParkingTicketService
                             var oldestTime = entity.EntryTimeUtc < existing.EntryTimeUtc ? entity.EntryTimeUtc : existing.EntryTimeUtc;
                             db.ParkingTickets.Remove(existing);
                             await db.SaveChangesAsync();
+
+                            var numConflict = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketNumber == entity.TicketNumber && t.TicketId != entity.TicketId);
+                            if (numConflict != null)
+                            {
+                                db.ParkingTickets.Remove(numConflict);
+                                await db.SaveChangesAsync();
+                            }
 
                             entity.EntryTimeUtc = oldestTime;
                             db.ParkingTickets.Add(entity);
