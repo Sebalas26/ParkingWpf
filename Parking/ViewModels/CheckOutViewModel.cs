@@ -727,13 +727,19 @@ public partial class CheckOutViewModel : ViewModelBase
             if (isElectronic)
             {
                 EmitElectronicInvoice = true;
-                IsCustomCustomer = false;
+                if (SelectedCustomer != null)
+                {
+                    IsCustomCustomer = true;
+                }
                 _ = LoadCustomersAsync();
             }
             else if (!ForceElectronicInvoiceOnCheckout && (SelectedPaymentMethodEntity == null || !SelectedPaymentMethodEntity.RequiresResolution))
             {
                 EmitElectronicInvoice = false;
-                IsCustomCustomer = false;
+                if (SelectedCustomer == null)
+                {
+                    IsCustomCustomer = false;
+                }
             }
         }
         OnPropertyChanged(nameof(IsElectronicInvoicingSectionVisible));
@@ -1486,7 +1492,15 @@ public partial class CheckOutViewModel : ViewModelBase
 
     partial void OnEmitElectronicInvoiceChanged(bool value)
     {
-        IsCustomCustomer = false;
+        if (SelectedCustomer != null)
+        {
+            IsCustomCustomer = true;
+        }
+        else if (!value)
+        {
+            IsCustomCustomer = false;
+        }
+
         if (value)
         {
             _ = LoadCustomersAsync();

@@ -967,13 +967,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                     ? ticket.Cufe
                     : GenerateCufe($"{InvoicePrefix}{InvoiceNumberStr}", exitTime, totalPaid, BranchNit);
 
-                var resNum = !string.IsNullOrWhiteSpace(resolution?.ResolutionNumber) ? resolution.ResolutionNumber : "18764000000";
-                var validFromStr = resolution != null ? resolution.ValidFrom.ToString("yyyy/MM/dd") : "2024/06/18";
-                DianResolutionText = $"RES DIAN Nº {resNum} DE {validFromStr} Vig. 24 meses";
-
-                var fromNum = resolution?.FromNumber > 0 ? resolution.FromNumber : 1;
-                var toNum = resolution?.ToNumber > 0 ? resolution.ToNumber : 5000000;
-                DianRangeText = $"Autorización del {InvoicePrefix}-{fromNum} hasta {InvoicePrefix}-{toNum}";
+                DianResolutionText = string.Empty;
+                DianRangeText = string.Empty;
 
                 var qrContent = !string.IsNullOrWhiteSpace(ticket.QrCodeData)
                     ? ticket.QrCodeData

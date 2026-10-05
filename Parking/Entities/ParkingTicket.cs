@@ -54,7 +54,7 @@ public class ParkingTicket
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public bool CanRetryInvoice => IsElectronicInvoice && (DianStatus == DianStatus.Rejected || (string.IsNullOrWhiteSpace(InvoiceNumber) && string.IsNullOrWhiteSpace(CreditNoteNumber)));
-    public bool CanResendEmail => IsElectronicInvoice && !string.IsNullOrWhiteSpace(InvoiceNumber) && string.IsNullOrWhiteSpace(CreditNoteNumber);
+    public bool CanResendEmail => IsElectronicInvoice && DianStatus == DianStatus.Issued && !string.IsNullOrWhiteSpace(InvoiceNumber) && string.IsNullOrWhiteSpace(CreditNoteNumber);
     public bool CanSyncDianStatus => IsElectronicInvoice && DianStatus == DianStatus.Pending && !string.IsNullOrWhiteSpace(ElectronicInvoiceId);
     public bool CanConvertToInvoice => !IsElectronicInvoice && Status == TicketStatus.Completed && NetAmount > 0;
 

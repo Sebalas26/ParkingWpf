@@ -615,6 +615,7 @@
 
                         <Button Grid.Column="0"
                                 Command="{Binding RegisterAndPrintCommand}"
+                                helpers:ButtonHelper.IsLoading="{Binding IsBusy}"
                                 Height="48"
                                 Margin="0,0,10,0">
                             <Button.Style>

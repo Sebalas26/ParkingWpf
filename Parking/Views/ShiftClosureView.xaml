@@ -373,6 +373,7 @@
                         <StackPanel Visibility="{Binding IsShiftOwner, Converter={StaticResource BoolToVis}}">
                             <!-- Main Action Button: Realizar Cierre de Caja (Rojo Claro) -->
                             <Button Command="{Binding CloseShiftDirectCommand}"
+                                    helpers:ButtonHelper.IsLoading="{Binding IsBusy}"
                                     Style="{StaticResource DangerButton}"
                                     Background="{DynamicResource BrushDangerSoft}"
                                     Height="44"
@@ -415,6 +416,7 @@
                         <!-- Incoming Operator Button -->
                         <StackPanel Visibility="{Binding IsShiftOwner, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}">
                             <Button Command="{Binding TakeOverShiftCommand}"
+                                    helpers:ButtonHelper.IsLoading="{Binding IsBusy}"
                                     Style="{StaticResource ModernButton}"
                                     Height="44"
                                     IsEnabled="{Binding IsBusy, Converter={StaticResource InverseBoolConv}}">

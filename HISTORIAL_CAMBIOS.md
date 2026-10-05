@@ -1,5 +1,239 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-05 00:18:00] - [RELEASE / DEPLOYMENT] Generación Completa de Release v1.0.14 (.exe Setup + .zip OTA)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"pero falto el .exe, generame todo lo necesario del wpf para subir la version al pwa- versiones escritorio"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Instalación de Motor de Empaquetado Inno Setup**:
+     - Se aprovisionó Inno Setup 6 mediante `winget install --id JRSoftware.InnoSetup -e --silent`.
+  2. **Generación de Paquete Oficial Completo**:
+     - **Instalador Oficial Windows (`.exe`)**: Se compiló el asistente de instalación con `installer.iss`:
+       `Releases/v1.0.14/ParkFlow_Setup_v1.0.14.exe` (**46.96 MB**, 49,236,650 bytes).
+     - **Paquete Comprimido OTA (`.zip`)**:
+       `Releases/v1.0.14/ParkFlow_v1.0.14.zip` (**61.9 MB**, 64,905,729 bytes) con SHA-256 `44eeca9f92318bb61d57e1b48b87fea795c0f132966a4454bbb50199ac862c85`.
+     - **Manifiesto de Publicación**: `Releases/v1.0.14/release_manifest.json` con `isMandatory = true`.
+  3. **Verificación y Compilación**:
+     - `dotnet publish` (Parking + ParkFlow.Updater): **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **384/384 Pruebas Unitarias Superadas (100% de éxito, 0 fallos)**.
+
+- **`📦 Componentes Generados y Modificados`**:
+  - `Releases/v1.0.14/ParkFlow_Setup_v1.0.14.exe` (Generado)
+  - `Releases/v1.0.14/ParkFlow_v1.0.14.zip` (Generado)
+  - `Releases/v1.0.14/release_manifest.json` (Generado)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+- **`✅ Verificación y Compilación`**:
+  - Binarios y asistente de instalación listos para despliegue en PWA.
+
+---
+
+## 📅 Entrada: [2026-10-05 00:05:00] - [FEATURE / UI] Eliminación de Texto de Resolución DIAN en Tiquetes de Salida de Facturación Electrónica
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Eliminame del tiquete de salida cuando sea factura eletronica , este texto [RES DIAN Nº 147852369 DE 2026/10/03 Vig. 24 meses / Autorización del FV-1 hasta FV-5000]"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - Al generar comprobantes de salida por Facturación Electrónica (`isFvm`), se continuaba seteando y renderizando el bloque de texto legal de resolución DIAN (`RES DIAN Nº... DE... Vig. 24 meses`). El cliente solicitó explícitamente suprimir este bloque en facturación electrónica para mantener la tirilla limpia.
+  2. **Solución Implementada**:
+     - **`ReceiptPreviewViewModel.cs`**: Se eliminó la concatenación de `DianResolutionText`, fijándolo en `string.Empty` tanto en facturación electrónica como en comprobantes regulares.
+     - **`ReceiptPreviewDialog.xaml`**: Se retiró el elemento `<TextBlock Text="{Binding DianResolutionText}" .../>` en la Plantilla C de Factura Electrónica de Venta FVM.
+  3. **Verificación y Compilación**:
+     - `dotnet build`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **384/384 Pruebas Unitarias Superadas (100% de éxito, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs` (Modificado)
+  - `Parking/Views/ReceiptPreviewDialog.xaml` (Modificado)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build` y `dotnet test` exitosos (384 pruebas pasadas).
+
+---
+
+## 📅 Entrada: [2026-10-04 23:45:00] - [FEATURE / UI] Ocultamiento de 'Autorización FV' en Tiquetes de Salida
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Adicional eleiminame el parrafo de 'autorizacion del fv' de la impresion de tiquete de salida del wpf , valdia si el pwa tambien lo tieen para que lo elimines"_
+  > _"Analiza que no hayn huecos técnicos"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - El texto de autorización de la resolución DIAN ("Autorización del POS-1 hasta POS-5000000") se imprimía por defecto en los tiquetes de salida estándar ocupando espacio visual en el diseño del tiquete, el cual el cliente solicitó remover para limpliar el layout.
+  2. **Solución Implementada**:
+     - **`ReceiptPreviewViewModel.cs`**: Se eliminó la asignación de `DianRangeText`, dejándolo como `string.Empty`.
+     - **`ReceiptPreviewDialog.xaml`**: Se removió el elemento `<TextBlock>` vinculado a `DianRangeText` en el layout del tiquete.
+  3. **Verificación y Compilación**:
+     - `dotnet build`: **0 Errores**.
+     - `dotnet test ParkingWpf.slnx`: 100% Superado.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs` (Modificado)
+  - `Parking/Views/ReceiptPreviewDialog.xaml` (Modificado)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build` y `dotnet test` exitosos.
+
+## 📅 Entrada: [2026-10-04 23:28:00] - [RELEASE / DEPLOYMENT] Generación Oficial de Release v1.0.14 de ParkFlow Desktop (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"generame la version 14 del wpf"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Generación de Paquete Oficial**:
+     - Se actualizó la versión declarativa en `Parking/Parking.csproj` a `1.0.14` (`<Version>`, `<AssemblyVersion>`, `<FileVersion>`, `<InformationalVersion>`).
+     - Se ejecutó el pipeline de empaquetado oficial `publish-release.ps1` en modo Release win-x64 con depuración de archivos de desarrollo (`.pdb`, `.db`, carpetas satélites de idiomas no utilizadas).
+     - Se generó el paquete comprimido oficial `Releases/v1.0.14/ParkFlow_v1.0.14.zip` (61.9 MB, 64,905,658 bytes).
+     - Se calculó el checksum criptográfico inmutable SHA-256: `34abb5362b4836ddbad6dac6a4d88c1d18c4fc9d2a3ea9b564eb1a07fbc2a5e6`.
+     - Se generó el manifiesto de publicación `Releases/v1.0.14/release_manifest.json` con `isMandatory = true`.
+  2. **Verificación y Compilación**:
+     - `dotnet publish` (Parking + ParkFlow.Updater): **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **384/384 Pruebas Unitarias Superadas (100% de éxito, 0 fallos)**.
+
+- **`📦 Componentes Generados y Modificados`**:
+  - `Parking/Parking.csproj` (Actualizado a 1.0.14)
+  - `Releases/v1.0.14/ParkFlow_v1.0.14.zip` (Generado)
+  - `Releases/v1.0.14/release_manifest.json` (Generado)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+---
+
+## 📅 Entrada: [2026-10-04 23:15:00] - [BUGFIX / UI / INVOICING] Corrección de Visibilidad del Botón "Reenviar Correo" en Facturas Rechazadas (CanResendEmail con DianStatus.Issued)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Adicioanl requiero que me ajustes esto de ui del wpf y pwa, pues cuando tengo una liquidicion de fe rechazada, me muestra en el wpf el boton de reenviar correo, y en el pwa reenviar correo y nota credito, pero porque muestra eso si la sincro con sigo no ha sido exitosa"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - En `ParkingTicket.cs`, la propiedad computada `CanResendEmail` validaba únicamente:
+       `IsElectronicInvoice && !string.IsNullOrWhiteSpace(InvoiceNumber) && string.IsNullOrWhiteSpace(CreditNoteNumber);`
+     - Cuando Siigo emitía un número de factura provisional o rechazado (ej. `#FM-508`), el campo `InvoiceNumber` quedaba poblado a pesar de que `DianStatus == DianStatus.Rejected`.
+     - Esto ocasionaba que el botón "Reenviar Correo" apareciera erróneamente habilitado para facturas no autorizadas ni timbradas por la DIAN, y al hacer clic, el backend (`ResendInvoiceEmailAsync`) rechazaba la solicitud arrojando excepción porque la factura no estaba en estado `Issued`.
+  2. **Solución Implementada en WPF**:
+     - En `Parking/Entities/ParkingTicket.cs`:
+       - Se ajustó `CanResendEmail` para requerir explícitamente `DianStatus == DianStatus.Issued`:
+         `public bool CanResendEmail => IsElectronicInvoice && DianStatus == DianStatus.Issued && !string.IsNullOrWhiteSpace(InvoiceNumber) && string.IsNullOrWhiteSpace(CreditNoteNumber);`
+     - En `Parking.UnitTests/Services/OfflineResilienceTests.cs`:
+       - Se agregaron pruebas unitarias (`ParkingTicket_CanResendEmail_OnlyTrueWhenIssuedAndNoCreditNote` y `ParkingTicket_CanResendEmail_WhenCreditNoted_IsFalse`) verificando que para `DianStatus.Rejected`, `DianStatus.Pending` o `DianStatus.None`, el botón nunca esté habilitado.
+  3. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **384/384 Pruebas Unitarias Superadas (100% de éxito, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Entities/ParkingTicket.cs` (Modificado)
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs` (Modificado)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+---
+
+## 📅 Entrada: [2026-10-04 22:05:00] - [BUGFIX / INVOICING] Corrección de Pérdida de Cliente en Checkout WPF al Cambiar Resolución o Método de Pago
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"ejecutalo"_ (Ejecución del Plan de Optimización y Corrección - Emisión de Facturación Electrónica Zero Gaps)
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - En `CheckOutViewModel.cs`, los métodos `OnSelectedResolutionChanged` y `OnEmitElectronicInvoiceChanged` reiniciaban arbitrariamente la bandera `IsCustomCustomer = false`.
+     - Si el operador de caja seleccionaba un cliente receptor y posteriormente el sistema cambiaba la resolución (automáticamente al seleccionar un método de pago como Tarjeta que exige FE), la bandera se apagaba y `CustomerId` se desvinculaba del payload de salida, enviando `CustomerId = null` y generando facturas huérfanas en el backend.
+  2. **Solución Implementada en WPF**:
+     - En `CheckOutViewModel.cs`: Se modificaron `OnSelectedResolutionChanged` y `OnEmitElectronicInvoiceChanged` para que respeten la presencia de `SelectedCustomer`. Si `SelectedCustomer != null`, se preserva `IsCustomCustomer = true`, garantizando que el cliente seleccionado nunca se desvincule involuntariamente.
+  3. **Impacto y Compatibilidad**:
+     - Cero impacto negativo en cobros POS normales. Si no hay cliente seleccionado, el comportamiento previo se mantiene intacto.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CheckOutViewModel.cs` (Corregido)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **379/379 Pruebas Unitarias Superadas (100% éxito, 0 fallos)**.
+
+---
+
+## 📅 Entrada: [2026-10-04 21:46:00] - [BUGFIX / XAML] Corrección Crítica de XamlParseException en RadialSpinner (TargetName en Style) y Validación de Cero Impacto / Migraciones
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"porque falla el wpf ... [Audio]: Sí, y que esos ajustes que hiciste visuales del proceso de carga no vaya a afectar a los usuarios que ya tienen instalado la versión, porque yo ahorita estoy corriéndolo local y bien, pero cuando yo envíe a actualizar el WPF a los usuarios que ya tienen instalado en producción, puede dañarse algo. Valida que eso no afecte eso. Además, ayúdame a validar si los cambios que yo tengo locales requieren migración, y si no, también analízame que no tampoco se vaya a correr una migración sin que yo sepa."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz del Error de Inicio**:
+     - Al iniciar la aplicación (`App.ShowLoginWindow()`), WPF arrojaba `System.Windows.Markup.XamlParseException`: *Se produjo una excepción al agregar un valor a una colección de tipo 'System.Windows.Controls.UIElementCollection'*.
+     - Excepción interna en `ErrorLog_20261004.txt`: `System.InvalidOperationException: Un árbol Storyboard en un Style no puede especificar TargetName. Quite TargetName 'SpinnerCanvas'`.
+     - Esto se originaba porque en `RadialSpinner.xaml`, el `Storyboard` invocado por el trigger `<Trigger Property="IsVisible" Value="True">` dentro de `<UserControl.Style>` especificaba `Storyboard.TargetName="SpinnerCanvas"`. En la arquitectura interna de WPF, un `Storyboard` en un `Style` no puede apuntar a nombres hijos del template (`TargetName`), únicamente al elemento que porta el estilo.
+  2. **Solución Implementada**:
+     - En `RadialSpinner.xaml`: Se retiró `Storyboard.TargetName="SpinnerCanvas"`, y se configuró `RenderTransformOrigin="0.5,0.5"` junto con un `<RotateTransform Angle="0"/>` directamente sobre el `UserControl` raíz. De esta manera, el `Storyboard` anima directamente la propiedad `(UIElement.RenderTransform).(RotateTransform.Angle)` del `UserControl`, cumpliendo estrictamente con la especificación de WPF.
+     - Se crearon pruebas unitarias dedicadas en hilo STA (`RadialSpinnerAndButtonHelperTests.cs`) para verificar la correcta instanciación del control y el helper sin excepciones de XAML.
+  3. **Análisis de Impacto en Producción para Clientes Actualizados**:
+     - **Cero Efectos Colaterales en Datos/Configuración**: El cambio es 100% estético a nivel de XAML en memoria (`ControlTemplate` de botones). No altera archivos locales, carpetas de usuario, configuraciones persistidas ni bases de datos SQLite locales de las máquinas existentes.
+     - **Comportamiento Idéntico por Defecto**: Los botones que no utilicen `ButtonHelper.IsLoading` (o cuando su valor sea `false`) mantienen su comportamiento, dimensiones y renderizado idénticos a las versiones previas.
+  4. **Análisis Exhaustivo de Migraciones de Base de Datos**:
+     - **ParkingWpf (SQLite)**: Ninguna entidad de base de datos ni `DbContext` fue alterado. El auto-migrador dinámico (`DbConnectionManager.AutoMigrateDatabaseAsync`) no detecta diferencias en el esquema de tablas ni ejecuta ninguna instrucción `ALTER TABLE`.
+     - **ParkingApi (MySQL)**: Ninguna entidad ni migración de EF Core fue agregada ni modificada. Tampoco existe ejecución automática desatendida de migraciones en `Program.cs` del API. Cero migraciones se ejecutarán en producción ni en desarrollo.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Controls/RadialSpinner.xaml` (Corregido)
+  - `Parking.UnitTests/Helpers/RadialSpinnerAndButtonHelperTests.cs` (Creado)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **379/379 Pruebas Unitarias Superadas (100% de éxito, 0 fallos)**.
+  - `dotnet test ParkingApi.slnx`: **703/703 Pruebas Unitarias Superadas (100% de éxito, 0 fallos)**.
+
+---
+
+
+## 📅 Entrada: [2026-10-04 21:28:00] - [UI / UX / DESIGN] Implementación de Indicador de Carga Radial Segmentado (PWA Style - 12 Segmentos) en Botones de Confirmación y Operación
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Esto no, solo lo de indicar de carga de segmentos ... Analiza si hay huecos tecnicos y crea el pla de nuevo ... si"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - El cliente requería integrar un indicador de carga radial fiel al de la PWA (`ParkingFlowPWa/src/app/features/vehicles/vehicles.component.ts`), con 12 segmentos discretos y animación por pasos escalonados (`steps(12, end)` de 0.85s), descartando barras de progreso lineales.
+     - Se identificaron dos huecos técnicos críticos en WPF:
+       a) **Conflicto de Opacidad con `IsEnabled`**: Cuando los botones conmutaban a `IsEnabled="False"` durante operaciones asíncronas (`IsBusy = true`), las plantillas nativas reducían forzosamente la opacidad del `Border` a `0.45`, provocando que el spinner se viera opaco, apagado y sin protagonismo.
+       b) **Rotación Continua vs. Carga de Segmentos**: Una animación lineal suave (`DoubleAnimation`) desvirtuaba el estilo segmentado de la web.
+  2. **Solución Implementada**:
+     - **`RadialSpinner.xaml` & `RadialSpinner.xaml.cs` (`Parking.Controls`)**:
+       - Creado control de usuario vectorial de 12 segmentos con dimensiones canónicas de 24x24 dentro de un `Viewbox` auto-escalable.
+       - Cada segmento implementa extremos redondeados (`StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"`) y escala de opacidades decrecientes idéntica a la PWA (1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15, 0.10).
+       - Rotación escalonada fiel mediante `DoubleAnimationUsingKeyFrames` con 12 `DiscreteDoubleKeyFrame` a lo largo de 0.850s, logrando el efecto de pasos escalonados exacto de la PWA.
+       - Gestión de ciclo de vida en XAML mediante triggers de `IsVisible` (`EnterActions`/`ExitActions`) para activar el storyboard únicamente cuando el spinner está en pantalla, optimizando el consumo de CPU.
+     - **`ButtonHelper.cs` (`Parking.Core.Helpers`)**:
+       - Declarada DependencyProperty adjunta `IsLoading` (booleano) para desacoplar el estado de carga visual de la lógica del botón y comandos.
+     - **`Styles/Controls.xaml`**:
+       - Integrado `RadialSpinner` en `ModernButton`, `SecondaryButton`, `SuccessButton` y `DangerButton`.
+       - Reemplazado el trigger simple de `IsEnabled="False"` por un `MultiTrigger` condicionado a `IsEnabled == False AND helpers:ButtonHelper.IsLoading == False`.
+       - Al activarse `helpers:ButtonHelper.IsLoading == True`, el botón preserva el 100% de opacidad del fondo, conmuta `loadingSpinner.Visibility = Visible`, atenúa `contentPresenter.Opacity = 0` y desactiva interacción con `IsHitTestVisible = False`.
+     - **Vistas Actualizadas**:
+       - `CheckOutDialog.xaml`: Botón de pago enlazado con `helpers:ButtonHelper.IsLoading="{Binding IsBusy}"`.
+       - `CheckInView.xaml`: Botón de registrar e imprimir entrada enlazado con `helpers:ButtonHelper.IsLoading="{Binding IsBusy}"`.
+       - `ShiftClosureView.xaml`: Botones de cierre directo y recepción de turno enlazados con `helpers:ButtonHelper.IsLoading="{Binding IsBusy}"`.
+  3. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+     - `dotnet test ParkingWpf.slnx`: **377/377 Pruebas Unitarias Superadas (100% de éxito, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Controls/RadialSpinner.xaml` (Creado)
+  - `Parking/Controls/RadialSpinner.xaml.cs` (Creado)
+  - `Parking/Core/Helpers/ButtonHelper.cs` (Creado)
+  - `Parking/Styles/Controls.xaml` (Modificado)
+  - `Parking/Views/CheckOutDialog.xaml` (Modificado)
+  - `Parking/Views/CheckInView.xaml` (Modificado)
+  - `Parking/Views/ShiftClosureView.xaml` (Modificado)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build ParkingWpf.slnx`: **0 Errores, 0 Advertencias**.
+  - `dotnet test ParkingWpf.slnx`: **377/377 pruebas superadas (100%)**.
+
+---
+
 ## 📅 Entrada: [2026-10-03 21:25:00] - [SECURITY / UI / RBAC] Restricción Exclusiva de "Restablecer BD" a Super Administrador (Oculto para Operadores)
 
 - **`💬 Prompt Original del Usuario`**:

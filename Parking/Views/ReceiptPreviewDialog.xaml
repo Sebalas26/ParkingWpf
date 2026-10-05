@@ -783,9 +783,7 @@
                                            TextWrapping="Wrap"
                                            Margin="0,2,0,8"/>
 
-                                <!-- 8. Resolución DIAN y Pólizas -->
-                                <TextBlock Text="{Binding DianResolutionText}" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Margin="0,1"/>
-                                <TextBlock Text="{Binding DianRangeText}" FontSize="8.5" FontFamily="{StaticResource FontFamilyMonospace}" Foreground="#000000" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Margin="0,1"/>
+                                <!-- 8. Pólizas e Información Adicional -->
                                 
                                 <StackPanel Visibility="{Binding HasTicketPolicyOrAdditionalInfo, Converter={StaticResource BoolToVis}}" Margin="0,4,0,4">
                                     <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,2,0,4"/>

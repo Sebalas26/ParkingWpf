@@ -8,10 +8,10 @@
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Resources\parkpoint.ico</ApplicationIcon>
     <!-- Versión oficial del cliente de escritorio ParkFlow (Modificar aquí según la versión requerida) -->
-    <Version>1.0.18</Version>
-    <AssemblyVersion>1.0.18</AssemblyVersion>
-    <FileVersion>1.0.18</FileVersion>
-    <InformationalVersion>1.0.18</InformationalVersion>
+    <Version>1.0.14</Version>
+    <AssemblyVersion>1.0.14</AssemblyVersion>
+    <FileVersion>1.0.14</FileVersion>
+    <InformationalVersion>1.0.14</InformationalVersion>
     <!-- Suppress NuGet audit warning on transitive SQLite native library in development -->
     <NoWarn>$(NoWarn);NU1903</NoWarn>
   </PropertyGroup>

@@ -1071,6 +1071,38 @@ public class OfflineResilienceTests : IDisposable
         }
     }
 
+    [Theory]
+    [InlineData(DianStatus.Rejected, false)]
+    [InlineData(DianStatus.Pending, false)]
+    [InlineData(DianStatus.None, false)]
+    [InlineData(DianStatus.Issued, true)]
+    public void ParkingTicket_CanResendEmail_OnlyTrueWhenIssuedAndNoCreditNote(DianStatus status, bool expected)
+    {
+        var ticket = new ParkingTicket
+        {
+            IsElectronicInvoice = true,
+            InvoiceNumber = "FM-508",
+            DianStatus = status,
+            CreditNoteNumber = null
+        };
+
+        ticket.CanResendEmail.Should().Be(expected);
+    }
+
+    [Fact]
+    public void ParkingTicket_CanResendEmail_WhenCreditNoted_IsFalse()
+    {
+        var ticket = new ParkingTicket
+        {
+            IsElectronicInvoice = true,
+            InvoiceNumber = "FM-508",
+            DianStatus = DianStatus.Issued,
+            CreditNoteNumber = "NC-10"
+        };
+
+        ticket.CanResendEmail.Should().BeFalse();
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();

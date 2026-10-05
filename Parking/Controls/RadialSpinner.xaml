@@ -1,0 +1,147 @@
+<UserControl x:Class="Parking.Controls.RadialSpinner"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="20" d:DesignWidth="20"
+             Width="20" Height="20"
+             RenderTransformOrigin="0.5,0.5"
+             Foreground="{DynamicResource BrushTextWhite}">
+    <UserControl.RenderTransform>
+        <RotateTransform Angle="0"/>
+    </UserControl.RenderTransform>
+
+    <UserControl.Resources>
+        <Storyboard x:Key="SpinStoryboard" RepeatBehavior="Forever">
+            <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)">
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.071" Value="30"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.142" Value="60"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.213" Value="90"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.283" Value="120"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.354" Value="150"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.425" Value="180"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.496" Value="210"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.567" Value="240"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.638" Value="270"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.708" Value="300"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.779" Value="330"/>
+                <DiscreteDoubleKeyFrame KeyTime="0:0:0.850" Value="360"/>
+            </DoubleAnimationUsingKeyFrames>
+        </Storyboard>
+    </UserControl.Resources>
+
+    <UserControl.Style>
+        <Style TargetType="UserControl">
+            <Style.Triggers>
+                <Trigger Property="IsVisible" Value="True">
+                    <Trigger.EnterActions>
+                        <BeginStoryboard Name="SpinStoryboardBegin" Storyboard="{StaticResource SpinStoryboard}"/>
+                    </Trigger.EnterActions>
+                    <Trigger.ExitActions>
+                        <StopStoryboard BeginStoryboardName="SpinStoryboardBegin"/>
+                    </Trigger.ExitActions>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Style>
+
+    <Viewbox Stretch="Uniform">
+        <Canvas Width="24" Height="24">
+            
+            <!-- 12 segmentos vectoriales idénticos a los de la PWA (grosor 2.2, extremos redondeados, opacidades decrecientes) -->
+            <!-- 0° -->
+            <Line X1="12" Y1="2.5" X2="12" Y2="6.5"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="1.0" />
+            <!-- 30° -->
+            <Line X1="12" Y1="2.5" X2="12" Y2="6.5"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.9">
+                <Line.RenderTransform>
+                    <RotateTransform Angle="30" CenterX="12" CenterY="12"/>
+                </Line.RenderTransform>
+            </Line>
+            <!-- 60° -->
+            <Line X1="12" Y1="2.5" X2="12" Y2="6.5"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.8">
+                <Line.RenderTransform>
+                    <RotateTransform Angle="60" CenterX="12" CenterY="12"/>
+                </Line.RenderTransform>
+            </Line>
+            <!-- 90° -->
+            <Line X1="12" Y1="2.5" X2="12" Y2="6.5"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.7">
+                <Line.RenderTransform>
+                    <RotateTransform Angle="90" CenterX="12" CenterY="12"/>
+                </Line.RenderTransform>
+            </Line>
+            <!-- 120° -->
+            <Line X1="12" Y1="2.5" X2="12" Y2="6.5"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.6">
+                <Line.RenderTransform>
+                    <RotateTransform Angle="120" CenterX="12" CenterY="12"/>
+                </Line.RenderTransform>
+            </Line>
+            <!-- 150° -->
+            <Line X1="12" Y1="2.5" X2="12" Y2="6.5"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.5">
+                <Line.RenderTransform>
+                    <RotateTransform Angle="150" CenterX="12" CenterY="12"/>
+                </Line.RenderTransform>
+            </Line>
+            <!-- 180° -->
+            <Line X1="12" Y1="2.5" X2="12" Y2="6.5"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.4">
+                <Line.RenderTransform>
+                    <RotateTransform Angle="180" CenterX="12" CenterY="12"/>
+                </Line.RenderTransform>
+            </Line>
+            <!-- 210° -->
+            <Line X1="12" Y1="2.5" X2="12" Y2="6.5"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.3">
+                <Line.RenderTransform>
+                    <RotateTransform Angle="210" CenterX="12" CenterY="12"/>
+                </Line.RenderTransform>
+            </Line>
+            <!-- 240° -->
+            <Line X1="12" Y1="2.5" X2="12" Y2="6.5"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.25">
+                <Line.RenderTransform>
+                    <RotateTransform Angle="240" CenterX="12" CenterY="12"/>
+                </Line.RenderTransform>
+            </Line>
+            <!-- 270° -->
+            <Line X1="12" Y1="2.5" X2="12" Y2="6.5"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.2">
+                <Line.RenderTransform>
+                    <RotateTransform Angle="270" CenterX="12" CenterY="12"/>
+                </Line.RenderTransform>
+            </Line>
+            <!-- 300° -->
+            <Line X1="12" Y1="2.5" X2="12" Y2="6.5"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.15">
+                <Line.RenderTransform>
+                    <RotateTransform Angle="300" CenterX="12" CenterY="12"/>
+                </Line.RenderTransform>
+            </Line>
+            <!-- 330° -->
+            <Line X1="12" Y1="2.5" X2="12" Y2="6.5"
+                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                  StrokeThickness="2.2" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Opacity="0.1">
+                <Line.RenderTransform>
+                    <RotateTransform Angle="330" CenterX="12" CenterY="12"/>
+                </Line.RenderTransform>
+            </Line>
+        </Canvas>
+    </Viewbox>
+</UserControl>
