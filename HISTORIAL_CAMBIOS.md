@@ -1,5 +1,40 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-08 01:08:00] - [BUGFIX / PRINTING] Corrección de Fallback de Póliza, Información Adicional y Horario en Tiquetes de Salida (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Analizame por que en la impreson de salida cuando es FV me muestra los datos de poliza e informacion adicional si entro a la parametrizacion de la sede y no se encuentra informacion para esa resolucion (salida)... pero tendrias que ajustar alog en el codigo? ... crea el plan ... Analiza si tiene huecos tecnicos ... proceder"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - En `ReceiptPreviewViewModel.cs` (`LoadTicket`), la asignación de `TicketPolicy` y `TicketAdditionalInfo` evaluaba:
+       `TicketPolicy = (exitRes?.PrintPolicyOnExit == true || !string.IsNullOrWhiteSpace(exitRes?.TicketPolicy)) ? exitRes?.TicketPolicy?.Trim() : (!string.IsNullOrWhiteSpace(branchPolicy) ? branchPolicy.Trim() : null);`.
+     - Esto causaba dos fallas críticas:
+       a) Si la resolución tenía `PrintPolicyOnExit = false` pero su texto no estaba vacío, la condición `|| !string.IsNullOrWhiteSpace(...)` evaluaba a `true` e imprimía la póliza a pesar de estar explícitamente apagada.
+       b) Si la resolución tenía `PrintPolicyOnExit = false` y texto vacío, caía al ternario falso y asignaba forzosamente `branchPolicy`.
+       c) En `rawExitSchedule`, si `exitRes.PrintScheduleOnExit` era `false`, caía a `else if (branchPrintScheduleOnEntry && !string.IsNullOrWhiteSpace(branchSchedule))`, mostrando el horario en salida.
+  2. **Corrección Quirúrgica en `ReceiptPreviewViewModel.cs`**:
+     - Se ajustó el flujo condicional desacoplando la existencia de la resolución:
+       - Si `exitRes != null`: Se evalúa estrictamente `exitRes.PrintPolicyOnExit`, `exitRes.PrintAdditionalInfoOnExit` y `exitRes.PrintScheduleOnExit`. Si están en `false`, se asigna `null` directamente y no se arrastra ninguna información de la sede. Si están en `true`, se toma el texto de la resolución o fallback a la sede si el texto está en blanco.
+       - Si `exitRes == null`: Fallback defensivo a la información de la sede (`branchPolicy`, `branchAdditionalInfo`, `branchSchedule`) para tiquetes antiguos sin resolución asociada.
+  3. **Pruebas Unitarias Automatizadas**:
+     - Se incorporaron pruebas unitarias en `ReceiptPreviewViewModelTests.cs`:
+       - `LoadTicket_ExitTicket_DoesNotShowPolicyOrInfo_WhenResolutionPrintFlagsAreFalse`: Certifica que cuando los flags de la resolución están en `false`, `TicketPolicy`, `TicketAdditionalInfo` y `BranchSchedule` son estrictamente `null` aun existiendo datos en la sede.
+       - `LoadTicket_ExitTicket_ShowsPolicyAndInfo_WhenResolutionPrintFlagsAreTrue`: Certifica la visualización de la póliza y fallback a la sede cuando el flag está en `true`.
+  4. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs` (Modificado)
+  - `Parking.UnitTests/ViewModels/ReceiptPreviewViewModelTests.cs` (Modificado)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build`: Exitoso (**0 Errores, 0 Advertencias**).
+  - Paridad funcional completa con PWA.
+
+---
+
 ## 📅 Entrada: [2026-10-08 00:26:00] - [FEATURE / PRINTING] Eliminación del Rótulo Literal "CONSECUTIVO:" en Tiquetes de Salida (WPF)
 
 - **`💬 Prompt Original del Usuario`**:

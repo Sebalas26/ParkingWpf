@@ -395,6 +395,94 @@ public class ReceiptPreviewViewModelTests
     }
 
     [Fact]
+    public void LoadTicket_ExitTicket_DoesNotShowPolicyOrInfo_WhenResolutionPrintFlagsAreFalse()
+    {
+        // Arrange
+        var branch = new BranchModel
+        {
+            Id = 1,
+            Name = "Sede Test",
+            TicketPolicy = "POLIZA DE LA SEDE",
+            TicketAdditionalInfo = "INFO ADICIONAL SEDE",
+            TicketSchedule = "L-V 8-6"
+        };
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(branch);
+
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket
+        {
+            TicketNumber = "PKF-001",
+            PlateNumber = "ABC123",
+            VehicleType = VehicleType.Car,
+            Status = TicketStatus.Completed,
+            ExitTimeUtc = DateTime.UtcNow
+        };
+
+        var resolution = new BillingResolution
+        {
+            Name = "Factura Venta",
+            PrintPolicyOnExit = false,
+            PrintAdditionalInfoOnExit = false,
+            PrintScheduleOnExit = false,
+            TicketPolicy = "POLIZA RESOLUCION",
+            TicketAdditionalInfo = "INFO RESOLUCION"
+        };
+
+        // Act
+        vm.LoadTicket(ticket, resolution);
+
+        // Assert
+        vm.TicketPolicy.Should().BeNull();
+        vm.TicketAdditionalInfo.Should().BeNull();
+        vm.BranchSchedule.Should().BeNull();
+        vm.HasTicketPolicy.Should().BeFalse();
+        vm.HasTicketAdditionalInfo.Should().BeFalse();
+        vm.HasBranchSchedule.Should().BeFalse();
+    }
+
+    [Fact]
+    public void LoadTicket_ExitTicket_ShowsPolicyAndInfo_WhenResolutionPrintFlagsAreTrue()
+    {
+        // Arrange
+        var branch = new BranchModel
+        {
+            Id = 1,
+            Name = "Sede Test",
+            TicketPolicy = "POLIZA DE LA SEDE",
+            TicketAdditionalInfo = "INFO ADICIONAL SEDE"
+        };
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(branch);
+
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket
+        {
+            TicketNumber = "PKF-001",
+            PlateNumber = "ABC123",
+            VehicleType = VehicleType.Car,
+            Status = TicketStatus.Completed,
+            ExitTimeUtc = DateTime.UtcNow
+        };
+
+        var resolution = new BillingResolution
+        {
+            Name = "Factura Venta",
+            PrintPolicyOnExit = true,
+            PrintAdditionalInfoOnExit = true,
+            TicketPolicy = "POLIZA RESOLUCION",
+            TicketAdditionalInfo = null // Fallback a la sede
+        };
+
+        // Act
+        vm.LoadTicket(ticket, resolution);
+
+        // Assert
+        vm.TicketPolicy.Should().Be("POLIZA RESOLUCION");
+        vm.TicketAdditionalInfo.Should().Be("INFO ADICIONAL SEDE");
+        vm.HasTicketPolicy.Should().BeTrue();
+        vm.HasTicketAdditionalInfo.Should().BeTrue();
+    }
+
+    [Fact]
     public void AppVersionDisplay_ReturnsCleanAssemblyVersion_WithoutLeadingV()
     {
         // Arrange & Act

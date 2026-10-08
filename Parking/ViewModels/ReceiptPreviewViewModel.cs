@@ -1154,18 +1154,23 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 }
 
                 // Póliza en Tiquete de Salida: Resolución o Sede
-                TicketPolicy = (exitRes?.PrintPolicyOnExit == true || !string.IsNullOrWhiteSpace(exitRes?.TicketPolicy))
-                    ? exitRes?.TicketPolicy?.Trim()
+                TicketPolicy = (exitRes != null)
+                    ? (exitRes.PrintPolicyOnExit ? (!string.IsNullOrWhiteSpace(exitRes.TicketPolicy) ? exitRes.TicketPolicy.Trim() : (!string.IsNullOrWhiteSpace(branchPolicy) ? branchPolicy.Trim() : null)) : null)
                     : (!string.IsNullOrWhiteSpace(branchPolicy) ? branchPolicy.Trim() : null);
 
-                TicketAdditionalInfo = (exitRes?.PrintAdditionalInfoOnExit == true || !string.IsNullOrWhiteSpace(exitRes?.TicketAdditionalInfo))
-                    ? exitRes?.TicketAdditionalInfo?.Trim()
+                TicketAdditionalInfo = (exitRes != null)
+                    ? (exitRes.PrintAdditionalInfoOnExit ? (!string.IsNullOrWhiteSpace(exitRes.TicketAdditionalInfo) ? exitRes.TicketAdditionalInfo.Trim() : (!string.IsNullOrWhiteSpace(branchAdditionalInfo) ? branchAdditionalInfo.Trim() : null)) : null)
                     : (!string.IsNullOrWhiteSpace(branchAdditionalInfo) ? branchAdditionalInfo.Trim() : null);
 
                 string? rawExitSchedule = null;
-                if (exitRes?.PrintScheduleOnExit == true && !string.IsNullOrWhiteSpace(exitRes.TicketSchedule))
+                if (exitRes != null)
                 {
-                    rawExitSchedule = exitRes.TicketSchedule.Trim();
+                    if (exitRes.PrintScheduleOnExit)
+                    {
+                        rawExitSchedule = !string.IsNullOrWhiteSpace(exitRes.TicketSchedule)
+                            ? exitRes.TicketSchedule.Trim()
+                            : (!string.IsNullOrWhiteSpace(branchSchedule) ? branchSchedule.Trim() : null);
+                    }
                 }
                 else if (branchPrintScheduleOnEntry && !string.IsNullOrWhiteSpace(branchSchedule))
                 {
