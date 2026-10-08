@@ -1195,7 +1195,7 @@ public class CheckOutViewModelTests : IDisposable
     }
 
     [Fact]
-    public async Task OnSelectedTicketChanged_WhenTicketSelected_AutoSelectsDefaultPaymentMethodAndConfiguredResolution()
+    public async Task OnSelectedTicketChanged_WhenTicketSelected_InitializesPaymentMethodAndResolutionAsNull()
     {
         // Arrange
         var posRes = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "POS", Name = "Factura POS Estándar", IsElectronicResolution = false };
@@ -1217,12 +1217,25 @@ public class CheckOutViewModelTests : IDisposable
         vm.SelectedTicket = ticket;
         await Task.Delay(100);
 
-        // Assert
-        vm.SelectedPaymentMethodEntity.Should().NotBeNull();
-        vm.SelectedPaymentMethodEntity!.Id.Should().Be(1);
-        vm.SelectedResolution.Should().NotBeNull();
-        vm.SelectedResolution.Should().Be(posRes);
+        // Assert: Initially empty (null) as required
+        vm.SelectedPaymentMethodEntity.Should().BeNull();
+        vm.SelectedPaymentMethod.Should().BeNull();
+        vm.SelectedResolution.Should().BeNull();
+        vm.ShowPaymentMethodWarning.Should().BeFalse();
         vm.ShowResolutionWarning.Should().BeFalse();
+        vm.HasNoPaymentMethodSelected.Should().BeTrue();
+        vm.IsCashPaymentSelected.Should().BeFalse();
+        vm.IsNonCashPaymentSelected.Should().BeFalse();
+
+        // Act 2: When operator explicitly selects Cash
+        var cashMethod = vm.AvailablePaymentMethods.First(p => p.Id == 1);
+        vm.SelectedPaymentMethodEntity = cashMethod;
+
+        // Assert 2: Selected method is configured
+        vm.SelectedPaymentMethodEntity.Should().Be(cashMethod);
+        vm.SelectedPaymentMethod.Should().Be(PaymentMethod.Cash);
+        vm.IsCashPaymentSelected.Should().BeTrue();
+        vm.HasNoPaymentMethodSelected.Should().BeFalse();
     }
 
     [Fact]
@@ -1254,7 +1267,15 @@ public class CheckOutViewModelTests : IDisposable
         vm.SelectedTicket = ticket;
         await Task.Delay(100);
 
-        // Assert
+        // Assert: Initially empty (null)
+        vm.SelectedPaymentMethodEntity.Should().BeNull();
+        vm.SelectedResolution.Should().BeNull();
+
+        // Act 2: Operator chooses configured method
+        var configuredMethod = vm.AvailablePaymentMethods.First(p => p.Id == 1);
+        vm.SelectedPaymentMethodEntity = configuredMethod;
+
+        // Assert 2: Method and configured default resolution are loaded
         vm.SelectedPaymentMethodEntity.Should().NotBeNull();
         vm.SelectedResolution.Should().NotBeNull();
         vm.SelectedResolution.Should().Be(customRes);

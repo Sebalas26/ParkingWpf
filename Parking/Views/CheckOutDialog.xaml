@@ -343,7 +343,7 @@
                                     </StackPanel>
 
                                     <!-- Input de Efectivo Recibido en Grande con Billetes Rápidos (Solo cuando requiere devuelta) -->
-                                    <StackPanel Grid.Column="1" Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel Grid.Column="1" Visibility="{Binding IsCashPaymentSelected, Converter={StaticResource BoolToVis}}">
                                         <TextBlock Text="MONTO EN EFECTIVO RECIBIDO ($) *" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}" Margin="0,0,0,4"/>
                                         <TextBox Text="{Binding AmountTendered, UpdateSourceTrigger=PropertyChanged, StringFormat='{}{0:N0}'}"
                                                  IsEnabled="{Binding SelectedPaymentMethodEntity.RequiresCashTender, FallbackValue=True}"
@@ -367,7 +367,7 @@
 
                                     <!-- Alternativa cuando RequiresCashTender es false (Pago Electrónico / Tarjeta / Transferencia) -->
                                     <Border Grid.Column="1"
-                                            Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}, ConverterParameter=Invert}"
+                                            Visibility="{Binding IsNonCashPaymentSelected, Converter={StaticResource BoolToVis}}"
                                             Background="#F0FDF4"
                                             BorderBrush="#BBF7D0"
                                             BorderThickness="1.5"
@@ -393,11 +393,39 @@
                                             </StackPanel>
                                         </Grid>
                                     </Border>
+
+                                    <!-- Placeholder cuando no hay método de pago seleccionado -->
+                                    <Border Grid.Column="1"
+                                            Visibility="{Binding HasNoPaymentMethodSelected, Converter={StaticResource BoolToVis}}"
+                                            Background="#F8FAFC"
+                                            BorderBrush="#E2E8F0"
+                                            BorderThickness="1.5"
+                                            CornerRadius="10"
+                                            Padding="14,10">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Path Grid.Column="0"
+                                                  Data="{StaticResource IconCash}"
+                                                  Fill="{DynamicResource BrushTextMuted}"
+                                                  Width="26"
+                                                  Height="26"
+                                                  Stretch="Uniform"
+                                                  VerticalAlignment="Center"
+                                                  Margin="0,0,12,0"/>
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                                <TextBlock Text="MÉTODO DE PAGO PENDIENTE" FontSize="11.5" FontWeight="Bold" Foreground="{DynamicResource BrushTextMuted}"/>
+                                                <TextBlock Text="Seleccione el método de pago y resolución abajo para continuar" FontSize="11" Foreground="{DynamicResource BrushTextMuted}" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
                                 </Grid>
 
                                 <!-- Fila Inferior: Tarjeta de CAMBIO / DEVUELTA en Grande -->
                                 <Border Grid.Row="1"
-                                        Visibility="{Binding SelectedPaymentMethodEntity.RequiresCashTender, Converter={StaticResource BoolToVis}}"
+                                        Visibility="{Binding IsCashPaymentSelected, Converter={StaticResource BoolToVis}}"
                                         Background="#b2e5f3ff" BorderBrush="#36c8f1ff" BorderThickness="1.5" CornerRadius="10" Padding="14,8">
                                     <Grid>
                                         <Grid.ColumnDefinitions>

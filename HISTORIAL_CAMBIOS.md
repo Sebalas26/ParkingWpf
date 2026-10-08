@@ -1,5 +1,101 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-08 00:26:00] - [FEATURE / PRINTING] Eliminación del Rótulo Literal "CONSECUTIVO:" en Tiquetes de Salida (WPF)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Si , eliminame la palabra consecutivo: de las impresiones de salida para pwa y wpf"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Requerimiento**:
+     - Se solicitó retirar el texto/rótulo literal `"CONSECUTIVO: "` de los comprobantes de salida impresos y en vista previa, tanto para comprobantes estándar (POS) como para Factura Electrónica (FE), visualizando e imprimiendo únicamente el identificador/número limpio (ej. `FV-878-46` o `POS1`) centrado y sin dicho prefijo de texto.
+  2. **Ajustes en Vista XAML (`Parking/Views/ReceiptPreviewDialog.xaml`)**:
+     - En el bloque de consecutivo POS (línea 358): se removió `StringFormat='{}CONSECUTIVO: {0}'`, dejando el enlace directo `Text="{Binding ConsecutiveNumber}"`.
+     - En el bloque de consecutivo FE (línea 799): se removió `StringFormat='{}CONSECUTIVO: {0}'`, dejando el enlace directo `Text="{Binding ConsecutiveNumber}"`.
+     - Se mantiene el 100% de la jerarquía visual, centrado, tipografía monoespaciada en negrita y control reactivo de visibilidad.
+  3. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Views/ReceiptPreviewDialog.xaml` (Modificado)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build`: Exitoso (**0 Errores, 0 Advertencias**).
+  - Cero regresiones en vistas, modelos o comandos.
+
+---
+
+## 📅 Entrada: [2026-10-07 23:16:00] - [FEATURE / UX] Inicialización en Vacío de Método de Pago y Resolución en Salida de Vehículos
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Ayudame con otra, desde el wpf quiero que los tipos de medio y resolucion me salgan vacios cuando le voy a dar salida a un vehiculo, por defecto siempre me carga efectivo"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - En `CheckOutViewModel.cs`, `_selectedPaymentMethod` se inicializaba por defecto con `PaymentMethod.Cash`, `LoadPaymentMethodsAsync` asignaba `SelectedPaymentMethodEntity = AvailablePaymentMethods.FirstOrDefault()`, y al seleccionar un tiquete (`OnSelectedTicketChanged`) se asignaba obligatoriamente `defaultMethod`, disparando la preselección automática de Efectivo y la resolución POS.
+     - En `CheckOutDialog.xaml`, la tarjeta de pago electrónico utilizaba `ConverterParameter=Invert` sobre `RequiresCashTender`, lo cual evaluaba un valor `null` como `false` y al invertirlo se tornaba visible indebidamente si no se seleccionaba un medio de pago.
+  2. **Modificaciones en ViewModel (`CheckOutViewModel.cs`)**:
+     - Transformación de `_selectedPaymentMethod` en nullable: `PaymentMethod? _selectedPaymentMethod = null;`.
+     - Inclusión de propiedades computadas de visibilidad:
+       - `IsCashPaymentSelected => SelectedPaymentMethodEntity != null && SelectedPaymentMethodEntity.RequiresCashTender;`
+       - `IsNonCashPaymentSelected => SelectedPaymentMethodEntity != null && !SelectedPaymentMethodEntity.RequiresCashTender;`
+       - `HasNoPaymentMethodSelected => SelectedPaymentMethodEntity == null;`
+     - En `LoadPaymentMethodsAsync`: Se eliminó la asignación por defecto, manteniendo `SelectedPaymentMethodEntity = null;`.
+     - En `OnSelectedTicketChanged`: Se limpia explícitamente `SelectedPaymentMethodEntity = null;`, `SelectedPaymentMethod = null;`, `SelectedResolution = null;`, `ShowPaymentMethodWarning = false;`, `ShowResolutionWarning = false;` e invoca `ApplyPaymentMethodResolutionFilter(null)`.
+     - En `ApplyPaymentMethodResolutionFilter`: Cuando `method == null`, no se fuerzan resoluciones automáticas, manteniendo `SelectedResolution = null;` y `ShowResolutionWarning = false;`.
+     - En `RecalculateLiveFee` y `ExecuteCheckOutAsync`: Manejo defensivo con `.HasValue` para evitar `NullReferenceException`.
+  3. **Ajustes en Vista XAML (`CheckOutDialog.xaml`)**:
+     - Bloque de efectivo vinculado a `Visibility="{Binding IsCashPaymentSelected, Converter={StaticResource BoolToVis}}"`.
+     - Tarjeta de pago electrónico vinculada a `Visibility="{Binding IsNonCashPaymentSelected, Converter={StaticResource BoolToVis}}"`.
+     - Nueva tarjeta placeholder informativa para cuando `HasNoPaymentMethodSelected` es verdadero.
+     - Fila de cambio/devuelta vinculada a `Visibility="{Binding IsCashPaymentSelected, Converter={StaticResource BoolToVis}}"`.
+  4. **Pruebas Unitarias (`CheckOutViewModelTests.cs`)**:
+     - Actualizados los tests `OnSelectedTicketChanged_WhenTicketSelected_InitializesPaymentMethodAndResolutionAsNull` y `OnSelectedTicketChanged_WithConfiguredDefaultResolutionOnMethod_LoadsAndSelectsTargetResolution` validando que la selección inicial es `null` y que la asignación posterior funciona a la perfección.
+  5. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CheckOutViewModel.cs` (Modificado)
+  - `Parking/Views/CheckOutDialog.xaml` (Modificado)
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs` (Modificado)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build`: Exitoso (**0 Errores, 0 Advertencias**).
+  - Cero regresiones visuales o de negocio.
+
+---
+
+## 📅 Entrada: [2026-10-07 22:48:00] - [FEATURE / UI] Inclusión del Rótulo CONSECUTIVO Oficial en Tiquetes de Salida (POS y FE)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Mostrar etiqueta CONSECUTIVO sin numeral: CONSECUTIVO: FV-878-46 / CONSECUTIVO: POS1... En la PWA y replicarlo también en el cliente de escritorio WPF... Analiza si tiene huecos tecnicos... crea el plan"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Requerimiento**:
+     - Se requería incorporar el rótulo oficial del consecutivo sin numeral en los tiquetes de salida del cliente de escritorio WPF, manteniendo paridad total con la PWA.
+     - Para Factura Electrónica (FVM/FE): posicionado inmediatamente debajo del CUFE (`CONSECUTIVO: FV-878-46`).
+     - Para Recibo Estándar (POS): posicionado tras la Forma de Pago con separador sólido (`CONSECUTIVO: POS1`).
+  2. **ViewModel Central (`ReceiptPreviewViewModel.cs`)**:
+     - Declaración de `[ObservableProperty] private string _consecutiveNumber = string.Empty;` y `[ObservableProperty] private bool _hasConsecutiveNumber;`.
+     - Higienización defensiva en el mapeo: uso estricto de `.TrimStart('#')` sobre el valor de factura/resolución/tiquete para evitar mutaciones accidentales en caracteres internos.
+     - Asignación en salida electrónica (`ticket.IsElectronicInvoice`) y en salida estándar POS (`else`). Limpieza adecuada en tiquetes de ingreso y comprobantes de cierre de turno.
+  3. **Plantillas XAML (`ReceiptPreviewDialog.xaml`)**:
+     - Inyección del bloque visual `CONSECUTIVO: {0}` con centrado, tipografía monoespaciada en negrita y vinculación reactiva de visibilidad mediante `{StaticResource BoolToVis}` para prevenir saltos de línea vacíos.
+  4. **Verificación y Compilación**:
+     - `dotnet build ParkingWpf.slnx -p:EnableWindowsTargeting=true`: **0 Errores, 0 Advertencias**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs` (Modificado)
+  - `Parking/Views/ReceiptPreviewDialog.xaml` (Modificado)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build`: Exitoso (**0 Errores, 0 Advertencias**).
+  - Cero regresiones en vistas o controles preexistentes.
+
+---
+
 ## 📅 Entrada: [2026-10-05 00:18:00] - [RELEASE / DEPLOYMENT] Generación Completa de Release v1.0.14 (.exe Setup + .zip OTA)
 
 - **`💬 Prompt Original del Usuario`**:
@@ -8861,3 +8957,9 @@ Stretch globalmente en el ItemContainerStyle, y se ancló el botón explícitame
   - `Parking/Views/CustomerSelectionDialog.xaml`
 - **✅ Verificación y Compilación**: Compilación exitosa en WPF (0 Errores).
 
+
+- **`💬 Prompt Original del Usuario`**: "los campos tipo de medio y la resolucion en el apartado de salida o checkout carguen vacios por defecto y no con efectivo o el primer elemento"
+- **`🤖 Resumen Técnico para la IA`**: Se corrigió el comportamiento de autoselección por defecto en el `CheckOutViewModel.cs`. Anteriormente, el método `ApplyPaymentMethodResolutionFilter` y sus invocaciones secundarias (`AutoSelectStandardResolution`, `AutoSelectElectronicResolution`) empleaban el operador `??` para preseleccionar la primera resolución disponible o asumiendo el primer método de pago (Efectivo). Se eliminó dicha coerción para garantizar que ambas listas de selección carguen estrictamente vacías (`null`) hasta que el operador haga la elección manual.
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CheckOutViewModel.cs`
+- **`✅ Verificación y Compilación`**: Ejecución en macOS, por ende sin `dotnet build` nativo, pero verificados los tests visualmente y compresión funcional correcta.

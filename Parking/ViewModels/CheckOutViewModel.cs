@@ -130,7 +130,11 @@ public partial class CheckOutViewModel : ViewModelBase
     private decimal _changeDue;
 
     [ObservableProperty]
-    private PaymentMethod _selectedPaymentMethod = PaymentMethod.Cash;
+    private PaymentMethod? _selectedPaymentMethod;
+
+    public bool IsCashPaymentSelected => SelectedPaymentMethodEntity != null && SelectedPaymentMethodEntity.RequiresCashTender;
+    public bool IsNonCashPaymentSelected => SelectedPaymentMethodEntity != null && !SelectedPaymentMethodEntity.RequiresCashTender;
+    public bool HasNoPaymentMethodSelected => SelectedPaymentMethodEntity == null;
 
     [ObservableProperty]
     private PaymentMethodEntity? _selectedPaymentMethodEntity;
@@ -679,7 +683,7 @@ public partial class CheckOutViewModel : ViewModelBase
             }
 
             HasPaymentMethods = AvailablePaymentMethods.Count > 0;
-            SelectedPaymentMethodEntity = AvailablePaymentMethods.FirstOrDefault();
+            SelectedPaymentMethodEntity = null;
         }
         catch { }
     }
@@ -747,6 +751,10 @@ public partial class CheckOutViewModel : ViewModelBase
 
     partial void OnSelectedPaymentMethodEntityChanged(PaymentMethodEntity? value)
     {
+        OnPropertyChanged(nameof(IsCashPaymentSelected));
+        OnPropertyChanged(nameof(IsNonCashPaymentSelected));
+        OnPropertyChanged(nameof(HasNoPaymentMethodSelected));
+
         if (value != null)
         {
             ShowPaymentMethodWarning = false;
@@ -765,6 +773,8 @@ public partial class CheckOutViewModel : ViewModelBase
         }
         else
         {
+            SelectedPaymentMethod = null;
+            ChangeDue = 0m;
             ApplyPaymentMethodResolutionFilter(null);
         }
     }
@@ -817,9 +827,6 @@ public partial class CheckOutViewModel : ViewModelBase
                             targetResolution = feResolutions.FirstOrDefault(r => r.ResolutionId.ToString().Equals(method.DefaultResolutionId, StringComparison.OrdinalIgnoreCase));
                         }
 
-                        // Fallback dinámico a la primera resolución electrónica disponible
-                        targetResolution ??= feResolutions.FirstOrDefault();
-
                         SelectedResolution = targetResolution;
                         ShowResolutionWarning = targetResolution == null;
                     }
@@ -839,9 +846,7 @@ public partial class CheckOutViewModel : ViewModelBase
                         targetResolution = AvailableResolutions.FirstOrDefault(r => r.ResolutionId.ToString().Equals(method.DefaultResolutionId, StringComparison.OrdinalIgnoreCase));
                     }
 
-                    SelectedResolution = targetResolution 
-                        ?? AvailableResolutions.FirstOrDefault(r => !IsElectronicResolutionDefensive(r)) 
-                        ?? AvailableResolutions.FirstOrDefault();
+                    SelectedResolution = targetResolution;
 
                     if (SelectedResolution != null && IsElectronicResolutionDefensive(SelectedResolution))
                     {
@@ -883,9 +888,13 @@ public partial class CheckOutViewModel : ViewModelBase
                     {
                         AutoSelectStandardResolution();
                     }
+                    ShowResolutionWarning = SelectedResolution == null;
                 }
-
-                ShowResolutionWarning = SelectedResolution == null;
+                else
+                {
+                    SelectedResolution = null;
+                    ShowResolutionWarning = false;
+                }
             }
         }
         finally
@@ -906,11 +915,7 @@ public partial class CheckOutViewModel : ViewModelBase
             return;
         }
 
-        var feRes = targetList.FirstOrDefault(r => IsElectronicResolutionDefensive(r)) ?? targetList.FirstOrDefault();
-        if (feRes != null)
-        {
-            SelectedResolution = feRes;
-        }
+        var feRes = targetList.FirstOrDefault(r => IsElectronicResolutionDefensive(r));
     }
 
     private void AutoSelectStandardResolution()
@@ -923,11 +928,7 @@ public partial class CheckOutViewModel : ViewModelBase
             return;
         }
 
-        var stdRes = targetList.FirstOrDefault(r => !IsElectronicResolutionDefensive(r)) ?? targetList.FirstOrDefault();
-        if (stdRes != null)
-        {
-            SelectedResolution = stdRes;
-        }
+        var stdRes = targetList.FirstOrDefault(r => !IsElectronicResolutionDefensive(r));
     }
 
     [RelayCommand]
@@ -1420,10 +1421,12 @@ public partial class CheckOutViewModel : ViewModelBase
 
             ExitNotes = string.Empty;
 
-            var defaultMethod = AvailablePaymentMethods.FirstOrDefault();
-            SelectedPaymentMethodEntity = defaultMethod;
+            SelectedPaymentMethodEntity = null;
+            SelectedPaymentMethod = null;
+            SelectedResolution = null;
             ShowPaymentMethodWarning = false;
-            ApplyPaymentMethodResolutionFilter(defaultMethod);
+            ShowResolutionWarning = false;
+            ApplyPaymentMethodResolutionFilter(null);
 
             if (HasElectronicInvoicingEnabled)
             {
@@ -2072,7 +2075,7 @@ public partial class CheckOutViewModel : ViewModelBase
         var previousCalculatedFee = CalculatedFee;
         CalculatedFee = Math.Max(0m, GrossFee - DiscountAmount);
 
-        var requiresCash = SelectedPaymentMethodEntity?.RequiresCashTender ?? (SelectedPaymentMethod == PaymentMethod.Cash);
+        var requiresCash = SelectedPaymentMethodEntity?.RequiresCashTender ?? (SelectedPaymentMethod.HasValue && SelectedPaymentMethod.Value == PaymentMethod.Cash);
 
         // Si el valor neto a pagar es $0.00 (descuento del 100% o tiempo de gracia), el efectivo a recibir es 0 y el cambio es 0,
         // y NUNCA se emite factura electrónica (prohibido por DIAN y regla de negocio)
@@ -2576,7 +2579,7 @@ public partial class CheckOutViewModel : ViewModelBase
         }
 
         var methodEnum = SelectedPaymentMethodEntity?.ToEnum() ?? PaymentMethod.Cash;
-        var requiresCash = !IsMonthlyTicket && (SelectedPaymentMethodEntity?.RequiresCashTender ?? (SelectedPaymentMethod == PaymentMethod.Cash));
+        var requiresCash = !IsMonthlyTicket && (SelectedPaymentMethodEntity?.RequiresCashTender ?? (SelectedPaymentMethod.HasValue && SelectedPaymentMethod.Value == PaymentMethod.Cash));
 
         if (requiresCash && AmountTendered < CalculatedFee)
         {

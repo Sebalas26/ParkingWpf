@@ -352,6 +352,18 @@
                                            HorizontalAlignment="Center"
                                            Margin="0,2,0,6"/>
 
+                                <!-- Consecutivo POS -->
+                                <StackPanel Visibility="{Binding HasConsecutiveNumber, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6">
+                                    <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,0,0,4"/>
+                                    <TextBlock Text="{Binding ConsecutiveNumber}"
+                                               FontSize="11"
+                                               FontWeight="Bold"
+                                               FontFamily="{StaticResource FontFamilyMonospace}"
+                                               Foreground="#000000"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,2"/>
+                                </StackPanel>
+
                                 <!-- Información Adicional y Póliza -->
                                 <StackPanel Visibility="{Binding HasTicketPolicyOrAdditionalInfo, Converter={StaticResource BoolToVis}}" Margin="0,2,0,4">
                                     <Rectangle Height="1" Fill="#000000" HorizontalAlignment="Stretch" Margin="0,2,0,4"/>
@@ -781,7 +793,17 @@
                                            FontFamily="{StaticResource FontFamilyMonospace}"
                                            Foreground="#000000"
                                            TextWrapping="Wrap"
-                                           Margin="0,2,0,8"/>
+                                           Margin="0,2,0,4"/>
+
+                                <!-- Consecutivo FE -->
+                                <TextBlock Text="{Binding ConsecutiveNumber}"
+                                           Visibility="{Binding HasConsecutiveNumber, Converter={StaticResource BoolToVis}}"
+                                           FontSize="11"
+                                           FontWeight="Bold"
+                                           FontFamily="{StaticResource FontFamilyMonospace}"
+                                           Foreground="#000000"
+                                           HorizontalAlignment="Center"
+                                           Margin="0,2,0,6"/>
 
                                 <!-- 8. Pólizas e Información Adicional -->
                                 

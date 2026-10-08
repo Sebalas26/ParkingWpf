@@ -312,6 +312,12 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
     private string _cufe = string.Empty;
 
     [ObservableProperty]
+    private string _consecutiveNumber = string.Empty;
+
+    [ObservableProperty]
+    private bool _hasConsecutiveNumber;
+
+    [ObservableProperty]
     private string _dianResolutionText = string.Empty;
 
     [ObservableProperty]
@@ -967,6 +973,12 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                     ? ticket.Cufe
                     : GenerateCufe($"{InvoicePrefix}{InvoiceNumberStr}", exitTime, totalPaid, BranchNit);
 
+                var rawConsecutive = !string.IsNullOrWhiteSpace(ticket.InvoiceNumber)
+                    ? ticket.InvoiceNumber
+                    : (!string.IsNullOrWhiteSpace(InvoicePrefix) ? $"{InvoicePrefix}-{InvoiceNumberStr}" : InvoiceNumberStr);
+                ConsecutiveNumber = (rawConsecutive ?? string.Empty).Trim().TrimStart('#');
+                HasConsecutiveNumber = !string.IsNullOrWhiteSpace(ConsecutiveNumber);
+
                 DianResolutionText = string.Empty;
                 DianRangeText = string.Empty;
 
@@ -982,6 +994,12 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 var currentNum = resolution != null ? resolution.CurrentNumber.ToString() : (!string.IsNullOrWhiteSpace(ticket.InvoiceNumber) ? ticket.InvoiceNumber : ticket.TicketNumber);
                 InvoiceNumberStr = currentNum.PadLeft(8, '0');
                 InvoiceNumberText = $"{InvoicePrefix}- {InvoiceNumberStr}";
+
+                var rawPosConsecutive = !string.IsNullOrWhiteSpace(ticket.InvoiceNumber)
+                    ? ticket.InvoiceNumber
+                    : (!string.IsNullOrWhiteSpace(resolution?.Prefix) ? $"{resolution.Prefix}{resolution.CurrentNumber}" : ticket.TicketNumber);
+                ConsecutiveNumber = (rawPosConsecutive ?? string.Empty).Trim().TrimStart('#');
+                HasConsecutiveNumber = !string.IsNullOrWhiteSpace(ConsecutiveNumber);
 
                 InvoiceDateStr = exitTime.ToString("dd/MM/yy");
                 InvoiceTimeStr = exitTime.ToString("hh:mm tt", CultureInfo.InvariantCulture);
@@ -1006,6 +1024,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             HasAmountPaid = false;
             ChangeGivenStr = string.Empty;
             HasChange = false;
+            ConsecutiveNumber = string.Empty;
+            HasConsecutiveNumber = false;
             InvoiceNumberText = string.IsNullOrWhiteSpace(ticket.TicketNumber) ? string.Empty : (ticket.TicketNumber.StartsWith("#") ? ticket.TicketNumber : $"#{ticket.TicketNumber}");
             InvoiceDateStr = (ticket.EntryTime != default ? ticket.EntryTime : DateTime.Now).ToString("dd/MM/yy");
             InvoiceTimeStr = (ticket.EntryTime != default ? ticket.EntryTime : DateTime.Now).ToString("hh:mm tt", CultureInfo.InvariantCulture);
@@ -1193,6 +1213,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
         IsExitReceipt = false;
         IsFvmInvoice = false;
         IsStandardExitReceipt = false;
+        ConsecutiveNumber = string.Empty;
+        HasConsecutiveNumber = false;
 
         var currentBranch = _sessionService.CurrentBranch;
         var initialWidth = ResolvePaperWidth(shift.BranchId);
