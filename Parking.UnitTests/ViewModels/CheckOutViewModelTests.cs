@@ -82,7 +82,8 @@ public class CheckOutViewModelTests : IDisposable
         {
             BranchId = 1,
             PaymentMethodId = 1,
-            IsActive = true
+            IsActive = true,
+            RequiresCashTender = true
         });
         db.SaveChanges();
     }
@@ -535,6 +536,7 @@ public class CheckOutViewModelTests : IDisposable
             .ReturnsAsync(ticket);
 
         vm.SelectedTicket = ticket;
+        vm.SelectedPaymentMethodEntity = vm.AvailablePaymentMethods.First();
         vm.SelectedResolution = new BillingResolution { ResolutionId = Guid.NewGuid(), Prefix = "FE", IsActive = true, IsElectronicResolution = true };
         vm.EmitElectronicInvoice = true;
         vm.IsCustomCustomer = false; // Consumidor Final por defecto
@@ -971,6 +973,53 @@ public class CheckOutViewModelTests : IDisposable
             It.Is<string>(s => s.Contains("Convenio")),
             It.Is<string>(s => s.Contains("supera el tiempo")),
             DialogNotificationType.Warning), Times.Once);
+    }
+
+    [Fact]
+    public async Task ToggleSelectAgreement_FixedFeeWithCoverage_WhenExceedsMaxHours_DoesNotBlockAndCalculatesExcess()
+    {
+        // Arrange
+        _mockPricingCalculator.Setup(p => p.GetRate(VehicleType.Car, It.IsAny<DayOfWeek?>()))
+            .Returns(new VehicleRate { VehicleType = VehicleType.Car, HourRate = 5000m, MinuteRate = 100m });
+        _mockPricingCalculator.Setup(p => p.CalculateFee(VehicleType.Car, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 0, false))
+            .Returns(45000m); // 9 horas normal = 45.000
+        _mockPricingCalculator.Setup(p => p.CalculateFee(VehicleType.Car, It.IsAny<DateTime>(), It.IsAny<DateTime>(), 480, false))
+            .Returns(5000m); // 1 hora de excedente = 5.000
+
+        var vm = CreateViewModel();
+        var ticket = new ParkingTicket
+        {
+            TicketId = Guid.NewGuid(),
+            TicketNumber = "PKF-COV1",
+            VehicleType = VehicleType.Car,
+            EntryTimeUtc = DateTime.UtcNow.AddMinutes(-540) // 9 hours stay
+        };
+        vm.SelectedTicket = ticket;
+
+        var agreement = new CommercialAgreement
+        {
+            AgreementId = Guid.NewGuid(),
+            Name = "Convenio Proveedor Aliado",
+            DiscountType = 3, // FixedFeeWithCoverage
+            DiscountFixedAmount = 30000m,
+            MaxHoursApplicable = 8, // 480 min cobertura
+            MinPurchaseAmount = 0m
+        };
+
+        // Act
+        await vm.ToggleSelectAgreementCommand.ExecuteAsync(agreement);
+
+        // Assert - No se bloquea, aplica tarifa fija + excedente
+        vm.SelectedAgreement.Should().Be(agreement);
+        vm.HasAgreementDiscount.Should().BeTrue();
+        vm.IsAgreementEligible.Should().BeTrue();
+        vm.CalculatedFee.Should().Be(35000m); // 30.000 base + 5.000 excedente
+        vm.AgreementEligibilityBannerStatus.Should().Be("warning");
+        vm.AgreementEligibilityBannerText.Should().Contain("Excedente");
+        _mockDialogService.Verify(d => d.ShowAlertAsync(
+            It.Is<string>(s => s.Contains("Convenio")),
+            It.IsAny<string>(),
+            DialogNotificationType.Warning), Times.Never);
     }
 
     [Fact]

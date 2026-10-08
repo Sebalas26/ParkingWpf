@@ -821,7 +821,8 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
             DiscountAmountStr = "$ 0";
             SubtotalStr = string.Empty;
 
-            if (ticket.DiscountAmount > 0)
+            bool hasConvInvoice = !string.IsNullOrWhiteSpace(ticket.InvoiceNumber) && ticket.InvoiceNumber.StartsWith("CONV-", StringComparison.OrdinalIgnoreCase);
+            if (ticket.DiscountAmount > 0 || hasConvInvoice)
             {
                 string? agreementName = null;
                 try
@@ -852,17 +853,20 @@ public partial class ReceiptPreviewViewModel : ViewModelBase
                 catch { }
 
                 // Fallback defensivo: si no se encontró en BD pero el tiquete tiene comprobante de convenio
-                if (string.IsNullOrWhiteSpace(agreementName) && !string.IsNullOrWhiteSpace(ticket.InvoiceNumber) && ticket.InvoiceNumber.StartsWith("CONV-", StringComparison.OrdinalIgnoreCase))
+                if (string.IsNullOrWhiteSpace(agreementName) && hasConvInvoice)
                 {
-                    agreementName = ticket.InvoiceNumber.Substring(5).Trim();
+                    agreementName = ticket.InvoiceNumber!.Substring(5).Trim();
                 }
 
-                HasAgreement = true;
-                HasDiscount = true;
-                AgreementDisplayName = !string.IsNullOrWhiteSpace(agreementName) ? agreementName.ToUpperInvariant() : "CONVENIO APLICADO";
-                DiscountAmountStr = $"- {ticket.DiscountAmount:C0}";
-                var gross = ticket.GrossAmount > totalPaid ? ticket.GrossAmount : (totalPaid + ticket.DiscountAmount);
-                SubtotalStr = $"{gross:N0}";
+                if (!string.IsNullOrWhiteSpace(agreementName) || ticket.DiscountAmount > 0)
+                {
+                    HasAgreement = true;
+                    HasDiscount = ticket.DiscountAmount > 0;
+                    AgreementDisplayName = !string.IsNullOrWhiteSpace(agreementName) ? agreementName.ToUpperInvariant() : "CONVENIO APLICADO";
+                    DiscountAmountStr = ticket.DiscountAmount > 0 ? $"- {ticket.DiscountAmount:C0}" : "$ 0";
+                    var gross = ticket.GrossAmount > totalPaid ? ticket.GrossAmount : (totalPaid + ticket.DiscountAmount);
+                    SubtotalStr = $"{gross:N0}";
+                }
             }
 
             var paid = ticket.AmountPaid > 0 ? ticket.AmountPaid : totalPaid;

@@ -10,7 +10,7 @@ public class CommercialAgreement
     public Guid StoreId { get; set; }
     public string Name { get; set; } = string.Empty;
     public decimal MinPurchaseAmount { get; set; }
-    public int DiscountType { get; set; } = 0; // 0=Percentage, 1=FixedAmount, 2=FreeTime
+    public int DiscountType { get; set; } = 0; // 0=Percentage, 1=FixedAmount, 2=FreeTime, 3=FixedFeeWithCoverage
     public decimal? DiscountPercentage { get; set; }
     public decimal? DiscountFixedAmount { get; set; }
     public int? FreeMinutes { get; set; }

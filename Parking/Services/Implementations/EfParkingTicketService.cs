@@ -308,6 +308,32 @@ public class EfParkingTicketService : IParkingTicketService
         var gross = _pricingCalculator.CalculateFee(ticket.VehicleType, ticket.EntryTimeUtc, exitTime, 0, isLostTicket);
         var net = Math.Max(0m, gross - discountAmount);
 
+        // Si se especificó un convenio con tarifa fija y cobertura (DiscountType == 3), liquidar conforme a su regla:
+        if (agreementId.HasValue)
+        {
+            var ag = await db.CommercialAgreements.FindAsync(agreementId.Value);
+            if (ag != null && ag.DiscountType == 3 && ag.DiscountFixedAmount.GetValueOrDefault(0) > 0)
+            {
+                decimal fixedFee = ag.DiscountFixedAmount!.Value;
+                int coverageMinutes = (ag.MaxHoursApplicable.GetValueOrDefault(0) * 60) + ag.MaxMinutesApplicable.GetValueOrDefault(0);
+                int totalStay = (int)Math.Max(0, (exitTime - ticket.EntryTimeUtc).TotalMinutes);
+
+                if (coverageMinutes <= 0 || totalStay <= coverageMinutes)
+                {
+                    net = fixedFee;
+                    gross = Math.Max(gross, net);
+                    discountAmount = Math.Max(0m, gross - net);
+                }
+                else
+                {
+                    decimal excessFee = _pricingCalculator.CalculateFee(ticket.VehicleType, ticket.EntryTimeUtc, exitTime, coverageMinutes, false);
+                    net = fixedFee + excessFee;
+                    gross = Math.Max(gross, net);
+                    discountAmount = Math.Max(0m, gross - net);
+                }
+            }
+        }
+
         // Garantizar que el ID de la sede y empresa activa queden asignados al tiquete
         var currentBranchId = _sessionService.CurrentBranch?.Id ?? _sessionService.CurrentBranchId;
         if (currentBranchId.HasValue && (!ticket.BranchId.HasValue || ticket.BranchId.Value <= 0))
@@ -416,7 +442,7 @@ public class EfParkingTicketService : IParkingTicketService
             await _syncEngine.EnqueueOfflineCheckOutAsync(ticket);
         }
 
-        if (storeId.HasValue && agreementId.HasValue && !string.IsNullOrWhiteSpace(invoiceNumber) && discountAmount > 0)
+        if (storeId.HasValue && agreementId.HasValue && !string.IsNullOrWhiteSpace(invoiceNumber) && (discountAmount > 0 || ticket.NetAmount > 0))
         {
             var discountRecord = new TicketDiscount
             {

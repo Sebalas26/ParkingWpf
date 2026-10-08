@@ -1,5 +1,46 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-08 07:55:00] - [FEATURE / AGREEMENTS] Modalidad de Convenio Comercial: Tarifa Fija con Cobertura y Excedente Ordinario (DiscountType = 3)
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"necesito que valides el tema de convenios por que existe una solicitud del cliente que se requiere que se pueda crear un convenio que cuando se aplique cobre un valor establecido pero por un rango de horas maximo entonces, ejemplo el convenio se llama factory y se dice que max 8 horas y el valor defecto a cobrar va ser 30.000 si así fuera durado 2 horas 1 hora 1 minuto desde que se aplique ese convenio se cobra eso si me explico ? pero si supera las 8 horas entonces se coloca los 30.000 y despues desde el rango establecido pues si cobre normal si me explico ? analiza y dame el plan detallado de que tocarias de cada linea de codigo y cada proyecto."_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Contexto Operativo**:
+     - En el cliente de escritorio WPF (caja física), la selección de convenios evaluaba `ToggleSelectAgreementAsync`, mostrando un cuadro de diálogo bloqueante `MessageDialog` si el vehículo superaba el tiempo máximo configurado (`agreement.MaxHoursApplicable` / `agreement.MaxMinutesApplicable`).
+     - Para la modalidad `DiscountType = 3: FixedFeeWithCoverage`, el convenio no debe bloquearse al superar la cobertura; debe admitir la selección, cobrar la tarifa fija hasta el límite de horas y sumar la tarifa ordinaria sobre el tiempo excedente.
+     - En comprobantes térmicos de salida (`ReceiptPreviewViewModel.cs`), si el vehículo estuvo un tiempo corto donde la tarifa ordinaria base era menor a la fija pactada (descuento financiero $0), el comprobante mostraba erróneamente "CONVENIO: NO APLICA".
+  2. **Ajustes en `CheckOutViewModel.cs`**:
+     - En `ToggleSelectAgreementAsync`: Se exceptuó `DiscountType == 3` del diálogo bloqueante de tiempo máximo excedido.
+     - En `EvaluateAgreementEligibility`: Si `agreement.DiscountType == 3`, `IsEligible` es `true` aun cuando supere la cobertura (informando en el banner si está en tiempo o con excedente ordinario).
+     - En `RecalculateLiveFee`: Para `DiscountType == 3`:
+       - Si estadía <= cobertura: tarifa neta pactada `agreement.DiscountFixedAmount`. Descuento visual `Math.Max(0, gross - flatFee)`. Si tarifa bruta base < flatFee, se eleva `GrossAmount` a flatFee para que `NetAmount` refleje exactamente la tarifa pactada.
+       - Si estadía > cobertura: se calcula la tarifa ordinaria del excedente con `_pricingCalculator.CalculateFee` y se suma (`targetNet = flatFee + excessFee`).
+     - En `FormatAgreementBenefit`: Retorna `$ {flatFee:N0} hasta {horas}h` de manera 100% dinámica.
+     - Estabilidad en filtros de medios de pago: Selección automática de resolución DIAN en `ApplyPaymentMethodResolutionFilter`, `AutoSelectElectronicResolution` y `AutoSelectStandardResolution`.
+  3. **Persistencia Local y Sincronización en `EfParkingTicketService.cs`**:
+     - En `ProcessExitAsync`: Soporte para `DiscountType == 3` registrando la tarifa acordada y excedente tanto en SQLite local como en el payload de sincronización cloud.
+     - Registro de descuento de ticket condicionado a `ticket.DiscountAmount > 0 || ticket.NetAmount > 0` con `InvoiceNumber = "CONV-WPF"` para que siempre persista el convenio en base local.
+  4. **Presentación en Recibo Térmico (`ReceiptPreviewViewModel.cs`)**:
+     - Se ajustó la detección del convenio para imprimir el nombre dinámico del convenio cuando `ticket.InvoiceNumber.StartsWith("CONV-")` aun si el descuento financiero fue $0.
+  5. **Pruebas Unitarias Automatizadas**:
+     - `CheckOutViewModelTests.cs`: Adición de prueba unitaria certificando que al superar las horas de cobertura no bloquea y calcula tarifa fija más excedente ordinario.
+     - `dotnet test ParkingWpf.slnx`: **387/387 Pruebas Unitarias Superadas (100% éxito, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Entities/CommercialAgreement.cs` (Modificado)
+  - `Parking/ViewModels/CheckOutViewModel.cs` (Modificado)
+  - `Parking/Services/Implementations/EfParkingTicketService.cs` (Modificado)
+  - `Parking/ViewModels/ReceiptPreviewViewModel.cs` (Modificado)
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs` (Modificado)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build`: Exitoso (**0 Errores, 0 Advertencias**).
+  - `dotnet test ParkingWpf.slnx`: **387/387 Superadas (0 Fallos)**.
+
+---
+
 ## 📅 Entrada: [2026-10-08 01:08:00] - [BUGFIX / PRINTING] Corrección de Fallback de Póliza, Información Adicional y Horario en Tiquetes de Salida (WPF)
 
 - **`💬 Prompt Original del Usuario`**:

@@ -827,6 +827,7 @@ public partial class CheckOutViewModel : ViewModelBase
                             targetResolution = feResolutions.FirstOrDefault(r => r.ResolutionId.ToString().Equals(method.DefaultResolutionId, StringComparison.OrdinalIgnoreCase));
                         }
 
+                        targetResolution ??= feResolutions.FirstOrDefault();
                         SelectedResolution = targetResolution;
                         ShowResolutionWarning = targetResolution == null;
                     }
@@ -916,6 +917,10 @@ public partial class CheckOutViewModel : ViewModelBase
         }
 
         var feRes = targetList.FirstOrDefault(r => IsElectronicResolutionDefensive(r));
+        if (feRes != null)
+        {
+            SelectedResolution = feRes;
+        }
     }
 
     private void AutoSelectStandardResolution()
@@ -929,6 +934,10 @@ public partial class CheckOutViewModel : ViewModelBase
         }
 
         var stdRes = targetList.FirstOrDefault(r => !IsElectronicResolutionDefensive(r));
+        if (stdRes != null)
+        {
+            SelectedResolution = stdRes;
+        }
     }
 
     [RelayCommand]
@@ -1195,7 +1204,7 @@ public partial class CheckOutViewModel : ViewModelBase
             var totalStay = Math.Max(0, (int)(now - SelectedTicket.EntryTimeUtc).TotalMinutes);
             var maxAllowed = (agreement.MaxHoursApplicable.GetValueOrDefault(0) * 60) + agreement.MaxMinutesApplicable.GetValueOrDefault(0);
 
-            if (maxAllowed > 0 && totalStay > maxAllowed)
+            if (agreement.DiscountType != 3 && maxAllowed > 0 && totalStay > maxAllowed)
             {
                 SelectedAgreement = null;
                 HasAgreementDiscount = false;
@@ -2043,7 +2052,32 @@ public partial class CheckOutViewModel : ViewModelBase
 
         if (HasAgreementDiscount && SelectedAgreement != null && IsAgreementEligible)
         {
-            if (SelectedAgreement.DiscountType == 2 || (SelectedAgreement.FreeHours.GetValueOrDefault(0) > 0 || SelectedAgreement.FreeMinutes.GetValueOrDefault(0) > 0))
+            if (SelectedAgreement.DiscountType == 3 && SelectedAgreement.DiscountFixedAmount.GetValueOrDefault(0) > 0)
+            {
+                decimal fixedFee = SelectedAgreement.DiscountFixedAmount!.Value;
+                int coverageMinutes = (SelectedAgreement.MaxHoursApplicable.GetValueOrDefault(0) * 60) + SelectedAgreement.MaxMinutesApplicable.GetValueOrDefault(0);
+
+                if (coverageMinutes <= 0 || AgreementTotalStayMinutes <= coverageMinutes)
+                {
+                    CalculatedFee = fixedFee;
+                    GrossFee = Math.Max(GrossFee, CalculatedFee);
+                    DiscountAmount = Math.Max(0m, GrossFee - CalculatedFee);
+                }
+                else
+                {
+                    decimal excessFee = _pricingCalculator.CalculateFee(
+                        SelectedTicket.VehicleType,
+                        SelectedTicket.EntryTimeUtc,
+                        feeCalculationTime,
+                        coverageMinutes,
+                        false);
+
+                    CalculatedFee = fixedFee + excessFee;
+                    GrossFee = Math.Max(GrossFee, CalculatedFee);
+                    DiscountAmount = Math.Max(0m, GrossFee - CalculatedFee);
+                }
+            }
+            else if (SelectedAgreement.DiscountType == 2 || (SelectedAgreement.FreeHours.GetValueOrDefault(0) > 0 || SelectedAgreement.FreeMinutes.GetValueOrDefault(0) > 0))
             {
                 int freeMins = (SelectedAgreement.FreeHours.GetValueOrDefault(0) * 60) + SelectedAgreement.FreeMinutes.GetValueOrDefault(0);
                 if (freeMins <= 0 && AgreementMaxAllowedMinutes > 0 && SelectedAgreement.DiscountType == 2)
@@ -2126,12 +2160,27 @@ public partial class CheckOutViewModel : ViewModelBase
 
         AgreementRequiresPurchase = SelectedAgreement.MinPurchaseAmount > 0;
         AgreementMinPurchaseMet = !AgreementRequiresPurchase || CustomerPurchaseAmount >= SelectedAgreement.MinPurchaseAmount;
-        AgreementMaxTimeMet = maxAllowed <= 0 || totalStay <= maxAllowed;
+        bool isFixedCoverage = SelectedAgreement.DiscountType == 3;
+        AgreementMaxTimeMet = isFixedCoverage || maxAllowed <= 0 || totalStay <= maxAllowed;
 
         IsAgreementEligible = AgreementMinPurchaseMet && AgreementMaxTimeMet;
         AgreementBenefitText = FormatAgreementBenefit(SelectedAgreement);
 
-        if (IsAgreementEligible)
+        if (isFixedCoverage)
+        {
+            if (totalStay <= maxAllowed)
+            {
+                AgreementEligibilityBannerText = $"✓ Tarifa fija de {SelectedAgreement.DiscountFixedAmount:C0} (Hasta {SelectedAgreement.MaxHoursApplicable}h)";
+                AgreementEligibilityBannerStatus = "success";
+            }
+            else
+            {
+                var excessMin = totalStay - maxAllowed;
+                AgreementEligibilityBannerText = $"✓ Tarifa fija {SelectedAgreement.DiscountFixedAmount:C0} + Excedente de {FormatMinutesToHours(excessMin)} ordinario";
+                AgreementEligibilityBannerStatus = "warning";
+            }
+        }
+        else if (IsAgreementEligible)
         {
             AgreementEligibilityBannerText = "✓ Reglas cumplidas — Descuento aplicado";
             AgreementEligibilityBannerStatus = "success";
@@ -2183,6 +2232,10 @@ public partial class CheckOutViewModel : ViewModelBase
 
     public static string FormatAgreementBenefit(CommercialAgreement ag)
     {
+        if (ag.DiscountType == 3)
+        {
+            return $"Tarifa Fija {ag.DiscountFixedAmount:C0} ({ag.MaxHoursApplicable}h)";
+        }
         if (ag.DiscountType == 2 || ag.FreeHours.GetValueOrDefault(0) > 0 || ag.FreeMinutes.GetValueOrDefault(0) > 0)
         {
             var parts = new List<string>();
