@@ -10,6 +10,7 @@ using Parking.Models;
 using Parking.Services.Contracts;
 using Parking.Views;
 using Parking.Core.Enums;
+using Parking.Data.Factories;
 
 namespace Parking.ViewModels;
 
@@ -43,6 +44,7 @@ public partial class LoginViewModel : ViewModelBase
     private readonly IPermissionService _permissionService;
     private readonly IAppUpdateService? _updateService;
     private readonly IDialogService? _dialogService;
+    private readonly IDbConnectionManager? _dbManager;
 
     [ObservableProperty]
     private bool _showUpdateSuccessMessage;
@@ -92,7 +94,8 @@ public partial class LoginViewModel : ViewModelBase
         ISyncEngineService syncEngine,
         IPermissionService permissionService,
         IAppUpdateService? updateService = null,
-        IDialogService? dialogService = null)
+        IDialogService? dialogService = null,
+        IDbConnectionManager? dbManager = null)
     {
         _authService = authService;
         _sessionService = sessionService;
@@ -101,6 +104,7 @@ public partial class LoginViewModel : ViewModelBase
         _permissionService = permissionService;
         _updateService = updateService;
         _dialogService = dialogService;
+        _dbManager = dbManager;
 
         _apiClient.ConnectionStateChanged += isOnline =>
         {
@@ -279,19 +283,6 @@ public partial class LoginViewModel : ViewModelBase
                 // Fast-Login (< 1 segundo): La estación ya cuenta con tarifas y usuarios. Acceso instantáneo
                 IsOnline = _syncEngine.IsOnline;
                 NetworkStatusText = _syncEngine.IsOnline ? "API Central Online" : "Modo Offline (Sin Conexión)";
-
-                // Sincronización en segundo plano sin bloquear la terminal operativa
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await _syncEngine.PerformFullSyncAsync();
-                    }
-                    catch (Exception syncEx)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[FastLogin Background Sync] {syncEx.Message}");
-                    }
-                });
             }
 
             // Validar Horario de Atención de la Sede para el día de hoy
@@ -326,7 +317,20 @@ public partial class LoginViewModel : ViewModelBase
                     var release = await _updateService.CheckForUpdateAsync();
                     if (release != null && release.HasUpdate)
                     {
-                        // Si aún quedan transacciones pendientes tras el sync, forzar subida total
+                        // A. Respaldo preventivo automático en SQLite si hay datos locales pendientes
+                        if (_syncEngine.PendingItemsCount > 0 && _dbManager != null)
+                        {
+                            try
+                            {
+                                await _dbManager.BackupDatabaseAsync();
+                            }
+                            catch (Exception bEx)
+                            {
+                                System.Diagnostics.Debug.WriteLine($"[LOGIN BACKUP WARNING] {bEx.Message}");
+                            }
+                        }
+
+                        // B. Si aún quedan transacciones pendientes tras el sync, forzar subida total manteniendo token de sesión
                         if (_syncEngine.PendingItemsCount > 0)
                         {
                             BusyMessage = $"Subiendo {_syncEngine.PendingItemsCount} transacciones a la nube antes de actualizar...";
@@ -357,6 +361,23 @@ public partial class LoginViewModel : ViewModelBase
                 {
                     System.Diagnostics.Debug.WriteLine($"[LOGIN UPDATE CHECK WARNING] {ex.Message}");
                 }
+            }
+
+            // Si tiene datos locales y no hubo actualización obligatoria que cerrara la ventana,
+            // lanzar sincronización en segundo plano de manera segura sin colisiones
+            if (hasLocalData)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _syncEngine.PerformFullSyncAsync();
+                    }
+                    catch (Exception syncEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[FastLogin Background Sync] {syncEx.Message}");
+                    }
+                });
             }
 
             await Task.Delay(250);

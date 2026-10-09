@@ -170,7 +170,7 @@ public class SyncEngineService : ISyncEngineService
     public async Task<SyncResultReport> PerformFullSyncWithProgressAsync(IProgress<SyncProgressReport> progress, CancellationToken ct = default)
     {
         var result = new SyncResultReport();
-        if (!await _syncExecutionLock.WaitAsync(TimeSpan.FromSeconds(2), ct))
+        if (!await _syncExecutionLock.WaitAsync(TimeSpan.FromSeconds(15), ct))
         {
             result.Success = true;
             result.IsOnline = _isOnline;
@@ -2345,7 +2345,7 @@ public class SyncEngineService : ISyncEngineService
     {
         if (!_isOnline) return;
 
-        if (!await _pendingQueueLock.WaitAsync(0))
+        if (!await _pendingQueueLock.WaitAsync(TimeSpan.FromSeconds(10)))
         {
             return; // Ya hay un procesamiento de cola en curso
         }
@@ -2464,6 +2464,15 @@ public class SyncEngineService : ISyncEngineService
                                         }
                                     }
                                 }
+                                else if (_isOnline)
+                                {
+                                    item.RetryCount++;
+                                    item.LastError = "No se recibió confirmación del servidor central en CheckIn.";
+                                    if (item.RetryCount >= 3)
+                                    {
+                                        item.IsProcessed = true;
+                                    }
+                                }
                             }
                             catch (InvalidOperationException ex) when (
                                 ex.Message.Contains("ya se encuentra registrado", StringComparison.OrdinalIgnoreCase) ||
@@ -2494,26 +2503,70 @@ public class SyncEngineService : ISyncEngineService
                         var req = JsonSerializer.Deserialize<CheckOutApiRequest>(item.PayloadJson, ParkingApiClient.JsonOptions);
                         if (req != null)
                         {
-                            var result = await _apiClient.CheckOutAsync(req);
-                            if (result != null)
+                            try
                             {
-                                item.IsProcessed = true;
+                                var result = await _apiClient.CheckOutAsync(req);
+                                if (result != null)
+                                {
+                                    item.IsProcessed = true;
 
-                                // Bajar la data de la nube a tierra: conciliar SQLite local con la verdad canónica del servidor
-                                var localTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == result.TicketId);
+                                    // Bajar la data de la nube a tierra: conciliar SQLite local con la verdad canónica del servidor
+                                    var localTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == result.TicketId);
+                                    if (localTicket != null)
+                                    {
+                                        localTicket.Status = TicketStatus.Completed;
+                                        if (result.ExitTimeUtc.HasValue) localTicket.ExitTimeUtc = result.ExitTimeUtc.Value;
+                                        localTicket.GrossAmount = result.GrossAmount;
+                                        localTicket.NetAmount = result.NetAmount;
+                                        localTicket.PaymentMethod = result.PaymentMethod;
+                                        localTicket.IsSynchronized = true;
+                                        if (!string.IsNullOrWhiteSpace(result.InvoiceNumber)) localTicket.InvoiceNumber = result.InvoiceNumber;
+                                        if (!string.IsNullOrWhiteSpace(result.Cufe)) localTicket.Cufe = result.Cufe;
+                                        if (!string.IsNullOrWhiteSpace(result.QrCodeData)) localTicket.QrCodeData = result.QrCodeData;
+                                        if (result.DianStatus != DianStatus.None) localTicket.DianStatus = result.DianStatus;
+                                        localTicket.IsElectronicInvoice = result.IsElectronicInvoice;
+                                    }
+                                }
+                                else if (_isOnline)
+                                {
+                                    // Comprobar si el ticket ya se encuentra completado en el servidor central
+                                    var serverTicket = await _apiClient.GetTicketByIdAsync(req.TicketId);
+                                    if (serverTicket != null && (serverTicket.Status == TicketStatus.Completed || serverTicket.ExitTimeUtc.HasValue))
+                                    {
+                                        item.IsProcessed = true;
+                                        var localTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == req.TicketId);
+                                        if (localTicket != null)
+                                        {
+                                            localTicket.Status = TicketStatus.Completed;
+                                            if (serverTicket.ExitTimeUtc.HasValue) localTicket.ExitTimeUtc = serverTicket.ExitTimeUtc.Value;
+                                            localTicket.GrossAmount = serverTicket.GrossAmount;
+                                            localTicket.NetAmount = serverTicket.NetAmount;
+                                            localTicket.PaymentMethod = serverTicket.PaymentMethod;
+                                            localTicket.IsSynchronized = true;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        item.RetryCount++;
+                                        item.LastError = "No se recibió confirmación del servidor central en CheckOut.";
+                                        if (item.RetryCount >= 3)
+                                        {
+                                            item.IsProcessed = true;
+                                        }
+                                    }
+                                }
+                            }
+                            catch (InvalidOperationException ex) when (ex.Message == "400_ALREADY_CLOSED" ||
+                                                                       ex.Message.Contains("liquidado", StringComparison.OrdinalIgnoreCase) ||
+                                                                       ex.Message.Contains("cerrado", StringComparison.OrdinalIgnoreCase))
+                            {
+                                // El ticket ya fue liquidado centralmente; liberar de la cola y reconciliar local
+                                item.IsProcessed = true;
+                                var localTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == req.TicketId);
                                 if (localTicket != null)
                                 {
                                     localTicket.Status = TicketStatus.Completed;
-                                    if (result.ExitTimeUtc.HasValue) localTicket.ExitTimeUtc = result.ExitTimeUtc.Value;
-                                    localTicket.GrossAmount = result.GrossAmount;
-                                    localTicket.NetAmount = result.NetAmount;
-                                    localTicket.PaymentMethod = result.PaymentMethod;
                                     localTicket.IsSynchronized = true;
-                                    if (!string.IsNullOrWhiteSpace(result.InvoiceNumber)) localTicket.InvoiceNumber = result.InvoiceNumber;
-                                    if (!string.IsNullOrWhiteSpace(result.Cufe)) localTicket.Cufe = result.Cufe;
-                                    if (!string.IsNullOrWhiteSpace(result.QrCodeData)) localTicket.QrCodeData = result.QrCodeData;
-                                    if (result.DianStatus != DianStatus.None) localTicket.DianStatus = result.DianStatus;
-                                    localTicket.IsElectronicInvoice = result.IsElectronicInvoice;
                                 }
                             }
                         }
@@ -2609,9 +2662,9 @@ public class SyncEngineService : ISyncEngineService
                         }
                     }
                 }
-                catch (InvalidOperationException ex) when (ex.Message == "404_NOT_FOUND")
+                catch (InvalidOperationException ex) when (ex.Message == "404_NOT_FOUND" || ex.Message == "400_ALREADY_CLOSED")
                 {
-                    item.IsProcessed = true; // Drop 404 items permanently as they can't be resolved
+                    item.IsProcessed = true; // Drop 404 / 400_ALREADY_CLOSED items permanently as they are resolved
                 }
                 catch (InvalidOperationException ex) when (ex.Message.StartsWith("400_BAD_REQUEST"))
                 {
@@ -2628,6 +2681,10 @@ public class SyncEngineService : ISyncEngineService
                 {
                     item.RetryCount++;
                     item.LastError = ex.Message;
+                    if (item.RetryCount >= 3)
+                    {
+                        item.IsProcessed = true;
+                    }
                 }
             }
 

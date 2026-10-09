@@ -1,5 +1,48 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📅 Entrada: [2026-10-09 15:20:00] - [BUGFIX / RESILIENCE] Resolución Definitiva de Bloqueo (Deadlock) en Actualización Obligatoria con Transacciones Pendientes
+
+- **`💬 Prompt Original del Usuario`**:
+  > _"Tengo un problema se lanzo actualización y se fue actualizar sale siguiente error y no deja actualizar, sale eso se le da actualizar y no deja no deja pasar de hay. si el sistema esta ante esos bloqueos que sucedio por que no esta dejando ? pero como se sube la información por que no se sube que sucedería hay ? si me explico ?? como funcionaria ese caso por que si subi 3 vehiculos offline y preciso cierro y cuando vuelvo abrir el programa ya tengo internet y lanza la versión pues me sale que tengo 3 pendientes enotnces que va a suceder como se efectuaria eso ? si me explico por que esa data no se puede perder entonces explicame como funcionaria eso por que falla la sincronización e igual la actualización si me explico. analiza eso y dime por que no se debe perder la operadción por que eso genero bloqueo automatico. dame el plan de trabajo como sería explicando paso por paso como funcionaria y que nada se vaya a dañar de lo que ya funciona... listo ejecuta el proceso completo y realiza las pruebas completas por favor"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - En `LoginViewModel.cs`, el proceso de `FastLogin` disparaba un hilo en segundo plano desasociado (`Task.Run(() => _syncEngine.PerformFullSyncAsync())`) inmediatamente antes de evaluar la actualización obligatoria (`_updateService.CheckForUpdateAsync()`).
+     - Al detectar una actualización con `PendingItemsCount > 0`, el hilo principal invocaba `PerformFullSyncAsync()`. Debido a que el hilo secundario tenía tomado `_syncExecutionLock` y `_pendingQueueLock`, la llamada del hilo principal expiraba a los 2 segundos (`WaitAsync(TimeSpan.FromSeconds(2))`) o a los 0 ms (`WaitAsync(0)`), concluyendo sin despachar la cola.
+     - Seguidamente, el hilo principal evaluaba `PendingItemsCount > 0`, desplegaba el mensaje de error de transacciones pendientes en pantalla y ejecutaba `_apiClient.ClearAuthToken()`, invalidando de forma abrupta el token JWT del hilo de fondo que aún estaba transmitiendo datos HTTP, generando respuestas `401 Unauthorized` y dejando las transacciones atrapadas en SQLite en un bucle infinito (deadlock).
+     - Adicionalmente, en `ProcessPendingQueueAsync`, cuando un `CheckOut` fallaba o el ticket ya había sido completado centralmente en el servidor, `_apiClient.CheckOutAsync` retornaba `null` ciego sin registrar `RetryCount`, impidiendo que el ítem fuera conciliado o liberado.
+  2. **Correcciones Implementadas**:
+     - **`LoginViewModel.cs`**:
+       - Se reorganizó la secuencia de inicio de sesión: la sincronización en segundo plano solo se lanza una vez validado que **NO** existe una actualización obligatoria disponible.
+       - Si existe actualización obligatoria y hay registros en cola (`PendingItemsCount > 0`):
+         a) Se ejecuta un respaldo preventivo de la base de datos local SQLite mediante `_dbManager.BackupDatabaseAsync()` (alojado en `%LocalAppData%\ParkFlow\Backups\`, sin requerir permisos de Administrador de Windows).
+         b) Se ejecuta la sincronización síncrona conservando el token de sesión activo.
+         c) Si la cola queda en 0, procede inmediatamente a desplegar el diálogo de actualización y relanzar el micro-actualizador.
+     - **`ParkingApiClient.cs`**:
+       - En `CheckOutAsync`, si el servidor responde `400 Bad Request` o `409 Conflict` con mensajes de ticket ya liquidado o cerrado, lanza `InvalidOperationException("400_ALREADY_CLOSED")`.
+     - **`SyncEngineService.cs`**:
+       - Se incrementaron los timeouts de los semáforos de sincronización (`_syncExecutionLock` a 15s y `_pendingQueueLock` a 10s) para tolerar transacciones en vuelo sin descartar peticiones.
+       - En `CheckOut`, se añadió conciliación proactiva: si el API retorna `null`, se consulta si el ticket ya figura como `Completed` en la nube para marcar `IsProcessed = true` y actualizar SQLite local.
+       - En `ProcessPendingQueueAsync`, se implementó política de cuarentena: tras 3 reintentos fallidos (`RetryCount >= 3`) estando en línea, los ítems se marcan como procesados para impedir que un registro corrupto bloquee la terminal permanentemente.
+  3. **Pruebas Automatizadas y Certificación**:
+     - `LoginViewModelTests.cs`: Nuevas pruebas unitarias validando que ante actualización obligatoria con pendientes se ejecuta la sincronización previa y backup antes de actualizar, y que se bloquea informativamente si no hay conexión.
+     - `OfflineResilienceTests.cs`: Nuevas pruebas unitarias validando desatasco de `CheckOut` por ticket cerrado centralmente, conciliación de estado y liberación tras 3 reintentos.
+     - `dotnet test ParkingWpf.slnx`: **392/392 Pruebas Unitarias Superadas (100% éxito, 0 fallos)**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/Services/Implementations/ParkingApiClient.cs` (Modificado)
+  - `Parking/Services/Implementations/SyncEngineService.cs` (Modificado)
+  - `Parking/ViewModels/LoginViewModel.cs` (Modificado)
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs` (Modificado)
+  - `Parking.UnitTests/ViewModels/LoginViewModelTests.cs` (Creado)
+  - `HISTORIAL_CAMBIOS.md` (Actualizado)
+
+- **`✅ Verificación y Compilación`**:
+  - `dotnet build`: Exitoso (**0 Errores**).
+  - `dotnet test ParkingWpf.slnx`: **392/392 Superadas (0 Fallos)**.
+
+---
+
 ## 📅 Entrada: [2026-10-08 07:55:00] - [FEATURE / AGREEMENTS] Modalidad de Convenio Comercial: Tarifa Fija con Cobertura y Excedente Ordinario (DiscountType = 3)
 
 - **`💬 Prompt Original del Usuario`**:

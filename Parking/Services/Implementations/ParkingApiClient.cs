@@ -271,7 +271,25 @@ public class ParkingApiClient : IApiClientService
 
             var errBody = await response.Content.ReadAsStringAsync(cts.Token);
             System.Diagnostics.Debug.WriteLine($"[ParkingApiClient] CheckOutAsync failed: StatusCode={(int)response.StatusCode} ({response.ReasonPhrase}) for {BaseUrl}/api/tickets/check-out. Body: {errBody}");
+
+            if (response.StatusCode == System.Net.HttpStatusCode.BadRequest || response.StatusCode == System.Net.HttpStatusCode.Conflict)
+            {
+                ReportConnectionState(true);
+                if (errBody.Contains("liquidado", StringComparison.OrdinalIgnoreCase) ||
+                    errBody.Contains("cerrado", StringComparison.OrdinalIgnoreCase) ||
+                    errBody.Contains("completed", StringComparison.OrdinalIgnoreCase) ||
+                    errBody.Contains("already", StringComparison.OrdinalIgnoreCase) ||
+                    errBody.Contains("activo", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidOperationException("400_ALREADY_CLOSED");
+                }
+            }
+
             return null;
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
         }
         catch (Exception ex) when (ex is HttpRequestException || ex is TaskCanceledException || ex is System.IO.IOException)
         {

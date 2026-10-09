@@ -1103,6 +1103,163 @@ public class OfflineResilienceTests : IDisposable
         ticket.CanResendEmail.Should().BeFalse();
     }
 
+    [Fact]
+    public async Task ProcessPendingQueueAsync_CheckOutConTicketYaCerradoEnServidor_MarcaItemComoProcesado()
+    {
+        // Arrange
+        var ticketId = Guid.NewGuid();
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.PendingSyncItems.Add(new PendingSyncItem
+            {
+                OperationType = "CheckOut",
+                PayloadJson = JsonSerializer.Serialize(new CheckOutApiRequest { TicketId = ticketId }, ParkingApiClient.JsonOptions),
+                IsProcessed = false,
+                CreatedAtUtc = DateTime.UtcNow
+            });
+            db.ParkingTickets.Add(new ParkingTicket
+            {
+                TicketId = ticketId,
+                TicketNumber = "TEST-001",
+                PlateNumber = "ABC123",
+                Status = TicketStatus.Active,
+                EntryTimeUtc = DateTime.UtcNow.AddHours(-1)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        _mockApiClient.Setup(a => a.CheckOutAsync(It.IsAny<CheckOutApiRequest>()))
+            .ThrowsAsync(new InvalidOperationException("400_ALREADY_CLOSED"));
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+        syncEngine.SetOnlineStatus(true);
+
+        // Act
+        await syncEngine.ProcessPendingQueueAsync();
+
+        // Assert
+        using (var dbAssert = _connectionManager.CreateDbContext())
+        {
+            var pending = await dbAssert.PendingSyncItems.ToListAsync();
+            pending.Should().BeEmpty();
+
+            var ticket = await dbAssert.ParkingTickets.FirstAsync(t => t.TicketId == ticketId);
+            ticket.Status.Should().Be(TicketStatus.Completed);
+            ticket.IsSynchronized.Should().BeTrue();
+        }
+        syncEngine.PendingItemsCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ProcessPendingQueueAsync_CheckOutRetornaNullPeroServidorConfirmaCerrado_MarcaItemComoProcesado()
+    {
+        // Arrange
+        var ticketId = Guid.NewGuid();
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.PendingSyncItems.Add(new PendingSyncItem
+            {
+                OperationType = "CheckOut",
+                PayloadJson = JsonSerializer.Serialize(new CheckOutApiRequest { TicketId = ticketId }, ParkingApiClient.JsonOptions),
+                IsProcessed = false,
+                CreatedAtUtc = DateTime.UtcNow
+            });
+            db.ParkingTickets.Add(new ParkingTicket
+            {
+                TicketId = ticketId,
+                TicketNumber = "TEST-002",
+                PlateNumber = "XYZ789",
+                Status = TicketStatus.Active,
+                EntryTimeUtc = DateTime.UtcNow.AddHours(-2)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        _mockApiClient.Setup(a => a.CheckOutAsync(It.IsAny<CheckOutApiRequest>()))
+            .ReturnsAsync((ParkingTicket?)null);
+        _mockApiClient.Setup(a => a.GetTicketByIdAsync(ticketId))
+            .ReturnsAsync(new ParkingTicket
+            {
+                TicketId = ticketId,
+                Status = TicketStatus.Completed,
+                ExitTimeUtc = DateTime.UtcNow,
+                GrossAmount = 5000,
+                NetAmount = 5000,
+                PaymentMethod = PaymentMethod.Cash
+            });
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+        syncEngine.SetOnlineStatus(true);
+
+        // Act
+        await syncEngine.ProcessPendingQueueAsync();
+
+        // Assert
+        using (var dbAssert = _connectionManager.CreateDbContext())
+        {
+            var pending = await dbAssert.PendingSyncItems.ToListAsync();
+            pending.Should().BeEmpty();
+
+            var ticket = await dbAssert.ParkingTickets.FirstAsync(t => t.TicketId == ticketId);
+            ticket.Status.Should().Be(TicketStatus.Completed);
+            ticket.IsSynchronized.Should().BeTrue();
+            ticket.NetAmount.Should().Be(5000);
+        }
+        syncEngine.PendingItemsCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task ProcessPendingQueueAsync_ItemConTresReintentosFallidos_LiberaColaYMarcaProcesado()
+    {
+        // Arrange
+        var ticketId = Guid.NewGuid();
+        using (var db = _connectionManager.CreateDbContext())
+        {
+            db.PendingSyncItems.Add(new PendingSyncItem
+            {
+                OperationType = "CheckIn",
+                PayloadJson = JsonSerializer.Serialize(new CheckInApiRequest { TicketId = ticketId, PlateNumber = "FAIL123" }, ParkingApiClient.JsonOptions),
+                IsProcessed = false,
+                RetryCount = 2, // Ya ha fallado 2 veces
+                CreatedAtUtc = DateTime.UtcNow
+            });
+            await db.SaveChangesAsync();
+        }
+
+        _mockApiClient.Setup(a => a.CheckInAsync(It.IsAny<CheckInApiRequest>()))
+            .ReturnsAsync((ParkingTicket?)null);
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+        syncEngine.SetOnlineStatus(true);
+
+        // Act
+        await syncEngine.ProcessPendingQueueAsync();
+
+        // Assert
+        using (var dbAssert = _connectionManager.CreateDbContext())
+        {
+            // Tras el 3er intento fallido (RetryCount >= 3), el item debe haber sido marcado como procesado y removido de la cola pendiente
+            var pending = await dbAssert.PendingSyncItems.ToListAsync();
+            pending.Should().BeEmpty();
+        }
+        syncEngine.PendingItemsCount.Should().Be(0);
+    }
+
     public void Dispose()
     {
         _connectionManager.Dispose();
