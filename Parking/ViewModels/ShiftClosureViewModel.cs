@@ -563,7 +563,7 @@ public partial class ShiftClosureViewModel : ViewModelBase
 
             ActualCashCounted = 0m;
             Notes = null;
-            await LoadShiftDataAsync();
+            await _authService.LogoutAsync();
         }
         catch (Exception ex)
         {

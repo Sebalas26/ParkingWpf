@@ -325,4 +325,24 @@ public class CheckInViewModelTests
             It.Is<string>(msg => msg.Contains("INEXISTENTE")),
             DialogNotificationType.Warning), Times.Once);
     }
+
+    [Fact]
+    public void DataSynchronized_WhenUserIsTypingPlateOrInputs_DoesNotClearPlateOrInputs()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        vm.PlateNumber = "ABC123";
+        vm.PhoneNumber = "3001234567";
+        vm.Notes = "Vehículo rayado";
+        vm.RecentEntriesSearchQuery = "ABC";
+
+        // Act - Trigger background sync notification
+        _mockSyncEngine.Raise(m => m.DataSynchronized += null);
+
+        // Assert - The state should remain untouched because DataSynchronized should only call RefreshSynchronizedDataAsync
+        vm.PlateNumber.Should().Be("ABC123");
+        vm.PhoneNumber.Should().Be("3001234567");
+        vm.Notes.Should().Be("Vehículo rayado");
+        vm.RecentEntriesSearchQuery.Should().Be("ABC");
+    }
 }

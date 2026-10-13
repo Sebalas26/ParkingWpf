@@ -18,6 +18,7 @@ public class AuthService : IAuthService
     private readonly IPermissionService _permissionService;
 
     public event Action<UserSessionModel?>? UserSessionChanged;
+    public event Action? ForceLogoutRequested;
     public UserSessionModel? CurrentUser { get; private set; }
     public bool IsAuthenticated => CurrentUser != null;
 
@@ -729,6 +730,7 @@ public class AuthService : IAuthService
             _sessionService.Clear();
             _permissionService.Clear();
             UserSessionChanged?.Invoke(null);
+            ForceLogoutRequested?.Invoke();
         }
     }
 

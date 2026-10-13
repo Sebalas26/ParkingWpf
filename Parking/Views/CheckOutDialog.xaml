@@ -74,9 +74,11 @@
     
     <!-- Para poder cerrar el modal clickeando fuera de él -->
     <Grid Background="Transparent" MouseDown="Grid_MouseDown">
-        <Border Style="{StaticResource ModernCard}"
+        <Border x:Name="ModalCardBorder"
+                Style="{StaticResource ModernCard}"
                 Width="800"
-                MaxHeight="750"
+                MaxHeight="1040"
+                Margin="0,20"
                 Padding="24"
                 VerticalAlignment="Center"
                 HorizontalAlignment="Center"

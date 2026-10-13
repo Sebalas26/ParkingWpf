@@ -280,6 +280,19 @@ public partial class MainShellViewModel : ViewModelBase
             }
         };
 
+        _authService.ForceLogoutRequested += () =>
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.InvokeAsync(() => LogoutRequested?.Invoke());
+            }
+            else
+            {
+                LogoutRequested?.Invoke();
+            }
+        };
+
         _sessionService.UserSessionChanged += user =>
         {
             var dispatcher = Application.Current?.Dispatcher;
@@ -1101,8 +1114,7 @@ public partial class MainShellViewModel : ViewModelBase
         {
             _clockTimer.Stop();
             _backgroundSync.Stop();
-            _sessionService.Clear();
-            LogoutRequested?.Invoke();
+            await _authService.LogoutAsync();
         }
     }
 

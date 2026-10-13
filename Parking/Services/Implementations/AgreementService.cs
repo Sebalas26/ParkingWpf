@@ -23,6 +23,7 @@ public class AgreementService : IAgreementService
         using var db = _connectionManager.CreateDbContext();
         return await db.CommercialAgreements
             .Include(a => a.Store)
+            .Where(a => a.IsActive && a.Store.IsActive)
             .OrderBy(a => a.Store.Name)
             .ThenBy(a => a.Name)
             .ToListAsync();

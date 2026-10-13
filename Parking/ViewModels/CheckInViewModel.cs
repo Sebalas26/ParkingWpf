@@ -221,12 +221,12 @@ public partial class CheckInViewModel : ViewModelBase
             {
                 dispatcher.InvokeAsync(async () =>
                 {
-                    try { await InitializeAsync(); } catch { }
+                    try { await RefreshSynchronizedDataAsync(); } catch { }
                 });
             }
             else
             {
-                _ = InitializeAsync();
+                _ = RefreshSynchronizedDataAsync();
             }
         };
 
@@ -271,7 +271,11 @@ public partial class CheckInViewModel : ViewModelBase
     {
         ClearInputs();
         RecentEntriesSearchQuery = string.Empty;
+        await RefreshSynchronizedDataAsync();
+    }
 
+    public async Task RefreshSynchronizedDataAsync()
+    {
         await _pricingCalculator.ReloadRatesAsync();
         AvailableRates = await _pricingCalculator.GetAllRatesAsync();
         HasConfiguredRates = AvailableRates.Count > 0;

@@ -401,10 +401,11 @@ public partial class CheckOutViewModel : ViewModelBase
 
         syncEngine.DataSynchronized += () =>
         {
-            if (SelectedTicket != null)
+            if (SelectedTicket != null || !string.IsNullOrWhiteSpace(SearchQuery))
             {
-                // Un vehículo está siendo liquidado activamente; no reiniciar el estado del checkout,
-                // medio de pago, resolución o formulario de registro de cliente adquirente.
+                // Un vehículo está siendo liquidado activamente o el operador está digitando una placa/búsqueda;
+                // no reiniciar el estado destructivamente.
+                _ = LoadActiveVehiclesAsync();
                 return;
             }
 

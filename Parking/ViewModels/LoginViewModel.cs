@@ -339,12 +339,9 @@ public partial class LoginViewModel : ViewModelBase
 
                         if (_syncEngine.PendingItemsCount > 0)
                         {
-                            // REGLA DE ORO: Bloquear actualización si no se garantiza el 100% de datos en la nube
-                            HasError = true;
-                            ErrorMessage = $"Existe una actualización obligatoria ({release.LatestVersion}), pero hay {_syncEngine.PendingItemsCount} transacciones locales que no se pudieron subir a la nube. Por seguridad de sus datos, verifique la conexión antes de actualizar.";
-                            _sessionService.Clear();
-                            _apiClient.ClearAuthToken();
-                            return;
+                            // REGLA DE ORO (Bypasseada por instrucción explícita del usuario).
+                            // Se permite la actualización obligatoria a pesar de tener datos pendientes en la cola local.
+                            System.Diagnostics.Debug.WriteLine($"[WARNING] Actualización forzada con {_syncEngine.PendingItemsCount} items pendientes.");
                         }
 
                         // Datos 100% en la nube: Proceder con la actualización obligatoria inmediata

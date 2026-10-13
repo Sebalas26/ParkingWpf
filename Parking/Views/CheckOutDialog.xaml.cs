@@ -9,6 +9,7 @@ namespace Parking.Views
         {
             InitializeComponent();
             Loaded += CheckOutDialog_Loaded;
+            SizeChanged += (s, e) => UpdateCardMaxHeight();
             DataContextChanged += CheckOutDialog_DataContextChanged;
             Closed += (s, e) =>
             {
@@ -97,6 +98,23 @@ namespace Parking.Views
             else
             {
                 this.WindowState = WindowState.Maximized;
+            }
+
+            UpdateCardMaxHeight();
+        }
+
+        private void UpdateCardMaxHeight()
+        {
+            double availableHeight = this.ActualHeight;
+            if (availableHeight <= 0)
+            {
+                availableHeight = Owner?.ActualHeight ?? Application.Current?.MainWindow?.ActualHeight ?? SystemParameters.WorkArea.Height;
+            }
+
+            if (availableHeight > 0)
+            {
+                // Dejamos 20px de margen superior e inferior (40px total) para el marco flotante elegante
+                ModalCardBorder.MaxHeight = Math.Max(500, availableHeight - 40);
             }
         }
 

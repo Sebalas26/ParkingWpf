@@ -1154,6 +1154,7 @@ public class SyncEngineService : ISyncEngineService
                     var existing = localStores.FirstOrDefault(s => s.StoreId == store.StoreId);
                     if (existing != null)
                     {
+                        existing.BranchId = store.BranchId;
                         existing.Name = store.Name;
                         existing.TaxId = store.TaxId ?? string.Empty;
                         existing.PhoneNumber = store.PhoneNumber;
@@ -1164,6 +1165,7 @@ public class SyncEngineService : ISyncEngineService
                         db.Stores.Add(new Store
                         {
                             StoreId = store.StoreId,
+                            BranchId = store.BranchId,
                             Name = store.Name,
                             TaxId = store.TaxId ?? string.Empty,
                             PhoneNumber = store.PhoneNumber,
@@ -2458,6 +2460,10 @@ public class SyncEngineService : ISyncEngineService
                                         var localTicket = await db.ParkingTickets.FirstOrDefaultAsync(t => t.TicketId == req.TicketId.Value);
                                         if (localTicket != null)
                                         {
+                                            if (!string.IsNullOrWhiteSpace(result.TicketNumber) && localTicket.TicketNumber != result.TicketNumber)
+                                            {
+                                                localTicket.TicketNumber = result.TicketNumber;
+                                            }
                                             localTicket.EntryTimeUtc = result.EntryTimeUtc;
                                             localTicket.IsSynchronized = true;
                                             await db.SaveChangesAsync();

@@ -714,6 +714,22 @@ public class CheckOutViewModelTests : IDisposable
     }
 
     [Fact]
+    public async Task DataSynchronized_WhenSearchQueryIsEntered_DoesNotClearSearchQuery()
+    {
+        // Arrange
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        
+        vm.SearchQuery = "ABC1234";
+
+        // Act - Trigger background sync notification
+        _mockSyncEngine.Raise(m => m.DataSynchronized += null);
+
+        // Assert - State remains untouched
+        vm.SearchQuery.Should().Be("ABC1234");
+    }
+
+    [Fact]
     public void ApplyPaymentMethodResolutionFilter_WhenCashAndEmitElectronicInvoiceIsTrue_PreservesElectronicResolution()
     {
         // Arrange

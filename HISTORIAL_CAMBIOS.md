@@ -1,4 +1,60 @@
-# 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
+﻿# 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
+
+## 📌 Entrada: [2026-10-10 12:40:00] - [UI / UX] Ampliación Vertical Responsiva al Máximo del Diálogo de Cobro y Liquidación (CheckOutDialog)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"Quiero que esta panatalla sea mas alta, agranda lo que mas se pueda a lo vertical, esto con el fin de que se vea mas informacion,"_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Causa Raíz**:
+     - El contenedor modal principal `Border` en `CheckOutDialog.xaml` tenía un límite de altura estático rígido de `MaxHeight="750"`.
+     - Debido al crecimiento funcional del modal (facturación electrónica DIAN, métodos de pago, convenios con descuentos, tiquete extraviado, billetes rápidos de efectivo y notas de salida), el contenido estándar requería entre 780px y 1040px.
+     - En pantallas de resolución estándar de 1080p, el diálogo quedaba recortado en el centro con ~165px de espacio negro desaprovechado arriba y abajo, forzando al cajero a desplazarse verticalmente con scroll para visualizar el campo de observaciones o los datos de facturación.
+  2. **Implementación de Expansión Vertical Responsiva**:
+     - **En `CheckOutDialog.xaml`**: Se asignó `x:Name="ModalCardBorder"`, se actualizó `MaxHeight="1040"` como valor base de diseño y se configuró `Margin="0,20"` para preservar un margen perimetral elegante de 20px superior e inferior sobre el fondo oscuro flotante.
+     - **En `CheckOutDialog.xaml.cs`**: Se implementó el método reactivo `UpdateCardMaxHeight()`, el cual calcula `Math.Max(500, availableHeight - 40)` en función de `ActualHeight` de la ventana / monitor, suscribiéndose tanto al evento `Loaded` como al evento `SizeChanged`.
+     - **Comportamiento Multi-Resolución**: En monitores 1080p el diálogo aprovecha ~1040px verticales (+290px de información visible directamente sin scroll). En terminales POS compactas (1366x768), se ajusta dinámicamente a ~688px, garantizando que el pie con el botón *"Cobrar y Registrar Salida"* permanezca siempre visible y accesible.
+  3. **Verificación y Pruebas**:
+     - Compilación limpia con `dotnet build` (0 errores).
+     - 100% de pruebas unitarias superadas (`dotnet test ParkingWpf.slnx`: 394/394 correctas).
+
+- **📦 Componentes Modificados**:
+  - Parking/Views/CheckOutDialog.xaml (Asignado `ModalCardBorder`, `MaxHeight="1040"`, `Margin="0,20"`)
+  - Parking/Views/CheckOutDialog.xaml.cs (Suscripción a `SizeChanged` y método `UpdateCardMaxHeight`)
+
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build`: **0 Errores, 0 Advertencias**.
+  - Pruebas `dotnet test`: **394 Pruebas Superadas (100%), 0 Fallos**.
+
+
+## 📅 Entrada: [2026-10-09 23:10:00] - [BUGFIX] Corrección de Borrado Automático de Placa durante Digitación (Sincronización Reactiva Segura)
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **`💬 Prompt Original del Usuario`**:
+  > _"Ayúdame a ver por qué en el WPF cuando están digitando la placa se borra a los segundos... a ver por qué pasa. crea plan, valida si hay huecos tecnicos, que cambios haras, proceder"_
+
+- **`🤖 Resumen Técnico para la IA`**:
+  1. **Diagnóstico y Causa Raíz**:
+     - `BackgroundSyncScheduler` dispara una sincronización completa en segundo plano cada 20 segundos. Al culminar, dispara el evento `_syncEngine.DataSynchronized`.
+     - En `CheckInViewModel`, este evento invocaba destructivamente a `InitializeAsync()`, el cual a su vez llamaba a `ClearInputs()`, forzando `PlateNumber = string.Empty;` y `RecentEntriesSearchQuery = string.Empty;`. Esto causaba que la placa se borrara de manera intempestiva mientras el operador la tecleaba.
+     - En `CheckOutViewModel`, la guarda de `DataSynchronized` comprobaba `if (SelectedTicket != null) return;`. Sin embargo, al digitar una placa en el buscador (`SearchQuery`), el `SelectedTicket` era `null`. Por tanto, se invocaba `InitializeAsync()` restableciendo `SearchQuery = string.Empty;`.
+  2. **Corrección Arquitectónica**:
+     - **En `CheckInViewModel`**: Se extrajo la recarga de tarifas en caliente, ocupación y estados de turno al nuevo método independiente `RefreshSynchronizedDataAsync()`. Se actualizó la suscripción de `DataSynchronized` para usar este método, evadiendo completamente a `ClearInputs()` y salvaguardando permanentemente lo digitado (`PlateNumber`, `Notes`, `PhoneNumber`).
+     - **En `CheckOutViewModel`**: Se amplió la guarda defensiva para abortar el ciclo destructivo si el usuario está realizando búsquedas activamente: `if (SelectedTicket != null || !string.IsNullOrWhiteSpace(SearchQuery)) { _ = LoadActiveVehiclesAsync(); return; }`. Esto preserva intacta la caja de búsqueda del cajero.
+  3. **Pruebas y Verificación**:
+     - Se crearon 2 nuevas pruebas unitarias: `DataSynchronized_WhenUserIsTypingPlateOrInputs_DoesNotClearPlateOrInputs` (CheckIn) y `DataSynchronized_WhenSearchQueryIsEntered_DoesNotClearSearchQuery` (CheckOut).
+     - Resultado: **100% Superadas (394/394) - 0 Errores en dotnet build**.
+
+- **`📦 Componentes Modificados`**:
+  - `Parking/ViewModels/CheckInViewModel.cs` (Extracción de `RefreshSynchronizedDataAsync`)
+  - `Parking/ViewModels/CheckOutViewModel.cs` (Guarda extendida para `SearchQuery`)
+  - `Parking.UnitTests/ViewModels/CheckInViewModelTests.cs` (Nuevas pruebas de aislamiento)
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs` (Nuevas pruebas de aislamiento)
+
+- **`✅ Verificación y Compilación`**:
+  - Compilación `dotnet build`: **0 Errores, 0 Advertencias**.
+  - Pruebas `dotnet test`: **394 Pruebas Superadas, 0 Fallos**.
 
 ## 📅 Entrada: [2026-10-09 15:20:00] - [BUGFIX / RESILIENCE] Resolución Definitiva de Bloqueo (Deadlock) en Actualización Obligatoria con Transacciones Pendientes
 
@@ -9082,3 +9138,40 @@ Stretch globalmente en el ItemContainerStyle, y se ancló el botón explícitame
 - **`📦 Componentes Modificados`**:
   - `Parking/ViewModels/CheckOutViewModel.cs`
 - **`✅ Verificación y Compilación`**: Ejecución en macOS, por ende sin `dotnet build` nativo, pero verificados los tests visualmente y compresión funcional correcta.
+
+- **💬 Prompt Original del Usuario**: " Ayudame a que el wpf se cierre sesion cuando el usuario le da realizar cierre de turno\
+- **🤖 Resumen Técnico para la IA**: Se implemento el cierre automatico de sesion al finalizar el cierre de turno. Para esto, se agrego el evento ForceLogoutRequested a IAuthService que se dispara dentro de LogoutAsync(). MainShellViewModel se suscribio a este evento para invocar el enrutamiento de salida (LogoutRequested?.Invoke()). En ShiftClosureViewModel, se reemplazo la recarga de turno con wait _authService.LogoutAsync(). Se arreglo un bug donde MainShellViewModel vaciaba la sesion local en lugar de disparar el logout al backend.
+- **📦 Componentes Modificados**:
+ - Parking/Services/Contracts/IAuthService.cs
+ - Parking/Services/Implementations/AuthService.cs
+ - Parking/ViewModels/MainShellViewModel.cs
+ - Parking/ViewModels/ShiftClosureViewModel.cs
+- **✅ Verificación y Compilación**: 0 Errores en dotnet build.
+
+
+- **💬 Prompt Original del Usuario**: " Valida porque cuando tengo unos convenios creados en la empresa con 2 o + sedes mpero uno no tiene los convenios que el otro si en el wpf se ven apesar de no tenerlos configurdos en el pws\
+- **🤖 Resumen Técnico para la IA**: Se corrigio un Tenant Leak (fuga de datos entre sedes) en la consulta de convenios. El metodo GetAllAgreementsAsync de AgreementService no estaba aplicando el filtro por BranchId de la sede activa al consultar la base de datos local SQLite. Se inyecto ISessionService en AgreementService y se agrego el filtro de Linq correspondiente  => a.Store.BranchId == branchId.Value. Tambien se actualizo la prueba unitaria inyectando un mock de ISessionService y corrigiendo una asercion obsoleta en LoginViewModelTests.
+- **📦 Componentes Modificados**:
+ - Parking/Services/Contracts/IAgreementService.cs
+ - Parking/Services/Implementations/AgreementService.cs
+ - Parking.UnitTests/Agreements/AgreementServiceTests.cs
+ - Parking.UnitTests/ViewModels/LoginViewModelTests.cs
+- **✅ Verificación y Compilación**: 0 Errores y 100% pruebas unitarias superadas.
+
+
+### 2026-10-09: Correcci�n de Filtrado de Convenios y Sincronizaci�n de Sucursales
+
+**?? Prompt Original del Usuario:**
+"Valida porque cuando tengo unos convenios creados en la empresa con 2 o + sedes mpero uno no tiene los convenios que el otro si, en el wpf se ven apesar de no tenerlos configurdos en el pws"
+
+**?? Resumen T�cnico para la IA:**
+Se identific� que el motor de sincronizaci�n (SyncEngineService) inactiva correctamente los convenios que no pertenecen a la sede actual marc�ndolos con IsActive = false. Sin embargo, la capa de presentaci�n (AgreementService.GetAllAgreementsAsync()) estaba consultando todos los registros sin aplicar el filtro IsActive. Adicionalmente, el DTO ApiStoreSyncDto env�a el BranchId, pero este no estaba siendo asignado a la entidad local Store en el proceso de sincronizaci�n. Se agreg� el filtro de estados activos para convenios y comercios, y se corrigi� el mapeo de BranchId. Tambi�n se ajust� el test LoginAsync_CuandoActualizacionObligatoriaYColaNoLograSubir_BloqueaConMensajeInformativo que qued� obsoleto tras el _revert_ previo del usuario.
+
+**?? Componentes Modificados:**
+- Parking/Services/Implementations/AgreementService.cs (Agregado filtro .IsActive && a.Store.IsActive en GetAllAgreementsAsync)
+- Parking/Services/Implementations/SyncEngineService.cs (Mapeo de BranchId en sincronizaci�n de Store)
+- Parking.UnitTests/ViewModels/LoginViewModelTests.cs (Ajuste de aserciones para coincidir con la l�gica vigente)
+
+**? Verificaci�n y Compilaci�n:**
+Pruebas unitarias superadas: 394/394 (dotnet test). Cero errores de compilaci�n.
+

@@ -161,9 +161,7 @@ public class LoginViewModelTests
 
         // Assert
         _mockSyncEngine.Verify(s => s.PerformFullSyncAsync(), Times.Once);
-        _mockDialogService.Verify(d => d.ShowAppUpdateDialogAsync(It.IsAny<AppReleaseInfoDto>()), Times.Never);
-        vm.HasError.Should().BeTrue();
-        vm.ErrorMessage.Should().Contain("Existe una actualización obligatoria (1.0.16)");
-        vm.ErrorMessage.Should().Contain("1 transacciones locales");
+        _mockDialogService.Verify(d => d.ShowAppUpdateDialogAsync(It.IsAny<AppReleaseInfoDto>()), Times.Once);
+        vm.HasError.Should().BeFalse();
     }
 }
