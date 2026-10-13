@@ -9,6 +9,7 @@ public interface IStoreService
 {
     Task<IReadOnlyList<Store>> GetAllStoresAsync();
     Task<IReadOnlyList<Store>> GetActiveStoresAsync();
+    Task<IReadOnlyList<Store>> GetActiveStoresByBranchAsync(int branchId);
     Task<Store> CreateStoreAsync(string name, string taxId, string? phoneNumber);
     Task UpdateStoreAsync(Guid storeId, string name, string taxId, string? phoneNumber, bool isActive);
 }

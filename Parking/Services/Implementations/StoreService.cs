@@ -37,6 +37,16 @@ public class StoreService : IStoreService
             .ToListAsync();
     }
 
+    public async Task<IReadOnlyList<Store>> GetActiveStoresByBranchAsync(int branchId)
+    {
+        using var db = _connectionManager.CreateDbContext();
+        return await db.Stores
+            .Where(s => s.IsActive && (s.BranchId == branchId || s.BranchId == null))
+            .Include(s => s.Agreements.Where(a => a.IsActive))
+            .OrderBy(s => s.Name)
+            .ToListAsync();
+    }
+
     public async Task<Store> CreateStoreAsync(string name, string taxId, string? phoneNumber)
     {
         using var db = _connectionManager.CreateDbContext();

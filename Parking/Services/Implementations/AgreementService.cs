@@ -29,6 +29,17 @@ public class AgreementService : IAgreementService
             .ToListAsync();
     }
 
+    public async Task<IReadOnlyList<CommercialAgreement>> GetActiveAgreementsByBranchAsync(int branchId)
+    {
+        using var db = _connectionManager.CreateDbContext();
+        return await db.CommercialAgreements
+            .Where(a => a.IsActive && a.Store.IsActive && (a.Store.BranchId == branchId || a.Store.BranchId == null))
+            .Include(a => a.Store)
+            .OrderBy(a => a.Store.Name)
+            .ThenBy(a => a.Name)
+            .ToListAsync();
+    }
+
     public async Task<IReadOnlyList<CommercialAgreement>> GetAgreementsByStoreAsync(Guid storeId)
     {
         using var db = _connectionManager.CreateDbContext();

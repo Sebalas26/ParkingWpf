@@ -35,9 +35,11 @@ public class CheckOutViewModelTests : IDisposable
         _mockSubscriptionService = new Mock<IMonthlySubscriptionService>();
         _mockStoreService = new Mock<IStoreService>();
         _mockStoreService.Setup(s => s.GetActiveStoresAsync()).ReturnsAsync(new List<Store>());
+        _mockStoreService.Setup(s => s.GetActiveStoresByBranchAsync(It.IsAny<int>())).ReturnsAsync(new List<Store>());
 
         _mockAgreementService = new Mock<IAgreementService>();
         _mockAgreementService.Setup(a => a.GetAllAgreementsAsync()).ReturnsAsync(new List<CommercialAgreement>());
+        _mockAgreementService.Setup(a => a.GetActiveAgreementsByBranchAsync(It.IsAny<int>())).ReturnsAsync(new List<CommercialAgreement>());
         _mockAgreementService.Setup(a => a.GetAgreementsByStoreAsync(It.IsAny<Guid>())).ReturnsAsync(new List<CommercialAgreement>());
 
         _mockBillingResolutionService = new Mock<IBillingResolutionService>();
@@ -1550,6 +1552,95 @@ public class CheckOutViewModelTests : IDisposable
             It.IsAny<decimal>(),
             It.IsAny<bool>(),
             It.IsAny<Guid?>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task LoadStoresAsync_SedeActivaConConveniosPropios_SoloCargaConveniosDeEsaSede()
+    {
+        // Arrange
+        int branchId = 1;
+        var storeSede1 = new Store { StoreId = Guid.NewGuid(), BranchId = branchId, Name = "Exito Sede 1", IsActive = true };
+        var agreementSede1 = new CommercialAgreement
+        {
+            AgreementId = Guid.NewGuid(),
+            StoreId = storeSede1.StoreId,
+            Name = "Descuento Exito Sede 1",
+            IsActive = true
+        };
+
+        _mockStoreService.Setup(s => s.GetActiveStoresByBranchAsync(branchId))
+            .ReturnsAsync(new List<Store> { storeSede1 });
+        _mockAgreementService.Setup(a => a.GetAgreementsByStoreAsync(storeSede1.StoreId))
+            .ReturnsAsync(new List<CommercialAgreement> { agreementSede1 });
+
+        // Act
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        // Assert
+        vm.BranchAgreements.Should().ContainSingle();
+        vm.BranchAgreements.First().AgreementId.Should().Be(agreementSede1.AgreementId);
+        vm.BranchAgreements.First().Name.Should().Be("Descuento Exito Sede 1");
+    }
+
+    [Fact]
+    public async Task LoadStoresAsync_SedeSinConvenios_BranchAgreementsQuedaVacia()
+    {
+        // Arrange
+        int branchId = 3;
+        var branch3 = new BranchModel { Id = branchId, Name = "Sede Sin Convenios" };
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(branch3);
+        _mockSessionService.Setup(s => s.CurrentBranchId).Returns(branchId);
+
+        _mockStoreService.Setup(s => s.GetActiveStoresByBranchAsync(branchId))
+            .ReturnsAsync(new List<Store>());
+
+        // Act
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+
+        // Assert
+        vm.BranchAgreements.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ActiveBranchChanged_AlConmutarDeSede_RefrescaConveniosExclusivosDeLaNuevaSede()
+    {
+        // Arrange
+        int branch1Id = 1;
+        int branch2Id = 2;
+
+        var store1 = new Store { StoreId = Guid.NewGuid(), BranchId = branch1Id, Name = "Tienda Sede 1", IsActive = true };
+        var ag1 = new CommercialAgreement { AgreementId = Guid.NewGuid(), StoreId = store1.StoreId, Name = "Conv Sede 1", IsActive = true };
+
+        var store2 = new Store { StoreId = Guid.NewGuid(), BranchId = branch2Id, Name = "Tienda Sede 2", IsActive = true };
+        var ag2 = new CommercialAgreement { AgreementId = Guid.NewGuid(), StoreId = store2.StoreId, Name = "Conv Sede 2", IsActive = true };
+
+        _mockStoreService.Setup(s => s.GetActiveStoresByBranchAsync(branch1Id))
+            .ReturnsAsync(new List<Store> { store1 });
+        _mockAgreementService.Setup(a => a.GetAgreementsByStoreAsync(store1.StoreId))
+            .ReturnsAsync(new List<CommercialAgreement> { ag1 });
+
+        _mockStoreService.Setup(s => s.GetActiveStoresByBranchAsync(branch2Id))
+            .ReturnsAsync(new List<Store> { store2 });
+        _mockAgreementService.Setup(a => a.GetAgreementsByStoreAsync(store2.StoreId))
+            .ReturnsAsync(new List<CommercialAgreement> { ag2 });
+
+        var vm = CreateViewModel();
+        await vm.InitializeAsync();
+        vm.BranchAgreements.Should().ContainSingle(a => a.AgreementId == ag1.AgreementId);
+
+        // Act: Conmutar de sede a Sede 2
+        var branch2 = new BranchModel { Id = branch2Id, Name = "Sede 2" };
+        _mockSessionService.Setup(s => s.CurrentBranch).Returns(branch2);
+        _mockSessionService.Setup(s => s.CurrentBranchId).Returns(branch2Id);
+
+        _mockSessionService.Raise(s => s.ActiveBranchChanged += null, branch2);
+
+        // Assert
+        vm.BranchAgreements.Should().ContainSingle();
+        vm.BranchAgreements.First().AgreementId.Should().Be(ag2.AgreementId);
+        vm.BranchAgreements.First().Name.Should().Be("Conv Sede 2");
     }
 
     public void Dispose()

@@ -1,4 +1,42 @@
-﻿# 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
+# 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
+
+## 📌 Entrada: [2026-10-12 21:15:00] - [MULTI-SEDE / DATA ISOLATION] Aislamiento Estricto de Convenios Comerciales y Comercios por Sede Activa
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"PLAN DETALLADO: AISLAMIENTO ESTRICTO DE CONVENIOS COMERCIALES POR SEDE ACTIVA (WPF & API) - Garantizar con precisión quirúrgica que cuando un operador inicie sesión o conmute a una sede específica en el cliente de escritorio WPF (ParkingWpf), el sistema SÍ O SÍ muestre únicamente los convenios comerciales activos asignados a esa sede, incluso si la empresa dispone de múltiples convenios comerciales activos distribuidos en otras sedes."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Causa Raíz**:
+     - `CheckOutViewModel.LoadStoresAsync()` invocaba `_storeService.GetActiveStoresAsync()`, el cual retornaba todos los comercios y convenios locales sin discriminar por sede activa (`_sessionService.CurrentBranch.Id`).
+     - Existía un bucle secundario que consultaba `_agreementService.GetAllAgreementsAsync()` y agregaba convenios a ciegas a `BranchAgreements`, permitiendo que terminales de una sede mostraran convenios de otras sedes de la empresa.
+     - En `SyncEngineService`, la recepción de convenios y comercios desde bootstrap aplicaba `upsert` pero no limpiaba ni desactivaba convenios de otras sedes previamente cacheados en la base local SQLite al conmutar de sede.
+  2. **Implementación y Aislamiento Estricto**:
+     - **En `IStoreService` y `StoreService`**: Se creó el método `GetActiveStoresByBranchAsync(int branchId)` filtrando locales por `s.BranchId == branchId && s.IsActive`.
+     - **En `IAgreementService` y `AgreementService`**: Se creó el método `GetActiveAgreementsByBranchAsync(int branchId)` garantizando recuperación exclusiva de convenios de la sede.
+     - **En `SyncEngineService`**: Al sincronizar bootstrap, se implementó depuración segura de registros huérfanos/desasignados en SQLite local: convenios o comercios que no vengan en el paquete de la sede activa y que tengan histórico en `TicketDiscounts` se marcan `IsActive = false`, mientras que los que no tengan referencias históricas se eliminan limpiamente.
+     - **En `CheckOutViewModel`**: `LoadStoresAsync()` ahora consume `_storeService.GetActiveStoresByBranchAsync(currentBranchId.Value)`. Se eliminó el bucle de convenios globales, poblando `BranchAgreements` exclusivamente con convenios asignados a la sede activa. Se añadió reseteo defensivo de `SelectedAgreement` si este deja de pertenecer a la nueva sede activa tras un cambio de sede.
+  3. **Pruebas y Verificación**:
+     - Se crearon 3 pruebas unitarias en `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs`:
+       - `LoadStoresAsync_SedeActivaConConveniosPropios_SoloCargaConveniosDeEsaSede`
+       - `LoadStoresAsync_SedeSinConvenios_BranchAgreementsQuedaVacia`
+       - `ActiveBranchChanged_AlConmutarDeSede_RefrescaConveniosExclusivosDeLaNuevaSede`
+     - Se actualizó el mock general de `_mockStoreService` en el constructor de pruebas para asegurar total compatibilidad.
+     - Compilación limpia con `dotnet build` (**0 Errores, 0 Advertencias**).
+     - 100% de pruebas unitarias superadas (`dotnet test ParkingWpf.slnx`: **397 de 397 exitosas**).
+
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Contracts/IStoreService.cs` (Nuevo contrato `GetActiveStoresByBranchAsync`)
+  - `Parking/Services/Implementations/StoreService.cs` (Implementación con filtro por `BranchId` e `IsActive`)
+  - `Parking/Services/Contracts/IAgreementService.cs` (Nuevo contrato `GetActiveAgreementsByBranchAsync`)
+  - `Parking/Services/Implementations/AgreementService.cs` (Implementación vinculada a comercios de la sede)
+  - `Parking/Services/Implementations/SyncEngineService.cs` (Depuración defensiva de convenios/comercios no asignados a la sede)
+  - `Parking/ViewModels/CheckOutViewModel.cs` (Consumo por sede activa en `LoadStoresAsync` y validación de `SelectedAgreement`)
+  - `Parking.UnitTests/ViewModels/CheckOutViewModelTests.cs` (Setup de mocks y 3 nuevas pruebas unitarias)
+
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build`: **0 Errores, 0 Advertencias**.
+  - Pruebas `dotnet test ParkingWpf.slnx`: **397 Pruebas Superadas (100%), 0 Fallos**.
 
 ## 📌 Entrada: [2026-10-10 12:40:00] - [UI / UX] Ampliación Vertical Responsiva al Máximo del Diálogo de Cobro y Liquidación (CheckOutDialog)
 

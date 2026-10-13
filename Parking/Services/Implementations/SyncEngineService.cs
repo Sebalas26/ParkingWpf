@@ -1138,7 +1138,8 @@ public class SyncEngineService : ISyncEngineService
                 var storesToDelete = localStores.Where(s => !incomingStoreIds.Contains(s.StoreId)).ToList();
                 foreach (var store in storesToDelete)
                 {
-                    bool isReferenced = await db.TicketDiscounts.AnyAsync(td => td.StoreId == store.StoreId, ct);
+                    bool isReferenced = await db.CommercialAgreements.AnyAsync(a => a.StoreId == store.StoreId, ct)
+                                     || await db.TicketDiscounts.AnyAsync(td => td.StoreId == store.StoreId, ct);
                     if (isReferenced)
                     {
                         store.IsActive = false;
@@ -1180,7 +1181,22 @@ public class SyncEngineService : ISyncEngineService
             int agCount = 0;
             if (bootstrap.Agreements != null)
             {
+                var incomingAgIds = bootstrap.Agreements.Select(a => a.AgreementId).ToHashSet();
                 var localAgreements = await db.CommercialAgreements.ToListAsync(ct);
+                var agsToDeactivate = localAgreements.Where(a => !incomingAgIds.Contains(a.AgreementId)).ToList();
+                foreach (var ag in agsToDeactivate)
+                {
+                    bool isReferenced = await db.TicketDiscounts.AnyAsync(td => td.AgreementId == ag.AgreementId, ct);
+                    if (isReferenced)
+                    {
+                        ag.IsActive = false;
+                    }
+                    else
+                    {
+                        db.CommercialAgreements.Remove(ag);
+                    }
+                }
+
                 foreach (var ag in bootstrap.Agreements)
                 {
                     var existing = localAgreements.FirstOrDefault(a => a.AgreementId == ag.AgreementId);

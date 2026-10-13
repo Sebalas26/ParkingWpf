@@ -971,31 +971,40 @@ public partial class CheckOutViewModel : ViewModelBase
 
     private async Task LoadStoresAsync()
     {
-        var stores = await _storeService.GetActiveStoresAsync();
+        var currentBranchId = _sessionService.CurrentBranch?.Id;
+        IReadOnlyList<Store> stores;
+        if (currentBranchId.HasValue && currentBranchId.Value > 0)
+        {
+            stores = (await _storeService.GetActiveStoresByBranchAsync(currentBranchId.Value)) ?? Array.Empty<Store>();
+        }
+        else
+        {
+            stores = (await _storeService.GetActiveStoresAsync()) ?? Array.Empty<Store>();
+        }
+
         AvailableStores.Clear();
         BranchAgreements.Clear();
+
         foreach (var s in stores)
         {
             AvailableStores.Add(s);
             var agreements = await _agreementService.GetAgreementsByStoreAsync(s.StoreId);
-            foreach (var a in agreements)
+            if (agreements != null)
             {
-                BranchAgreements.Add(a);
-            }
-        }
-
-        try
-        {
-            var allAgreements = await _agreementService.GetAllAgreementsAsync();
-            foreach (var a in allAgreements.Where(a => a.IsActive))
-            {
-                if (!BranchAgreements.Any(ba => ba.AgreementId == a.AgreementId))
+                foreach (var a in agreements)
                 {
-                    BranchAgreements.Add(a);
+                    if (!BranchAgreements.Any(ba => ba.AgreementId == a.AgreementId))
+                    {
+                        BranchAgreements.Add(a);
+                    }
                 }
             }
         }
-        catch { }
+
+        if (SelectedAgreement != null && !BranchAgreements.Any(ba => ba.AgreementId == SelectedAgreement.AgreementId))
+        {
+            SelectedAgreement = null;
+        }
     }
 
     partial void OnSearchQueryChanged(string value)
