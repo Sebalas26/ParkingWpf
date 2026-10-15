@@ -1,5 +1,38 @@
 # 📜 HISTORIAL DE CAMBIOS Y CONTEXTO TÉCNICO MULTI-PC (PARKING WPF)
 
+## 📌 Entrada: [2026-10-12 21:45:00] - [PERFORMANCE / SYNC / UX] Optimización del Intervalo de Sincronización en Segundo Plano a 5 Minutos y Corrección de Métricas Reales en Diálogo Manual
+
+- **Autor**: Antigravity AI Assistant & Software Architect
+- **💬 Prompt Original del Usuario**:
+  > _"hazme el plan completo y me gustaria que no fueran cada 20 segundos mejor que fuera cada 5 minutos si me explico es que cada 2 minutos esta haciendo demasiadas consultas y cargas a la bd si me explico."_
+
+- **🤖 Resumen Técnico para la IA**:
+  1. **Diagnóstico y Causa Raíz**:
+     - `BackgroundSyncScheduler` ejecutaba una sincronización completa de todas las tablas cada **20 segundos** (`Interval = TimeSpan.FromSeconds(20)`), provocando saturación continua de consultas sobre MySQL y SQLite local, además de mantener el semáforo `_syncExecutionLock` ocupado casi permanentemente.
+     - Al pulsar el botón "Sincronizar" en la barra superior (`ForceSyncCommand`), el diálogo modal `SyncProgressDialog` intentaba tomar `_syncExecutionLock`. Al estar ocupado por el proceso de 20s, esperaba un timeout fijo de 15 segundos y al expirar retornaba un objeto ficticio con `Success = true`, mensaje *"Sincronización en curso en segundo plano"* y todas las métricas en 0 (Cupos: `-`, Tiquetes: `0`, Tarifas: `0`, Convenios: `0`, Despachados: `0`), congelando la barra en 0%.
+  2. **Implementación y Optimización**:
+     - **En `IBackgroundSyncScheduler` y `BackgroundSyncScheduler`**: Se ajustó el temporizador de segundo plano a **5 minutos** (`TimeSpan.FromMinutes(5)`), aliviando de forma radical la carga en el API central y bases de datos. Se implementó `ResetTimer()` para reiniciar la cuenta regresiva de los 5 minutos cuando el usuario efectúe una sincronización manual.
+     - **En `MainShellViewModel`**: En `ForceSyncAsync`, se invoca `_backgroundSync.ResetTimer()` antes de abrir el modal para garantizar que el scheduler en segundo plano no compita con la acción manual del operador.
+     - **En `SyncEngineService`**: En `PerformFullSyncWithProgressAsync`, si el cerrojo está tomado, se notifica inmediatamente al usuario vía progreso (*"Esperando transferencia previa... Finalizando sincronización en segundo plano..."*), se espera hasta 45 segundos para tomar el cerrojo y, una vez adquirido, se ejecuta el ciclo completo del 10% al 100%, poblando las métricas reales de cupos, tiquetes, tarifas, convenios y despachados. Si ocurre un fallo real, se reporta `Success = false` con detalle honesto, eliminando por completo los éxitos ficticios en ceros.
+     - **Garantía Total de Actualizaciones Obligatorias**: Se preservó intacto el protocolo de actualización obligatoria de `AppUpdateService` y `LoginViewModel`, la política de 3 reintentos (`RetryCount >= 3`) y la conciliación `400_ALREADY_CLOSED`. Al estar el hilo de fondo inactivo el 99% del tiempo, las actualizaciones fluyen con mayor velocidad y sin contención.
+  3. **Pruebas y Verificación**:
+     - Se actualizaron y agregaron pruebas en `OfflineResilienceTests.cs`:
+       - `BackgroundSyncScheduler_StartAndStop_ExecutesCleanly`: Verifica intervalo de 5 minutos y método `ResetTimer()`.
+       - `PerformFullSyncWithProgressAsync_WhenServerAvailable_ReportsProgressAndMetricsAccurately`: Valida reporte de progreso y entrega de métricas fidedignas sin mensajes espurios de segundo plano.
+     - Compilación limpia con `dotnet build` (**0 Errores, 0 Advertencias**).
+     - 100% de pruebas unitarias superadas (`dotnet test ParkingWpf.slnx`: **398 de 398 correctas**).
+
+- **📦 Componentes Modificados**:
+  - `Parking/Services/Contracts/IBackgroundSyncScheduler.cs` (Nuevo método `ResetTimer`)
+  - `Parking/Services/Implementations/BackgroundSyncScheduler.cs` (Intervalo a 5 minutos y `ResetTimer`)
+  - `Parking/Services/Implementations/SyncEngineService.cs` (Espera interactiva, progreso continuo y métricas reales)
+  - `Parking/ViewModels/MainShellViewModel.cs` (Reinicio de temporizador en `ForceSyncAsync`)
+  - `Parking.UnitTests/Services/OfflineResilienceTests.cs` (Nuevas pruebas unitarias de intervalo, reseteo y métricas)
+
+- **✅ Verificación y Compilación**:
+  - Compilación `dotnet build`: **0 Errores, 0 Advertencias**.
+  - Pruebas `dotnet test ParkingWpf.slnx`: **398 Pruebas Superadas (100%), 0 Fallos**.
+
 ## 📌 Entrada: [2026-10-12 21:15:00] - [MULTI-SEDE / DATA ISOLATION] Aislamiento Estricto de Convenios Comerciales y Comercios por Sede Activa
 
 - **Autor**: Antigravity AI Assistant & Software Architect

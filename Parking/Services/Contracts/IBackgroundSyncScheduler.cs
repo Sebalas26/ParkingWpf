@@ -8,5 +8,6 @@ public interface IBackgroundSyncScheduler
     event EventHandler? SyncTriggered;
     void Start();
     void Stop();
+    void ResetTimer();
     Task TriggerManualSyncAsync();
 }

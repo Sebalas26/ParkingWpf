@@ -170,12 +170,23 @@ public class SyncEngineService : ISyncEngineService
     public async Task<SyncResultReport> PerformFullSyncWithProgressAsync(IProgress<SyncProgressReport> progress, CancellationToken ct = default)
     {
         var result = new SyncResultReport();
-        if (!await _syncExecutionLock.WaitAsync(TimeSpan.FromSeconds(15), ct))
+        if (!await _syncExecutionLock.WaitAsync(TimeSpan.FromMilliseconds(500), ct))
         {
-            result.Success = true;
-            result.IsOnline = _isOnline;
-            result.Message = "Sincronización en curso en segundo plano.";
-            return result;
+            progress.Report(new SyncProgressReport
+            {
+                Percentage = 5,
+                StepIndex = 1,
+                CurrentStepTitle = "Esperando transferencia previa...",
+                DetailMessage = "Finalizando sincronización en segundo plano antes de actualizar..."
+            });
+
+            if (!await _syncExecutionLock.WaitAsync(TimeSpan.FromSeconds(45), ct))
+            {
+                result.Success = false;
+                result.IsOnline = _isOnline;
+                result.Message = "El proceso de sincronización previo está tomando más tiempo del esperado. Por favor reintente en unos momentos.";
+                return result;
+            }
         }
 
         try

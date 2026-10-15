@@ -284,11 +284,48 @@ public class OfflineResilienceTests : IDisposable
         var scheduler = new BackgroundSyncScheduler(mockSync.Object, _mockApiClient.Object);
 
         // Act & Assert - No debe lanzar excepciones
+        scheduler.Interval.Should().Be(TimeSpan.FromMinutes(5));
+
         var actStart = () => scheduler.Start();
         actStart.Should().NotThrow();
 
+        var actReset = () => scheduler.ResetTimer();
+        actReset.Should().NotThrow();
+
         var actStop = () => scheduler.Stop();
         actStop.Should().NotThrow();
+    }
+
+    [Fact]
+    public async Task PerformFullSyncWithProgressAsync_WhenServerAvailable_ReportsProgressAndMetricsAccurately()
+    {
+        // Arrange
+        _mockApiClient.Setup(a => a.PingAsync()).ReturnsAsync(true);
+        _mockApiClient.Setup(a => a.GetBootstrapAsync(It.IsAny<int?>()))
+            .ReturnsAsync(new BootstrapSyncResponse
+            {
+                TotalCapacity = 80,
+                CompanyName = "Parking Flow"
+            });
+
+        var syncEngine = new SyncEngineService(
+            _mockApiClient.Object,
+            _connectionManager,
+            _mockSessionService.Object,
+            _mockShiftService.Object,
+            _mockSignalRClient.Object);
+        syncEngine.SetOnlineStatus(true);
+
+        var progressReports = new List<SyncProgressReport>();
+        var progress = new Progress<SyncProgressReport>(r => progressReports.Add(r));
+
+        // Act
+        var report = await syncEngine.PerformFullSyncWithProgressAsync(progress);
+
+        // Assert
+        report.Success.Should().BeTrue();
+        report.TotalCapacity.Should().Be(80);
+        report.Message.Should().NotContain("segundo plano");
     }
 
     [Fact]

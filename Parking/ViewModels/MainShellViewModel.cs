@@ -997,6 +997,7 @@ public partial class MainShellViewModel : ViewModelBase
 
         try
         {
+            _backgroundSync.ResetTimer();
             var success = await _dialogService.ShowSyncProgressModalAsync(_syncEngine);
             await _shiftService.RefreshCurrentShiftAsync();
             await RefreshOccupancyAsync();
